@@ -2,7 +2,7 @@
  * VVS: A Very Very Simple Unit Testing Tool for C/C++
  *
  * VVS aims to provide a very small and simple framework for unit testing in C and C++.
- * It consists of a single header file, unit-test.h, which only utilize C standard libraries.
+ * It consists of a single header file, 'vvs.h', which only utilize C standard libraries.
  * Just include the file to your project. It will work without complex configuration and dependency.
  * VVS is Beerware so that it is free to use and distribute.
  *
@@ -10,6 +10,15 @@
  *
  * @author  Sunglok Choi (http://sites.google.com/site/sunglok)
  * @version 0.2 (05/22/2019)
+ */
+
+/**
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * <sunglok@hanmail.net> wrote this file. As long as you retain this notice you
+ * can do whatever you want with this stuff. If we meet some day, and you think
+ * this stuff is worth it, you can buy me a beer in return.        Sunglok Choi
+ * ----------------------------------------------------------------------------
  */
 
 #ifndef __VVS_UNIT_TEST__

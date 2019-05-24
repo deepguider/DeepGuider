@@ -10,8 +10,8 @@ template<typename D, typename C> class NodeType;
 template<typename D, typename C> class EdgeType;
 template<typename D, typename C> class DirectedGraph;
 
-/*!
- * \brief <b>A node for directed graphs</b>
+/**
+ * @brief <b>A node for directed graphs</b>
  *
  * A <b>node</b> is defined for graph data structure.
  * A node is connected to other nodes by edges defined as EdgeType.
@@ -24,43 +24,43 @@ template<typename D, typename C>
 class NodeType
 {
 public:
-    /*!
+    /**
      * The default constructor
      */
     NodeType() { }
 
-    /*!
+    /**
      * A constructor with assigning #data
      * @param data Data
      */
     NodeType(D data) { this->data = data; }
 
-    /*!
+    /**
      * Check equality with the other node
      * @param rhs A node in the right-hand side
      * @return True if both data are equal (false if not equal)
      */
     bool operator==(const NodeType<D, C>& rhs) const { return (data == rhs.data); }
 
-    /*!
+    /**
      * Check inequality with the other node
      * @param rhs A node in the right-hand side
      * @return True if both data are not equal (false if equal)
      */
     bool operator!=(const NodeType<D, C>& rhs) const { return (data != rhs.data); }
 
-    /*! Data in this node */
+    /** Data in this node */
     D data;
 
     friend class DirectedGraph<D, C>;
 
 protected:
-    /*! A list for edges that start from this node */
+    /** A list for edges that start from this node */
     std::list<EdgeType<D, C> > m_edge_list;
 };
 
-/*!
- * \brief <b>An edge for directed graphs</b>
+/**
+ * @brief <b>An edge for directed graphs</b>
  *
  * An <b>directed edge</b> is defined for graph data structure.
  * A edge connects from a node to the other which is described in #to.
@@ -73,27 +73,27 @@ template<typename D, typename C>
 class EdgeType
 {
 public:
-    /*!
+    /**
      * The default constructor
      */
     EdgeType() { to = NULL; }
 
-    /*!
+    /**
      * A constructor with assigning #to and #cost
      * @param to A pointer to the destination node
      * @param cost Cost to the destination node
      */
     EdgeType(NodeType<D, C>* to, const C& cost) { this->to = to; this->cost = cost; }
 
-    /*! A pointer to the destination node */
+    /** A pointer to the destination node */
     NodeType<D, C>* to;
 
-    /*! Cost to the destination node */
+    /** Cost to the destination node */
     C cost;
 };
 
-/*!
- * \brief <B>A directed graph</B>
+/**
+ * @brief <B>A directed graph</B>
  *
  * A <b>directed graph</b> is implemented with its auxiliary functions.
  * This simple implementation is intended for sparse directed graphs which has a small number of edges per a node.
@@ -107,39 +107,39 @@ template<typename D, typename C>
 class DirectedGraph
 {
 public:
-    /*!
+    /**
      * A node definition
      */
     typedef NodeType<D, C> Node;
 
-    /*!
+    /**
      * An edge definition
      */
     typedef EdgeType<D, C> Edge;
 
-    /*!
+    /**
      * A node iterator
      */
     typedef typename std::list< NodeType<D, C> >::iterator NodeItr;
 
-    /*!
+    /**
      * An edge iterator
      */
     typedef typename std::list< EdgeType<D, C> >::iterator EdgeItr;
 
-    /*!
+    /**
      * The destructor
      */
     virtual ~DirectedGraph() { removeAll(); }
 
-    /*!
+    /**
      * Add a node (time complexity: O(1))
      * @param data Data to add
      * @return A pointer to the added node
      */
     Node* addNode(const D& data) { m_node_list.push_back(data); return &(m_node_list.back()); }
 
-    /*!
+    /**
      * Add an edge (time complexity: O(1))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
@@ -153,7 +153,7 @@ public:
         return &(from->m_edge_list.back());
     }
 
-    /*!
+    /**
      * Find a node using its data (time complexity: O(|N|))
      * @param data Data for search
      * @return A pointer to the found node (NULL if not exist)
@@ -166,7 +166,7 @@ public:
         return node;
     }
 
-    /*!
+    /**
      * Find an edge using its start and destination node (time complexity: O(|N| + |E|))
      * @param from Data of the start node
      * @param to Data of the destination node
@@ -180,7 +180,7 @@ public:
         return getEdge(fnode, tnode);
     }
 
-    /*!
+    /**
      * Find an edge using its start and destination node (time complexity: O(|E|))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
@@ -195,7 +195,7 @@ public:
         return edge;
     }
 
-    /*!
+    /**
      * Find an edge using its start and destination node (time complexity: O(|E|))
      * @param from An iterator of the start node
      * @param to An iterator of the destination node
@@ -209,7 +209,7 @@ public:
         return edge;
     }
 
-    /*!
+    /**
      * Retrieve edge cost using its start and destination node (time complexity: O(|E|))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
@@ -222,7 +222,7 @@ public:
         return edge->cost;
     }
 
-    /*!
+    /**
      * Retrieve edge cost using its start and destination node (time complexity: O(|E|))
      * @param from An iterator of the start node
      * @param to An iterator of the destination node
@@ -235,7 +235,7 @@ public:
         return edge->cost;
     }
 
-    /*!
+    /**
      * Check connectivity from a start node to a destination node (time complexity: O(|E|))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
@@ -243,7 +243,7 @@ public:
      */
     bool isConnected(Node* from, Node* to) { return (getEdgeCost(from, to) >= 0); }
 
-    /*!
+    /**
      * Check connectivity from a start node to a destination node (time complexity: O(|E|))
      * @param from An iterator of the start node
      * @param to An iterator of the destination node
@@ -251,7 +251,7 @@ public:
      */
     bool isConnected(NodeItr from, NodeItr to) { return (getEdgeCost(from, to) >= 0); }
 
-    /*!
+    /**
      * Copy this to the other graph (time complexity: O(|N||E|))
      * @param dest A pointer to the other graph
      * @return True if successful (false if failed)
@@ -269,7 +269,7 @@ public:
         return true;
     }
 
-    /*!
+    /**
      * Remove a node (time complexity: O(|V| |E|))<br>
      * This removes all edges connected from the node
      * @param node A node pointer to remove
@@ -289,7 +289,7 @@ public:
         return true;
     }
 
-    /*!
+    /**
      * Remove a node (time complexity: O(|V| |E|))<br>
      * This removes all edges connected from the node
      * @param node A node iterator of remove
@@ -308,7 +308,7 @@ public:
         return true;
     }
 
-    /*!
+    /**
      * Remove an edge (time complexity: O(|E|))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
@@ -332,7 +332,7 @@ public:
         return is_found;
     }
 
-    /*!
+    /**
      * Remove an edge (time complexity: O(|E|))
      * @param from An iterator of the start node
      * @param to An iterator of the destination node
@@ -355,19 +355,19 @@ public:
         return is_found;
     }
 
-    /*!
+    /**
      * Remove all nodes and edges
      * @return True if successful (false if failed)
      */
     bool removeAll() { m_node_list.clear(); return true; }
 
-    /*!
+    /**
      * Count the number of all nodes (time complexity: O(1))
      * @return The number of nodes
      */
     int countNodes() { return m_node_list.size(); }
 
-    /*!
+    /**
      * Count the number of edges starting from the given node (time complexity: O(1))
      * @param node A pointer to the node
      * @return The number of edges
@@ -378,28 +378,28 @@ public:
         return node->m_edge_list.size();
     }
 
-    /*!
+    /**
      * Count the number of edges starting from the given node (time complexity: O(1))
      * @param node An iterator of the node
      * @return The number of edges
      */
     int countEdges(NodeItr node) { return node->m_edge_list.size(); }
 
-    /*!
+    /**
      * Get an iterator of the first node in this graph (time complexity: O(1))
      * @return An iterator of the first node
      * @see getTailNode
      */
     NodeItr getHeadNode() { return m_node_list.begin(); }
 
-    /*!
+    /**
      * Get an iterator of the ending node in this graph (time complexity: O(1))
      * @return An iterator of the ending node
      * @see getHeadNode
      */
     NodeItr getTailNode() { return m_node_list.end(); }
 
-    /*!
+    /**
      * Get an iterator of the first edge from the given node (time complexity: O(1))
      * @param node A pointer to a node
      * @return An iterator of the first edge
@@ -407,7 +407,7 @@ public:
      */
     EdgeItr getHeadEdge(Node* node) { return node->m_edge_list.begin(); }
 
-    /*!
+    /**
      * Get an iterator of the first edge from the given node (time complexity: O(1))
      * @param node An iterator of a node
      * @return An iterator of the first edge
@@ -415,7 +415,7 @@ public:
      */
     EdgeItr getHeadEdge(NodeItr node) { return node->m_edge_list.begin(); }
 
-    /*!
+    /**
      * Get an iterator of the ending edge from the given node (time complexity: O(1))
      * @param node A pointer to a node
      * @return An iterator of the ending edge
@@ -423,7 +423,7 @@ public:
      */
     EdgeItr getTailEdge(Node* node) { return node->m_edge_list.end(); }
 
-    /*!
+    /**
      * Get an iterator of the ending edge from the given node (time complexity: O(1))
      * @param node An iterator of a node
      * @return An iterator of the ending edge
@@ -432,7 +432,7 @@ public:
     EdgeItr getTailEdge(NodeItr node) { return node->m_edge_list.end(); }
 
 protected:
-    /*! A list for all edges in this graph */
+    /** A list for all edges in this graph */
     std::list<Node> m_node_list;
 
 }; // End of 'DirectedGraph'
