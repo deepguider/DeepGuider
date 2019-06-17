@@ -13,16 +13,16 @@ int testDirectedGraph(const char* filename = "test_directed_graph.txt")
     VVS_CHECK_TRUE(family.addNode("Dangeun") != NULL);
     FamilyTree::Node* person[] =
     {
-        family.addNode("CY"),
-        family.addNode("GY"),
-        family.addNode("CH"),
-        family.addNode("CS"),
-        family.addNode("PS"),
-        family.addNode("PSY"),
-        family.addNode("LK"),
-        family.addNode("PSE"),
-        family.addNode("CJ"),
-        family.addNode("CW"),
+        /* 0 */ family.addNode("CY"),
+        /* 1 */ family.addNode("GY"),
+        /* 2 */ family.addNode("CH"),
+        /* 3 */ family.addNode("CS"),
+        /* 4 */ family.addNode("PS"),
+        /* 5 */ family.addNode("PSY"),
+        /* 6 */ family.addNode("LK"),
+        /* 7 */ family.addNode("PSE"),
+        /* 8 */ family.addNode("CJ"),
+        /* 9 */ family.addNode("CW"),
     };
     VVS_CHECK_TRUE(family.getNode("CY") == person[0]);
     VVS_CHECK_TRUE(family.getNode("Guest") == NULL);

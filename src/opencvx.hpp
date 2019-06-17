@@ -22,6 +22,7 @@
  */
 
 #ifndef __CVX__
+#define __CVX__
 
 #include "opencv2/opencv.hpp"
 #include <string>
@@ -297,7 +298,5 @@ namespace cvx
     const int KEY_RIGHT = 2555904;
 
 } // End of 'cvx'
-
-#define __CVX__
 
 #endif // End of '__CVX__'

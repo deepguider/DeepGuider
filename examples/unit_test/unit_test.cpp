@@ -4,7 +4,8 @@
 int main()
 {
     VVS_NUN_TEST(testDirectedGraph());
-    VVS_RUN_TEST(testPointID());
+    VVS_NUN_TEST(testPoint2ID());
+    VVS_RUN_TEST(testSimpleRoadMap());
 
     return 0;
 }

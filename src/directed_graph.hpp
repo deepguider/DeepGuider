@@ -11,7 +11,7 @@ template<typename D, typename C> class EdgeType;
 template<typename D, typename C> class DirectedGraph;
 
 /**
- * @brief <b>A node for directed graphs</b>
+ * @brief Node for directed graphs
  *
  * A <b>node</b> is defined for graph data structure.
  * A node is connected to other nodes by edges defined as EdgeType.
@@ -60,7 +60,7 @@ protected:
 };
 
 /**
- * @brief <b>An edge for directed graphs</b>
+ * @brief Edge for directed graphs
  *
  * An <b>directed edge</b> is defined for graph data structure.
  * A edge connects from a node to the other which is described in #to.
@@ -93,7 +93,7 @@ public:
 };
 
 /**
- * @brief <B>A directed graph</B>
+ * @brief Directed graph
  *
  * A <b>directed graph</b> is implemented with its auxiliary functions.
  * This simple implementation is intended for sparse directed graphs which has a small number of edges per a node.
