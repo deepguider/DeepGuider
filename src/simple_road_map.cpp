@@ -92,7 +92,7 @@ bool SimpleRoadMap::save(const char* filename)
     return true;
 }
 
-bool SimpleRoadMap::isEmpty()
+bool SimpleRoadMap::isEmpty() const
 {
     return (countNodes() <= 0);
 }

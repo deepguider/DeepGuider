@@ -98,7 +98,7 @@ public:
      * Check whether this map is empty or not
      * @return True if empty (true) or not (false)
      */
-    bool isEmpty();
+    bool isEmpty() const;
 
     /**
      * Write this map to the given file

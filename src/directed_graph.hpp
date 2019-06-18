@@ -128,6 +128,16 @@ public:
     typedef typename std::list< EdgeType<D, C> >::iterator EdgeItr;
 
     /**
+     * A constant node iterator
+     */
+    typedef typename std::list< NodeType<D, C> >::const_iterator NodeItrConst;
+
+    /**
+     * A constant edge iterator
+     */
+    typedef typename std::list< EdgeType<D, C> >::const_iterator EdgeItrConst;
+
+    /**
      * The destructor
      */
     virtual ~DirectedGraph() { removeAll(); }
@@ -365,14 +375,14 @@ public:
      * Count the number of all nodes (time complexity: O(1))
      * @return The number of nodes
      */
-    int countNodes() { return m_node_list.size(); }
+    int countNodes() const { return m_node_list.size(); }
 
     /**
      * Count the number of edges starting from the given node (time complexity: O(1))
      * @param node A pointer to the node
      * @return The number of edges
      */
-    int countEdges(Node* node)
+    int countEdges(Node* node) const
     {
         if (node == NULL) return 0;
         return node->m_edge_list.size();
@@ -383,7 +393,7 @@ public:
      * @param node An iterator of the node
      * @return The number of edges
      */
-    int countEdges(NodeItr node) { return node->m_edge_list.size(); }
+    int countEdges(NodeItr node) const { return node->m_edge_list.size(); }
 
     /**
      * Get an iterator of the first node in this graph (time complexity: O(1))

@@ -88,10 +88,12 @@
     <ClCompile Include="..\..\src\simple_road_map.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\examples\unit_test\test_simple_road_map.hpp" />
+    <ClInclude Include="..\..\examples\unit_test\test_directed_graph.hpp" />
+    <ClInclude Include="..\..\examples\unit_test\test_simple_road.hpp" />
     <ClInclude Include="..\..\examples\unit_test\vvs.h" />
     <ClInclude Include="..\..\src\directed_graph.hpp" />
     <ClInclude Include="..\..\src\simple_road_map.hpp" />
+    <ClInclude Include="..\..\src\simple_road_painter.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

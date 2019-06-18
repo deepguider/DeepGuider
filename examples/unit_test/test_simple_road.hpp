@@ -2,7 +2,7 @@
 #define __TEST_SIMPLE_ROAD_MAP__
 
 #include "vvs.h"
-#include "simple_road_map.hpp"
+#include "simple_road_painter.hpp"
 
 int testPoint2ID()
 {
@@ -103,6 +103,65 @@ int testSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
     VVS_CHECK_TRUE(map.getEdgeCost(map.getNode(dg::Point2ID(5)), map.getNode(dg::Point2ID(6))) < 0);
     VVS_CHECK_TRUE(map.getEdgeCost(map.getNode(dg::Point2ID(5)), map.getNode(dg::Point2ID(7))) < 0);
 
+    return 0;
+}
+
+int testSimpleRoadPainter(bool verbose = false)
+{
+    // Build an example map
+    dg::SimpleRoadMap map;
+    map.addNode(dg::Point2ID(1, 0, 0));
+    map.addNode(dg::Point2ID(2, 0, 1));
+    map.addNode(dg::Point2ID(3, 1, 1));
+    map.addNode(dg::Point2ID(4, 1, 0));
+    map.addNode(dg::Point2ID(5, 2, 1));
+    map.addNode(dg::Point2ID(6, 3, 1));
+    map.addNode(dg::Point2ID(7, 2, 0));
+    map.addNode(dg::Point2ID(8, 3, 0));
+    map.addEdge(map.getNode(dg::Point2ID(1)), map.getNode(dg::Point2ID(2)));
+    map.addEdge(map.getNode(dg::Point2ID(2)), map.getNode(dg::Point2ID(3)));
+    map.addEdge(map.getNode(dg::Point2ID(3)), map.getNode(dg::Point2ID(4)));
+    map.addEdge(map.getNode(dg::Point2ID(4)), map.getNode(dg::Point2ID(1)));
+    map.addRoad(map.getNode(dg::Point2ID(3)), map.getNode(dg::Point2ID(5)));
+    map.addEdge(map.getNode(dg::Point2ID(6)), map.getNode(dg::Point2ID(5)));
+    map.addEdge(map.getNode(dg::Point2ID(6)), map.getNode(dg::Point2ID(8)));
+    map.addEdge(map.getNode(dg::Point2ID(7)), map.getNode(dg::Point2ID(5)));
+    map.addEdge(map.getNode(dg::Point2ID(8)), map.getNode(dg::Point2ID(7)));
+
+    // Draw the map
+    dg::SimpleRoadPainter painter;
+    cv::Mat image;
+    VVS_CHECK_TRUE(painter.drawMap(image, map));
+    VVS_CHECK_TRUE(image.empty() == false);
+
+    // Draw additional nodes
+    dg::CanvasInfo info = painter.getCanvasInfo(map);
+    dg::SimpleRoadMap::NodeItr node1 = map.getHeadNode();
+    VVS_CHECK_TRUE(node1 != map.getTailNode());
+    VVS_CHECK_TRUE(painter.drawNode(image, info, node1->data, 0.1, 0.5, cvx::COLOR_MAGENTA, 2));
+    dg::SimpleRoadMap::Node* node3 = map.getNode(dg::Point2ID(3));
+    VVS_CHECK_TRUE(node3 != NULL);
+    VVS_CHECK_TRUE(painter.drawNode(image, info, node3->data, 0.1, 0.5, cvx::COLOR_RED, -1));
+
+    // Draw additional edges
+    dg::SimpleRoadMap::EdgeItr edge = map.getHeadEdge(node1);
+    VVS_CHECK_TRUE(edge != map.getTailEdge(node1));
+    VVS_CHECK_TRUE(painter.drawEdge(image, info, node1->data, edge->to->data, 0.1, cvx::COLOR_MAGENTA, 2, 0.1));
+
+    // Draw a bigger image
+    VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 500));
+    VVS_CHECK_TRUE(painter.setParamValue("node_font_scale", 5 * 0.5));
+    cv::Mat bigger;
+    VVS_CHECK_TRUE(painter.drawMap(bigger, map));
+    VVS_CHECK_TRUE(bigger.empty() == false);
+
+    if (verbose)
+    {
+        cv::imshow("testSimpleRoadPainter", image);
+        cv::waitKeyEx();
+        cv::imshow("testSimpleRoadPainter", bigger);
+        cv::waitKeyEx();
+    }
     return 0;
 }
 

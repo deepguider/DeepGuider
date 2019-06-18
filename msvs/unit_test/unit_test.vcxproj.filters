@@ -32,7 +32,13 @@
     <ClInclude Include="..\..\src\simple_road_map.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\examples\unit_test\test_simple_road_map.hpp">
+    <ClInclude Include="..\..\src\simple_road_painter.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\examples\unit_test\test_directed_graph.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\examples\unit_test\test_simple_road.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -270,6 +270,30 @@ namespace cvx
         return radian;
     }
 
+    /** A color code for black */
+    const cv::Vec3b COLOR_BLACK(0, 0, 0);
+
+    /** A color code for red */
+    const cv::Vec3b COLOR_RED(0, 0, 255);
+
+    /** A color code for green */
+    const cv::Vec3b COLOR_GREEN(0, 255, 0);
+
+    /** A color code for blue */
+    const cv::Vec3b COLOR_BLUE(255, 0, 0);
+
+    /** A color code for cyan */
+    const cv::Vec3b COLOR_CYAN(255, 255, 0);
+
+    /** A color code for magenta */
+    const cv::Vec3b COLOR_MAGENTA(255, 0, 255);
+
+    /** A color code for yellow */
+    const cv::Vec3b COLOR_YELLOW(0, 255, 255);
+
+    /** A color code for white */
+    const cv::Vec3b COLOR_WHITE(255, 255, 255);
+
     /** A key code for _Line Feed (LF)_ */
     const int KEY_LF = '\n';
 
