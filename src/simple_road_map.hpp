@@ -1,14 +1,11 @@
 #ifndef __SIMPLE_ROAD_MAP__
 #define __SIMPLE_ROAD_MAP__
 
-#include "opencvx.hpp"
+#include "data_structure.hpp"
 #include "directed_graph.hpp"
 
 namespace dg
 {
-
-/** 2D point(vector) */
-typedef cv::Point2d Point2;
 
 /**
  * @brief 2D point(vector) with ID
