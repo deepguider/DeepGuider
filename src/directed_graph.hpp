@@ -151,6 +151,20 @@ public:
 
     /**
      * Add an edge (time complexity: O(1))
+     * @param from Data of the start node
+     * @param to Data of the destination node
+     * @param cost Cost from the start to destination nodes
+     * @return A pointer to the added edge
+     */
+    Edge* addEdge(const D& from, const D& to, const C& cost)
+    {
+        Node* from_ptr = getNode(from);
+        Node* to_ptr = getNode(to);
+        return addEdge(from_ptr, to_ptr, cost);
+    }
+
+    /**
+     * Add an edge (time complexity: O(1))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
      * @param cost Cost from the start to destination nodes
@@ -165,13 +179,13 @@ public:
 
     /**
      * Find a node using its data (time complexity: O(|N|))
-     * @param data Data for search
+     * @param data Data to search
      * @return A pointer to the found node (NULL if not exist)
      */
     Node* getNode(const D& data)
     {
         Node* node = NULL;
-        for (NodeItr node_itr = m_node_list.begin(); node_itr != m_node_list.end(); node_itr++)
+        for (NodeItr node_itr = getHeadNode(); node_itr != getTailNode(); node_itr++)
             if (node_itr->data == data) { node = &(*node_itr); break; }
         return node;
     }
@@ -200,7 +214,7 @@ public:
     {
         if ((from == NULL) || (to == NULL)) return NULL;
         Edge* edge = NULL;
-        for (EdgeItr edge_itr = from->m_edge_list.begin(); edge_itr != from->m_edge_list.end(); edge_itr++)
+        for (EdgeItr edge_itr = getHeadEdge(from); edge_itr != getTailEdge(from); edge_itr++)
             if (edge_itr->to->data == to->data) { edge = &(*edge_itr); break; }
         return edge;
     }
@@ -214,9 +228,22 @@ public:
     Edge* getEdge(NodeItr from, NodeItr to)
     {
         Edge* edge = NULL;
-        for (EdgeItr edge_itr = from->m_edge_list.begin(); edge_itr != from->m_edge_list.end(); edge_itr++)
+        for (EdgeItr edge_itr = getHeadEdge(from); edge_itr != getTailEdge(from); edge_itr++)
             if (edge_itr->to->data == to->data) { edge = &(*edge_itr); break; }
         return edge;
+    }
+
+    /**
+     * Retrieve edge cost using its start and destination node (time complexity: O(|E|))
+     * @param from Data of the start node
+     * @param to Data of the destination node
+     * @return Cost of the found edge
+     */
+    C getEdgeCost(const D& from, const D& to)
+    {
+        Edge* edge = getEdge(from, to);
+        if (edge == NULL) return C(-1);
+        return edge->cost;
     }
 
     /**
@@ -234,16 +261,24 @@ public:
 
     /**
      * Retrieve edge cost using its start and destination node (time complexity: O(|E|))
-     * @param from An iterator of the start node
-     * @param to An iterator of the destination node
+     * @param from A const_iterator of the start node
+     * @param to A const_iterator of the destination node
      * @return Cost of the found edge
      */
-    C getEdgeCost(NodeItr from, NodeItr to)
+    C getEdgeCost(NodeItrConst from, NodeItrConst to) const
     {
-        Edge* edge = getEdge(from, to);
-        if (edge == NULL) return C(-1);
+        EdgeItrConst edge = getEdgeConst(from, to);
+        if (edge == getTailEdgeConst(from)) return C(-1);
         return edge->cost;
     }
+
+    /**
+     * Check connectivity from a start node to a destination node (time complexity: O(|E|))
+     * @param from Data of the start node
+     * @param to Data of the destination node
+     * @return True if they are connected (false if not connected)
+     */
+    bool isConnected(const D& from, const D& to) { return (getEdgeCost(from, to) >= 0); }
 
     /**
      * Check connectivity from a start node to a destination node (time complexity: O(|E|))
@@ -255,26 +290,26 @@ public:
 
     /**
      * Check connectivity from a start node to a destination node (time complexity: O(|E|))
-     * @param from An iterator of the start node
-     * @param to An iterator of the destination node
+     * @param from A const_iterator of the start node
+     * @param to A const_iterator of the destination node
      * @return True if they are connected (false if not connected)
      */
-    bool isConnected(NodeItr from, NodeItr to) { return (getEdgeCost(from, to) >= 0); }
+    bool isConnected(NodeItrConst from, NodeItrConst to) const { return (getEdgeCost(from, to) >= 0); }
 
     /**
      * Copy this to the other graph (time complexity: O(|N||E|))
      * @param dest A pointer to the other graph
      * @return True if successful (false if failed)
      */
-    bool copyTo(DirectedGraph<D, C>* dest)
+    bool copyTo(DirectedGraph<D, C>* dest) const
     {
         if (dest == NULL) return false;
 
         dest->removeAll();
-        for (NodeItr node = getHeadNode(); node != getTailNode(); node++)
-            dest->addNode(T(node->data));
-        for (NodeItr from = getHeadNode(); from != getTailNode(); from++)
-            for (EdgeItr edge = getHeadEdge(from); edge != getTailEdge(from); edge++)
+        for (NodeItrConst node = getHeadNodeConst(); node != getTailNodeConst(); node++)
+            dest->addNode(node->data);
+        for (NodeItrConst from = getHeadNodeConst(); from != getTailNodeConst(); from++)
+            for (EdgeItrConst edge = getHeadEdgeConst(from); edge != getTailEdgeConst(from); edge++)
                 dest->addEdge(dest->getNode(from->data), dest->getNode(edge->to->data), edge->cost);
         return true;
     }
@@ -288,8 +323,8 @@ public:
     bool removeNode(Node* node)
     {
         if (node == NULL) return false;
-        NodeItr is_found = m_node_list.end();
-        for (NodeItr node_itr = m_node_list.begin(); node_itr != m_node_list.end(); node_itr++)
+        NodeItr is_found = getTailNode();
+        for (NodeItr node_itr = getHeadNode(); node_itr != getTailNode(); node_itr++)
         {
             removeEdge(&(*node_itr), node);
             if (node_itr->data == node->data) is_found = node_itr;
@@ -307,8 +342,8 @@ public:
      */
     bool removeNode(NodeItr node)
     {
-        NodeItr is_found = m_node_list.end();
-        for (NodeItr node_itr = m_node_list.begin(); node_itr != m_node_list.end(); node_itr++)
+        NodeItr is_found = getTailNode();
+        for (NodeItr node_itr = getHeadNode(); node_itr != getTailNode(); node_itr++)
         {
             removeEdge(node_itr, node);
             if (node_itr->data == node->data) is_found = node_itr;
@@ -328,8 +363,8 @@ public:
     {
         if ((from == NULL) || (to == NULL)) return false;
         bool is_found = false;
-        EdgeItr edge_itr = from->m_edge_list.begin();
-        while (edge_itr != from->m_edge_list.end())
+        EdgeItr edge_itr = getHeadEdge(from);
+        while (edge_itr != getTailEdge(from))
         {
             if (edge_itr->to->data == to->data)
             {
@@ -351,8 +386,8 @@ public:
     bool removeEdge(NodeItr from, NodeItr to)
     {
         bool is_found = false;
-        EdgeItr edge_itr = from->m_edge_list.begin();
-        while (edge_itr != from->m_edge_list.end())
+        EdgeItr edge_itr = getHeadEdge(from);
+        while (edge_itr != getTailEdge(from))
         {
             if (edge_itr->to->data == to->data)
             {
@@ -379,10 +414,22 @@ public:
 
     /**
      * Count the number of edges starting from the given node (time complexity: O(1))
+     * @param node Data of the node
+     * @return The number of edges
+     */
+    int countEdges(const D& data) const
+    {
+        NodeItrConst node_itr = getNodeConst(data);
+        if (node_itr == getTailNodeConst()) return 0;
+        return node_itr->m_edge_list.size();
+    }
+
+    /**
+     * Count the number of edges starting from the given node (time complexity: O(1))
      * @param node A pointer to the node
      * @return The number of edges
      */
-    int countEdges(Node* node) const
+    int countEdges(const Node* node) const
     {
         if (node == NULL) return 0;
         return node->m_edge_list.size();
@@ -393,7 +440,7 @@ public:
      * @param node An iterator of the node
      * @return The number of edges
      */
-    int countEdges(NodeItr node) const { return node->m_edge_list.size(); }
+    int countEdges(NodeItrConst node) const { return node->m_edge_list.size(); }
 
     /**
      * Get an iterator of the first node in this graph (time complexity: O(1))
@@ -440,6 +487,79 @@ public:
      * @see getHeadEdge
      */
     EdgeItr getTailEdge(NodeItr node) { return node->m_edge_list.end(); }
+
+    /**
+     * Find a node using its data (time complexity: O(|N|))
+     * @param data Data to search
+     * @return A const_iterator of the found node (getTailNodeConst() if not exist)
+     */
+    NodeItrConst getNodeConst(const D& data) const
+    {
+        NodeItrConst node_itr = getHeadNodeConst();
+        for (; node_itr != getTailNodeConst(); node_itr++)
+            if (node_itr->data == data) break;
+        return node_itr;
+    }
+
+    /**
+     * Find an edge using its start and destination node (time complexity: O(|E|))
+     * @param from A const_iterator of the start node
+     * @param to A const_iterator of the destination node
+     * @return A const_iterator of the found edge (getTailEdgeConst(from) if not exist)
+     */
+    EdgeItrConst getEdgeConst(NodeItrConst from, NodeItrConst to) const
+    {
+        EdgeItrConst edge_itr = getHeadEdgeConst(from);
+        for (; edge_itr != getTailEdgeConst(from); edge_itr++)
+            if (edge_itr->to->data == to->data) break;
+        return edge_itr;
+    }
+
+    /**
+     * Get a const_iterator of the first node in this graph (time complexity: O(1))
+     * @return A const_iterator of the first node
+     * @see getTailNodeConst
+     */
+    NodeItrConst getHeadNodeConst() const { return m_node_list.cbegin(); }
+
+    /**
+     * Get a const_iterator of the ending node in this graph (time complexity: O(1))
+     * @return A const_iterator of the ending node
+     * @see getHeadNodeConst
+     */
+    NodeItrConst getTailNodeConst() const { return m_node_list.cend(); }
+
+    /**
+     * Get a const_iterator of the first edge from the given node (time complexity: O(1))
+     * @param node A constant pointer to a node
+     * @return A const_iterator of the first edge
+     * @see getTailEdgeConst
+     */
+    EdgeItrConst getHeadEdgeConst(const Node* node) const { return node->m_edge_list.cbegin(); }
+
+    /**
+     * Get a const_iterator of the first edge from the given node (time complexity: O(1))
+     * @param node A const_iterator of a node
+     * @return A const_iterator of the first edge
+     * @see getTailEdgeConst
+     */
+    EdgeItrConst getHeadEdgeConst(NodeItrConst node) const { return node->m_edge_list.cbegin(); }
+
+    /**
+     * Get a const_iterator of the ending edge from the given node (time complexity: O(1))
+     * @param node A constant pointer to a node
+     * @return A const_iterator of the ending edge
+     * @see getHeadEdgeConst
+     */
+    EdgeItrConst getTailEdgeConst(const Node* node) const { return node->m_edge_list.cend(); }
+
+    /**
+     * Get a const_iterator of the ending edge from the given node (time complexity: O(1))
+     * @param node A const_iterator of a node
+     * @return A const_iterator of the ending edge
+     * @see getHeadEdgeConst
+     */
+    EdgeItrConst getTailEdgeConst(NodeItrConst node) const { return node->m_edge_list.cend(); }
 
 protected:
     /** A list for all edges in this graph */
