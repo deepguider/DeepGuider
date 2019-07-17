@@ -112,17 +112,41 @@ bool SimpleRoadMap::addRoad(Node* node1, Node* node2, double cost /*= -1.0*/)
     return (edge1 != NULL) && (edge2 != NULL);
 }
 
-SimpleRoadMap::Edge* SimpleRoadMap::addEdge(Node* node1, Node* node2, double cost /*= -1.0*/)
+bool SimpleRoadMap::addRoad(const Point2ID& node1, const Point2ID& node2, double cost /*= -1.0*/)
 {
-    if (node1 == NULL || node2 == NULL) return false;
+    if (cost < 0)
+    {
+        double dx = node1.x - node2.x;
+        double dy = node1.y - node2.y;
+        cost = sqrt(dx * dx + dy * dy);
+    }
+    Edge* edge1 = DirectedGraph<Point2ID, double>::addEdge(node1, node2, cost);
+    Edge* edge2 = DirectedGraph<Point2ID, double>::addEdge(node2, node1, cost);
+    return (edge1 != NULL) && (edge2 != NULL);
+}
+
+SimpleRoadMap::Edge* SimpleRoadMap::addEdge(Node* from, Node* to, double cost /*= -1.0*/)
+{
+    if (from == NULL || to == NULL) return false;
 
     if (cost < 0)
     {
-        double dx = node1->data.x - node2->data.x;
-        double dy = node1->data.y - node2->data.y;
+        double dx = from->data.x - to->data.x;
+        double dy = from->data.y - to->data.y;
         cost = sqrt(dx * dx + dy * dy);
     }
-    return DirectedGraph<Point2ID, double>::addEdge(node1, node2, cost);
+    return DirectedGraph<Point2ID, double>::addEdge(from, to, cost);
+}
+
+SimpleRoadMap::Edge* SimpleRoadMap::addEdge(const Point2ID& from, const Point2ID& to, double cost /*= -1.0*/)
+{
+    if (cost < 0)
+    {
+        double dx = from.x - to.x;
+        double dy = from.y - to.y;
+        cost = sqrt(dx * dx + dy * dy);
+    }
+    return DirectedGraph<Point2ID, double>::addEdge(from, to, cost);
 }
 
 } // End of 'dg'

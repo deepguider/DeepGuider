@@ -45,15 +45,15 @@ int testSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
     map.addNode(dg::Point2ID(6, 3, 1));
     map.addNode(dg::Point2ID(7, 2, 0));
     map.addNode(dg::Point2ID(8, 3, 0));
-    map.addEdge(map.getNode(dg::Point2ID(1)), map.getNode(dg::Point2ID(2))); // Automatic cost: Euclidean distance
-    map.addEdge(map.getNode(dg::Point2ID(2)), map.getNode(dg::Point2ID(3)));
-    map.addEdge(map.getNode(dg::Point2ID(3)), map.getNode(dg::Point2ID(4)));
-    map.addEdge(map.getNode(dg::Point2ID(4)), map.getNode(dg::Point2ID(1)));
-    map.addRoad(map.getNode(dg::Point2ID(3)), map.getNode(dg::Point2ID(5))); // Add a bi-directional edge
-    map.addEdge(map.getNode(dg::Point2ID(6)), map.getNode(dg::Point2ID(5)));
-    map.addEdge(map.getNode(dg::Point2ID(6)), map.getNode(dg::Point2ID(8)));
-    map.addEdge(map.getNode(dg::Point2ID(7)), map.getNode(dg::Point2ID(5)));
-    map.addEdge(map.getNode(dg::Point2ID(8)), map.getNode(dg::Point2ID(7)));
+    map.addEdge(dg::Point2ID(1), dg::Point2ID(2));
+    map.addEdge(dg::Point2ID(2), dg::Point2ID(3));
+    map.addEdge(dg::Point2ID(3), dg::Point2ID(4));
+    map.addEdge(dg::Point2ID(4), dg::Point2ID(1));
+    map.addRoad(dg::Point2ID(3), dg::Point2ID(5)); // Add a bi-directional edge
+    map.addEdge(dg::Point2ID(6), dg::Point2ID(5));
+    map.addEdge(dg::Point2ID(6), dg::Point2ID(8));
+    map.addEdge(dg::Point2ID(7), dg::Point2ID(5));
+    map.addEdge(dg::Point2ID(8), dg::Point2ID(7));
     VVS_CHECK_TRUE(!map.isEmpty());
     VVS_CHECK_EQUL(map.countNodes(), 8);
     VVS_CHECK_TRUE(map.save(filename));
@@ -87,21 +87,21 @@ int testSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
     VVS_CHECK_EQUL(map.getNode(dg::Point2ID(8))->data.y, 0);
 
     // Check each connectivity and cost
-    VVS_CHECK_EQUL(map.getEdgeCost(map.getNode(dg::Point2ID(1)), map.getNode(dg::Point2ID(2))), 1);
-    VVS_CHECK_EQUL(map.getEdgeCost(map.getNode(dg::Point2ID(2)), map.getNode(dg::Point2ID(3))), 1);
-    VVS_CHECK_EQUL(map.getEdgeCost(map.getNode(dg::Point2ID(3)), map.getNode(dg::Point2ID(4))), 1);
-    VVS_CHECK_EQUL(map.getEdgeCost(map.getNode(dg::Point2ID(4)), map.getNode(dg::Point2ID(1))), 1);
-    VVS_CHECK_EQUL(map.getEdgeCost(map.getNode(dg::Point2ID(3)), map.getNode(dg::Point2ID(5))), 1);
-    VVS_CHECK_EQUL(map.getEdgeCost(map.getNode(dg::Point2ID(5)), map.getNode(dg::Point2ID(3))), 1);
-    VVS_CHECK_EQUL(map.getEdgeCost(map.getNode(dg::Point2ID(6)), map.getNode(dg::Point2ID(5))), 1);
-    VVS_CHECK_EQUL(map.getEdgeCost(map.getNode(dg::Point2ID(6)), map.getNode(dg::Point2ID(8))), 1);
-    VVS_CHECK_EQUL(map.getEdgeCost(map.getNode(dg::Point2ID(7)), map.getNode(dg::Point2ID(5))), 1);
-    VVS_CHECK_EQUL(map.getEdgeCost(map.getNode(dg::Point2ID(8)), map.getNode(dg::Point2ID(7))), 1);
+    VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(1), dg::Point2ID(2)), 1);
+    VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(2), dg::Point2ID(3)), 1);
+    VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(3), dg::Point2ID(4)), 1);
+    VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(4), dg::Point2ID(1)), 1);
+    VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(3), dg::Point2ID(5)), 1);
+    VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(5), dg::Point2ID(3)), 1);
+    VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(6), dg::Point2ID(5)), 1);
+    VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(6), dg::Point2ID(8)), 1);
+    VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(7), dg::Point2ID(5)), 1);
+    VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(8), dg::Point2ID(7)), 1);
 
-    VVS_CHECK_TRUE(map.getEdgeCost(map.getNode(dg::Point2ID(1)), map.getNode(dg::Point2ID(3))) < 0);
-    VVS_CHECK_TRUE(map.getEdgeCost(map.getNode(dg::Point2ID(2)), map.getNode(dg::Point2ID(1))) < 0);
-    VVS_CHECK_TRUE(map.getEdgeCost(map.getNode(dg::Point2ID(5)), map.getNode(dg::Point2ID(6))) < 0);
-    VVS_CHECK_TRUE(map.getEdgeCost(map.getNode(dg::Point2ID(5)), map.getNode(dg::Point2ID(7))) < 0);
+    VVS_CHECK_TRUE(map.getEdgeCost(dg::Point2ID(1), dg::Point2ID(3)) < 0);
+    VVS_CHECK_TRUE(map.getEdgeCost(dg::Point2ID(2), dg::Point2ID(1)) < 0);
+    VVS_CHECK_TRUE(map.getEdgeCost(dg::Point2ID(5), dg::Point2ID(6)) < 0);
+    VVS_CHECK_TRUE(map.getEdgeCost(dg::Point2ID(5), dg::Point2ID(7)) < 0);
 
     return 0;
 }
@@ -110,7 +110,7 @@ int testSimpleRoadPainter(bool verbose = false)
 {
     // Build an example map
     dg::SimpleRoadMap map;
-    map.addNode(dg::Point2ID(1, 0, 0));
+    map.addNode(dg::Point2ID(1, 0, 0)); // ID, x, y
     map.addNode(dg::Point2ID(2, 0, 1));
     map.addNode(dg::Point2ID(3, 1, 1));
     map.addNode(dg::Point2ID(4, 1, 0));
@@ -118,15 +118,15 @@ int testSimpleRoadPainter(bool verbose = false)
     map.addNode(dg::Point2ID(6, 3, 1));
     map.addNode(dg::Point2ID(7, 2, 0));
     map.addNode(dg::Point2ID(8, 3, 0));
-    map.addEdge(map.getNode(dg::Point2ID(1)), map.getNode(dg::Point2ID(2)));
-    map.addEdge(map.getNode(dg::Point2ID(2)), map.getNode(dg::Point2ID(3)));
-    map.addEdge(map.getNode(dg::Point2ID(3)), map.getNode(dg::Point2ID(4)));
-    map.addEdge(map.getNode(dg::Point2ID(4)), map.getNode(dg::Point2ID(1)));
-    map.addRoad(map.getNode(dg::Point2ID(3)), map.getNode(dg::Point2ID(5)));
-    map.addEdge(map.getNode(dg::Point2ID(6)), map.getNode(dg::Point2ID(5)));
-    map.addEdge(map.getNode(dg::Point2ID(6)), map.getNode(dg::Point2ID(8)));
-    map.addEdge(map.getNode(dg::Point2ID(7)), map.getNode(dg::Point2ID(5)));
-    map.addEdge(map.getNode(dg::Point2ID(8)), map.getNode(dg::Point2ID(7)));
+    map.addEdge(dg::Point2ID(1), dg::Point2ID(2));
+    map.addEdge(dg::Point2ID(2), dg::Point2ID(3));
+    map.addEdge(dg::Point2ID(3), dg::Point2ID(4));
+    map.addEdge(dg::Point2ID(4), dg::Point2ID(1));
+    map.addRoad(dg::Point2ID(3), dg::Point2ID(5)); // Add a bi-directional edge
+    map.addEdge(dg::Point2ID(6), dg::Point2ID(5));
+    map.addEdge(dg::Point2ID(6), dg::Point2ID(8));
+    map.addEdge(dg::Point2ID(7), dg::Point2ID(5));
+    map.addEdge(dg::Point2ID(8), dg::Point2ID(7));
 
     // Draw the map
     dg::SimpleRoadPainter painter;
@@ -157,9 +157,9 @@ int testSimpleRoadPainter(bool verbose = false)
 
     if (verbose)
     {
-        cv::imshow("testSimpleRoadPainter", image);
+        cv::imshow("Test SimpleRoadPainter", image);
         cv::waitKeyEx();
-        cv::imshow("testSimpleRoadPainter", bigger);
+        cv::imshow("Test SimpleRoadPainter", bigger);
         cv::waitKeyEx();
     }
     return 0;

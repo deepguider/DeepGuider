@@ -47,13 +47,10 @@
     <ClInclude Include="..\..\src\localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\examples\unit_test\test_localizer.hpp">
+    <ClInclude Include="..\..\src\simple_localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\localizer_metric.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\localizer_topometric.hpp">
+    <ClInclude Include="..\..\examples\unit_test\test_simple_localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

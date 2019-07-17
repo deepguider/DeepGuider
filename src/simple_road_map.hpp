@@ -115,6 +115,8 @@ public:
      */
     bool addRoad(Node* node1, Node* node2, double cost = -1.0);
 
+    bool addRoad(const Point2ID& node1, const Point2ID& node2, double cost = -1.0);
+
     /**
      * Add a directed edge between two nodes (time complexity: O(1))
      * @param from A pointer to the start node
@@ -125,6 +127,8 @@ public:
      * @see addRoad
      */
     Edge* addEdge(Node* from, Node* to, double cost = -1.0);
+
+    Edge* addEdge(const Point2ID& from, const Point2ID& to, double cost = -1.0);
 };
 
 } // End of 'dg'
