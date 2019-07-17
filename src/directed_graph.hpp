@@ -138,6 +138,16 @@ public:
     typedef typename std::list< EdgeType<D, C> >::const_iterator EdgeItrConst;
 
     /**
+     * The default constructor
+     */
+    DirectedGraph() { }
+
+    /**
+     * The copy constructor
+     */
+    DirectedGraph(const DirectedGraph<D, C>& graph) { graph.copyTo(this); }
+
+    /**
      * The destructor
      */
     virtual ~DirectedGraph() { removeAll(); }

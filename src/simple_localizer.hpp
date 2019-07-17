@@ -83,7 +83,7 @@ public:
         return true;
     }
 
-    virtual bool applyLocCue(int node_id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1)
+    virtual bool applyLocClue(int node_id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1)
     {
         SimpleRoadMap::Node* node = m_map.getNode(Point2ID(node_id));
         if (node == NULL) return false;
@@ -92,10 +92,10 @@ public:
         return true;
     }
 
-    virtual bool applyLocCue(const std::vector<int>& ids, const std::vector<Polar2>& obs, Timestamp time = -1)
+    virtual bool applyLocClue(const std::vector<int>& ids, const std::vector<Polar2>& obs, Timestamp time = -1)
     {
         if (ids.empty() || obs.empty() || ids.size() != obs.size()) return false;
-        return applyLocCue(ids.back(), obs.back(), time);
+        return applyLocClue(ids.back(), obs.back(), time);
     }
 
     virtual bool configPose(const Pose2& offset) { return false; }

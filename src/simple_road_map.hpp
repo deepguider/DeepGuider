@@ -115,6 +115,15 @@ public:
      */
     bool addRoad(Node* node1, Node* node2, double cost = -1.0);
 
+    /**
+     * Add a bi-directional edge between two nodes (time complexity: O(1))
+     * @param node1 ID of the first node
+     * @param node2 ID of the second node
+     * @param cost Cost from the first to second nodes (default: -1)<br>
+     *  If the cost is given as a negative value, it is automatically assigned as Euclidean distance.
+     * @return A pointer to the added edge
+     * @see addEdge
+     */
     bool addRoad(const Point2ID& node1, const Point2ID& node2, double cost = -1.0);
 
     /**
@@ -128,6 +137,15 @@ public:
      */
     Edge* addEdge(Node* from, Node* to, double cost = -1.0);
 
+    /**
+     * Add a directed edge between two nodes (time complexity: O(1))
+     * @param from ID of the start node
+     * @param to ID of the destination node
+     * @param cost Cost from the start to destination nodes (default: -1)<br>
+     *  If the cost is given as a negative value, it is automatically assigned as Euclidean distance.
+     * @return A pointer to the added edge
+     * @see addRoad
+     */
     Edge* addEdge(const Point2ID& from, const Point2ID& to, double cost = -1.0);
 };
 

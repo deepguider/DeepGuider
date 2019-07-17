@@ -45,7 +45,7 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
-        std::make_pair("LocCue",    cv::Vec3d(2, -1, CV_PI)),
+        std::make_pair("LocClue",   cv::Vec3d(2, -1, CV_PI)),
 
         std::make_pair("Odometry",  cv::Vec3d(0, cvx::cvtDeg2Rad(-95))),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
@@ -54,45 +54,21 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
-        std::make_pair("LocCue",    cv::Vec3d(3, -1, CV_PI)),
+        std::make_pair("LocClue",   cv::Vec3d(3, -1, CV_PI)),
     };
     return dataset;
 }
 
 int testSimpleMetricLocalizer(bool verbose = false)
 {
-    // An example road map ('+' represents direction of edges)
-    // 2 --+ 3 +-+ 5 +-- 6
-    // +     |     +     |
-    // |     +     |     +
-    // 1 +-- 4     7 +-- 8
-
-    dg::SimpleRoadMap map;
-    map.addNode(dg::Point2ID(1, 0, 0)); // ID, x, y
-    map.addNode(dg::Point2ID(2, 0, 1));
-    map.addNode(dg::Point2ID(3, 1, 1));
-    map.addNode(dg::Point2ID(4, 1, 0));
-    map.addNode(dg::Point2ID(5, 2, 1));
-    map.addNode(dg::Point2ID(6, 3, 1));
-    map.addNode(dg::Point2ID(7, 2, 0));
-    map.addNode(dg::Point2ID(8, 3, 0));
-    map.addEdge(dg::Point2ID(1), dg::Point2ID(2));
-    map.addEdge(dg::Point2ID(2), dg::Point2ID(3));
-    map.addEdge(dg::Point2ID(3), dg::Point2ID(4));
-    map.addEdge(dg::Point2ID(4), dg::Point2ID(1));
-    map.addRoad(dg::Point2ID(3), dg::Point2ID(5)); // Add a bi-directional edge
-    map.addEdge(dg::Point2ID(6), dg::Point2ID(5));
-    map.addEdge(dg::Point2ID(6), dg::Point2ID(8));
-    map.addEdge(dg::Point2ID(7), dg::Point2ID(5));
-    map.addEdge(dg::Point2ID(8), dg::Point2ID(7));
-
     // Load a map
-    //dg::SimpleRoadMap map = getExampleMap();
-    dg::SimpleRoadPainter painter;
+    dg::SimpleRoadMap map = getExampleMap();
+    VVS_CHECK_NEAR(map.getEdgeCost(dg::Point2ID(1), dg::Point2ID(2)), 1); // Check correctness
     dg::SimpleMetricLocalizer localizer;
     VVS_CHECK_TRUE(localizer.loadMap(map));
 
     // Prepare visualization
+    dg::SimpleRoadPainter painter;
     VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 200));
     VVS_CHECK_TRUE(painter.setParamValue("node_font_scale", 2 * 0.5));
     dg::CanvasInfo map_info = painter.getCanvasInfo(map);
@@ -106,7 +82,7 @@ int testSimpleMetricLocalizer(bool verbose = false)
         const cv::Vec3d& d = dataset[t].second;
         if (dataset[t].first == "Pose")     VVS_CHECK_TRUE(localizer.applyPose(dg::Pose2(d[0], d[1], d[2]), t));
         if (dataset[t].first == "Odometry") VVS_CHECK_TRUE(localizer.applyOdometry(dg::Polar2(d[0], d[1]), t));
-        if (dataset[t].first == "LocCue")   VVS_CHECK_TRUE(localizer.applyLocCue(int(d[0]), dg::Polar2(d[1], d[2]), t));
+        if (dataset[t].first == "LocClue")  VVS_CHECK_TRUE(localizer.applyLocClue(int(d[0]), dg::Polar2(d[1], d[2]), t));
 
         if (verbose)
         {

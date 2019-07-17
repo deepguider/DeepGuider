@@ -30,9 +30,9 @@ public:
 
     virtual bool applyOdometry(const Polar2& delta, Timestamp time = -1) = 0;
 
-    virtual bool applyLocCue(int id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1) = 0;
+    virtual bool applyLocClue(int id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1) = 0;
 
-    virtual bool applyLocCue(const std::vector<int>& ids, const std::vector<Polar2>& obs, Timestamp time = -1) = 0;
+    virtual bool applyLocClue(const std::vector<int>& ids, const std::vector<Polar2>& obs, Timestamp time = -1) = 0;
 
     virtual bool configPose(const Pose2& offset) = 0;
 
