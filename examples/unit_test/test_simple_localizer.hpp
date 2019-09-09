@@ -37,7 +37,7 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 {
     std::vector<std::pair<std::string, cv::Vec3d>> dataset =
     {
-        std::make_pair("Pose",      cv::Vec3d(0, 0, CV_PI / 2)),
+        std::make_pair("Pose",      cv::Vec3d(0, 0, cvx::cvtDeg2Rad(95))),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
