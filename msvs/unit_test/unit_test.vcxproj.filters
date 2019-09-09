@@ -53,5 +53,8 @@
     <ClInclude Include="..\..\examples\unit_test\test_simple_localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\examples\unit_test\test_gps2utm.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

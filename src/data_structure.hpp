@@ -12,7 +12,7 @@ typedef double Timestamp;
 /**
  * @brief 2D point
  *
- * A 2D vector is defined in the rectangular coordinate.
+ * A 2D point is defined in the rectangular coordinate.
  * Its member variables includes x and y.
  *
  * @see Polar2 2D vector in the polar coordinate
@@ -25,11 +25,12 @@ typedef cv::Point2d Point2;
  * A 2D vector is defined in the polar coordinate.
  * Its member variables includes linear component (lin) and angular component (ang).
  *
- * @see Polar2 2D vector in the rectangular coordinate
+ * @see Point2 2D point in the rectangular coordinate
  */
 class Polar2
 {
 public:
+    // The default constructor
     Polar2() : lin(0), ang(0) { }
 
     Polar2(double _lin, double _ang) : lin(_lin), ang(_ang) { }
@@ -52,6 +53,7 @@ public:
 class Pose2 : public Point2
 {
 public:
+    // The default constructor
     Pose2() : theta(0) { }
 
     Pose2(double _x, double _y, double _t = 0) : Point2(_x, _y), theta(_t) { }
@@ -65,6 +67,55 @@ public:
     bool operator!=(const Pose2& rhs) const { return (x != rhs.x) || (y != rhs.y) || (theta != rhs.theta); }
 
     double theta;
+};
+
+/**
+ * @brief 2D point in the geodesic notation
+ *
+ * A 2D point is represented in the geodesic notation.
+ * Its member variables includes lat (latitude) and lon (longitude).
+ * Similarly to Point2, two member variables can be also referred as x and y, respectively.
+ *
+ * @see Point2 2D vector in the rectangular coordinate
+ */
+class LatLon : public Point2
+{
+public:
+    /**
+     * The default constructor
+     */
+    LatLon() : lat(x), lon(y) { }
+
+    /**
+     * A constructor with initialization
+     * @param _lat A value for latitude
+     * @param _lon A value for longitude
+     */
+    LatLon(double _lat, double _lon) : Point2(_lat, _lon), lat(x), lon(y) { }
+
+    /**
+     * A constructor with initialization
+     * @param p A 2D point
+     */
+    LatLon(const Point2& p) : Point2(p), lat(x), lon(y) { }
+
+    /**
+     * Overriding the assignment operator
+     * @param p A 2D point in the right-hand side
+     * @return The assigned instance
+     */
+    LatLon& operator=(const Point2& rhs)
+    {
+        x = rhs.x;
+        y = rhs.y;
+        return *this;
+    }
+
+    /** Latitude */
+    double& lat;
+
+    /** Latitude */
+    double& lon;
 };
 
 } // End of 'dg'

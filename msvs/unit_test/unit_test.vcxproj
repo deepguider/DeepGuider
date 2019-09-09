@@ -97,6 +97,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\examples\unit_test\test_directed_graph.hpp" />
+    <ClInclude Include="..\..\examples\unit_test\test_gps2utm.hpp" />
     <ClInclude Include="..\..\examples\unit_test\test_simple_localizer.hpp" />
     <ClInclude Include="..\..\examples\unit_test\test_simple_road.hpp" />
     <ClInclude Include="..\..\examples\unit_test\vvs.h" />
