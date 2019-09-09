@@ -138,15 +138,15 @@ int testSimpleRoadPainter(bool verbose = false)
     dg::CanvasInfo info = painter.getCanvasInfo(map);
     dg::SimpleRoadMap::NodeItr node1 = map.getHeadNode();
     VVS_CHECK_TRUE(node1 != map.getTailNode());
-    VVS_CHECK_TRUE(painter.drawNode(image, info, node1->data, 0.1, 0.5, cvx::COLOR_MAGENTA, 2));
+    VVS_CHECK_TRUE(painter.drawNode(image, info, node1->data, 0.1, 0.5, cx::COLOR_MAGENTA, 2));
     dg::SimpleRoadMap::Node* node3 = map.getNode(dg::Point2ID(3));
     VVS_CHECK_TRUE(node3 != NULL);
-    VVS_CHECK_TRUE(painter.drawNode(image, info, node3->data, 0.1, 0.5, cvx::COLOR_RED, -1));
+    VVS_CHECK_TRUE(painter.drawNode(image, info, node3->data, 0.1, 0.5, cx::COLOR_RED, -1));
 
     // Draw additional edges
     dg::SimpleRoadMap::EdgeItr edge = map.getHeadEdge(node1);
     VVS_CHECK_TRUE(edge != map.getTailEdge(node1));
-    VVS_CHECK_TRUE(painter.drawEdge(image, info, node1->data, edge->to->data, 0.1, cvx::COLOR_MAGENTA, 2, 0.1));
+    VVS_CHECK_TRUE(painter.drawEdge(image, info, node1->data, edge->to->data, 0.1, cx::COLOR_MAGENTA, 2, 0.1));
 
     // Draw a bigger image
     VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 500));

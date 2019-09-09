@@ -1,12 +1,12 @@
 /**
- * CVX: Sunglok's OpenCV Extension
+ * OpenCX: Sunglok's OpenCV Extension
  *
- * CVX aims to provide extended functionality and tools to OpenCV for more convenience.
- * It consists of a single header file, 'opencvx.hpp', which only depends on OpenCV in C++.
+ * OpenCX aims to provide extended functionality and tools to OpenCV for more convenience.
+ * It consists of a single header file, 'opencx.hpp', which only depends on OpenCV in C++.
  * Just include the file to your project. It will work without complex configuration and dependency.
- * CVX is Beerware so that it is free to use and distribute.
+ * OpenCX is Beerware so that it is free to use and distribute.
  *
- * - Homepage: https://github.com/sunglok/cvx
+ * - Homepage: https://github.com/sunglok/cx
  *
  * @author  Sunglok Choi (http://sites.google.com/site/sunglok)
  * @version 0.2 (05/23/2019)
@@ -21,25 +21,25 @@
  * ----------------------------------------------------------------------------
  */
 
-#ifndef __CVX__
-#define __CVX__
+#ifndef __OPEN_CX__
+#define __OPEN_CX__
 
 #include "opencv2/opencv.hpp"
 #include <string>
 
-#ifndef CVX_LOAD_PARAM_TO
+#ifndef CX_LOAD_PARAM_TO
 /** A macro function to load a value from cv::FileNode */
-#   define CVX_LOAD_PARAM(fn, name_cfg, name_var) \
+#   define CX_LOAD_PARAM(fn, name_cfg, name_var) \
         if (!(fn)[name_cfg].empty()) { (fn)[name_cfg] >> name_var; }
 #endif
 
-#ifndef CVX_LOAD_PARAM_RESULT
+#ifndef CX_LOAD_PARAM_RESULT
 /** A macro function to load a value from cv::FileNode and increase the given counter if successful */
-#   define CVX_LOAD_PARAM_COUNT(fn, name_cfg, name_var, success_counter) \
+#   define CX_LOAD_PARAM_COUNT(fn, name_cfg, name_var, success_counter) \
         if (!(fn)[name_cfg].empty()) { (fn)[name_cfg] >> name_var; success_counter++; }
 #endif
 
-namespace cvx
+namespace cx
 {
     /**
      * @brief More convenient Algorithm
@@ -244,6 +244,39 @@ namespace cvx
     }; // End of 'VideoWriter'
 
     /**
+     * Return an x-axis rotation matrix
+     * @param theta The given angle (Unit: [rad])
+     * @return 3D rotation matrix
+     */
+    inline cv::Matx33d getRx(double theta)
+    {
+        double c = cos(theta), s = sin(theta);
+        return cv::Matx33d(1, 0, 0, 0, c, -s, 0, s, c);
+    }
+
+    /**
+     * Return an y-axis rotation matrix
+     * @param theta The given angle (Unit: [rad])
+     * @return 3D rotation matrix
+     */
+    inline cv::Matx33d getRy(double theta)
+    {
+        double c = cos(theta), s = sin(theta);
+        return cv::Matx33d(c, 0, s, 0, 1, 0, -s, 0, c);
+    }
+
+    /**
+     * Return an z-axis rotation matrix
+     * @param theta The given angle (Unit: [rad])
+     * @return 3D rotation matrix
+     */
+    inline cv::Matx33d getRz(double theta)
+    {
+        double c = cos(theta), s = sin(theta);
+        return cv::Matx33d(c, -s, 0, s, c, 0, 0, 0, 1);
+    }
+
+    /**
      * Convert an angle's unit from radian to degree
      * @param radian An angle in radian unit
      * @return The angle in degree unit
@@ -321,6 +354,6 @@ namespace cvx
     /** A key code for _Right_ */
     const int KEY_RIGHT = 2555904;
 
-} // End of 'cvx'
+} // End of 'cx'
 
-#endif // End of '__CVX__'
+#endif // End of '__OPEN_CX__'

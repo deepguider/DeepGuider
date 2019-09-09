@@ -20,7 +20,7 @@ public:
     double margin;
 };
 
-class SimpleRoadPainter : public cvx::Algorithm
+class SimpleRoadPainter : public cx::Algorithm
 {
 public:
     SimpleRoadPainter()
@@ -28,7 +28,7 @@ public:
         m_pixel_per_meter = 100;
 
         m_canvas_margin = 0.2;
-        m_canvas_color = cvx::COLOR_WHITE;
+        m_canvas_color = cx::COLOR_WHITE;
 
         m_box_color = cv::Vec3b(128, 128, 128);
         m_box_thickness = 1;
@@ -41,59 +41,59 @@ public:
         m_grid_unit_pos = cv::Point(100, 10);
 
         m_axes_length = 0.5;
-        m_axes_x_color = cvx::COLOR_RED;
-        m_axes_y_color = cvx::COLOR_BLUE;
+        m_axes_x_color = cx::COLOR_RED;
+        m_axes_y_color = cx::COLOR_BLUE;
         m_axes_thickness = 2;
 
         m_node_radius = 0.1;
         m_node_font_scale = 0.5;
-        m_node_color = cvx::COLOR_BLUE;
+        m_node_color = cx::COLOR_BLUE;
         m_node_thickness = -1;
 
-        m_edge_color = cvx::COLOR_GREEN;
+        m_edge_color = cx::COLOR_GREEN;
         m_edge_thickness = 2;
         m_edge_arrow_length = 0.05;
     }
 
     virtual int readParam(const cv::FileNode& fn)
     {
-        int n_read = cvx::Algorithm::readParam(fn);
+        int n_read = cx::Algorithm::readParam(fn);
 
-        CVX_LOAD_PARAM_COUNT(fn, "pixel_per_meter", m_pixel_per_meter, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "pixel_per_meter", m_pixel_per_meter, n_read);
 
-        CVX_LOAD_PARAM_COUNT(fn, "canvas_margin", m_canvas_margin, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "canvas_color", m_canvas_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "canvas_margin", m_canvas_margin, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "canvas_color", m_canvas_color, n_read);
 
-        CVX_LOAD_PARAM_COUNT(fn, "box_color", m_box_color, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "box_thickness", m_box_thickness, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "box_color", m_box_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "box_thickness", m_box_thickness, n_read);
 
-        CVX_LOAD_PARAM_COUNT(fn, "grid_step", m_grid_step, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "grid_color", m_grid_color, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "grid_thickness", m_grid_thickness, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "grid_unit_font_scale", m_grid_unit_font_scale, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "grid_unit_color", m_grid_unit_color, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "grid_unit_pos", m_grid_unit_pos, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "grid_step", m_grid_step, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "grid_color", m_grid_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "grid_thickness", m_grid_thickness, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "grid_unit_font_scale", m_grid_unit_font_scale, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "grid_unit_color", m_grid_unit_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "grid_unit_pos", m_grid_unit_pos, n_read);
 
-        CVX_LOAD_PARAM_COUNT(fn, "axes_length", m_axes_length, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "axes_x_color", m_axes_x_color, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "axes_y_color", m_axes_y_color, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "axes_thickness", m_axes_thickness, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "axes_length", m_axes_length, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "axes_x_color", m_axes_x_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "axes_y_color", m_axes_y_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "axes_thickness", m_axes_thickness, n_read);
 
-        CVX_LOAD_PARAM_COUNT(fn, "node_radius", m_node_radius, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "node_font_scale", m_node_font_scale, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "node_color", m_node_color, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "node_thickness", m_node_thickness, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "node_radius", m_node_radius, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "node_font_scale", m_node_font_scale, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "node_color", m_node_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "node_thickness", m_node_thickness, n_read);
 
-        CVX_LOAD_PARAM_COUNT(fn, "edge_color", m_edge_color, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "edge_thickness", m_edge_thickness, n_read);
-        CVX_LOAD_PARAM_COUNT(fn, "edge_arrow_length", m_edge_arrow_length, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "edge_color", m_edge_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "edge_thickness", m_edge_thickness, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "edge_arrow_length", m_edge_arrow_length, n_read);
 
         return n_read;
     }
 
     virtual bool writeParam(cv::FileStorage& fs) const
     {
-        if (cvx::Algorithm::writeParam(fs))
+        if (cx::Algorithm::writeParam(fs))
         {
             fs << "pixel_per_meter" << m_pixel_per_meter;
 
@@ -184,7 +184,7 @@ public:
         return info;
     }
 
-    static bool clearCanvas(cv::Mat& image, const CanvasInfo& info, const cv::Vec3b& color = cvx::COLOR_WHITE)
+    static bool clearCanvas(cv::Mat& image, const CanvasInfo& info, const cv::Vec3b& color = cx::COLOR_WHITE)
     {
         if (info.area() > 0 && image.size() != info) image.create(info, CV_8UC3);
         if (image.empty()) return false;
@@ -214,7 +214,7 @@ public:
         return true;
     }
 
-    static bool drawGrid(cv::Mat& image, const CanvasInfo& info, double grid_step, const cv::Vec3b& color, int thickness = 1, double unit_font_scale = 0.5, const cv::Vec3b& unit_color = cvx::COLOR_BLACK, const cv::Point& unit_pos = cv::Point(100, 10))
+    static bool drawGrid(cv::Mat& image, const CanvasInfo& info, double grid_step, const cv::Vec3b& color, int thickness = 1, double unit_font_scale = 0.5, const cv::Vec3b& unit_color = cx::COLOR_BLACK, const cv::Point& unit_pos = cv::Point(100, 10))
     {
         CV_DbgAssert(!image.empty());
         if (thickness <= 0) return false;

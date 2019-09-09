@@ -1,7 +1,7 @@
 #ifndef __DATA_STRUCTURE__
 #define __DATA_STRUCTURE__
 
-#include "opencvx.hpp"
+#include "opencx.hpp"
 
 namespace dg
 {

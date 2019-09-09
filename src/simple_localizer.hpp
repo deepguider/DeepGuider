@@ -63,14 +63,14 @@ public:
         double c = cos(m_pose_metric.theta - pose_prev.theta), s = sin(m_pose_metric.theta - pose_prev.theta);
         m_pose_metric.x += c * dx - s * dy;
         m_pose_metric.x += s * dx + c * dy;
-        m_pose_metric.theta = cvx::trimRad(m_pose_metric.theta + pose_curr.theta - pose_prev.theta);
+        m_pose_metric.theta = cx::trimRad(m_pose_metric.theta + pose_curr.theta - pose_prev.theta);
         return true;
     }
 
     virtual bool applyOdometry(double theta_curr, double theta_prev, Timestamp time_curr = -1, Timestamp time_prev = -1)
     {
         cv::AutoLock lock(m_mutex);
-        m_pose_metric.theta = cvx::trimRad(m_pose_metric.theta + theta_curr - theta_prev);
+        m_pose_metric.theta = cx::trimRad(m_pose_metric.theta + theta_curr - theta_prev);
         return true;
     }
 
@@ -79,7 +79,7 @@ public:
         cv::AutoLock lock(m_mutex);
         m_pose_metric.x += delta.lin * cos(m_pose_metric.theta + delta.ang / 2);
         m_pose_metric.y += delta.lin * sin(m_pose_metric.theta + delta.ang / 2);
-        m_pose_metric.theta = cvx::trimRad(m_pose_metric.theta + delta.ang);
+        m_pose_metric.theta = cx::trimRad(m_pose_metric.theta + delta.ang);
         return true;
     }
 

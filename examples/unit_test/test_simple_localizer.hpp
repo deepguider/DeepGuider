@@ -37,7 +37,7 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 {
     std::vector<std::pair<std::string, cv::Vec3d>> dataset =
     {
-        std::make_pair("Pose",      cv::Vec3d(0, 0, cvx::cvtDeg2Rad(95))),
+        std::make_pair("Pose",      cv::Vec3d(0, 0, cx::cvtDeg2Rad(95))),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
@@ -47,7 +47,7 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("LocClue",   cv::Vec3d(2, -1, CV_PI)),
 
-        std::make_pair("Odometry",  cv::Vec3d(0, cvx::cvtDeg2Rad(-95))),
+        std::make_pair("Odometry",  cv::Vec3d(0, cx::cvtDeg2Rad(-95))),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
@@ -88,11 +88,11 @@ int testSimpleMetricLocalizer(bool verbose = false)
         {
             cv::Mat image = map_image.clone();
             dg::Pose2 pose = localizer.getPose();
-            VVS_CHECK_TRUE(painter.drawNode(image, map_info, dg::Point2ID(0, pose.x, pose.y), 0.1, 0, cvx::COLOR_MAGENTA));
+            VVS_CHECK_TRUE(painter.drawNode(image, map_info, dg::Point2ID(0, pose.x, pose.y), 0.1, 0, cx::COLOR_MAGENTA));
 
             cv::imshow("Test SimpleMetricLocalizer", image);
             int key = cv::waitKeyEx();
-            if (key == cvx::KEY_ESC) return -1;
+            if (key == cx::KEY_ESC) return -1;
         }
     }
 

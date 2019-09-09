@@ -420,7 +420,7 @@ public:
      * Count the number of all nodes (time complexity: O(1))
      * @return The number of nodes
      */
-    int countNodes() const { return m_node_list.size(); }
+    int countNodes() const { return static_cast<int>(m_node_list.size()); }
 
     /**
      * Count the number of edges starting from the given node (time complexity: O(1))
@@ -431,7 +431,7 @@ public:
     {
         NodeItrConst node_itr = getNodeConst(data);
         if (node_itr == getTailNodeConst()) return 0;
-        return node_itr->m_edge_list.size();
+        return static_cast<int>(node_itr->m_edge_list.size());
     }
 
     /**
@@ -442,7 +442,7 @@ public:
     int countEdges(const Node* node) const
     {
         if (node == NULL) return 0;
-        return node->m_edge_list.size();
+        return static_cast<int>(node->m_edge_list.size());
     }
 
     /**
@@ -450,7 +450,7 @@ public:
      * @param node An iterator of the node
      * @return The number of edges
      */
-    int countEdges(NodeItrConst node) const { return node->m_edge_list.size(); }
+    int countEdges(NodeItrConst node) const { return static_cast<int>(node->m_edge_list.size()); }
 
     /**
      * Get an iterator of the first node in this graph (time complexity: O(1))
