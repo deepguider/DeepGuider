@@ -73,7 +73,7 @@ public:
  * @brief 2D point in the geodesic notation
  *
  * A 2D point is represented in the geodesic notation.
- * Its member variables includes lat (latitude) and lon (longitude).
+ * Its member variables includes lon (longitude) and lat (latitude).
  * Similarly to Point2, two member variables can be also referred as x and y, respectively.
  *
  * @see Point2 2D vector in the rectangular coordinate
@@ -84,20 +84,20 @@ public:
     /**
      * The default constructor
      */
-    LatLon() : lat(x), lon(y) { }
+    LatLon() : lon(x), lat(y) { }
 
     /**
      * A constructor with initialization
-     * @param _lat A value for latitude
      * @param _lon A value for longitude
+     * @param _lat A value for latitude
      */
-    LatLon(double _lat, double _lon) : Point2(_lat, _lon), lat(x), lon(y) { }
+    LatLon(double _lon, double _lat) : Point2(_lon, _lat), lon(x), lat(y) { }
 
     /**
      * A constructor with initialization
      * @param p A 2D point
      */
-    LatLon(const Point2& p) : Point2(p), lat(x), lon(y) { }
+    LatLon(const Point2& p) : Point2(p), lon(x), lat(y) { }
 
     /**
      * Overriding the assignment operator

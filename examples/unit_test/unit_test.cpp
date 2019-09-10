@@ -19,10 +19,11 @@ int main()
 
     // Test GPS and UTM conversion
     VVS_RUN_TEST(testLatLon());
-    VVS_RUN_TEST(testRawGPS2UTM(dg::LatLon(38, 128), dg::Point2(412201.58, 4206286.76))); // Zone: 52S
-    VVS_RUN_TEST(testRawGPS2UTM(dg::LatLon(37, 127), dg::Point2(322037.81, 4096742.06))); // Zone: 52S
-    VVS_RUN_TEST(testRawUTM2GPS(dg::Point2(412201.58, 4206286.76), 52, false, dg::LatLon(38, 128)));
-    VVS_RUN_TEST(testRawUTM2GPS(dg::Point2(322037.81, 4096742.06), 52, false, dg::LatLon(37, 127)));
+    VVS_RUN_TEST(testRawGPS2UTM(dg::LatLon(128, 38), dg::Point2(412201.58, 4206286.76))); // Zone: 52S
+    VVS_RUN_TEST(testRawGPS2UTM(dg::LatLon(127, 37), dg::Point2(322037.81, 4096742.06))); // Zone: 52S
+    VVS_RUN_TEST(testRawUTM2GPS(dg::Point2(412201.58, 4206286.76), 52, false, dg::LatLon(128, 38)));
+    VVS_RUN_TEST(testRawUTM2GPS(dg::Point2(322037.81, 4096742.06), 52, false, dg::LatLon(127, 37)));
+    VVS_RUN_TEST(testRawUTM2GPS(dg::Point2(0, 0), 52, false, dg::LatLon(-1, -1)));
 
     return 0;
 }
