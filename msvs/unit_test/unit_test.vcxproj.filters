@@ -21,6 +21,9 @@
     <ClCompile Include="..\..\src\simple_road_map.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\examples\unit_test\vvs.h">

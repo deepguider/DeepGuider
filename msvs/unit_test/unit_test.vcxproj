@@ -93,6 +93,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\examples\unit_test\unit_test.cpp" />
+    <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
     <ClCompile Include="..\..\src\simple_road_map.cpp" />
   </ItemGroup>
   <ItemGroup>

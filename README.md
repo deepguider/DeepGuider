@@ -2,6 +2,10 @@
 
 ### Dependency
 * [OpenCV](http://opencv.org/) (> 3.0.0, [3-clause BSD License](https://opencv.org/license/))
+  * _OpenCV_ is a base of all example codes for basic computer vision algorithms, linear algebra, image/video manipulation, and GUI.
+* [QGC Ground Control Station](https://github.com/mavlink/qgroundcontrol) ([Apache 2.0 License](https://github.com/mavlink/qgroundcontrol/blob/master/COPYING.md))
+  * UTM-related routines in _QGC Ground Control Station_ is utilized for conversion between geodesic notation (latitude and longitude) and UTM.
+  * It is included in `EXTERNAL` directory.
 
 ### How to Run Codes
 * Microsoft Windows with Microsoft Visual Studio
