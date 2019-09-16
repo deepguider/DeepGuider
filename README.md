@@ -1,4 +1,4 @@
-## RoadGPS
+## DeepGuider
 
 ### Dependency
 * [OpenCV](http://opencv.org/) (> 3.0.0, [3-clause BSD License](https://opencv.org/license/))
