@@ -15,13 +15,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\examples\unit_test\unit_test.cpp">
+    <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\simple_road_map.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp">
+    <ClCompile Include="..\..\examples\unit_test\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -44,9 +44,6 @@
     <ClInclude Include="..\..\examples\unit_test\test_simple_road.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\data_structure.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -57,6 +54,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\examples\unit_test\test_gps2utm.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\basic_type.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\opencx.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
