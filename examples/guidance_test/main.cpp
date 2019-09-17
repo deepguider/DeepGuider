@@ -1,5 +1,6 @@
 #include "simple_localizer.hpp"
 #include "simple_road_painter.hpp"
+#include "simple_map_manager_jsh.h"
 
 dg::SimpleRoadMap getExampleMap()
 {
@@ -83,12 +84,36 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
     return dataset;
 }
 
+std::vector<dg::NodeInfo> getExamplePath()
+{
+	std::vector<dg::NodeInfo> path;
+
+	dg::NodeInfo Path1(1, 0, 0, 0, 1);
+	dg::NodeInfo Path2(2, 0, 1, 0, 1);
+	dg::NodeInfo Path3(3, 1, 1, 1, 1);
+	dg::NodeInfo Path4(5, 2, 1, 1, 1);
+	dg::NodeInfo Path5(7, 2, 0, 0, 1);
+	dg::NodeInfo Path6(8, 3, 0, 0, 1);
+	
+	path.push_back(Path1);
+	path.push_back(Path2);
+	path.push_back(Path3);
+	path.push_back(Path4);
+	path.push_back(Path5);
+	path.push_back(Path6);
+
+	return path;
+}
+
 int main()
 {
     // Load a map
     dg::SimpleRoadMap map = getExampleMap();
     dg::SimpleMetricLocalizer localizer;
     if (!localizer.loadMap(map)) return -1;
+
+	//added by seohyun
+	std::vector<dg::NodeInfo> path = getExamplePath();
 
     // Prepare visualization
     dg::SimpleRoadPainter painter;
