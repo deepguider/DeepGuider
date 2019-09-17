@@ -33,17 +33,36 @@ typedef cv::Point2d Point2;
 class Polar2
 {
 public:
-    // The default constructor
+    /**
+     * The default constructor
+     */
     Polar2() : lin(0), ang(0) { }
 
+    /**
+     * A constructor with initialization
+     * @param _lin A value for linear component (Unit: [m])
+     * @param _ang A value for angular component (Unit: [rad])
+     */
     Polar2(double _lin, double _ang) : lin(_lin), ang(_ang) { }
 
+    /**
+     * Overriding the equality operator
+     * @param rhs A 2D vector in the right-hand side
+     * @return The assigned instance
+     */
     bool operator==(const Polar2& rhs) const { return (lin == rhs.lin) && (ang == rhs.ang); }
 
+    /**
+     * Overriding the inequality operator
+     * @param rhs A 2D vector in the right-hand side
+     * @return The assigned instance
+     */
     bool operator!=(const Polar2& rhs) const { return (lin != rhs.lin) || (ang != rhs.ang); }
 
+    /** The linear component (Unit: [m]) */
     double lin;
 
+    /** The angular component (Unit: [rad]) */
     double ang;
 };
 
@@ -105,19 +124,47 @@ public:
 class Pose2 : public Point2
 {
 public:
-    // The default constructor
+    /**
+     * The default constructor
+     */
     Pose2() : theta(0) { }
 
+    /**
+     * A constructor with initialization
+     * @param _x A value for x (Unit: [m])
+     * @param _y A value for y (Unit: [m])
+     * @param _t A value for t (Unit: [rad])
+     */
     Pose2(double _x, double _y, double _t = 0) : Point2(_x, _y), theta(_t) { }
 
+    /**
+     * A constructor with initialization
+     * @param pt A value for 2D point (Unit: [m])
+     * @param _t A value for t (Unit: [rad])
+     */
     Pose2(const Point2& pt, double _t = 0) : Point2(pt), theta(_t) { }
 
+    /**
+     * A constructor with initialization
+     * @param pose A value for 2D pose (Unit: [m] and [rad])
+     */
     Pose2(const Pose2& pose) : Point2(pose.x, pose.y), theta(pose.theta) { }
 
+    /**
+     * Overriding the equality operator
+     * @param rhs A 2D pose in the right-hand side
+     * @return The assigned instance
+     */
     bool operator==(const Pose2& rhs) const { return (x == rhs.x) && (y == rhs.y) && (theta == rhs.theta); }
 
+    /**
+     * Overriding the inequality operator
+     * @param rhs A 2D pose in the right-hand side
+     * @return The assigned instance
+     */
     bool operator!=(const Pose2& rhs) const { return (x != rhs.x) || (y != rhs.y) || (theta != rhs.theta); }
 
+    /** Orientation (Unit: [rad]) */
     double theta;
 };
 
@@ -131,13 +178,13 @@ class Point2ID : public Point2
 public:
     /**
      * A constructor with ID assignment
-     * @param _id The givne ID
+     * @param _id The given ID
      */
     Point2ID(ID _id = 0) : id(_id) { }
 
     /**
      * A constructor with ID, x, and y assignment
-     * @param _id The givne ID
+     * @param _id The given ID
      * @param _x The given X
      * @param _y The given Y
      */
@@ -145,7 +192,7 @@ public:
 
     /**
      * A constructor with ID, x, and y assignment
-     * @param _id The givne ID
+     * @param _id The given ID
      * @param p The given 2D point
      */
     Point2ID(ID _id, const Point2& p) : id(_id), Point2(p) { }
@@ -164,7 +211,7 @@ public:
      */
     bool operator!=(const Point2ID& rhs) const { return (id != rhs.id); }
 
-    /** The given identifider */
+    /** The given identifier */
     ID id;
 };
 
