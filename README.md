@@ -23,7 +23,7 @@ Please refer [DeepGuider Project LSA](LICENSE.md).
 
 * [Jae-Yeong Lee](http://sites.google.com/site/roricljy/) (roricljy AT gmail DOT com)
 
-* Seungmin Choi(ccsmm78 At gmail Dot com)
+* Seungmin Choi (ccsmm78 At gmail DOT com)
 
   
 
