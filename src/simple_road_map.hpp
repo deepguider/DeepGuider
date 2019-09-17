@@ -8,53 +8,6 @@ namespace dg
 {
 
 /**
- * @brief 2D point(vector) with ID
- *
- * A 2D point(vector) is defined with the identifier (ID; integer type).
- */
-class Point2ID : public Point2
-{
-public:
-    /**
-     * A constructor with ID assignment
-     * @param _id The givne ID
-     */
-    Point2ID(int _id = -1) : id(_id) { }
-
-    /**
-     * A constructor with ID, x, and y assignment
-     * @param _id The givne ID
-     * @param _x The given X
-     * @param _y The given Y
-     */
-    Point2ID(int _id, double _x, double _y) : id(_id), cv::Point2d(_x, _y) { }
-
-    /**
-     * A constructor with ID, x, and y assignment
-     * @param _id The givne ID
-     * @param p The given 2D point
-     */
-    Point2ID(int _id, cv::Point2d p) : id(_id), cv::Point2d(p) { }
-
-    /**
-     * Check equality
-     * @param rhs The right-hand side
-     * @return Equality of two operands
-     */
-    bool operator==(const Point2ID& rhs) const { return (id == rhs.id); }
-
-    /**
-     * Check inequality
-     * @param rhs The right-hand side
-     * @return Inequality of two operands
-     */
-    bool operator!=(const Point2ID& rhs) const { return (id != rhs.id); }
-
-    /** The given identifider */
-    int id;
-};
-
-/**
  * @brief Simple road map
  *
  * A <b>simple road map</b> is defined with its node as Point2ID and its edge with double-type cost.

@@ -1,13 +1,16 @@
-#ifndef __DATA_STRUCTURE__
-#define __DATA_STRUCTURE__
+#ifndef __BASIC_TYPE__
+#define __BASIC_TYPE__
 
-#include "opencx.hpp"
+#include "opencv2/opencv.hpp"
 
 namespace dg
 {
 
 /** Time stamp (unit: [sec]) */
 typedef double Timestamp;
+
+/** Identifier */
+typedef uint64_t ID;
 
 /**
  * @brief 2D point
@@ -45,6 +48,55 @@ public:
 };
 
 /**
+ * @brief 2D point in the geodesic notation
+ *
+ * A 2D point is represented in the geodesic notation.
+ * Its member variables includes lon (longitude) and lat (latitude).
+ * Similarly to Point2, two member variables can be also referred as x and y, respectively.
+ *
+ * @see Point2 2D vector in the rectangular coordinate
+ */
+class LonLat : public Point2
+{
+public:
+    /**
+     * The default constructor
+     */
+    LonLat() : lon(x), lat(y) { }
+
+    /**
+     * A constructor with initialization
+     * @param _lon A value for longitude
+     * @param _lat A value for latitude
+     */
+    LonLat(double _lon, double _lat) : Point2(_lon, _lat), lon(x), lat(y) { }
+
+    /**
+     * A constructor with initialization
+     * @param p A 2D point
+     */
+    LonLat(const Point2& p) : Point2(p), lon(x), lat(y) { }
+
+    /**
+     * Overriding the assignment operator
+     * @param p A 2D point in the right-hand side
+     * @return The assigned instance
+     */
+    LonLat& operator=(const Point2& rhs)
+    {
+        x = rhs.x;
+        y = rhs.y;
+        return *this;
+    }
+
+    /** Latitude */
+    double& lon;
+
+    /** Latitude */
+    double& lat;
+};
+
+/**
  * @brief 2D pose
  *
  * 2D Pose is represented in the rectangular coordinate.
@@ -70,54 +122,52 @@ public:
 };
 
 /**
- * @brief 2D point in the geodesic notation
+ * @brief 2D point with ID
  *
- * A 2D point is represented in the geodesic notation.
- * Its member variables includes lon (longitude) and lat (latitude).
- * Similarly to Point2, two member variables can be also referred as x and y, respectively.
- *
- * @see Point2 2D vector in the rectangular coordinate
+ * A 2D point is defined with the identifier (shortly ID).
  */
-class LatLon : public Point2
+class Point2ID : public Point2
 {
 public:
     /**
-     * The default constructor
+     * A constructor with ID assignment
+     * @param _id The givne ID
      */
-    LatLon() : lon(x), lat(y) { }
+    Point2ID(ID _id = 0) : id(_id) { }
 
     /**
-     * A constructor with initialization
-     * @param _lon A value for longitude
-     * @param _lat A value for latitude
+     * A constructor with ID, x, and y assignment
+     * @param _id The givne ID
+     * @param _x The given X
+     * @param _y The given Y
      */
-    LatLon(double _lon, double _lat) : Point2(_lon, _lat), lon(x), lat(y) { }
+    Point2ID(ID _id, double _x, double _y) : id(_id), Point2(_x, _y) { }
 
     /**
-     * A constructor with initialization
-     * @param p A 2D point
+     * A constructor with ID, x, and y assignment
+     * @param _id The givne ID
+     * @param p The given 2D point
      */
-    LatLon(const Point2& p) : Point2(p), lon(x), lat(y) { }
+    Point2ID(ID _id, const Point2& p) : id(_id), Point2(p) { }
 
     /**
-     * Overriding the assignment operator
-     * @param p A 2D point in the right-hand side
-     * @return The assigned instance
+     * Check equality
+     * @param rhs The right-hand side
+     * @return Equality of two operands
      */
-    LatLon& operator=(const Point2& rhs)
-    {
-        x = rhs.x;
-        y = rhs.y;
-        return *this;
-    }
+    bool operator==(const Point2ID& rhs) const { return (id == rhs.id); }
 
-    /** Latitude */
-    double& lat;
+    /**
+     * Check inequality
+     * @param rhs The right-hand side
+     * @return Inequality of two operands
+     */
+    bool operator!=(const Point2ID& rhs) const { return (id != rhs.id); }
 
-    /** Latitude */
-    double& lon;
+    /** The given identifider */
+    ID id;
 };
 
 } // End of 'dg'
 
-#endif // End of '__DATA_STRUCTURE__'
+#endif // End of '__BASIC_TYPE__'

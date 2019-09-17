@@ -3,9 +3,9 @@
 
 #include "basic_type.hpp"
 
-int testLatLon()
+int testLocLatLon()
 {
-    dg::LatLon a, b(1, 2);
+    dg::LonLat a, b(1, 2);
     VVS_CHECK_TRUE(a.lon == 0);
     VVS_CHECK_TRUE(a.lat == 0);
     VVS_CHECK_TRUE(a.x == 0);
@@ -45,7 +45,7 @@ int testLatLon()
     extern void UTMXYToLatLon(double x, double y, int zone, bool southhemi, double& lat, double& lon);
 #endif
 
-int testRawGPS2UTM(const dg::LatLon& x, const dg::Point2& sol, bool verbose = true)
+int testLocRawGPS2UTM(const dg::LonLat& x, const dg::Point2& sol, bool verbose = true)
 {
     dg::Point2 y;
     int zone = LatLonToUTMXY(x.lat, x.lon, -1, y.x, y.y);
@@ -58,9 +58,9 @@ int testRawGPS2UTM(const dg::LatLon& x, const dg::Point2& sol, bool verbose = tr
     return 0;
 }
 
-int testRawUTM2GPS(const dg::Point2& x, int zone, bool is_south, const dg::LatLon& sol, bool verbose = true)
+int testLocRawUTM2GPS(const dg::Point2& x, int zone, bool is_south, const dg::LonLat& sol, bool verbose = true)
 {
-    dg::LatLon y;
+    dg::LonLat y;
     UTMXYToLatLon(x.x, x.y, zone, is_south, y.lat, y.lon);
     y *= 180 / CV_PI; // [rad] to [deg]
     if (verbose) std::cout << "[VERBOSE] UTM = " << x << ", Zone = " << zone << " --> LonLat = " << y << std::endl;

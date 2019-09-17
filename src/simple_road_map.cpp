@@ -78,14 +78,14 @@ bool SimpleRoadMap::save(const char* filename)
     // Write nodes
     SimpleRoadMap::NodeItr itr_node;
     for (itr_node = getHeadNode(); itr_node != getTailNode(); itr_node++)
-        fprintf(file, "NODE, %d, %lf, %lf\n", itr_node->data.id, itr_node->data.x, itr_node->data.y);
+        fprintf(file, "NODE, %zd, %lf, %lf\n", itr_node->data.id, itr_node->data.x, itr_node->data.y);
 
     // Write edges
     for (itr_node = getHeadNode(); itr_node != getTailNode(); itr_node++)
     {
         SimpleRoadMap::EdgeItr itr_edge;
         for (itr_edge = getHeadEdge(itr_node); itr_edge != getTailEdge(itr_node); itr_edge++)
-            fprintf(file, "EDGE, %d, %d, %lf\n", itr_node->data.id, itr_edge->to->data.id, itr_edge->cost);
+            fprintf(file, "EDGE, %zd, %zd, %lf\n", itr_node->data.id, itr_edge->to->data.id, itr_edge->cost);
     }
 
     fclose(file);

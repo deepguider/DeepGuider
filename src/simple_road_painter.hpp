@@ -1,6 +1,7 @@
 #ifndef __SIMPLE_ROAD_PAINTER__
 #define __SIMPLE_ROAD_PAINTER__
 
+#include "opencx.hpp"
 #include "simple_road_map.hpp"
 
 namespace dg

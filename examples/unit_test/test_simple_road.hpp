@@ -4,13 +4,13 @@
 #include "vvs.h"
 #include "simple_road_painter.hpp"
 
-int testPoint2ID()
+int testSimplePoint2ID()
 {
     dg::Point2ID p, p0(0, 3, 29), p1(1, dg::Point2(3, 29));
     dg::Point2ID q(0);
 
     // Check default values
-    VVS_CHECK_EQUL(p.id, -1);
+    VVS_CHECK_EQUL(p.id, 0);
     VVS_CHECK_EQUL(p.x, 0);
     VVS_CHECK_EQUL(p.y, 0);
 
