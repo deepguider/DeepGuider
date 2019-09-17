@@ -20,7 +20,12 @@ Please refer [DeepGuider Project LSA](LICENSE.md).
 
 ### Authors
 * [Sunglok Choi](http://sites.google.com/site/sunglok/) (sunglok AT hanmail DOT net)
+
 * [Jae-Yeong Lee](http://sites.google.com/site/roricljy/) (roricljy AT gmail DOT com)
+
+* Seungmin Choi (ccsmm78 At gmail DOT com)
+
+  
 
 ### Acknowledgement
 The authors thank the following contributors and projects.
