@@ -29,6 +29,8 @@ Please refer [DeepGuider Project LSA](LICENSE.md).
 
 * [Jaeho Lim] (zeozeo7142 AT gmail DOT com)
 
+* [Seunghwan Park] (sinkyv AT chol DOT com)
+
   
 
 ### Acknowledgement
