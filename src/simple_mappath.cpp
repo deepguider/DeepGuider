@@ -1,4 +1,4 @@
-#include "simple_map_manager.hpp"
+#include "simple_mappath.hpp"
 
 namespace dg
 {

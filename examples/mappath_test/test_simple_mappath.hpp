@@ -2,7 +2,7 @@
 #define __TEST_SIMPLE_MAP__
 
 #include "vvs.h"
-#include "simple_map_manager.hpp"
+#include "simple_mappath.hpp"
 
 int testSimpleMapManager(/*const char* filename = "test_simple_map.json"*/)
 {

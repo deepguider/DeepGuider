@@ -13,6 +13,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{FB401C0A-9F85-48A5-9452-0341C0AF7D22}</ProjectGuid>
     <RootNamespace>3dv_tutorial</RootNamespace>
+    <ProjectName>mappath_test</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
@@ -92,12 +93,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\examples\map_test\test_simple_map.hpp" />
-    <ClInclude Include="..\..\src\simple_map_manager.hpp" />
+    <ClInclude Include="..\..\examples\mappath_test\test_simple_mappath.hpp" />
+    <ClInclude Include="..\..\src\simple_mappath.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\examples\map_test\unit_test.cpp" />
-    <ClCompile Include="..\..\src\simple_map_manager.cpp" />
+    <ClCompile Include="..\..\examples\mappath_test\unit_test.cpp" />
+    <ClCompile Include="..\..\src\simple_mappath.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

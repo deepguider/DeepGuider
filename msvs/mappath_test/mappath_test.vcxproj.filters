@@ -15,18 +15,18 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\simple_map_manager.hpp">
+    <ClInclude Include="..\..\src\simple_mappath.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\examples\map_test\test_simple_map.hpp">
+    <ClInclude Include="..\..\examples\mappath_test\test_simple_mappath.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\examples\map_test\unit_test.cpp">
+    <ClCompile Include="..\..\examples\mappath_test\unit_test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\simple_map_manager.cpp">
+    <ClCompile Include="..\..\src\simple_mappath.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
