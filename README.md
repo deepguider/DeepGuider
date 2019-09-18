@@ -25,11 +25,11 @@ Please refer [DeepGuider Project LSA](LICENSE.md).
 
 * Seungmin Choi (ccsmm78 AT gmail DOT com)
 
-* [Seohyun Jeon] (seohyunatwork AT gmail DOT com)
+* Seohyun Jeon (seohyunatwork AT gmail DOT com)
 
-* [Jaeho Lim] (zeozeo7142 AT gmail DOT com)
+* Jaeho Lim (zeozeo7142 AT gmail DOT com)
 
-* [Seunghwan Park] (sinkyv AT chol DOT com)
+* Seunghwan Park (sinkyv AT chol DOT com)
 
   
 
