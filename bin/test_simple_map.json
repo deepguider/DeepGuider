@@ -1,0 +1,149 @@
+{
+  "nodes": [
+    {
+      "id": 123450,
+      "longitude": 120.45,
+      "latitude": 40.123,
+      "streetviews": [
+        456700,
+        456701,
+        456702
+      ],
+      "pois": [
+        "한국전자통신연구원",
+        "UST",
+        "연구단지네거리"
+      ],
+      "node_type": 0,
+      "floor": 1,
+      "edges": [
+        {
+          "tid": 123459,
+          "width": 3.0,
+          "length": 10.0,
+          "edge_type": 0
+        },
+        {
+          "tid": 123458,
+          "width": 3.5,
+          "length": 10.0,
+          "edge_type": 1
+        },
+        {
+          "tid": 123457,
+          "width": 2.5,
+          "length": 12.8,
+          "edge_type": 2
+        }
+      ]
+    },
+    {
+      "id": 123457,
+      "longitude": 127.45,
+      "latitude": 47.123,
+      "streetviews": [
+        456770,
+        456771,
+        456772
+      ],
+      "pois": [
+        "한국전자통신연구원",
+        "UST"
+      ],
+      "node_type": 1,
+      "floor": 1,
+      "edges": [
+        {
+          "tid": 123459,
+          "width": 3.0,
+          "length": 10.0,
+          "edge_type": 0
+        },
+        {
+          "tid": 123458,
+          "width": 3.5,
+          "length": 10.0,
+          "edge_type": 1
+        },
+        {
+          "tid": 123450,
+          "width": 2.5,
+          "length": 12.8,
+          "edge_type": 2
+        }
+      ]
+    },
+    {
+      "id": 123458,
+      "longitude": 128.45,
+      "latitude": 48.123,
+      "streetviews": [
+        456780,
+        456781,
+        456782
+      ],
+      "pois": [
+        "UST",
+        "연구단지네거리"
+      ],
+      "node_type": 2,
+      "floor": 1,
+      "edges": [
+        {
+          "tid": 123459,
+          "width": 3.0,
+          "length": 10.0,
+          "edge_type": 0
+        },
+        {
+          "tid": 123450,
+          "width": 3.5,
+          "length": 10.0,
+          "edge_type": 1
+        },
+        {
+          "tid": 123457,
+          "width": 2.5,
+          "length": 12.8,
+          "edge_type": 2
+        }
+      ]
+    },
+    {
+      "id": 123459,
+      "longitude": 129.45,
+      "latitude": 49.123,
+      "streetviews": [
+        456790,
+        456791,
+        456792
+      ],
+      "pois": [
+        "한국전자통신연구원",
+        "연구단지네거리"
+      ],
+      "node_type": 3,
+      "floor": 1,
+      "edges": [
+        {
+          "tid": 123450,
+          "width": 3.0,
+          "length": 10.0,
+          "edge_type": 0
+        },
+        {
+          "tid": 123458,
+          "width": 3.5,
+          "length": 10.0,
+          "edge_type": 1
+        },
+        {
+          "tid": 123457,
+          "width": 2.5,
+          "length": 12.8,
+          "edge_type": 2
+        }
+      ]
+    }
+  ]
+}
