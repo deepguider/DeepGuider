@@ -288,7 +288,12 @@ public:
      * @param to Data of the destination node
      * @return True if they are connected (false if not connected)
      */
-    bool isConnected(const D& from, const D& to) { return (getEdgeCost(from, to) >= 0); }
+    bool isConnected(const D& from, const D& to)
+    {
+        Edge* edge = getEdge(from, to);
+        if (edge == NULL) return false;
+        return true;
+    }
 
     /**
      * Check connectivity from a start node to a destination node (time complexity: O(|E|))
@@ -296,7 +301,12 @@ public:
      * @param to A pointer to the destination node
      * @return True if they are connected (false if not connected)
      */
-    bool isConnected(Node* from, Node* to) { return (getEdgeCost(from, to) >= 0); }
+    bool isConnected(Node* from, Node* to)
+    {
+        Edge* edge = getEdge(from, to);
+        if (edge == NULL) return false;
+        return true;
+    }
 
     /**
      * Check connectivity from a start node to a destination node (time complexity: O(|E|))
@@ -304,7 +314,12 @@ public:
      * @param to A const_iterator of the destination node
      * @return True if they are connected (false if not connected)
      */
-    bool isConnected(NodeItrConst from, NodeItrConst to) const { return (getEdgeCost(from, to) >= 0); }
+    bool isConnected(NodeItrConst from, NodeItrConst to) const
+    {
+        EdgeItrConst edge = getEdgeConst(from, to);
+        if (edge == getTailEdgeConst(from)) return false;
+        return true;
+    }
 
     /**
      * Copy this to the other graph (time complexity: O(|N||E|))

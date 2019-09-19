@@ -63,7 +63,7 @@ public:
      * @param node2 A pointer to the second node
      * @param cost Cost from the first to second nodes (default: -1)<br>
      *  If the cost is given as a negative value, it is automatically assigned as Euclidean distance.
-     * @return A pointer to the added edge
+     * @return True if successful (false if failed)
      * @see addEdge
      */
     bool addRoad(Node* node1, Node* node2, double cost = -1.0);
@@ -74,7 +74,7 @@ public:
      * @param node2 ID of the second node
      * @param cost Cost from the first to second nodes (default: -1)<br>
      *  If the cost is given as a negative value, it is automatically assigned as Euclidean distance.
-     * @return A pointer to the added edge
+     * @return True if successful (false if failed)
      * @see addEdge
      */
     bool addRoad(const Point2ID& node1, const Point2ID& node2, double cost = -1.0);

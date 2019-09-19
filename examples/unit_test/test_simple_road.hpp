@@ -4,24 +4,6 @@
 #include "vvs.h"
 #include "dg_core.hpp"
 
-int testSimplePoint2ID()
-{
-    dg::Point2ID p, p0(0, 3, 29), p1(1, dg::Point2(3, 29));
-    dg::Point2ID q(0);
-
-    // Check default values
-    VVS_CHECK_EQUL(p.id, 0);
-    VVS_CHECK_EQUL(p.x, 0);
-    VVS_CHECK_EQUL(p.y, 0);
-
-    // Check equality and inequality
-    VVS_CHECK_TRUE(p != q);
-    VVS_CHECK_TRUE(p0 == q);
-    VVS_CHECK_TRUE(p0 != p1);
-
-    return 0;
-}
-
 int testSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
 {
     // An example road map ('+' represents direction of edges)
