@@ -1,7 +1,7 @@
 #ifndef __TEST_MAP__
 #define __TEST_MAP__
 
-#include "map.hpp"
+#include "dg_core.hpp"
 
 int testMapNodeInfo()
 {

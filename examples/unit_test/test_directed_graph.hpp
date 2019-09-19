@@ -2,7 +2,7 @@
 #define __TEST_DIRECTED_GRAPH__
 
 #include "vvs.h"
-#include "directed_graph.hpp"
+#include "dg_core.hpp"
 #include <string>
 
 typedef dg::DirectedGraph<std::string, int> FamilyTree;

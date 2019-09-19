@@ -5,7 +5,7 @@
 
 #include <vector>
 #include "opencx.hpp"
-#include "directed_graph.hpp"
+#include "dg_core.hpp"
 
 using namespace std;
 using namespace cv;

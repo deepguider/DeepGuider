@@ -18,48 +18,30 @@
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\simple_road_map.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\examples\unit_test\main.cpp">
+    <ClCompile Include="..\..\src\core\simple_road_map.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\examples\unit_test\vvs.h">
+    <ClInclude Include="vvs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\directed_graph.hpp">
+    <ClInclude Include="test_directed_graph.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\simple_road_map.hpp">
+    <ClInclude Include="test_simple_localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\simple_road_painter.hpp">
+    <ClInclude Include="test_gps2utm.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\examples\unit_test\test_directed_graph.hpp">
+    <ClInclude Include="test_map.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\examples\unit_test\test_simple_road.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\simple_localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\examples\unit_test\test_simple_localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\examples\unit_test\test_gps2utm.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\basic_type.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\opencx.hpp">
+    <ClInclude Include="test_simple_road.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

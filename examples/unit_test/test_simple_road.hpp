@@ -2,7 +2,7 @@
 #define __TEST_SIMPLE_ROAD_MAP__
 
 #include "vvs.h"
-#include "simple_road_painter.hpp"
+#include "dg_core.hpp"
 
 int testSimplePoint2ID()
 {
@@ -129,7 +129,7 @@ int testSimpleRoadPainter(bool verbose = false)
     map.addEdge(dg::Point2ID(8), dg::Point2ID(7));
 
     // Draw the map
-    dg::SimpleRoadPainter painter;
+    dg::MapPainter painter;
     cv::Mat image;
     VVS_CHECK_TRUE(painter.drawMap(image, map));
     VVS_CHECK_TRUE(image.empty() == false);

@@ -2,7 +2,8 @@
 #define __TEST_SIMPLE_LOCALIZER__
 
 #include "vvs.h"
-#include "simple_localizer.hpp"
+#include "dg_core.hpp"
+#include "dg_localizer.hpp"
 
 dg::SimpleRoadMap getExampleMap()
 {
@@ -68,7 +69,7 @@ int testSimpleMetricLocalizer(bool verbose = false)
     VVS_CHECK_TRUE(localizer.loadMap(map));
 
     // Prepare visualization
-    dg::SimpleRoadPainter painter;
+    dg::MapPainter painter;
     VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 200));
     VVS_CHECK_TRUE(painter.setParamValue("node_font_scale", 2 * 0.5));
     dg::CanvasInfo map_info = painter.getCanvasInfo(map);

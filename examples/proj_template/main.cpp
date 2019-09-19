@@ -1,5 +1,5 @@
-#include "simple_localizer.hpp"
-#include "simple_road_painter.hpp"
+#include "dg_core.hpp"
+#include "dg_localizer.hpp"
 
 dg::SimpleRoadMap getExampleMap()
 {
@@ -64,7 +64,7 @@ int main()
     if (!localizer.loadMap(map)) return -1;
 
     // Prepare visualization
-    dg::SimpleRoadPainter painter;
+    dg::MapPainter painter;
     if (!painter.setParamValue("pixel_per_meter", 200)) return -1;
     if (!painter.setParamValue("node_font_scale", 2 * 0.5)) return -1;
     dg::CanvasInfo map_info = painter.getCanvasInfo(map);

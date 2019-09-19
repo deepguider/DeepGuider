@@ -1,7 +1,7 @@
 #ifndef __LOCALIZER__
 #define __LOCALIZER__
 
-#include "simple_road_map.hpp"
+#include "core/simple_road_map.hpp"
 #include <vector>
 
 namespace dg

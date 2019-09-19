@@ -1,8 +1,8 @@
 #ifndef __SIMPLE_ROAD_MAP__
 #define __SIMPLE_ROAD_MAP__
 
-#include "basic_type.hpp"
-#include "directed_graph.hpp"
+#include "core/basic_type.hpp"
+#include "core/directed_graph.hpp"
 
 namespace dg
 {

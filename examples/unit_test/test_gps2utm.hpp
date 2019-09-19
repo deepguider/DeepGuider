@@ -1,7 +1,7 @@
 #ifndef __TEST_GPS_2_UTM__
 #define __TEST_GPS_2_UTM__
 
-#include "basic_type.hpp"
+#include "dg_core.hpp"
 
 int testLocLatLon()
 {

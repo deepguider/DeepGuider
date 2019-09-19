@@ -1,6 +1,6 @@
-#include "simple_localizer.hpp"
-#include "simple_road_painter.hpp"
-#include "simple_map_manager_jsh.h"
+#include "dg_core.hpp"
+#include "dg_localizer.hpp"
+//#include "simple_map_manager_jsh.h"
 
 dg::SimpleRoadMap getExampleMap()
 {
@@ -116,7 +116,7 @@ int main()
 	std::vector<dg::NodeInfo> path = getExamplePath();
 
     // Prepare visualization
-    dg::SimpleRoadPainter painter;
+    dg::MapPainter painter;
     if (!painter.setParamValue("pixel_per_meter", 200)) return -1;
     if (!painter.setParamValue("node_font_scale", 2 * 0.5)) return -1;
     dg::CanvasInfo map_info = painter.getCanvasInfo(map);

@@ -1,8 +1,8 @@
-#ifndef __SIMPLE_ROAD_PAINTER__
-#define __SIMPLE_ROAD_PAINTER__
+#ifndef __MAP_PAINTER__
+#define __MAP_PAINTER__
 
 #include "opencx.hpp"
-#include "simple_road_map.hpp"
+#include "core/simple_road_map.hpp"
 
 namespace dg
 {
@@ -21,10 +21,10 @@ public:
     double margin;
 };
 
-class SimpleRoadPainter : public cx::Algorithm
+class MapPainter : public cx::Algorithm
 {
 public:
-    SimpleRoadPainter()
+    MapPainter()
     {
         m_pixel_per_meter = 100;
 
@@ -402,8 +402,8 @@ protected:
 
     double m_edge_arrow_length;
 
-}; // End of 'SimpleRoadPainter'
+}; // End of 'MapPainter'
 
 } // End of 'dg'
 
-#endif // End of '__SIMPLE_ROAD_PAINTER__'
+#endif // End of '__MAP_PAINTER_SIMPLE__'

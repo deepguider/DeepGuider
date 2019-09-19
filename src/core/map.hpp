@@ -1,8 +1,8 @@
 #ifndef __MAP__
 #define __MAP__
 
-#include "basic_type.hpp"
-#include "directed_graph.hpp"
+#include "core/basic_type.hpp"
+#include "core/directed_graph.hpp"
 
 namespace dg
 {
