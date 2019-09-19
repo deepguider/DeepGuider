@@ -1,4 +1,4 @@
-#include "test_simple_mappath.hpp"
+#include "test_map_manager.hpp"
 
 int main()
 {

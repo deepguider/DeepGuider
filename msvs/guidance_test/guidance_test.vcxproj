@@ -11,7 +11,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{FB401C0A-9F85-48A5-9452-0341C0AF7D22}</ProjectGuid>
+    <ProjectGuid>{B3F01FB7-C2F9-4716-87D5-9BC4AF700E51}</ProjectGuid>
+    <RootNamespace>3dv_tutorial</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
@@ -62,7 +63,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include;../../../rapidjson/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -79,7 +80,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include;../../../rapidjson/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -91,24 +92,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\examples\mappath_test\test_simple_mappath.hpp" />
-    <ClInclude Include="..\..\src\simple_mappath.hpp" />
+    <ClCompile Include="..\..\examples\guidance_test\main.cpp" />
+    <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
+    <ClCompile Include="..\..\src\simple_road_map.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\examples\mappath_test\unit_test.cpp" />
-    <ClCompile Include="..\..\src\simple_mappath.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
+    <ClInclude Include="..\..\examples\guidance_test\simple_map_manager_jsh.h" />
+    <ClInclude Include="..\..\src\basic_type.hpp" />
+    <ClInclude Include="..\..\src\directed_graph.hpp" />
+    <ClInclude Include="..\..\src\localizer.hpp" />
+    <ClInclude Include="..\..\src\opencx.hpp" />
+    <ClInclude Include="..\..\src\simple_localizer.hpp" />
+    <ClInclude Include="..\..\src\simple_road_map.hpp" />
+    <ClInclude Include="..\..\src\simple_road_painter.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\packages\cpprestsdk.v141.2.10.12.1\build\native\cpprestsdk.v141.targets" Condition="Exists('..\packages\cpprestsdk.v141.2.10.12.1\build\native\cpprestsdk.v141.targets')" />
   </ImportGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>이 프로젝트는 이 컴퓨터에 없는 NuGet 패키지를 참조합니다. 해당 패키지를 다운로드하려면 NuGet 패키지 복원을 사용하십시오. 자세한 내용은 http://go.microsoft.com/fwlink/?LinkID=322105를 참조하십시오. 누락된 파일은 {0}입니다.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\cpprestsdk.v141.2.10.12.1\build\native\cpprestsdk.v141.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\cpprestsdk.v141.2.10.12.1\build\native\cpprestsdk.v141.targets'))" />
-  </Target>
 </Project>

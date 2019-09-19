@@ -1,8 +1,8 @@
 #ifndef __SIMPLE_MAP_MANAGER__
 #define __SIMPLE_MAP_MANAGER__
 
-#include "basic_type.hpp"
-#include "directed_graph.hpp"
+#include "core/basic_type.hpp"
+#include "core/directed_graph.hpp"
 
 // rapidjson header files
 #include "rapidjson/document.h" 
@@ -13,16 +13,16 @@ using namespace rapidjson;
 
 #define M_PI 3.14159265358979323846
 
-#include <iostream>
-using namespace std;
-#include <cpprest/http_client.h>
-#include <cpprest/filestream.h>
-//#pragma comment(lib, "cpprest141_2_10")	// windows only
-using namespace utility;              	// Common utilities like string conversions
-using namespace web;                  	// Common features like URIs.
-using namespace web::http;            	// Common HTTP functionality
-using namespace web::http::client;    	// HTTP client features
-using namespace concurrency::streams; 	// Asynchronous streams
+//#include <iostream>
+//using namespace std;
+//#include <cpprest/http_client.h>
+//#include <cpprest/filestream.h>
+////#pragma comment(lib, "cpprest141_2_10")	// windows only
+//using namespace utility;              	// Common utilities like string conversions
+//using namespace web;                  	// Common features like URIs.
+//using namespace web::http;            	// Common HTTP functionality
+//using namespace web::http::client;    	// HTTP client features
+//using namespace concurrency::streams; 	// Asynchronous streams
 
 //
 //enum NodeType
