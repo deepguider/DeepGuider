@@ -1,8 +1,8 @@
 #include "test_directed_graph.hpp"
 #include "test_map.hpp"
-#include "test_simple_road.hpp"
-#include "test_simple_localizer.hpp"
 #include "test_gps2utm.hpp"
+//#include "test_simple_road.hpp"
+//#include "test_simple_localizer.hpp"
 
 int main()
 {
@@ -17,6 +17,7 @@ int main()
     VVS_NUN_TEST(testCorePoint2ID());
     VVS_NUN_TEST(testCoreNodeInfo());
     VVS_NUN_TEST(testCoreMap());
+    VVS_RUN_TEST(testCoreMapPainter());
 
     // Test GPS and UTM conversion
     VVS_NUN_TEST(testLocRawGPS2UTM(dg::LonLat(128, 38), dg::Point2(412201.58, 4206286.76))); // Zone: 52S

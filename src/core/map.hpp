@@ -3,6 +3,7 @@
 
 #include "core/basic_type.hpp"
 #include "core/directed_graph.hpp"
+#include "core/graph_painter.hpp"
 
 namespace dg
 {
@@ -95,7 +96,7 @@ public:
     double width;
 };
 
-class Map : public dg::DirectedGraph<NodeInfo, EdgeInfo>
+class Map : public DirectedGraph<NodeInfo, EdgeInfo>
 {
 public:
     /**
@@ -168,6 +169,8 @@ public:
         return addRoad(node1_ptr, node2_ptr);
     }
 };
+
+typedef GraphPainter<NodeInfo, EdgeInfo> MapPainter;
 
 } // End of 'dg'
 

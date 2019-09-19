@@ -21,9 +21,6 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\core\simple_road_map.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vvs.h">
@@ -32,16 +29,10 @@
     <ClInclude Include="test_directed_graph.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_simple_localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="test_gps2utm.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_map.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="test_simple_road.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

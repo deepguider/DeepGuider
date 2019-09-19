@@ -182,4 +182,46 @@ int testCoreMap()
     return 0;
 }
 
+int testCoreMapPainter(int wait_msec = 1)
+{
+    // An example map
+    // 2 --- 3 --- 5 --- 6
+    // |     |     |     |
+    // |     |     |     |
+    // 1 --- 4     7 --- 8
+
+    // Build an example map
+    dg::Map map;
+    VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(1, 0, 0)) != NULL); // ID, x, y
+    VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(2, 0, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(3, 1, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(4, 1, 0)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(5, 2, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(6, 3, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(7, 2, 0)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(8, 3, 0)) != NULL);
+    VVS_CHECK_TRUE(map.addRoad(1, 2)); // ID_1, ID_2
+    VVS_CHECK_TRUE(map.addRoad(1, 4));
+    VVS_CHECK_TRUE(map.addRoad(2, 3));
+    VVS_CHECK_TRUE(map.addRoad(3, 4));
+    VVS_CHECK_TRUE(map.addRoad(3, 5));
+    VVS_CHECK_TRUE(map.addRoad(5, 6));
+    VVS_CHECK_TRUE(map.addRoad(5, 7));
+    VVS_CHECK_TRUE(map.addRoad(6, 8));
+    VVS_CHECK_TRUE(map.addRoad(7, 8));
+    VVS_CHECK_TRUE(map.isEmpty() == false);
+
+    // Draw the map
+    dg::MapPainter painter;
+    cv::Mat image;
+    VVS_CHECK_TRUE(painter.drawMap(image, map));
+    VVS_CHECK_TRUE(image.empty() == false);
+
+    // Show the image
+    cv::imshow("testCoreMapPainter", image);
+    cv::waitKey(wait_msec);
+
+    return 0;
+}
+
 #endif // End of '__TEST_CORE__'
