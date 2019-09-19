@@ -1,6 +1,7 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
-//#include "simple_map_manager_jsh.h"
+#include "Guidance.hpp"
+
 
 dg::SimpleRoadMap getExampleMap()
 {
@@ -108,21 +109,15 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 
 std::vector<dg::NodeInfo> getExamplePath()
 {
-	std::vector<dg::NodeInfo> path;
-
-	dg::NodeInfo Path1(1, 0, 0, 0, 1);
-	dg::NodeInfo Path2(2, 0, 1, 0, 1);
-	dg::NodeInfo Path3(3, 1, 1, 1, 1);
-	dg::NodeInfo Path4(5, 2, 1, 1, 1);
-	dg::NodeInfo Path5(7, 2, 0, 0, 1);
-	dg::NodeInfo Path6(8, 3, 0, 0, 1);
-	
-	path.push_back(Path1);
-	path.push_back(Path2);
-	path.push_back(Path3);
-	path.push_back(Path4);
-	path.push_back(Path5);
-	path.push_back(Path6);
+	std::vector<dg::NodeInfo> path = 
+	{
+		dg::NodeInfo (1, 0, 0, 0, 1),
+		dg::NodeInfo (2, 0, 1, 0, 1),
+		dg::NodeInfo (3, 1, 1, 1, 1),
+		dg::NodeInfo (5, 2, 1, 1, 1),
+		dg::NodeInfo (7, 2, 0, 0, 1),
+		dg::NodeInfo (8, 3, 0, 0, 1)
+	};
 
 	return path;
 }
@@ -136,6 +131,9 @@ int main()
 
 	//added by seohyun
 	std::vector<dg::NodeInfo> path = getExamplePath();
+
+	//Perform Guide generator
+
 
     // Prepare visualization
     dg::MapPainter painter;
