@@ -1,8 +1,9 @@
 #ifndef __TEST_SIMPLE_MAP__
 #define __TEST_SIMPLE_MAP__
 
-#include "vvs.h"
-#include "simple_mappath.hpp"
+#include "../unit_test/vvs.h"
+#include "dg_map_manager.hpp"
+//#include "map_manager/map_manager.hpp"
 
 int testSimpleMapManager(/*const char* filename = "test_simple_map.json"*/)
 {
