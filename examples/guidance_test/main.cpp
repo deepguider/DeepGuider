@@ -139,7 +139,7 @@ int main()
 	std::vector<dg::Guidance::ActionType <dg::Guidance::Motion, int>> guides = guider.generateGuide(path);
 
     // Prepare visualization
-    dg::MapPainter painter;
+    dg::SimpleRoadPainter painter;
     if (!painter.setParamValue("pixel_per_meter", 200)) return -1;
     if (!painter.setParamValue("node_font_scale", 2 * 0.5)) return -1;
     dg::CanvasInfo map_info = painter.getCanvasInfo(map);

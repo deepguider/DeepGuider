@@ -91,8 +91,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+<<<<<<< HEAD
     <ClCompile Include="..\..\src\core\simple_road_map.cpp" />
     <ClCompile Include="Guidance.cpp" />
+=======
+    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
+>>>>>>> remotes/origin/master
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
