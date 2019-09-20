@@ -2,9 +2,9 @@
 #define __TEST_SIMPLE_ROAD_MAP__
 
 #include "vvs.h"
-#include "dg_core.hpp"
+#include "dg_localizer.hpp"
 
-int testSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
+int testLocSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
 {
     // An example road map ('+' represents direction of edges)
     // 2 --+ 3 +-+ 5 +-- 6
@@ -88,7 +88,7 @@ int testSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
     return 0;
 }
 
-int testSimpleRoadPainter(bool verbose = false)
+int testLocSimpleRoadPainter(int wait_msec = 1)
 {
     // Build an example map
     dg::SimpleRoadMap map;
@@ -111,7 +111,7 @@ int testSimpleRoadPainter(bool verbose = false)
     map.addEdge(dg::Point2ID(8), dg::Point2ID(7));
 
     // Draw the map
-    dg::MapPainter painter;
+    dg::SimpleRoadPainter painter;
     cv::Mat image;
     VVS_CHECK_TRUE(painter.drawMap(image, map));
     VVS_CHECK_TRUE(image.empty() == false);
@@ -137,12 +137,12 @@ int testSimpleRoadPainter(bool verbose = false)
     VVS_CHECK_TRUE(painter.drawMap(bigger, map));
     VVS_CHECK_TRUE(bigger.empty() == false);
 
-    if (verbose)
+    if (wait_msec >= 0)
     {
-        cv::imshow("Test SimpleRoadPainter", image);
-        cv::waitKeyEx();
-        cv::imshow("Test SimpleRoadPainter", bigger);
-        cv::waitKeyEx();
+        cv::imshow("testLocSimpleRoadPainter", image);
+        cv::waitKey(wait_msec);
+        cv::imshow("testLocSimpleRoadPainter", bigger);
+        cv::waitKey(wait_msec);
     }
     return 0;
 }

@@ -217,9 +217,11 @@ int testCoreMapPainter(int wait_msec = 1)
     VVS_CHECK_TRUE(painter.drawMap(image, map));
     VVS_CHECK_TRUE(image.empty() == false);
 
-    // Show the image
-    cv::imshow("testCoreMapPainter", image);
-    cv::waitKey(wait_msec);
+    if (wait_msec >= 0)
+    {
+        cv::imshow("testCoreMapPainter", image);
+        cv::waitKey(wait_msec);
+    }
 
     return 0;
 }

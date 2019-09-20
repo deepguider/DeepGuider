@@ -6,10 +6,6 @@ namespace dg
 {
 
 // 'SimpleRoadMap' class
-SimpleRoadMap::SimpleRoadMap()
-{
-}
-
 bool SimpleRoadMap::load(const char* filename)
 {
     removeAll();

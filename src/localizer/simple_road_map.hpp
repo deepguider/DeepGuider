@@ -3,6 +3,7 @@
 
 #include "core/basic_type.hpp"
 #include "core/directed_graph.hpp"
+#include "core/graph_painter.hpp"
 
 namespace dg
 {
@@ -33,11 +34,6 @@ class SimpleRoadMap : public DirectedGraph<Point2ID, double>
 {
 public:
     /**
-     * The default constructor
-     */
-    SimpleRoadMap();
-
-    /**
      * Read a map from the given file
      * @param filename The filename to read a map
      * @return Result of success (true) or failure (false)
@@ -45,17 +41,17 @@ public:
     bool load(const char* filename);
 
     /**
-     * Check whether this map is empty or not
-     * @return True if empty (true) or not (false)
-     */
-    bool isEmpty() const;
-
-    /**
      * Write this map to the given file
      * @param filename The filename to write the map
      * @return Result of success (true) or failure (false)
      */
     bool save(const char* filename);
+
+    /**
+     * Check whether this map is empty or not
+     * @return True if empty (true) or not (false)
+     */
+    bool isEmpty() const;
 
     /**
      * Add a bi-directional edge between two nodes (time complexity: O(1))
@@ -101,6 +97,9 @@ public:
      */
     Edge* addEdge(const Point2ID& from, const Point2ID& to, double cost = -1.0);
 };
+
+/** A map visualizer for dg::SimpleRoadMap */
+typedef GraphPainter<Point2ID, double> SimpleRoadPainter;
 
 } // End of 'dg'
 
