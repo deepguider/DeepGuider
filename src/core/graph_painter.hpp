@@ -25,9 +25,9 @@ template<typename D, typename C>
 class GraphPainter : public cx::Algorithm
 {
 public:
-    typedef DirectedGraph<D, C> Point2Graph;
+    typedef DirectedGraph<D, C> Point2IDGraph;
 
-    typedef NodeType<D, C> Point2Node;
+    typedef NodeType<D, C> Point2IDNode;
 
     GraphPainter()
     {
@@ -60,6 +60,8 @@ public:
         m_edge_thickness = 2;
         m_edge_arrow_length = 0.05;
     }
+
+    virtual ~GraphPainter() { }
 
     virtual int readParam(const cv::FileNode& fn)
     {
@@ -134,7 +136,7 @@ public:
         return false;
     }
 
-    bool drawMap(cv::Mat& image, Point2Graph& map) const
+    bool drawMap(cv::Mat& image, Point2IDGraph& map) const
     {
         CanvasInfo info = getCanvasInfo(map);
         if (image.empty())
@@ -147,7 +149,7 @@ public:
         if (!image.empty())
         {
             drawNodes(image, info, map, m_node_radius, m_node_font_scale, m_node_color, m_node_thickness);
-            for (Point2Graph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
+            for (Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
             {
                 drawEdges(image, info, map, &(*n), m_node_radius, m_edge_color, m_edge_thickness, m_edge_arrow_length);
             }
@@ -156,12 +158,12 @@ public:
         return false;
     }
 
-    CanvasInfo getCanvasInfo(Point2Graph& map) const
+    CanvasInfo getCanvasInfo(Point2IDGraph& map) const
     {
         return buildCanvasInfo(map, m_pixel_per_meter, m_canvas_margin);
     }
 
-    static CanvasInfo buildCanvasInfo(Point2Graph& map, double ppm, double margin)
+    static CanvasInfo buildCanvasInfo(Point2IDGraph& map, double ppm, double margin)
     {
         CanvasInfo info;
         info.ppm = ppm;
@@ -169,7 +171,7 @@ public:
         if (map.countNodes() > 0)
         {
             Point2 box_min = map.getHeadNode()->data, box_max = map.getHeadNode()->data;
-            for (Point2Graph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
+            for (Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
             {
                 if (n->data.x < box_min.x) box_min.x = n->data.x;
                 if (n->data.y < box_min.y) box_min.y = n->data.y;
@@ -279,7 +281,7 @@ public:
         return true;
     }
 
-    static bool drawNodes(cv::Mat& image, const CanvasInfo& info, Point2Graph& map, double radius, double font_scale, const cv::Vec3b& color, int thickness = -1)
+    static bool drawNodes(cv::Mat& image, const CanvasInfo& info, Point2IDGraph& map, double radius, double font_scale, const cv::Vec3b& color, int thickness = -1)
     {
         CV_DbgAssert(!image.empty());
 
@@ -287,7 +289,7 @@ public:
         const cv::Point font_offset(-r / 2, r / 2);
         cv::Vec3b font_color = color;
         if (thickness < 0) font_color = cv::Vec3b(255, 255, 255) - color;
-        for (Point2Graph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
+        for (Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
         {
             const cv::Point p = cvtMeter2Pixel(n->data, info);
             cv::circle(image, p, r, color, thickness);
@@ -324,14 +326,14 @@ public:
         return true;
     }
 
-    static bool drawEdges(cv::Mat& image, const CanvasInfo& info, Point2Graph& map, Point2Node* node, double radius, const cv::Vec3b& color, int thickness = 1, double arrow_length = -1)
+    static bool drawEdges(cv::Mat& image, const CanvasInfo& info, Point2IDGraph& map, Point2IDNode* node, double radius, const cv::Vec3b& color, int thickness = 1, double arrow_length = -1)
     {
         CV_DbgAssert(!image.empty());
         if (thickness <= 0 || node == NULL) return false;
 
         const double r = radius * info.ppm;
         const double a = arrow_length * info.ppm;
-        for (Point2Graph::EdgeItr e = map.getHeadEdge(node); e != map.getTailEdge(node); e++)
+        for (Point2IDGraph::EdgeItr e = map.getHeadEdge(node); e != map.getTailEdge(node); e++)
         {
             // Draw an edge
             Point2 p = cvtMeter2Pixel(node->data, info);

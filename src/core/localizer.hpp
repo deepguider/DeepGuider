@@ -6,17 +6,10 @@
 namespace dg
 {
 
-template<typename D, typename C>
 class Localizer
 {
 public:
     virtual ~Localizer() { }
-
-    virtual bool loadMap(const DirectedGraph<D, C>& map) = 0;
-
-    virtual bool saveMap(DirectedGraph<D, C>& map) const = 0;
-
-    virtual const DirectedGraph<D, C>& getMap() const = 0;
 
     virtual bool applyPose(const Pose2& pose, Timestamp time = -1) = 0;
 

@@ -60,7 +60,7 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
     return dataset;
 }
 
-int testSimpleMetricLocalizer(bool verbose = false)
+int testLocSimpleMetricLocalizer(bool verbose = false)
 {
     // Load a map
     dg::SimpleRoadMap map = getExampleMap();
@@ -69,7 +69,7 @@ int testSimpleMetricLocalizer(bool verbose = false)
     VVS_CHECK_TRUE(localizer.loadMap(map));
 
     // Prepare visualization
-    dg::MapPainter painter;
+    dg::SimpleRoadPainter painter;
     VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 200));
     VVS_CHECK_TRUE(painter.setParamValue("node_font_scale", 2 * 0.5));
     dg::CanvasInfo map_info = painter.getCanvasInfo(map);

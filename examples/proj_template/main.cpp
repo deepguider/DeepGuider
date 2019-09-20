@@ -64,7 +64,7 @@ int main()
     if (!localizer.loadMap(map)) return -1;
 
     // Prepare visualization
-    dg::MapPainter painter;
+    dg::SimpleRoadPainter painter;
     if (!painter.setParamValue("pixel_per_meter", 200)) return -1;
     if (!painter.setParamValue("node_font_scale", 2 * 0.5)) return -1;
     dg::CanvasInfo map_info = painter.getCanvasInfo(map);

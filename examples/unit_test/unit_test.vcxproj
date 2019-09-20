@@ -95,6 +95,15 @@
     <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\core\basic_type.hpp" />
+    <ClInclude Include="..\..\src\core\directed_graph.hpp" />
+    <ClInclude Include="..\..\src\core\graph_painter.hpp" />
+    <ClInclude Include="..\..\src\core\localizer.hpp" />
+    <ClInclude Include="..\..\src\core\map.hpp" />
+    <ClInclude Include="..\..\src\localizer\simple_localizer.hpp" />
+    <ClInclude Include="..\..\src\localizer\simple_road_map.hpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

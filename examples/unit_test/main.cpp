@@ -2,7 +2,7 @@
 #include "test_core_map.hpp"
 #include "test_localizer_simple_road.hpp"
 #include "test_localizer_gps2utm.hpp"
-//#include "test_simple_localizer.hpp"
+#include "test_localizer_simple.hpp"
 
 int main()
 {
@@ -23,7 +23,10 @@ int main()
 
     // Test 'dg::SimpleRoadMap' and 'dg::SimpleRoadPainter'
     VVS_NUN_TEST(testLocSimpleRoadMap());
-    VVS_NUN_TEST(testLocSimpleRoadPainter(true));
+    VVS_NUN_TEST(testLocSimpleRoadPainter());
+
+    // Test 'dg::SimpleMetricLocalizer'
+    VVS_RUN_TEST(testLocSimpleMetricLocalizer());
 
     // Test GPS and UTM conversion
     VVS_NUN_TEST(testLocRawGPS2UTM(dg::LonLat(128, 38), dg::Point2(412201.58, 4206286.76))); // Zone: 52S
@@ -31,8 +34,6 @@ int main()
     VVS_NUN_TEST(testLocRawUTM2GPS(dg::Point2(412201.58, 4206286.76), 52, false, dg::LonLat(128, 38)));
     VVS_NUN_TEST(testLocRawUTM2GPS(dg::Point2(322037.81, 4096742.06), 52, false, dg::LonLat(127, 37)));
     VVS_NUN_TEST(testLocRawUTM2GPS(dg::Point2(0, 0), 52, false, dg::LonLat(-1, -1)));
-
-    VVS_NUN_TEST(testSimpleMetricLocalizer(true));
 
     return 0;
 }
