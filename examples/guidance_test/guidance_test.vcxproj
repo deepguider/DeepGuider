@@ -91,16 +91,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-<<<<<<< HEAD
     <ClCompile Include="..\..\src\core\simple_road_map.cpp" />
-    <ClCompile Include="Guidance.cpp" />
-=======
-    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
->>>>>>> remotes/origin/master
+    <ClCompile Include="guidance.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Guidance.hpp" />
+    <ClInclude Include="guidance.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
