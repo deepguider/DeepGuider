@@ -109,6 +109,8 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 
 std::vector<dg::NodeInfo> getExamplePath()
 {
+	//Path generation should be modified. 
+	//It does not contain x,y coordinates.(2019-09-20 JSH)
 	std::vector<dg::NodeInfo> path = 
 	{
 		dg::NodeInfo (1, 0, 0, 0, 1),
@@ -133,7 +135,8 @@ int main()
 	std::vector<dg::NodeInfo> path = getExamplePath();
 
 	//Perform Guide generator
-
+	dg::Guidance guider;
+	std::vector<dg::Guidance::ActionType <dg::Guidance::Motion, int>> guides = guider.generateGuide(path);
 
     // Prepare visualization
     dg::MapPainter painter;
