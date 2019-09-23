@@ -112,7 +112,7 @@ namespace cx
 
         /**
          * Set a parameter from its name and value
-         * @param config The name of the parameter
+         * @param param The name of the parameter
          * @param value The value of the parameter
          * @return True if successful (false if failed)
          */
@@ -125,7 +125,7 @@ namespace cx
 
         /**
          * Set a parameter from its name and value in a vector form
-         * @param config The name of the parameter
+         * @param param The name of the parameter
          * @param values The value of the parameter in a vector form
          * @return True if successful (false if failed)
          */
@@ -144,7 +144,7 @@ namespace cx
 
         /**
          * Set a parameter from its name and value
-         * @param config The name of the parameter
+         * @param param The name of the parameter
          * @param value The value of the parameter
          * @return True if successful (false if failed)
          */
