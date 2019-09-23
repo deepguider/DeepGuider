@@ -1,8 +1,8 @@
 #include "test_core_graph.hpp"
 #include "test_core_map.hpp"
-#include "test_localizer_simple_road.hpp"
-#include "test_localizer_gps2utm.hpp"
+#include "test_localizer_road.hpp"
 #include "test_localizer_simple.hpp"
+#include "test_localizer_gps2utm.hpp"
 
 int main()
 {
@@ -22,8 +22,8 @@ int main()
     VVS_NUN_TEST(testCoreMapPainter());
 
     // Test 'dg::SimpleRoadMap' and 'dg::SimpleRoadPainter'
-    VVS_NUN_TEST(testLocSimpleRoadMap());
-    VVS_NUN_TEST(testLocSimpleRoadPainter());
+    VVS_RUN_TEST(testLocSimpleRoadMap());
+    VVS_RUN_TEST(testLocSimpleRoadPainter());
 
     // Test 'dg::SimpleMetricLocalizer'
     VVS_RUN_TEST(testLocSimpleMetricLocalizer());

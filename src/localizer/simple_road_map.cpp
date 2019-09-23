@@ -69,7 +69,7 @@ bool SimpleRoadMap::save(const char* filename)
     FILE* file = fopen(filename, "wt");
     if (file == NULL) return false;
     fprintf(file, "# NODE, ID, X [m], Y [m]\n");
-    fprintf(file, "# EDGE, ID(from), ID(to), Cost\n");
+    fprintf(file, "# EDGE, ID(from_ptr), ID(to_ptr), Cost\n");
 
     // Write nodes
     SimpleRoadMap::NodeItr itr_node;
@@ -108,11 +108,18 @@ bool SimpleRoadMap::addRoad(Node* node1, Node* node2, double cost /*= -1.0*/)
     return (edge1 != NULL) && (edge2 != NULL);
 }
 
-bool SimpleRoadMap::addRoad(const Point2ID& _node1, const Point2ID& _node2, double cost /*= -1.0*/)
+bool SimpleRoadMap::addRoad(const Point2ID& node1, const Point2ID& node2, double cost /*= -1.0*/)
 {
-    Node* node1 = getNode(_node1);
-    Node* node2 = getNode(_node2);
-    return addRoad(node1, node2, cost);
+    Node* node1_ptr = getNode(node1);
+    Node* node2_ptr = getNode(node2);
+    return addRoad(node1_ptr, node2_ptr, cost);
+}
+
+bool SimpleRoadMap::addRoad(ID node1, ID node2, double cost /*= -1.0*/)
+{
+    Node* node1_ptr = findNode(node1);
+    Node* node2_ptr = findNode(node2);
+    return addRoad(node1_ptr, node2_ptr, cost);
 }
 
 SimpleRoadMap::Edge* SimpleRoadMap::addEdge(Node* from, Node* to, double cost /*= -1.0*/)
@@ -128,11 +135,18 @@ SimpleRoadMap::Edge* SimpleRoadMap::addEdge(Node* from, Node* to, double cost /*
     return DirectedGraph<Point2ID, double>::addEdge(from, to, cost);
 }
 
-SimpleRoadMap::Edge* SimpleRoadMap::addEdge(const Point2ID& _from, const Point2ID& _to, double cost /*= -1.0*/)
+SimpleRoadMap::Edge* SimpleRoadMap::addEdge(const Point2ID& from, const Point2ID& to, double cost /*= -1.0*/)
 {
-    Node* from = getNode(_from);
-    Node* to = getNode(_to);
-    return addEdge(from, to, cost);
+    Node* from_ptr = getNode(from);
+    Node* to_ptr = getNode(to);
+    return addEdge(from_ptr, to_ptr, cost);
+}
+
+SimpleRoadMap::Edge* SimpleRoadMap::addEdge(ID from, ID to, double cost /*= -1.0*/)
+{
+    Node* from_ptr = findNode(from);
+    Node* to_ptr = findNode(to);
+    return addEdge(from_ptr, to_ptr, cost);
 }
 
 } // End of 'dg'

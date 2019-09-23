@@ -164,8 +164,8 @@ public:
      */
     bool addRoad(ID node1, ID node2)
     {
-        Node* node1_ptr = getNode(node1);
-        Node* node2_ptr = getNode(node2);
+        Node* node1_ptr = findNode(node1);
+        Node* node2_ptr = findNode(node2);
         return addRoad(node1_ptr, node2_ptr);
     }
 };

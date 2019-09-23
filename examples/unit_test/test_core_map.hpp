@@ -123,6 +123,7 @@ int testCoreMap()
     VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(6, 3, 1)) != NULL);
     VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(7, 2, 0)) != NULL);
     VVS_CHECK_TRUE(map.addNode(dg::NodeInfo(8, 3, 0)) != NULL);
+
     dg::Map::Node* node1_ptr = map.getNode(dg::NodeInfo(1));
     dg::Map::Node* node2_ptr = map.findNode(2);
     VVS_CHECK_TRUE(map.addRoad(node1_ptr, node2_ptr));              // Method #1 to add a bi-directional edge (pointer)

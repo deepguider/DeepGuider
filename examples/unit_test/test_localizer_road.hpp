@@ -19,23 +19,26 @@ int testLocSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
     VVS_CHECK_TRUE(map.save(filename) == false);
 
     // Build and save a map
-    map.addNode(dg::Point2ID(1, 0, 0)); // ID, x, y
-    map.addNode(dg::Point2ID(2, 0, 1));
-    map.addNode(dg::Point2ID(3, 1, 1));
-    map.addNode(dg::Point2ID(4, 1, 0));
-    map.addNode(dg::Point2ID(5, 2, 1));
-    map.addNode(dg::Point2ID(6, 3, 1));
-    map.addNode(dg::Point2ID(7, 2, 0));
-    map.addNode(dg::Point2ID(8, 3, 0));
-    map.addEdge(dg::Point2ID(1), dg::Point2ID(2));
-    map.addEdge(dg::Point2ID(2), dg::Point2ID(3));
-    map.addEdge(dg::Point2ID(3), dg::Point2ID(4));
-    map.addEdge(dg::Point2ID(4), dg::Point2ID(1));
-    map.addRoad(dg::Point2ID(3), dg::Point2ID(5)); // Add a bi-directional edge
-    map.addEdge(dg::Point2ID(6), dg::Point2ID(5));
-    map.addEdge(dg::Point2ID(6), dg::Point2ID(8));
-    map.addEdge(dg::Point2ID(7), dg::Point2ID(5));
-    map.addEdge(dg::Point2ID(8), dg::Point2ID(7));
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(1, 0, 0)) != NULL); // ID, x, y
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(2, 0, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(3, 1, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(4, 1, 0)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(5, 2, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(6, 3, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(7, 2, 0)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(8, 3, 0)) != NULL);
+
+    dg::SimpleRoadMap::Node* node1_ptr = map.getNode(dg::Point2ID(1));
+    dg::SimpleRoadMap::Node* node2_ptr = map.findNode(2);
+    VVS_CHECK_TRUE(map.addEdge(node1_ptr, node2_ptr));              // Method #1 to add an edge (pointer)
+    VVS_CHECK_TRUE(map.addEdge(dg::Point2ID(2), dg::Point2ID(3)));  // Method #2 to add an edge (Point2ID)
+    VVS_CHECK_TRUE(map.addEdge(3, 4));                              // Method #3 to add an edge (ID)
+    VVS_CHECK_TRUE(map.addEdge(4, 1));
+    VVS_CHECK_TRUE(map.addRoad(3, 5));                              // Add a bi-directional edge
+    VVS_CHECK_TRUE(map.addEdge(6, 5));
+    VVS_CHECK_TRUE(map.addEdge(6, 8));
+    VVS_CHECK_TRUE(map.addEdge(7, 5));
+    VVS_CHECK_TRUE(map.addEdge(8, 7));
     VVS_CHECK_TRUE(!map.isEmpty());
     VVS_CHECK_EQUL(map.countNodes(), 8);
     VVS_CHECK_TRUE(map.save(filename));
@@ -51,22 +54,22 @@ int testLocSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
     VVS_CHECK_EQUL(map.countNodes(), 8);
 
     // Check each node data
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(1))->data.x, 0);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(1))->data.y, 0);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(2))->data.x, 0);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(2))->data.y, 1);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(3))->data.x, 1);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(3))->data.y, 1);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(4))->data.x, 1);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(4))->data.y, 0);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(5))->data.x, 2);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(5))->data.y, 1);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(6))->data.x, 3);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(6))->data.y, 1);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(7))->data.x, 2);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(7))->data.y, 0);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(8))->data.x, 3);
-    VVS_CHECK_EQUL(map.getNode(dg::Point2ID(8))->data.y, 0);
+    VVS_CHECK_EQUL(map.findNode(1)->data.x, 0);
+    VVS_CHECK_EQUL(map.findNode(1)->data.y, 0);
+    VVS_CHECK_EQUL(map.findNode(2)->data.x, 0);
+    VVS_CHECK_EQUL(map.findNode(2)->data.y, 1);
+    VVS_CHECK_EQUL(map.findNode(3)->data.x, 1);
+    VVS_CHECK_EQUL(map.findNode(3)->data.y, 1);
+    VVS_CHECK_EQUL(map.findNode(4)->data.x, 1);
+    VVS_CHECK_EQUL(map.findNode(4)->data.y, 0);
+    VVS_CHECK_EQUL(map.findNode(5)->data.x, 2);
+    VVS_CHECK_EQUL(map.findNode(5)->data.y, 1);
+    VVS_CHECK_EQUL(map.findNode(6)->data.x, 3);
+    VVS_CHECK_EQUL(map.findNode(6)->data.y, 1);
+    VVS_CHECK_EQUL(map.findNode(7)->data.x, 2);
+    VVS_CHECK_EQUL(map.findNode(7)->data.y, 0);
+    VVS_CHECK_EQUL(map.findNode(8)->data.x, 3);
+    VVS_CHECK_EQUL(map.findNode(8)->data.y, 0);
 
     // Check each connectivity and cost
     VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(1), dg::Point2ID(2)), 1);
@@ -92,23 +95,24 @@ int testLocSimpleRoadPainter(int wait_msec = 1)
 {
     // Build an example map
     dg::SimpleRoadMap map;
-    map.addNode(dg::Point2ID(1, 0, 0)); // ID, x, y
-    map.addNode(dg::Point2ID(2, 0, 1));
-    map.addNode(dg::Point2ID(3, 1, 1));
-    map.addNode(dg::Point2ID(4, 1, 0));
-    map.addNode(dg::Point2ID(5, 2, 1));
-    map.addNode(dg::Point2ID(6, 3, 1));
-    map.addNode(dg::Point2ID(7, 2, 0));
-    map.addNode(dg::Point2ID(8, 3, 0));
-    map.addEdge(dg::Point2ID(1), dg::Point2ID(2));
-    map.addEdge(dg::Point2ID(2), dg::Point2ID(3));
-    map.addEdge(dg::Point2ID(3), dg::Point2ID(4));
-    map.addEdge(dg::Point2ID(4), dg::Point2ID(1));
-    map.addRoad(dg::Point2ID(3), dg::Point2ID(5)); // Add a bi-directional edge
-    map.addEdge(dg::Point2ID(6), dg::Point2ID(5));
-    map.addEdge(dg::Point2ID(6), dg::Point2ID(8));
-    map.addEdge(dg::Point2ID(7), dg::Point2ID(5));
-    map.addEdge(dg::Point2ID(8), dg::Point2ID(7));
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(1, 0, 0)) != NULL); // ID, x, y
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(2, 0, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(3, 1, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(4, 1, 0)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(5, 2, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(6, 3, 1)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(7, 2, 0)) != NULL);
+    VVS_CHECK_TRUE(map.addNode(dg::Point2ID(8, 3, 0)) != NULL);
+    VVS_CHECK_TRUE(map.addEdge(1, 2));
+    VVS_CHECK_TRUE(map.addEdge(2, 3));
+    VVS_CHECK_TRUE(map.addEdge(3, 4));
+    VVS_CHECK_TRUE(map.addEdge(4, 1));
+    VVS_CHECK_TRUE(map.addRoad(3, 5)); // Add a bi-directional edge
+    VVS_CHECK_TRUE(map.addEdge(6, 5));
+    VVS_CHECK_TRUE(map.addEdge(6, 8));
+    VVS_CHECK_TRUE(map.addEdge(7, 5));
+    VVS_CHECK_TRUE(map.addEdge(8, 7));
+    VVS_CHECK_TRUE(map.isEmpty() == false);
 
     // Draw the map
     dg::SimpleRoadPainter painter;

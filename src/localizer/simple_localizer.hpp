@@ -21,7 +21,7 @@ public:
         return map.copyTo(&m_map);
     }
 
-    virtual bool saveMap(SimpleRoadMap& map) const
+    virtual bool copyMap(SimpleRoadMap& map) const
     {
         cv::AutoLock lock(m_mutex);
         return m_map.copyTo(&map);
@@ -92,10 +92,10 @@ public:
         return true;
     }
 
-    virtual bool applyLocClue(const std::vector<int>& ids, const std::vector<Polar2>& obs, Timestamp time = -1)
+    virtual bool applyLocClue(const std::vector<int>& node_ids, const std::vector<Polar2>& obs, Timestamp time = -1)
     {
-        if (ids.empty() || obs.empty() || ids.size() != obs.size()) return false;
-        return applyLocClue(ids.back(), obs.back(), time);
+        if (node_ids.empty() || obs.empty() || node_ids.size() != obs.size()) return false;
+        return applyLocClue(node_ids.back(), obs.back(), time);
     }
 
     virtual bool configPose(const Pose2& offset) { return false; }

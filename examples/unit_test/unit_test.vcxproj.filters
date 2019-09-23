@@ -47,5 +47,20 @@
     <ClInclude Include="..\..\src\localizer\simple_road_map.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="test_core_graph.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_core_map.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_gps2utm.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_simple.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_road.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
