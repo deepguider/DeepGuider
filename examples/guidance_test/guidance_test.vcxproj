@@ -62,12 +62,12 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include;..\..\opencv\build\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib;..\..\opencv\build\x64\vc15\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>opencv_world411d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -91,7 +91,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\core\simple_road_map.cpp" />
+    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
     <ClCompile Include="guidance.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>

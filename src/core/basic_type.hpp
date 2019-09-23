@@ -218,6 +218,75 @@ public:
     ID id;
 };
 
+/**
+ * @brief 2D point in the geodesic notation with ID
+ *
+ * A 2D point in the geodesic notation is defined with the identifier (shortly ID).
+ * It is the counter part of LonLat, similar to Point2 and Point2ID.
+ */
+class LonLatID : public Point2ID
+{
+public:
+    /**
+     * A constructor with ID assignment
+     * @param _id The given ID
+     */
+    LonLatID(ID _id = 0) : Point2ID(_id), lon(x), lat(y) { }
+
+    /**
+     * A constructor with ID, x, and y assignment
+     * @param _id The given ID
+     * @param _x The given X
+     * @param _y The given Y
+     */
+    LonLatID(ID _id, double _lon, double _lat) : Point2ID(_id, _lon, _lat), lon(x), lat(y) { }
+
+    /**
+     * A constructor with ID, x, and y assignment
+     * @param _id The given ID
+     * @param p The given 2D point
+     */
+    LonLatID(ID _id, const Point2& p) : Point2ID(_id, p), lon(x), lat(y) { }
+
+    /**
+     * A constructor with ID, x, and y assignment
+     * @param pid The given 2D point with ID
+     */
+    LonLatID(const Point2ID& pid) : Point2ID(pid), lon(x), lat(y) { }
+
+    /** Latitude */
+    double& lon;
+
+    /** Latitude */
+    double& lat;
+};
+
+/**
+ * @brief Robot pose on topological maps
+ *
+ * On topological robot pose can be rep
+ */
+class TopometricPose
+{
+public:
+    /**
+     * A constructor with assignment
+     * @param _node_id ID of previously departed node
+     * @param _edge_idx Index of currently moving edge
+     * @param _dist The traveled distance from the previously departed node (Unit: [m])
+     */
+    TopometricPose(int _node_id = -1, int _edge_idx = -1, double _dist = 0) : node_id(_node_id), edge_idx(_edge_idx), dist(_dist) { }
+
+    /** ID of previously departed node */
+    int node_id;
+
+    /** Index of currently moving edge */
+    int edge_idx;
+
+    /** The traveled distance from the previously departed node (Unit: [m]) */
+    double dist;
+};
+
 } // End of 'dg'
 
 #endif // End of '__BASIC_TYPE__'

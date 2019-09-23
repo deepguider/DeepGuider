@@ -6,6 +6,5 @@
 #include "core/graph_painter.hpp"
 #include "core/map.hpp"
 #include "core/path.hpp"
-#include "core/localizer.hpp"
 
 #endif // End of '__DG_CORE__'
