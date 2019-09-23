@@ -4,46 +4,46 @@ namespace dg
 {
 
 // 'SimpleMapManager' class
-MapManager::MapManager()
+Map::Map()
 {
 }
 
-int MapManager::long2tilex(double lon, int z)
+int Map::long2tilex(double lon, int z)
 {
 	return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
 }
 
-int MapManager::lat2tiley(double lat, int z)
+int Map::lat2tiley(double lat, int z)
 {
 	double latrad = lat * M_PI / 180.0;
 	return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
 }
 
-double MapManager::tilex2long(int x, int z)
+double Map::tilex2long(int x, int z)
 {
 	return x / (double)(1 << z) * 360.0 - 180;
 }
 
-double MapManager::tiley2lat(int y, int z)
+double Map::tiley2lat(int y, int z)
 {
 	double n = M_PI - 2.0 * M_PI * y / (double)(1 << z);
 	return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
 }
 
-cv::Point2i MapManager::lonlat2xy(double lon, double lat, int z)
+cv::Point2i Map::lonlat2xy(double lon, double lat, int z)
 {
 	return cv::Point2i(long2tilex(lon, z), lat2tiley(lat, z));
 }
 
-void MapManager::downloadMap(cv::Point2i tile)
+void Map::downloadMap(cv::Point2i tile)
 {
 	const std::string url_head = "https://path.to.topological.map.server/";
 	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y) + "/";
 }
 
-bool MapManager::load(double lon, double lat, int z)
+bool Map::load(double lon, double lat, int z)
 {
-    m_map.removeAll();
+    removeAll();
 
 	downloadMap(lonlat2xy(lon, lat, z));
 
@@ -84,7 +84,7 @@ bool MapManager::load(double lon, double lat, int z)
 		nodeinfo.type = node["node_type"].GetInt();
 		nodeinfo.floor = node["floor"].GetInt();
 
-		m_map.addNode(nodeinfo);
+		addNode(nodeinfo);
 	}
 	for (SizeType i = 0; i < nodes.Size(); i++)
 	{
@@ -96,21 +96,21 @@ bool MapManager::load(double lon, double lat, int z)
 		for (SizeType j = 0; j < edges.Size(); j++)
 		{
 			const Value& edge = edges[j];
-			/*edgeinfo.id*/ID to_node_id = edge["tid"].GetUint64();
+			edgeinfo.id = edge["tid"].GetUint64();
 			edgeinfo.width = edge["width"].GetDouble();
 			edgeinfo.length = edge["length"].GetDouble();
 			edgeinfo.type = edge["edge_type"].GetInt();
 
-			m_map.addEdge(from_node, NodeInfo(to_node_id/*edgeinfo.id*/), edgeinfo);
+			addEdge(from_node, NodeInfo(edgeinfo.id), edgeinfo);
 		}
 	}
 		
 	return true;
 }
 
-bool MapManager::isEmpty() const
+bool Map::isEmpty() const
 {
-    return (m_map.countNodes() <= 0);
+    return (countNodes() <= 0);
 }
 
 bool MapManager::generatePath()
@@ -210,7 +210,7 @@ Map MapManager::getMap(Path path)
 
 Map MapManager::getMap(double lon, double lat, int z)
 {
-	load(lon, lat, z);
+	m_map.load(lon, lat, z);
 
 	return m_map;
 }
@@ -218,7 +218,7 @@ Map MapManager::getMap(double lon, double lat, int z)
 std::vector<cv::Point2d> MapManager::getPOIloc(const char* poiname)
 {
 	std::vector<cv::Point2d> points;
-	for (dg::Map::NodeItr node_itr = m_map.getHeadNode(); node_itr != m_map.getTailNode(); node_itr++)
+	for (NodeItr node_itr = m_map.getHeadNode(); node_itr != m_map.getTailNode(); node_itr++)
 	{
 		for (std::vector<std::string>::iterator it = node_itr->data.pois.begin(); it != node_itr->data.pois.end(); it++)
 		{

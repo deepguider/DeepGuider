@@ -1,6 +1,6 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
-#include "Guidance.hpp"
+#include "guidance.hpp"
 
 
 dg::SimpleRoadMap getExampleMap()
@@ -109,6 +109,8 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 
 std::vector<dg::NodeInfo> getExamplePath()
 {
+	//Path generation should be modified. 
+	//It does not contain x,y coordinates.(2019-09-20 JSH)
 	std::vector<dg::NodeInfo> path = 
 	{
 		dg::NodeInfo (1, 0, 0, 0, 1),
@@ -133,10 +135,11 @@ int main()
 	std::vector<dg::NodeInfo> path = getExamplePath();
 
 	//Perform Guide generator
-
+	dg::Guidance guider;
+	std::vector<dg::Guidance::ActionType <dg::Guidance::Motion, int>> guides = guider.generateGuide(path);
 
     // Prepare visualization
-    dg::SimpleRoadPainter painter;
+	dg::MapPainter painter;
     if (!painter.setParamValue("pixel_per_meter", 200)) return -1;
     if (!painter.setParamValue("node_font_scale", 2 * 0.5)) return -1;
     dg::CanvasInfo map_info = painter.getCanvasInfo(map);

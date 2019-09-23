@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{F763329B-5B6C-414A-BDBA-F2BB39FDF4D0}</ProjectGuid>
+    <ProjectGuid>{3CC90140-7D1B-494F-AD0C-5EBDC0A12DBE}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
@@ -92,11 +92,23 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\core\simple_road_map.cpp" />
-    <ClCompile Include="guidance.cpp" />
+    <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="guidance.hpp" />
+    <ClInclude Include="..\..\src\core\basic_type.hpp" />
+    <ClInclude Include="..\..\src\core\directed_graph.hpp" />
+    <ClInclude Include="..\..\src\core\localizer.hpp" />
+    <ClInclude Include="..\..\src\core\map.hpp" />
+    <ClInclude Include="..\..\src\core\map_painter.hpp" />
+    <ClInclude Include="..\..\src\core\path.hpp" />
+    <ClInclude Include="..\..\src\core\simple_road_map.hpp" />
+    <ClInclude Include="..\..\src\dg_core.hpp" />
+    <ClInclude Include="..\..\src\dg_localizer.hpp" />
+    <ClInclude Include="..\..\src\dg_map_manager.hpp" />
+    <ClInclude Include="..\..\src\localizer\simple_localizer.hpp" />
+    <ClInclude Include="..\..\src\map_manager\map_manager.hpp" />
+    <ClInclude Include="..\..\src\opencx.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
