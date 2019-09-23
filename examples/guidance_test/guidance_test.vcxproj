@@ -91,7 +91,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\core\simple_road_map.cpp" />
+    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
     <ClCompile Include="guidance.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>

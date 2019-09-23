@@ -15,6 +15,35 @@ public:
         return m_pose_metric;
     }
 
+    virtual bool loadMap(const Map& map, bool is_lonlat = false)
+    {
+        cv::AutoLock lock(m_mutex);
+        // Copy nodes
+        m_map.removeAll();
+        for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
+        {
+            if (m_map.addNode(node->data) == NULL)
+            {
+                m_map.removeAll();
+                return false;
+            }
+        }
+
+        // Copy edges
+        for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
+        {
+            for (auto edge = map.getHeadEdgeConst(node); edge != map.getTailEdgeConst(node); edge++)
+            {
+                if (m_map.addEdge(node->data, edge->to->data) == NULL)
+                {
+                    m_map.removeAll();
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     virtual bool loadMap(const SimpleRoadMap& map)
     {
         cv::AutoLock lock(m_mutex);
@@ -97,16 +126,6 @@ public:
         if (node_ids.empty() || obs.empty() || node_ids.size() != obs.size()) return false;
         return applyLocClue(node_ids.back(), obs.back(), time);
     }
-
-    virtual bool configPose(const Pose2& offset) { return false; }
-
-    virtual bool configPosition(const Pose2& offset) { return false; }
-
-    virtual bool configOrientation(const Pose2& offset) { return false; }
-
-    virtual bool configOdometry(const Pose2& offset) { return false; }
-
-    virtual bool configLocCue(const Pose2& offset) { return false; }
 
 protected:
     SimpleRoadMap m_map;
