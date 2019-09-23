@@ -3,6 +3,7 @@
 
 #include "core/basic_type.hpp"
 #include "core/directed_graph.hpp"
+#include "core/graph_painter.hpp"
 
 namespace dg
 {
@@ -33,22 +34,11 @@ class SimpleRoadMap : public DirectedGraph<Point2ID, double>
 {
 public:
     /**
-     * The default constructor
-     */
-    SimpleRoadMap();
-
-    /**
      * Read a map from the given file
      * @param filename The filename to read a map
      * @return Result of success (true) or failure (false)
      */
     bool load(const char* filename);
-
-    /**
-     * Check whether this map is empty or not
-     * @return True if empty (true) or not (false)
-     */
-    bool isEmpty() const;
 
     /**
      * Write this map to the given file
@@ -58,15 +48,49 @@ public:
     bool save(const char* filename);
 
     /**
+     * Check whether this map is empty or not
+     * @return True if empty (true) or not (false)
+     */
+    bool isEmpty() const;
+
+    /**
+     * Find a node using ID written in Point2ID (time complexity: O(|N|))
+     * @param id ID to search
+     * @return A pointer to the found node (NULL if not exist)
+     * @see getNode
+     */
+    Node* findNode(ID id) { return getNode(Point2ID(id)); }
+
+    /**
+     * Find an edge using ID written in Point2ID (time complexity: O(|N| + |E|))
+     * @param from ID of the start node
+     * @param to ID of the destination node
+     * @return A pointer to the found edge (NULL if not exist)
+     * @see getEdge
+     */
+    Edge* findEdge(ID from, ID to) { return getEdge(Point2ID(from), Point2ID(to)); }
+
+    /**
      * Add a bi-directional edge between two nodes (time complexity: O(1))
      * @param node1 A pointer to the first node
      * @param node2 A pointer to the second node
      * @param cost Cost from the first to second nodes (default: -1)<br>
      *  If the cost is given as a negative value, it is automatically assigned as Euclidean distance.
-     * @return A pointer to the added edge
-     * @see addEdge
+     * @return True if successful (false if failed)
+     * @see addEdge for adding a directional edge
      */
     bool addRoad(Node* node1, Node* node2, double cost = -1.0);
+
+    /**
+     * Add a bi-directional edge between two nodes (time complexity: O(1))
+     * @param node1 Data of the first node
+     * @param node2 Data of the second node
+     * @param cost Cost from the first to second nodes (default: -1)<br>
+     *  If the cost is given as a negative value, it is automatically assigned as Euclidean distance.
+     * @return True if successful (false if failed)
+     * @see addEdge for adding a directional edge
+     */
+    bool addRoad(const Point2ID& node1, const Point2ID& node2, double cost = -1.0);
 
     /**
      * Add a bi-directional edge between two nodes (time complexity: O(1))
@@ -74,10 +98,10 @@ public:
      * @param node2 ID of the second node
      * @param cost Cost from the first to second nodes (default: -1)<br>
      *  If the cost is given as a negative value, it is automatically assigned as Euclidean distance.
-     * @return A pointer to the added edge
-     * @see addEdge
+     * @return True if successful (false if failed)
+     * @see addEdge for adding a directional edge
      */
-    bool addRoad(const Point2ID& node1, const Point2ID& node2, double cost = -1.0);
+    bool addRoad(ID node1, ID node2, double cost = -1.0);
 
     /**
      * Add a directed edge between two nodes (time complexity: O(1))
@@ -86,9 +110,20 @@ public:
      * @param cost Cost from the start to destination nodes (default: -1)<br>
      *  If the cost is given as a negative value, it is automatically assigned as Euclidean distance.
      * @return A pointer to the added edge
-     * @see addRoad
+     * @see addRoad for adding a bi-directional edge
      */
     Edge* addEdge(Node* from, Node* to, double cost = -1.0);
+
+    /**
+     * Add a directed edge between two nodes (time complexity: O(1))
+     * @param from Data of the start node
+     * @param to Data of the destination node
+     * @param cost Cost from the start to destination nodes (default: -1)<br>
+     *  If the cost is given as a negative value, it is automatically assigned as Euclidean distance.
+     * @return A pointer to the added edge
+     * @see addRoad for adding a bi-directional edge
+     */
+    Edge* addEdge(const Point2ID& from, const Point2ID& to, double cost = -1.0);
 
     /**
      * Add a directed edge between two nodes (time complexity: O(1))
@@ -97,10 +132,13 @@ public:
      * @param cost Cost from the start to destination nodes (default: -1)<br>
      *  If the cost is given as a negative value, it is automatically assigned as Euclidean distance.
      * @return A pointer to the added edge
-     * @see addRoad
+     * @see addRoad for adding a bi-directional edge
      */
-    Edge* addEdge(const Point2ID& from, const Point2ID& to, double cost = -1.0);
+    Edge* addEdge(ID from, ID to, double cost = -1.0);
 };
+
+/** A map visualizer for dg::SimpleRoadMap */
+typedef GraphPainter<Point2ID, double> SimpleRoadPainter;
 
 } // End of 'dg'
 

@@ -9,7 +9,10 @@ namespace dg
 /** Time stamp (unit: [sec]) */
 typedef double Timestamp;
 
-/** Identifier */
+/**
+ * Identifier<br>
+ * When the value of ID is given as 0, it means unknown (invalid) ID.
+ */
 typedef uint64_t ID;
 
 /**
@@ -98,7 +101,7 @@ public:
 
     /**
      * Overriding the assignment operator
-     * @param p A 2D point in the right-hand side
+     * @param rhs A 2D point in the right-hand side
      * @return The assigned instance
      */
     LonLat& operator=(const Point2& rhs)

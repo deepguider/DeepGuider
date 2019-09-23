@@ -1,32 +1,32 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
 
-dg::SimpleRoadMap getExampleMap()
+dg::Map getExampleMap()
 {
-    // An example road map ('+' represents direction of edges)
-    // 2 --+ 3 +-+ 5 +-- 6
-    // +     |     +     |
-    // |     +     |     +
-    // 1 +-- 4     7 +-- 8
+    // An example map
+    // 2 --- 3 --- 5 --- 6
+    // |     |     |     |
+    // |     |     |     |
+    // 1 --- 4     7 --- 8
 
-    dg::SimpleRoadMap map;
-    map.addNode(dg::Point2ID(1, 0, 0)); // ID, x, y
-    map.addNode(dg::Point2ID(2, 0, 1));
-    map.addNode(dg::Point2ID(3, 1, 1));
-    map.addNode(dg::Point2ID(4, 1, 0));
-    map.addNode(dg::Point2ID(5, 2, 1));
-    map.addNode(dg::Point2ID(6, 3, 1));
-    map.addNode(dg::Point2ID(7, 2, 0));
-    map.addNode(dg::Point2ID(8, 3, 0));
-    map.addEdge(dg::Point2ID(1), dg::Point2ID(2));
-    map.addEdge(dg::Point2ID(2), dg::Point2ID(3));
-    map.addEdge(dg::Point2ID(3), dg::Point2ID(4));
-    map.addEdge(dg::Point2ID(4), dg::Point2ID(1));
-    map.addRoad(dg::Point2ID(3), dg::Point2ID(5)); // Add a bi-directional edge
-    map.addEdge(dg::Point2ID(6), dg::Point2ID(5));
-    map.addEdge(dg::Point2ID(6), dg::Point2ID(8));
-    map.addEdge(dg::Point2ID(7), dg::Point2ID(5));
-    map.addEdge(dg::Point2ID(8), dg::Point2ID(7));
+    dg::Map map;
+    map.addNode(dg::NodeInfo(1, 0, 0)); // ID, x, y
+    map.addNode(dg::NodeInfo(2, 0, 1));
+    map.addNode(dg::NodeInfo(3, 1, 1));
+    map.addNode(dg::NodeInfo(4, 1, 0));
+    map.addNode(dg::NodeInfo(5, 2, 1));
+    map.addNode(dg::NodeInfo(6, 3, 1));
+    map.addNode(dg::NodeInfo(7, 2, 0));
+    map.addNode(dg::NodeInfo(8, 3, 0));
+    map.addRoad(1, 2); // ID_1, ID_2
+    map.addRoad(1, 4);
+    map.addRoad(2, 3);
+    map.addRoad(3, 4);
+    map.addRoad(3, 5);
+    map.addRoad(5, 6);
+    map.addRoad(5, 7);
+    map.addRoad(6, 8);
+    map.addRoad(7, 8);
     return map;
 }
 
@@ -59,8 +59,8 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 int main()
 {
     // Load a map
-    dg::SimpleRoadMap map = getExampleMap();
     dg::SimpleMetricLocalizer localizer;
+    dg::Map map = getExampleMap();
     if (!localizer.loadMap(map)) return -1;
 
     // Prepare visualization
@@ -84,8 +84,8 @@ int main()
         dg::Pose2 pose = localizer.getPose();
         painter.drawNode(image, map_info, dg::Point2ID(0, pose.x, pose.y), 0.1, 0, cx::COLOR_MAGENTA);
 
-        cv::imshow("Simple Test", image);
-        int key = cv::waitKeyEx();
+        cv::imshow("Project Template", image);
+        int key = cv::waitKey();
         if (key == cx::KEY_ESC) return -1;
     }
 

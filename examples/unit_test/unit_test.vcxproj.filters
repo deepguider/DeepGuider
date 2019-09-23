@@ -21,27 +21,45 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\core\simple_road_map.cpp">
+    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="vvs.h">
+    <ClInclude Include="..\..\src\core\basic_type.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_directed_graph.hpp">
+    <ClInclude Include="..\..\src\core\directed_graph.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_simple_localizer.hpp">
+    <ClInclude Include="..\..\src\core\graph_painter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_gps2utm.hpp">
+    <ClInclude Include="..\..\src\core\localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_map.hpp">
+    <ClInclude Include="..\..\src\core\map.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_simple_road.hpp">
+    <ClInclude Include="..\..\src\localizer\simple_localizer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\simple_road_map.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_core_graph.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_core_map.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_gps2utm.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_simple.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_road.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

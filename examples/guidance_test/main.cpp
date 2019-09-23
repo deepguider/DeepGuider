@@ -1,6 +1,7 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
-//#include "simple_map_manager_jsh.h"
+#include "guidance.hpp"
+
 
 dg::SimpleRoadMap getExampleMap()
 {
@@ -193,21 +194,17 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 
 std::vector<dg::NodeInfo> getExamplePath()
 {
-	std::vector<dg::NodeInfo> path;
-
-	dg::NodeInfo Path1(1, 0, 0, 0, 1);
-	dg::NodeInfo Path2(2, 0, 1, 0, 1);
-	dg::NodeInfo Path3(3, 1, 1, 1, 1);
-	dg::NodeInfo Path4(5, 2, 1, 1, 1);
-	dg::NodeInfo Path5(7, 2, 0, 0, 1);
-	dg::NodeInfo Path6(8, 3, 0, 0, 1);
-	
-	path.push_back(Path1);
-	path.push_back(Path2);
-	path.push_back(Path3);
-	path.push_back(Path4);
-	path.push_back(Path5);
-	path.push_back(Path6);
+	//Path generation should be modified. 
+	//It does not contain x,y coordinates.(2019-09-20 JSH)
+	std::vector<dg::NodeInfo> path = 
+	{
+		dg::NodeInfo (1, 0, 0, 0, 1),
+		dg::NodeInfo (2, 0, 1, 0, 1),
+		dg::NodeInfo (3, 1, 1, 1, 1),
+		dg::NodeInfo (5, 2, 1, 1, 1),
+		dg::NodeInfo (7, 2, 0, 0, 1),
+		dg::NodeInfo (8, 3, 0, 0, 1)
+	};
 
 	return path;
 }
@@ -222,8 +219,12 @@ int main()
 	//added by seohyun
 	std::vector<dg::NodeInfo> path = getExamplePath();
 
+	//Perform Guide generator
+	dg::Guidance guider;
+	std::vector<dg::Guidance::ActionType <dg::Guidance::Motion, int>> guides = guider.generateGuide(path);
+
     // Prepare visualization
-    dg::MapPainter painter;
+	dg::SimpleRoadPainter painter;
     if (!painter.setParamValue("pixel_per_meter", 200)) return -1;
     if (!painter.setParamValue("node_font_scale", 2 * 0.5)) return -1;
     dg::CanvasInfo map_info = painter.getCanvasInfo(map);

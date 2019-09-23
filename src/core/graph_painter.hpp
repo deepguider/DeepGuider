@@ -1,8 +1,8 @@
-#ifndef __MAP_PAINTER__
-#define __MAP_PAINTER__
+#ifndef __GRAPH_PAINTER__
+#define __GRAPH_PAINTER__
 
 #include "opencx.hpp"
-#include "core/simple_road_map.hpp"
+#include "core/directed_graph.hpp"
 
 namespace dg
 {
@@ -21,10 +21,15 @@ public:
     double margin;
 };
 
-class MapPainter : public cx::Algorithm
+template<typename D, typename C>
+class GraphPainter : public cx::Algorithm
 {
 public:
-    MapPainter()
+    typedef DirectedGraph<D, C> Point2IDGraph;
+
+    typedef NodeType<D, C> Point2IDNode;
+
+    GraphPainter()
     {
         m_pixel_per_meter = 100;
 
@@ -55,6 +60,8 @@ public:
         m_edge_thickness = 2;
         m_edge_arrow_length = 0.05;
     }
+
+    virtual ~GraphPainter() { }
 
     virtual int readParam(const cv::FileNode& fn)
     {
@@ -129,7 +136,7 @@ public:
         return false;
     }
 
-    bool drawMap(cv::Mat& image, SimpleRoadMap& map) const
+    bool drawMap(cv::Mat& image, Point2IDGraph& map) const
     {
         CanvasInfo info = getCanvasInfo(map);
         if (image.empty())
@@ -142,7 +149,7 @@ public:
         if (!image.empty())
         {
             drawNodes(image, info, map, m_node_radius, m_node_font_scale, m_node_color, m_node_thickness);
-            for (SimpleRoadMap::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
+            for (Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
             {
                 drawEdges(image, info, map, &(*n), m_node_radius, m_edge_color, m_edge_thickness, m_edge_arrow_length);
             }
@@ -151,20 +158,20 @@ public:
         return false;
     }
 
-    CanvasInfo getCanvasInfo(SimpleRoadMap& map) const
+    CanvasInfo getCanvasInfo(Point2IDGraph& map) const
     {
         return buildCanvasInfo(map, m_pixel_per_meter, m_canvas_margin);
     }
 
-    static CanvasInfo buildCanvasInfo(SimpleRoadMap& map, double ppm, double margin)
+    static CanvasInfo buildCanvasInfo(Point2IDGraph& map, double ppm, double margin)
     {
         CanvasInfo info;
         info.ppm = ppm;
         info.margin = margin;
-        if (!map.isEmpty())
+        if (map.countNodes() > 0)
         {
             Point2 box_min = map.getHeadNode()->data, box_max = map.getHeadNode()->data;
-            for (SimpleRoadMap::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
+            for (Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
             {
                 if (n->data.x < box_min.x) box_min.x = n->data.x;
                 if (n->data.y < box_min.y) box_min.y = n->data.y;
@@ -274,7 +281,7 @@ public:
         return true;
     }
 
-    static bool drawNodes(cv::Mat& image, const CanvasInfo& info, SimpleRoadMap& map, double radius, double font_scale, const cv::Vec3b& color, int thickness = -1)
+    static bool drawNodes(cv::Mat& image, const CanvasInfo& info, Point2IDGraph& map, double radius, double font_scale, const cv::Vec3b& color, int thickness = -1)
     {
         CV_DbgAssert(!image.empty());
 
@@ -282,7 +289,7 @@ public:
         const cv::Point font_offset(-r / 2, r / 2);
         cv::Vec3b font_color = color;
         if (thickness < 0) font_color = cv::Vec3b(255, 255, 255) - color;
-        for (SimpleRoadMap::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
+        for (Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
         {
             const cv::Point p = cvtMeter2Pixel(n->data, info);
             cv::circle(image, p, r, color, thickness);
@@ -319,14 +326,14 @@ public:
         return true;
     }
 
-    static bool drawEdges(cv::Mat& image, const CanvasInfo& info, SimpleRoadMap& map, SimpleRoadMap::Node* node, double radius, const cv::Vec3b& color, int thickness = 1, double arrow_length = -1)
+    static bool drawEdges(cv::Mat& image, const CanvasInfo& info, Point2IDGraph& map, Point2IDNode* node, double radius, const cv::Vec3b& color, int thickness = 1, double arrow_length = -1)
     {
         CV_DbgAssert(!image.empty());
         if (thickness <= 0 || node == NULL) return false;
 
         const double r = radius * info.ppm;
         const double a = arrow_length * info.ppm;
-        for (SimpleRoadMap::EdgeItr e = map.getHeadEdge(node); e != map.getTailEdge(node); e++)
+        for (Point2IDGraph::EdgeItr e = map.getHeadEdge(node); e != map.getTailEdge(node); e++)
         {
             // Draw an edge
             Point2 p = cvtMeter2Pixel(node->data, info);
@@ -402,8 +409,8 @@ protected:
 
     double m_edge_arrow_length;
 
-}; // End of 'MapPainter'
+}; // End of 'GraphPainter'
 
 } // End of 'dg'
 
-#endif // End of '__MAP_PAINTER_SIMPLE__'
+#endif // End of '__GRAPH_PAINTER__'

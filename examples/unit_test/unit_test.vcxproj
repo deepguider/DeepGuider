@@ -92,16 +92,22 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
-    <ClCompile Include="..\..\src\core\simple_road_map.cpp" />
+    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="test_map.hpp" />
-    <ClInclude Include="test_simple_road.hpp" />
-    <ClInclude Include="vvs.h" />
-    <ClInclude Include="test_directed_graph.hpp" />
-    <ClInclude Include="test_simple_localizer.hpp" />
-    <ClInclude Include="test_gps2utm.hpp" />
+    <ClInclude Include="..\..\src\core\basic_type.hpp" />
+    <ClInclude Include="..\..\src\core\directed_graph.hpp" />
+    <ClInclude Include="..\..\src\core\graph_painter.hpp" />
+    <ClInclude Include="..\..\src\core\localizer.hpp" />
+    <ClInclude Include="..\..\src\core\map.hpp" />
+    <ClInclude Include="..\..\src\localizer\simple_localizer.hpp" />
+    <ClInclude Include="..\..\src\localizer\simple_road_map.hpp" />
+    <ClInclude Include="test_core_graph.hpp" />
+    <ClInclude Include="test_core_map.hpp" />
+    <ClInclude Include="test_localizer_gps2utm.hpp" />
+    <ClInclude Include="test_localizer_road.hpp" />
+    <ClInclude Include="test_localizer_simple.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

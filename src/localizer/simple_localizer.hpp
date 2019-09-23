@@ -1,7 +1,6 @@
 #ifndef __SIMPLE_LOCALIZER__
 #define __SIMPLE_LOCALIZER__
 
-#include "opencx.hpp"
 #include "dg_core.hpp"
 
 namespace dg
@@ -16,13 +15,42 @@ public:
         return m_pose_metric;
     }
 
+    virtual bool loadMap(const Map& map, bool is_lonlat = false)
+    {
+        cv::AutoLock lock(m_mutex);
+        // Copy nodes
+        m_map.removeAll();
+        for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
+        {
+            if (m_map.addNode(node->data) == NULL)
+            {
+                m_map.removeAll();
+                return false;
+            }
+        }
+
+        // Copy edges
+        for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
+        {
+            for (auto edge = map.getHeadEdgeConst(node); edge != map.getTailEdgeConst(node); edge++)
+            {
+                if (m_map.addEdge(node->data, edge->to->data) == NULL)
+                {
+                    m_map.removeAll();
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     virtual bool loadMap(const SimpleRoadMap& map)
     {
         cv::AutoLock lock(m_mutex);
         return map.copyTo(&m_map);
     }
 
-    virtual bool saveMap(SimpleRoadMap& map) const
+    virtual bool copyMap(SimpleRoadMap& map) const
     {
         cv::AutoLock lock(m_mutex);
         return m_map.copyTo(&map);
@@ -93,21 +121,11 @@ public:
         return true;
     }
 
-    virtual bool applyLocClue(const std::vector<int>& ids, const std::vector<Polar2>& obs, Timestamp time = -1)
+    virtual bool applyLocClue(const std::vector<int>& node_ids, const std::vector<Polar2>& obs, Timestamp time = -1)
     {
-        if (ids.empty() || obs.empty() || ids.size() != obs.size()) return false;
-        return applyLocClue(ids.back(), obs.back(), time);
+        if (node_ids.empty() || obs.empty() || node_ids.size() != obs.size()) return false;
+        return applyLocClue(node_ids.back(), obs.back(), time);
     }
-
-    virtual bool configPose(const Pose2& offset) { return false; }
-
-    virtual bool configPosition(const Pose2& offset) { return false; }
-
-    virtual bool configOrientation(const Pose2& offset) { return false; }
-
-    virtual bool configOdometry(const Pose2& offset) { return false; }
-
-    virtual bool configLocCue(const Pose2& offset) { return false; }
 
 protected:
     SimpleRoadMap m_map;

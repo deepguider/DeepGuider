@@ -1,7 +1,6 @@
 #ifndef __LOCALIZER__
 #define __LOCALIZER__
 
-#include "core/simple_road_map.hpp"
 #include <vector>
 
 namespace dg
@@ -11,12 +10,6 @@ class Localizer
 {
 public:
     virtual ~Localizer() { }
-
-    virtual bool loadMap(const SimpleRoadMap& map) = 0;
-
-    virtual bool saveMap(SimpleRoadMap& map) const = 0;
-
-    virtual const SimpleRoadMap& getMap() const = 0;
 
     virtual bool applyPose(const Pose2& pose, Timestamp time = -1) = 0;
 
@@ -33,16 +26,6 @@ public:
     virtual bool applyLocClue(int id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1) = 0;
 
     virtual bool applyLocClue(const std::vector<int>& ids, const std::vector<Polar2>& obs, Timestamp time = -1) = 0;
-
-    virtual bool configPose(const Pose2& offset) = 0;
-
-    virtual bool configPosition(const Pose2& offset) = 0;
-
-    virtual bool configOrientation(const Pose2& offset) = 0;
-
-    virtual bool configOdometry(const Pose2& offset) = 0;
-
-    virtual bool configLocCue(const Pose2& offset) = 0;
 };
 
 class MetricLocalizer
@@ -63,7 +46,7 @@ public:
     double dist;
 };
 
-class TopometricLocalizer
+class TopometricLocalizer : public MetricLocalizer
 {
 public:
     virtual TopometricPose getPoseTopometric() const = 0;
