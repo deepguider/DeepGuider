@@ -3,47 +3,43 @@
 namespace dg
 {
 
-// 'SimpleMapManager' class
-Map::Map()
-{
-}
-
-int Map::long2tilex(double lon, int z)
+int MapManager::long2tilex(double lon, int z)
 {
 	return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
 }
 
-int Map::lat2tiley(double lat, int z)
+int MapManager::lat2tiley(double lat, int z)
 {
 	double latrad = lat * M_PI / 180.0;
 	return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
 }
 
-double Map::tilex2long(int x, int z)
+double MapManager::tilex2long(int x, int z)
 {
 	return x / (double)(1 << z) * 360.0 - 180;
 }
 
-double Map::tiley2lat(int y, int z)
+double MapManager::tiley2lat(int y, int z)
 {
 	double n = M_PI - 2.0 * M_PI * y / (double)(1 << z);
 	return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
 }
 
-cv::Point2i Map::lonlat2xy(double lon, double lat, int z)
+cv::Point2i MapManager::lonlat2xy(double lon, double lat, int z)
 {
 	return cv::Point2i(long2tilex(lon, z), lat2tiley(lat, z));
 }
 
-void Map::downloadMap(cv::Point2i tile)
+void MapManager::downloadMap(cv::Point2i tile)
 {
 	const std::string url_head = "https://path.to.topological.map.server/";
 	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y) + "/";
+
 }
 
-bool Map::load(double lon, double lat, int z)
+bool MapManager::load(double lon, double lat, int z)
 {
-    removeAll();
+    m_map.removeAll();
 
 	downloadMap(lonlat2xy(lon, lat, z));
 
@@ -84,7 +80,7 @@ bool Map::load(double lon, double lat, int z)
 		nodeinfo.type = node["node_type"].GetInt();
 		nodeinfo.floor = node["floor"].GetInt();
 
-		addNode(nodeinfo);
+		m_map.addNode(nodeinfo);
 	}
 	for (SizeType i = 0; i < nodes.Size(); i++)
 	{
@@ -96,57 +92,22 @@ bool Map::load(double lon, double lat, int z)
 		for (SizeType j = 0; j < edges.Size(); j++)
 		{
 			const Value& edge = edges[j];
-			edgeinfo.id = edge["tid"].GetUint64();
+			ID tid = edge["tid"].GetUint64();
 			edgeinfo.width = edge["width"].GetDouble();
 			edgeinfo.length = edge["length"].GetDouble();
 			edgeinfo.type = edge["edge_type"].GetInt();
 
-			addEdge(from_node, NodeInfo(edgeinfo.id), edgeinfo);
+			m_map.addEdge(from_node, NodeInfo(tid), edgeinfo);
 		}
 	}
 		
 	return true;
 }
 
-bool Map::isEmpty() const
-{
-    return (countNodes() <= 0);
-}
-
 bool MapManager::generatePath()
 {
-	/*http_client client(U("http://en.cppreference.com/w/"));
-	auto resp = client.request(U("GET")).get();
-	wcout << U("STATUS : ") << resp.status_code() << endl;
-	wcout << "content-type : " << resp.headers().content_type() << endl;
-	wcout << resp.extract_string(true).get() << endl;
+	//TODO
 
-	http_client client(U("http://en.cppreference.com/w/"));
-	client.request(U("GET")).then([](http_response resp) {
-		wcout << U("STATUS : ") << resp.status_code() << endl;
-		wcout << "content-type : " << resp.headers().content_type() << endl;
-		resp.extract_string(true).then([](string_t sBoby) {
-			wcout << sBoby << endl;
-			}).wait();
-		}).wait();*/
-
-	/*http_client client(U("https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start=127.31788462835466,36.37407414112156,start_pos&goal=127.3190043087742,36.37253204490351,end_pos&option=trafast") \
-		- H U("X-NCP-APIGW-API-KEY-ID: {h2weu1vyc4}") \
-		- H U("X-NCP-APIGW-API-KEY: {xYSNKDADst7RfmiFnMAyi1EkTcWqusBV1oHwVmax}") -v);*/
-	//http_client client(U("http://date.jsontest.com/"));
-	//http_request req(methods::GET);
-	//client.request(req).then([=](http_response r) {
-	//	wcout << U("STATUS : ") << r.status_code() << endl;
-	//	wcout << "content-type : " << r.headers().content_type() << endl;
-	//	/*r.extract_json(true).then([](json::value v) {
-	//		wcout << v.at(U("message")).as_string() << endl;
-	//		wcout << v.at(U("currentDateTime")).as_string() << endl;
-	//		}).wait();*/
-	//	r.extract_json(true).then([](json::value v) {
-	//		wcout << v.at(U("date")).as_string() << endl;
-	//		wcout << v.at(U("time")).as_string() << endl;
-	//		}).wait();
-	//	}).wait();
 
 		/*curl "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start={출발지}&goal={목적지}&option={탐색옵션}" \
 			- H "X-NCP-APIGW-API-KEY-ID: {애플리케이션 등록 시 발급받은 client id 값}" \
@@ -166,7 +127,6 @@ bool MapManager::generatePath()
 				print(response.text)
 			else:
 		print("Error : " + response.text)*/
-
 
 	return true;
 }
@@ -191,34 +151,35 @@ Path MapManager::getPath(const char* filename)
 	assert(path.IsArray());
 	for (SizeType i = 0; i < path.Size(); i++)
 	{
-		const Value& point = path[i];
-		m_path.m_points.push_back(cv::Point2d(point[0].GetDouble(), point[1].GetDouble()));
+		m_path.m_points.push_back(path[i].GetUint64());
 	}
 
 	return m_path;
 }
 
-Map MapManager::getMap(Path path)
+Map& MapManager::getMap(Path path)
 {
-	
+	//TODO
+	CURL *curl;
+
 	double lon = 128;
 	double lat = 37.5;
 	int z = 19;
 
-	return getMap(lon, lat, z);
+	load(lon, lat, z);
+
+	return getMap();
 }
 
-Map MapManager::getMap(double lon, double lat, int z)
+Map& MapManager::getMap()
 {
-	m_map.load(lon, lat, z);
-
 	return m_map;
 }
 
 std::vector<cv::Point2d> MapManager::getPOIloc(const char* poiname)
 {
 	std::vector<cv::Point2d> points;
-	for (NodeItr node_itr = m_map.getHeadNode(); node_itr != m_map.getTailNode(); node_itr++)
+	for (dg::Map::NodeItr node_itr = m_map.getHeadNode(); node_itr != m_map.getTailNode(); node_itr++)
 	{
 		for (std::vector<std::string>::iterator it = node_itr->data.pois.begin(); it != node_itr->data.pois.end(); it++)
 		{
