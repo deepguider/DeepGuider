@@ -1,6 +1,7 @@
 #ifndef __LOCALIZER__
 #define __LOCALIZER__
 
+#include "core/basic_type.hpp"
 #include <vector>
 
 namespace dg
@@ -32,18 +33,6 @@ class MetricLocalizer
 {
 public:
     virtual Pose2 getPose() const = 0;
-};
-
-class TopometricPose
-{
-public:
-    TopometricPose(int _node_id = -1, int _edge_idx = -1, double _dist = 0) : node_id(_node_id), edge_idx(_edge_idx), dist(_dist) { }
-
-    int node_id;
-
-    int edge_idx;
-
-    double dist;
 };
 
 class TopometricLocalizer : public MetricLocalizer

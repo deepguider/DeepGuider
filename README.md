@@ -1,13 +1,13 @@
 ## DeepGuider
-
-### What is DeepGuider Project?
 _DeepGuider Project_ is ...
 
 ### DeepGuider Modules
-* `core`: ...
-* `map_manager`: ...
-* `localizer`: ...
-* `guidance`: ...
+* `core`: Common and basic data structures and interfaces such as pose, path, map, and algorithms
+* `map_manager`: A module to interact with cloud maps and paths
+* `vps`: Algorithms to find location clues using visual input and street-view images (visual positioning system; VPS)
+* `localizer`: Algorithms to estimate accurate robot pose by merging various location clues
+* `guidance`: Algorithms to guide the robot to follow the given path and recognize its states
+* `exploration`: Algorithms to explore the robot and recover robot pose in degenerate cases such as lost
 
 ### Dependency
 * [OpenCV](http://opencv.org/) (> 3.0.0, [3-clause BSD License](https://opencv.org/license/))
@@ -36,8 +36,8 @@ _DeepGuider Project_ is ...
 ### How to Contribute Your Codes
 Please refer [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### Contributors
-Please refer [CONTRIBUTORS.md](CONTRIBUTORS.md).
+### Authors
+Please refer [AUTHORS.md](AUTHORS.md).
 
 ### License
 Please refer [DeepGuider Project LSA](LICENSE.md).

@@ -99,8 +99,8 @@
     <ClInclude Include="..\..\src\core\basic_type.hpp" />
     <ClInclude Include="..\..\src\core\directed_graph.hpp" />
     <ClInclude Include="..\..\src\core\graph_painter.hpp" />
-    <ClInclude Include="..\..\src\core\localizer.hpp" />
     <ClInclude Include="..\..\src\core\map.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\simple_localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\simple_road_map.hpp" />
     <ClInclude Include="test_core_graph.hpp" />

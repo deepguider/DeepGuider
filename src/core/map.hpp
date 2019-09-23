@@ -8,49 +8,6 @@
 namespace dg
 {
 
-/**
- * @brief 2D point on the earth with ID
- *
- * A 2D point in the geodesic notation is defined with the identifier (shortly ID).
- * It is the counter part of LonLat, similar to Point2 and Point2ID.
- */
-class LonLatID : public Point2ID
-{
-public:
-    /**
-     * A constructor with ID assignment
-     * @param _id The givne ID
-     */
-    LonLatID(ID _id = 0) : Point2ID(_id), lon(x), lat(y) { }
-
-    /**
-     * A constructor with ID, x, and y assignment
-     * @param _id The givne ID
-     * @param _x The given X
-     * @param _y The given Y
-     */
-    LonLatID(ID _id, double _lon, double _lat) : Point2ID(_id, _lon, _lat), lon(x), lat(y) { }
-
-    /**
-     * A constructor with ID, x, and y assignment
-     * @param _id The givne ID
-     * @param p The given 2D point
-     */
-    LonLatID(ID _id, const Point2& p) : Point2ID(_id, p), lon(x), lat(y) { }
-
-    /**
-     * A constructor with ID, x, and y assignment
-     * @param pid The given 2D point with ID
-     */
-    LonLatID(const Point2ID& pid) : Point2ID(pid), lon(x), lat(y) { }
-
-    /** Latitude */
-    double& lon;
-
-    /** Latitude */
-    double& lat;
-};
-
 class NodeInfo : public LonLatID
 {
 public:

@@ -1,7 +1,7 @@
 #ifndef __SIMPLE_LOCALIZER__
 #define __SIMPLE_LOCALIZER__
 
-#include "dg_core.hpp"
+#include "localizer/localizer.hpp"
 
 namespace dg
 {
