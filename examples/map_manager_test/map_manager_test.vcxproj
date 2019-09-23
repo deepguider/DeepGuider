@@ -96,6 +96,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\dg_map_manager.hpp" />
+    <ClInclude Include="..\..\src\map_manager\map_manager.hpp" />
     <ClInclude Include="test_map_manager.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
