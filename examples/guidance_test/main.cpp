@@ -10,6 +10,7 @@ dg::SimpleRoadMap getExampleMap()
     // +     |     +     |
     // |     +     |     +
     // 1 +-- 4     7 +-- 8
+	// example path: 1->2->3->5->7->8
 
     dg::SimpleRoadMap map;
     map.addNode(dg::Point2ID(1, 0, 0)); // ID, x, y
@@ -32,31 +33,113 @@ dg::SimpleRoadMap getExampleMap()
     return map;
 }
 
+std::vector<std::tuple<std::string, cv::Vec3d, std::string>> getExampleDataset()
+{
+    std::vector<std::tuple<std::string, cv::Vec3d, std::string>> dataset =
+    {
+        std::make_tuple("Pose",      cv::Vec3d(0, 0, cx::cvtDeg2Rad(95)), "Ready to start"),
+
+        // cv::Vec3d => RefNode#, Edge#(RefNode# & NextNode#, Each 4-Digit without left-most 0's), Distance from RefNode
+		std::make_tuple("Odometry",  cv::Vec3d(1, 10002, 0.1), "Go straight to next node."),  
+        std::make_tuple("Odometry",  cv::Vec3d(1, 10002, 0.2), "Go straight to next node."),
+        std::make_tuple("Odometry",  cv::Vec3d(1, 10002, 0.3), "Go straight to next node."),
+        std::make_tuple("Odometry",  cv::Vec3d(1, 10002, 0.4), "Go straight to next node."),
+        std::make_tuple("Odometry",  cv::Vec3d(1, 10002, 0.5), "Go straight to next node. You are in the middle point."),
+        std::make_tuple("Odometry",  cv::Vec3d(1, 10002, 0.6), "Go straight to next node."),
+        std::make_tuple("Odometry",  cv::Vec3d(1, 10002, 0.7), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(1, 10002, 0.8), "Go straight to next node. You almost arrived."),
+		std::make_tuple("Odometry",  cv::Vec3d(1, 10002, 0.9), "Go straight to next node and turn right after that."),
+
+//      std::make_tuple("LocClue",   cv::Vec3d(2, -1, CV_PI), "You arrived node #2. Turn right."),
+
+        std::make_tuple("Pose",      cv::Vec3d(0, 1, cx::cvtDeg2Rad(-5)), "You arrived node #2. Turn right."),
+
+		std::make_tuple("Odometry",  cv::Vec3d(2, 20003, 0.1), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(2, 20003, 0.2), "Go straight to next node."),
+        std::make_tuple("Odometry",  cv::Vec3d(2, 20003, 0.3), "Go straight to next node."),
+        std::make_tuple("Odometry",  cv::Vec3d(2, 20003, 0.4), "Go straight to next node."),
+        std::make_tuple("Odometry",  cv::Vec3d(2, 20003, 0.5), "Go straight to next node. You are in the middle point."),
+        std::make_tuple("Odometry",  cv::Vec3d(2, 20003, 0.6), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(2, 20003, 0.7), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(2, 20003, 0.8), "Go straight to next node. You almost arrived."),
+		std::make_tuple("Odometry",  cv::Vec3d(2, 20003, 0.9), "Go straight to next node and cross a crosswalk after that."),
+
+//      std::make_tuple("LocClue",   cv::Vec3d(3, -1, CV_PI), "You arrived node #3. Cross a crosswalk."),
+
+		std::make_tuple("Pose",      cv::Vec3d(1, 1, cx::cvtDeg2Rad(0)), "You arrived node #3. Cross a crosswalk."),
+
+		std::make_tuple("Odometry",  cv::Vec3d(3, 30005, 0.1), "Be careful to cross a crosswalk."),
+		std::make_tuple("Odometry",  cv::Vec3d(3, 30005, 0.2), "Be careful to cross a crosswalk."),
+		std::make_tuple("Odometry",  cv::Vec3d(3, 30005, 0.3), "Be careful to cross a crosswalk."),
+		std::make_tuple("Odometry",  cv::Vec3d(3, 30005, 0.4), "Be careful to cross a crosswalk."),
+		std::make_tuple("Odometry",  cv::Vec3d(3, 30005, 0.5), "Be careful to cross a crosswalk. You are in the middle point."),
+		std::make_tuple("Odometry",  cv::Vec3d(3, 30005, 0.6), "Be careful to cross a crosswalk."),
+		std::make_tuple("Odometry",  cv::Vec3d(3, 30005, 0.7), "Be careful to cross a crosswalk."),
+		std::make_tuple("Odometry",  cv::Vec3d(3, 30005, 0.8), "Be careful to cross a crosswalk. You almost done."),
+		std::make_tuple("Odometry",  cv::Vec3d(3, 30005, 0.9), "Be careful to cross a crosswalk and turn right after that."),
+
+//		std::make_tuple("LocClue",   cv::Vec3d(5, -1, CV_PI), "You arrived node #5. Turn right."),
+
+		std::make_tuple("Pose",      cv::Vec3d(2, 1, cx::cvtDeg2Rad(-85)), "You arrived node #5. Turn right."),
+
+		std::make_tuple("Odometry",  cv::Vec3d(5, 50007, 0.1), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(5, 50007, 0.2), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(5, 50007, 0.3), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(5, 50007, 0.4), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(5, 50007, 0.5), "Go straight to next node. You are in the middle point."),
+		std::make_tuple("Odometry",  cv::Vec3d(5, 50007, 0.6), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(5, 50007, 0.7), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(5, 50007, 0.8), "Go straight to next node. You almost arrived."),
+		std::make_tuple("Odometry",  cv::Vec3d(5, 50007, 0.9), "Go straight to next node and turn left after that."),
+
+//		std::make_tuple("LocClue",   cv::Vec3d(7, -1, CV_PI), "You arrived node #7. Turn left."),
+
+		std::make_tuple("Pose",      cv::Vec3d(2, 0, cx::cvtDeg2Rad(-5)), "You arrived node #7. Turn left."),
+
+		std::make_tuple("Odometry",  cv::Vec3d(7, 70008, 0.1), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(7, 70008, 0.2), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(7, 70008, 0.3), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(7, 70008, 0.4), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(7, 70008, 0.5), "Go straight to next node. You are in the middle point."),
+		std::make_tuple("Odometry",  cv::Vec3d(7, 70008, 0.6), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(7, 70008, 0.7), "Go straight to next node."),
+		std::make_tuple("Odometry",  cv::Vec3d(7, 70008, 0.8), "Go straight to next node. You almost arrived."),
+		std::make_tuple("Odometry",  cv::Vec3d(7, 70008, 0.9), "Go straight to next node. The goal is nearby."),
+
+//		std::make_tuple("LocClue",   cv::Vec3d(8, -1, CV_PI), "Now you arrived at the goal point."),
+
+		std::make_tuple("Pose",      cv::Vec3d(3, 0, cx::cvtDeg2Rad(90)), "Now you arrived at the goal point."),
+
+    };
+    return dataset;
+} 
+
+/*
 std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 {
-    std::vector<std::pair<std::string, cv::Vec3d>> dataset =
-    {
-        std::make_pair("Pose",      cv::Vec3d(0, 0, cx::cvtDeg2Rad(95))),
+	std::vector<std::pair<std::string, cv::Vec3d>> dataset =
+	{
+		std::make_pair("Pose",      cv::Vec3d(0, 0, cx::cvtDeg2Rad(95))),
 
-        std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.1)),  // RefNode#, Edge#(RefNode# & NextNode#, Each 4-Digit without left-most 0's), Distance from RefNode
-        std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.2)),
-        std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.3)),
-        std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.4)),
-        std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.5)),
-        std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.6)),
-        std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.7)),
+		std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.1)),  // RefNode#, Edge#(RefNode# & NextNode#, Each 4-Digit without left-most 0's), Distance from RefNode
+		std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.2)),
+		std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.3)),
+		std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.4)),
+		std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.5)),
+		std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.6)),
+		std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.7)),
 		std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.8)),
 		std::make_pair("Odometry",  cv::Vec3d(1, 10002, 0.9)),
 //      std::make_pair("LocClue",   cv::Vec3d(2, -1, CV_PI)),
 
-        std::make_pair("Pose",      cv::Vec3d(0, 1, cx::cvtDeg2Rad(-5))),
+		std::make_pair("Pose",      cv::Vec3d(0, 1, cx::cvtDeg2Rad(-5))),
 
 		std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.1)),
 		std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.2)),
-        std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.3)),
-        std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.4)),
-        std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.5)),
-        std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.6)),
+		std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.3)),
+		std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.4)),
+		std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.5)),
+		std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.6)),
 		std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.7)),
 		std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.8)),
 		std::make_pair("Odometry",  cv::Vec3d(2, 20003, 0.9)),
@@ -103,9 +186,11 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 
 		std::make_pair("Pose",      cv::Vec3d(3, 0, cx::cvtDeg2Rad(90))),
 
-    };
-    return dataset;
+	};
+	return dataset;
 }
+*/
+
 
 std::vector<dg::NodeInfo> getExamplePath()
 {
@@ -153,19 +238,19 @@ int main()
 
     for (size_t t = 0; t < dataset.size(); t++)
     {
-        const cv::Vec3d& d = dataset[t].second;
+        const cv::Vec3d& d = std::get<1>(dataset[t]);
 		
 //      if (dataset[t].first == "Pose")     localizer.applyPose(dg::Pose2(d[0], d[1], d[2]), t);
 //		if (dataset[t].first == "Odometry") localizer.applyOdometry(dg::Polar2(d[0], d[1]), t);
 //      if (dataset[t].first == "LocClue")  localizer.applyLocClue(int(d[0]), dg::Polar2(d[1], d[2]), t);
 
-		if (dataset[t].first == "Pose")
+		if (std::get<0>(dataset[t]) == "Pose")
 		{
 			preDist = (0, 0);
 			curDist = (0, 0);
 			localizer.applyPose(dg::Pose2(d[0], d[1], d[2]), t);
 		}
-		if (dataset[t].first == "Odometry")
+		if (std::get<0>(dataset[t]) == "Odometry")
 		{
 			// d[0]=RefNode#, d[1]=Edge#(RefNode# & NextNode#), d[2]=Distance from RefNode
 			curDist[0] = d[2] - preDist[0];
@@ -178,15 +263,12 @@ int main()
         dg::Pose2 pose = localizer.getPose();
         painter.drawNode(image, map_info, dg::Point2ID(0, pose.x, pose.y), 0.1, 0, cx::COLOR_MAGENTA);
 
-        cv::imshow("Simple Test", image);
-
-//		cv::Size sizeImage = image.size();
-//		cv::Point locText = (sizeImage.width / 2, sizeImage.height / 2);
-//		cv::putText(image, "Go Straight", locText, 2, 2.0, cv::Scalar(0, 0, 255));
+		cv::putText(image, std::get<2>(dataset[t]), cv::Point(40, 335), 1, 1.3, cv::Scalar(0, 0, 255));
+		
+		cv::imshow("Simple Test", image);
 
         int key = cv::waitKeyEx();
         if (key == cx::KEY_ESC) return -1;
     }
-
     return 0;
 }
