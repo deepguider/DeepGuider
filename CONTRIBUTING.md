@@ -14,15 +14,15 @@ You can contibute DeepGuider as
   * File naming: **snake_case** (e.g. `basic_type.hpp`)
   * File extension: `hpp` for headers and `cpp` for implementation
     * A header file starts from code fence as follows.
-```cpp
-#ifndef __HEADER_NAME__
-#define __HEADER_NAME__
-namespace dg
-{
+    ```cpp
+    #ifndef __HEADER_NAME__
+    #define __HEADER_NAME__
+    namespace dg
+    {
     ...
-}
-#endif // End of '__HEADER_NAME__
-```
+    }
+    #endif // End of '__HEADER_NAME__'  
+    ```
   * Class naming: **PascalCase** (e.g. `RoadDetector`)
   * Function naming: **camelCase** (e.g. `addRoad`)
     * Function names usually start from _verb_ or its abbreviation. (e.g. `calibrateCamera`, `calcOpticalFlowPyrLK`)
