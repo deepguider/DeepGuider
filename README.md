@@ -3,11 +3,11 @@ _DeepGuider Project_ is ...
 
 ### DeepGuider Modules
 * `core`: Common and basic data structures and interfaces such as pose, path, map, and algorithms
-* `map_manager`: A module to interact with cloud maps and paths
-* `vps`: Algorithms to find location clues using visual input and street-view images (visual positioning system; VPS)
-* `localizer`: Algorithms to estimate accurate robot pose by merging various location clues
-* `guidance`: Algorithms to guide the robot to follow the given path and recognize its states
-* `exploration`: Algorithms to explore the robot and recover robot pose in degenerate cases such as lost
+* `map_manager`: Map management modules to interact with cloud maps and paths
+* `vps`: Vision algorithms to find location clues using input images and street-view images (visual positioning system; VPS)
+* `localizer`: Localization algorithms to estimate accurate robot pose by merging various location clues
+* `guidance`: Guidance algorithms for the robot to follow the given path and recognize its navigation states
+* `exploration`: Exploration and recovery algorithms in degenerate cases such as lost
 
 ### Dependency
 * [OpenCV](http://opencv.org/) (> 3.0.0, [3-clause BSD License](https://opencv.org/license/))
