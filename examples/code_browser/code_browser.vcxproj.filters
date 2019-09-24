@@ -22,6 +22,9 @@
     <Filter Include="Header Files\map_manager">
       <UniqueIdentifier>{83a83966-0742-485d-9e87-23f9ad479939}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\road_recog">
+      <UniqueIdentifier>{635fed0e-f2d9-48c5-8d92-9ccc5464d824}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -30,8 +33,11 @@
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp">
       <Filter>Header Files\map_manager</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\core\simple_road_map.cpp">
-      <Filter>Header Files\core</Filter>
+    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\road_recog\road_dir_recognizer.cpp">
+      <Filter>Header Files\road_recog</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -59,13 +65,7 @@
     <ClInclude Include="..\..\src\core\map.hpp">
       <Filter>Header Files\core</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\core\map_painter.hpp">
-      <Filter>Header Files\core</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\core\path.hpp">
-      <Filter>Header Files\core</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\core\simple_road_map.hpp">
       <Filter>Header Files\core</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\localizer\simple_localizer.hpp">
@@ -73,6 +73,15 @@
     </ClInclude>
     <ClInclude Include="..\..\src\map_manager\map_manager.hpp">
       <Filter>Header Files\map_manager</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\simple_road_map.hpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\core\graph_painter.hpp">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\road_recog\road_dir_recognizer.hpp">
+      <Filter>Header Files\road_recog</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -91,24 +91,26 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\core\simple_road_map.cpp" />
+    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
+    <ClCompile Include="..\..\src\road_recog\road_dir_recognizer.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\core\basic_type.hpp" />
     <ClInclude Include="..\..\src\core\directed_graph.hpp" />
+    <ClInclude Include="..\..\src\core\graph_painter.hpp" />
     <ClInclude Include="..\..\src\core\localizer.hpp" />
     <ClInclude Include="..\..\src\core\map.hpp" />
-    <ClInclude Include="..\..\src\core\map_painter.hpp" />
     <ClInclude Include="..\..\src\core\path.hpp" />
-    <ClInclude Include="..\..\src\core\simple_road_map.hpp" />
     <ClInclude Include="..\..\src\dg_core.hpp" />
     <ClInclude Include="..\..\src\dg_localizer.hpp" />
     <ClInclude Include="..\..\src\dg_map_manager.hpp" />
     <ClInclude Include="..\..\src\localizer\simple_localizer.hpp" />
+    <ClInclude Include="..\..\src\localizer\simple_road_map.hpp" />
     <ClInclude Include="..\..\src\map_manager\map_manager.hpp" />
     <ClInclude Include="..\..\src\opencx.hpp" />
+    <ClInclude Include="..\..\src\road_recog\road_dir_recognizer.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
