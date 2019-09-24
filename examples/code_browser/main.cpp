@@ -3,7 +3,7 @@
 
 int main()
 {
-	printf("This is a dimmy project for browsing library codes in one project.");
+	printf("This is a dummy project for browsing library codes in one project.");
 
     return 0;
 }
