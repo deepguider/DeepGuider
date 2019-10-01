@@ -1,13 +1,12 @@
-# input  : timestamp , image
-# output : <double>angle (unit : radian)
+# input  : image, timestamp
+# output : <double>angle (unit : radian), <double>prob
 
 import cv2
-import road_dir_recognizer as rdr
-from road_dir_recognizer import RoadDirRecognizer as r_dir
+from road_direction_recognizer import RoadDirectionRecognizer as rd
 
-time=3.14
+timestamp = 123.456
 filename = 'sample.jpg'
 
-sample = r_dir()
+module = rd()
 image = cv2.imread(filename)
-sample.apply(image,time)
+module.apply(image, timestamp)
