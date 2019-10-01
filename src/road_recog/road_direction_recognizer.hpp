@@ -28,7 +28,7 @@ public:
 	int apply(cv::Mat image, Timestamp t)
 	{
 		std::string src_name = "road_direction_recognizer";
-		std::string class_name = "RoadDirRecognizer";
+		std::string class_name = "RoadDirectionRecognizer";
 		std::string func_name = "apply";
 
 		PyObject* pName, * pModule, * pDict, * pClass, * pFunc;
