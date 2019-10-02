@@ -2,27 +2,30 @@ import cv2 as cv
 
 class RoadDirectionRecognizer:
     def __init__(self):
-        self.prob = 0	# reliablity of the result. 0: fail, 1: sucess
-        self.angle = 0
+        self.angle = 0.0  # road direction (radian)
+        self.prob = 0.0   # reliablity of the result. 0: fail ~ 1: success
+        
     def get_param(self):
         # get parameter
         return 0
+        
     def set_param(self):
         # set parameter
         return 0
 
     def apply(self, image, timestamp):
-        self.timestamp = timestamp
         self.image = image
+        self.timestamp = timestamp
 
         ##### Process Input #####
         cv.imshow("sample", image)
         cv.waitKey()
+        cv.destroyWindow("sample")
         
-        ##### To Do #####
-        self.angle = 10.0 # radian
-        self.flag = 1 # whether finding road direction success or not
-        return self.angle, self.flag
+        ##### Results #####
+        self.angle = 10.0
+        self.prob = 1
+        return self.angle, self.prob
 
     def getAngle(self):
         return self.angle

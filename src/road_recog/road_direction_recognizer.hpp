@@ -7,8 +7,6 @@
 #include <Python.h>
 #include "numpy\arrayobject.h"
 
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-
 using namespace std;
 
 namespace dg
@@ -23,7 +21,9 @@ class RoadDirectionRecognizer
 	double prob = -1;
 
 public:
-	RoadDirectionRecognizer();
+	RoadDirectionRecognizer()
+	{
+	}
 
 	int apply(cv::Mat image, Timestamp t)
 	{

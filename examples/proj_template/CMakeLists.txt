@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(BINDIR	"${CMAKE_SOURCE_DIR}/../../bin")
 set(AUTHOR_NAME	"jaeyeong.lee")
 
-get_filename_com ponent(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
+get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
 string(REPLACE " " "_" ProjectId ${ProjectId})
 project(${ProjectId} C CXX)
 find_package( OpenCV REQUIRED )

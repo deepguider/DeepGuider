@@ -1,9 +1,6 @@
 #include "dg_core.hpp"
 #include "dg_road_recog.hpp"
 
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
-
 using namespace dg;
 using namespace std;
 
@@ -19,7 +16,7 @@ int main()
 
 	double ang, p;
 	road_recog.get(ang, p);
-	printf("ang = %lf, prob = %lf\n", ang, p);
+	printf("angle = %lf, prob = %lf\n", ang, p);
 
 	return 0;
 }
