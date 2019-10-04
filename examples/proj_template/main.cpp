@@ -20,7 +20,7 @@ dg::Map getExampleMap()
     map.addNode(dg::NodeInfo(8, 3, 0));
     map.addRoad(1, 2); // ID_1, ID_2
     map.addRoad(1, 4);
-    map.addRoad(2, 3);
+    map.addRoad(2, 3); 
     map.addRoad(3, 4);
     map.addRoad(3, 5);
     map.addRoad(5, 6);
