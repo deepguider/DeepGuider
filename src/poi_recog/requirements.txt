@@ -1,0 +1,6 @@
+matplotlib
+keras==2.2.4
+pillow
+scikit-learn
+opencv
+tensorflow-gpu
