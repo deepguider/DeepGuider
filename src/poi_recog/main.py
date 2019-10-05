@@ -12,7 +12,7 @@ ImageFile.LOAD_TRUNCATED_IMAGE = True
 
 from timeit import default_timer as timer
 from keras_yolo3.yolo import YOLO
-from logos import detect_logo, match_logo
+from logos import detect_logo, match_logo, detect_logo_demo
 #from similarity import load_brands_compute_cutoffs
 from utils import load_extractor_model, load_features, model_flavor_from_name, parse_input
 
@@ -79,3 +79,8 @@ if __name__ == '__main__':
     timestamp = 123.456
     filename = './model/inception_logo_features_200_trunc2.hdf5'
     test(filename, timestamp)
+    '''
+    image = cv2.imread('./data/test/input/test_starbucks.png')
+    pred, timestamp = detect_logo_demo('./data/test/input/test_starbucks.png', timestamp)
+    print(pred, timestamp)
+    '''

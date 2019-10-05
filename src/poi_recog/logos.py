@@ -25,7 +25,10 @@ def detect_logo_demo(img_path, timestamp):
     model, preprocess_input, input_shape = load_extractor_model(model_name, flavor)
     my_preprocess = lambda x: preprocess_input(utils.pad_image(x, input_shape))
 
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = Image.open(img_path)
+    if image.mode != 'RGB':
+        image = image.convert("RGB")
+    #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image_array = np.array(image)
 
     prediction, new_image = yolo.detect_image(image)
