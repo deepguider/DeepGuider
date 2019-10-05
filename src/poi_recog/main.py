@@ -13,15 +13,14 @@ ImageFile.LOAD_TRUNCATED_IMAGE = True
 from timeit import default_timer as timer
 from keras_yolo3.yolo import YOLO
 from logos import detect_logo, match_logo
-from similarity import load_brands_compute_cutoffs
+#from similarity import load_brands_compute_cutoffs
 from utils import load_extractor_model, load_features, model_flavor_from_name, parse_input
-import utils
 
 sim_threshold = 0.95
 output_txt = 'out.txt'
 
 
-def test(filename):
+def test(filename, timestamp):
     """
     Test function: runs pipeline for a small set of input images and input
     brands.
@@ -73,8 +72,10 @@ def test(filename):
     print('Processed {} images in {:.1f}sec - {:.1f}FPS'.format(
             len(images_path), end-start, len(images_path)/(end-start)
            )) 
+    print(f'Timestamp : {timestamp}')
 
 
 if __name__ == '__main__':
+    timestamp = 123.456
     filename = './model/inception_logo_features_200_trunc2.hdf5'
-    test(filename)
+    test(filename, timestamp)
