@@ -5,8 +5,33 @@ import utils
 
 from PIL import Image
 from timeit import default_timer as timer
-from utils import contents_of_bbox, features_from_image
+from utils import contents_of_bbox, features_from_image, load_extractor_model, load_features, model_flavor_from_name, parse_input
 from similarity import load_brands_compute_cutoffs, similar_matches, similarity_cutoff, draw_matches
+from keras_yolo3.yolo import YOLO
+
+
+def detect_logo_demo(img_path, timestamp):
+    
+    filename = './model/inception_logo_features_200_trunc2.hdf5'
+    yolo = YOLO(**{'model_path': './model/keras_yolo3/model_data/yolo_weights_logos.h5',
+                'anchors_path': './model/keras_yolo3/model_data/yolo_anchors.txt',
+                'classes_path': './data/preprocessed/classes.txt',
+                'score': 0.05,
+                'gpu_num': 1,
+                'model_image_size': (416, 416),
+                })
+    model_name, flavor = model_flavor_from_name(filename)
+    features, brand_map, input_shape = load_features(filename)
+    model, preprocess_input, input_shape = load_extractor_model(model_name, flavor)
+    my_preprocess = lambda x: preprocess_input(utils.pad_image(x, input_shape))
+
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image_array = np.array(image)
+
+    prediction, new_image = yolo.detect_image(image)
+
+    return len(prediction), timestamp
+
 
 
 def detect_logo(yolo, img_path, save_img, save_img_path='./', postfix=''):
