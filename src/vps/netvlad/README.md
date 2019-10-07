@@ -32,8 +32,6 @@ unzip vgg16_netvlad_checkpoint.zip
 cd ..
 ```
 
-
-
 Using this checkpoint and the following command you can obtain the results shown above:
 
     python main.py --mode=test --split=val --resume=vgg16_netvlad_checkpoint/
@@ -41,10 +39,21 @@ Using this checkpoint and the following command you can obtain the results shown
 or you can run test using following bash script
 
 ```
- ./3run_test_pitt256k.sh
+chmod 777 1run_train.sh 3run_test_pitt256k.sh
+./3run_test_pitt256k.sh
 ```
 
-You may meet some **dataset error** from above commands because you don't prepare dataset files. You can get dataset by referring to **"Data Section in Setup"** below.
+You may meet some **dataset error** from above commands because you don't prepare dataset files. You can get dataset by referring to [**"Data Section in Setup"**](#data) below.
+
+I coded [0setup_env.sh](0setup_env.sh) to do above step automatically.
+
+gdrivedl script which can download files from google drive with command line is originated from [Matt Huisman](https://www.matthuisman.nz/2019/01/download-google-drive-files-wget-curl.html)
+
+You can prepare pre-trained weight and dataset's sysbolic link to run this scripts as follows, except downloading dataset it self which is refered to "Data Section in Setup".
+
+```
+./0setup_env.sh
+```
 
 
 
@@ -61,11 +70,26 @@ You may meet some **dataset error** from above commands because you don't prepar
 4. [tensorboardX](https://github.com/lanpa/tensorboardX)
 
 ## Data
-
 Running this code requires a copy of the Pittsburgh 250k (available [here](http://www.ok.ctrl.titech.ac.jp/~torii/project/repttile/)), 
 and the dataset specifications for the Pittsburgh dataset (available [here](https://www.di.ens.fr/willow/research/netvlad/data/netvlad_v100_datasets.tar.gz)).
 `pittsburgh.py` contains a hardcoded path to a directory, where the code expects directories `000` to `010` with the various Pittsburth database images, a directory
 `queries_real` with subdirectories `000` to `010` with the query images, and a directory `datasets` with the dataset specifications (.mat files).
+
+You need to create a symbolic link in the  top directory for dataset as follows:
+```
+ln -s /home/yourhome/your_DB_Repo/Pittsburgh250k/netvlad_v100_datasets
+```
+The structure of directories and files at ''~/netvlad_v100_datasets" is as follows:
+
+```
+000  001  002  003  004  005  006  007  008  009  010  centroids  datasets  groundtruth  pose.txt  queries_real  readGt.m
+```
+
+And the structure of directories at "'~/netvlad_v100_datasets/queries_real" is as follows:
+
+```
+000  001  002  003  004  005  006  007  008
+```
 
 
 # Usage
@@ -102,8 +126,4 @@ necessary for each configuration of the network and for each dataset. To cluster
 
     python main.py --mode=cluster --arch=vgg16 --pooling=netvlad --num_clusters=64
 
-with the correct values for any additional commandline arguments.
-
-```
-
-```
+with the correct values for any additional command line arguments.

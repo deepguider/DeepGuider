@@ -6,4 +6,5 @@ After some step, we could make and release our own VPS code.
 
 
 
-Please refer to **./netvlad/README.md** to proceed.
+Please refer to [**./netvlad/README.md**](netvlad/README.md) to proceed.
+
