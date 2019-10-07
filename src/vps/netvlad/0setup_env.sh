@@ -8,6 +8,8 @@ DATASET_DIR=/home/ccsmm/workdir/DB_Repo/Pittsburgh250k/$DATASET_LINK
 WEIGHT_FILE=vgg16_netvlad_checkpoint.zip
 WEIGHT_DIR=vgg16_netvlad_checkpoint
 
+chmod +x *.sh
+
 if [ ! -f "./$WEIGHT_DIR/$WEIGHT_FILE" ]; then
 
 	#wget -O ~/gdrivedl 'https://f.mjh.nz/gdrivedl'
