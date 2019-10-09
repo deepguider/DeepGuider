@@ -2,5 +2,5 @@ matplotlib
 keras==2.2.4
 pillow
 scikit-learn
-opencv
-tensorflow-gpu
+opencv-contrib-python
+tensorflow-gpu==1.14.0
