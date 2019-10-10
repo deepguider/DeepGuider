@@ -281,7 +281,7 @@ def get_clusters(cluster_set):
         
         print('====> Clustering..')
         niter = 100
-        kmeans = faiss.Kmeans(encoder_dim, opt.num_clusters, niter, verbose=False)
+        kmeans = faiss.Kmeans(encoder_dim, opt.num_clusters, niter=niter, verbose=False)
         kmeans.train(dbFeat[...])
 
         print('====> Storing centroids', kmeans.centroids.shape)
@@ -427,6 +427,7 @@ if __name__ == "__main__":
                     initcache = join(opt.dataPath, 'centroids', opt.arch + '_' + train_set.dataset + '_' + str(opt.num_clusters) +'_desc_cen.hdf5')
                 else:
                     initcache = join(opt.dataPath, 'centroids', opt.arch + '_' + whole_test_set.dataset + '_' + str(opt.num_clusters) +'_desc_cen.hdf5')
+
 
                 if not exists(initcache):
                     raise FileNotFoundError('Could not find clusters, please run with --mode=cluster before proceeding')
