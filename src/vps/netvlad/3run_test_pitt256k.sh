@@ -1,8 +1,7 @@
 export TMPDIR="/tmp"
 export CHKDIR="./checkpoint"
-#export PRETRAINED="vgg16_netvlad_checkpoint"
-export PRETRAINED="checkpoint/runs/baseline_vgg16_netvlad"
-
+#export PRETRAINED="pretrained_checkpoint/vgg16_netvlad_checkpoint"
+export PRETRAINED="pretrained_checkpointi/vgg16_netvlad_checkpoint_gpu4"
 
 # Dataset is hardcoded at pittsburgh.py as follows : "./netvlad_v100_datasets" directory
 # --dataPath : Path for centroid data.
