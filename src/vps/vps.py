@@ -29,7 +29,7 @@ import cv2 as cv
 from ipdb import set_trace as bp
 import sys;sys.path.insert(0,'netvlad/ccsmmutils');import img_utils as myiu
 
-class VPS:
+class vps:
     def __init__(self):
         self.angle = 0.0  # road direction (radian)
         self.prob = 0.0   # reliablity of the result. 0: fail ~ 1: success
@@ -352,7 +352,7 @@ class VPS:
 
 
 if __name__ == "__main__":
-    mod_vps = VPS()
+    mod_vps = vps()
     mod_vps.initialize()
     mod_vps.apply(0,0)
 
