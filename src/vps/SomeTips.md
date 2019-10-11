@@ -66,12 +66,12 @@ alias gitcloneDeepGuider='git clone https://github.com/deepguider/DeepGuider;cd 
 alias gitconfiguser='git config user.name YourGitID;git config user.email YourMailAddress'
 alias gitpushDeepGuider='git config push.default matching;git commit -a;git pull;git push https://YourGitID:XXXXXXXXXXXXX@github.com/deepguider/DeepGuider'
 
-# You can git clone:
+# You can run 'git clone':
 gitcloneDeepGuider
 
-# After some modification, you can push :
+# After some modification, you can push it:
 gitpushDeepGuider
 ```
 
 
-Written by Seungmin Choi, ccsmm@etri.re.kr
+Written by Seungmin Choi, ccsmm at etri.re.kr)
