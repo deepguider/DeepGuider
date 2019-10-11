@@ -6,6 +6,17 @@ After some step, we could make and release our own VPS code.
 
 
 
+### To run vps.py
+```
+# If it's first time to visit here after a git clone, run setup as follows:
+./0setup.sh
+
+# Run vps.py
+./1run_vps.py
+```
+
+
+### To test netvlad itself
 ```
 cd netvlad
 

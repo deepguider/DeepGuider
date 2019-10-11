@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 #Subject : Downloads pretrained weight and creates symbolic link of Dataset
 #ccsmm@etri.re.kr
 #2019.10.07

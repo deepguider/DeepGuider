@@ -25,7 +25,7 @@ import numpy as np
 import netvlad
 
 from ipdb import set_trace as bp
-import sys;sys.path.insert(0,'/home/ccsmm/workdir/ccsmmutils');import img_utils as myiu
+import sys;sys.path.insert(0,'netvlad/ccsmmutils');import img_utils as myiu
 
 
 parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -496,6 +496,7 @@ if __name__ == "__main__":
         else:
             print("=> no checkpoint found at '{}'".format(resume_ckpt))
 
+    bp()
     if opt.mode.lower() == 'test':
         print('===> Running evaluation step')
         epoch = 1
