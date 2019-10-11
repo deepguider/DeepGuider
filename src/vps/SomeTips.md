@@ -72,3 +72,6 @@ gitcloneDeepGuider
 # After some modification, you can push :
 gitpushDeepGuider
 ```
+
+
+Written by Seungmin Choi, ccsmm@etri.re.kr
