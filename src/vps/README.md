@@ -1,4 +1,4 @@
-These codes are all based on https://github.com/Nanne/pytorch-NetVlad .
+These codes are  based on [NetVLAD: CNN architecture for weakly supervised place recognition](https://github.com/Nanne/pytorch-NetVlad) [1].
 
 We use their open source code as very initial example code for VPS of DeepGuider.
 
@@ -14,9 +14,13 @@ After some step, we could make and release our own VPS code.
 # Run vps.py
 ./1run_vps.py
 ```
+#### To do
+* Test vps.py with single image
+* Train vps using DB captured near ETRI campus
 
 
-### To test netvlad itself
+
+### To train or test netvlad itself which is a sub-fuction of vps.py
 ```
 cd netvlad
 
@@ -35,3 +39,8 @@ cd netvlad
 
 Please refer to [**./netvlad/README.md**](netvlad/README.md) to proceed in details.
 
+
+
+# Reference
+
+[1] Arandjelovic, Relja, Petr Gronat, Akihiko Torii, Tomas Pajdla, and Josef Sivic. "NetVLAD: CNN architecture for weakly supervised place recognition." In Proceedings of the IEEE conference on computer vision and pattern recognition, pp. 5297-5307. 2016.
