@@ -58,13 +58,13 @@ c
 ```
 # You need to add following alias in your ~/.bashrc for conveience.
 # You need to change
-#        ccsmm78 to your ID
-#        ccsmm78@gmail.com to your mail
+#        YourGitID to your ID
+#        YourMailAddress to your mail
 #        XXXXXXXXXXXX to your password of github
 
-alias gitcloneDeepGuider='git clone https://github.com/deepguider/DeepGuider;cd DeepGuider;git config user.name ccsmm78;git config user.email ccsmm78@gmail.com'
-alias gitconfiguser='git config user.name ccsmm78;git config user.email ccsmm78@gmail.com'
-alias gitpushDeepGuider='git config push.default matching;git commit -a;git pull;git push https://ccsmm78:XXXXXXXXXXXXX@github.com/deepguider/DeepGuider'
+alias gitcloneDeepGuider='git clone https://github.com/deepguider/DeepGuider;cd DeepGuider;git config user.name YourGitID;git config user.email YourMailAddress'
+alias gitconfiguser='git config user.name YourGitID;git config user.email YourMailAddress'
+alias gitpushDeepGuider='git config push.default matching;git commit -a;git pull;git push https://YourGitID:XXXXXXXXXXXXX@github.com/deepguider/DeepGuider'
 
 # You can git clone:
 gitcloneDeepGuider
