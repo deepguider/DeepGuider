@@ -29,7 +29,8 @@ public:
 	{
 		std::string src_name = "vps";
 		std::string class_name = "vps";
-		std::string func_name = "apply";
+		std::string func_initialize = "initialize";
+		std::string func_apply = "apply";
 
 		PyObject* pName, * pModule, * pDict, * pClass, * pFunc;
 		PyObject* pArgs, * pValue;
@@ -66,14 +67,28 @@ public:
 		}
 		Py_DECREF(pModule);
 
-		// Get the method reference of the class
-		pFunc = PyObject_GetAttrString(pClass, func_name.c_str());
+		// Initialize the Class with initialize member of py
+		pFunc = PyObject_GetAttrString(pClass, func_initialize.c_str());
 		if (pClass == nullptr) {
 			PyErr_Print();
-			fprintf(stderr, "Cannot find function \"%s\"\n", func_name.c_str());
+			fprintf(stderr, "Cannot find function \"%s\"\n", func_initialize.c_str());
 			return -1;
 		}
 		Py_DECREF(pClass);
+		pValue = PyObject_CallObject(pFunc,NULL);
+
+
+
+		// Get the method reference of the class
+		pFunc = PyObject_GetAttrString(pClass, func_apply.c_str());
+		if (pClass == nullptr) {
+			PyErr_Print();
+			fprintf(stderr, "Cannot find function \"%s\"\n", func_apply.c_str());
+			return -1;
+		}
+		Py_DECREF(pClass);
+
+
 
 		// Set function arguments
 		pArgs = PyTuple_New(3);
