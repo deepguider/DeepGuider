@@ -75,10 +75,27 @@ def test(filename, timestamp):
     print(f'Timestamp : {timestamp}')
 
 
+def initialize(filename):
+    
+    yolo = YOLO(**{"model_path": './model/keras_yolo3/model_data/yolo_weights_logos.h5',
+                "anchors_path": './model/keras_yolo3/model_data/yolo_anchors.txt',
+                "classes_path": './data/preprocessed/classes.txt',
+                "score" : 0.05,
+                "gpu_num" : 1,
+                "model_image_size" : (416, 416),
+                })
+    
+    return yolo
+
+
 if __name__ == '__main__':
     timestamp = 123.456
     filename = './model/inception_logo_features_200_trunc2.hdf5'
-    test(filename, timestamp)
+    #test(filename, timestamp)
+    model = initialize(filename)
+    pred, timestamp = detect_logo_demo(model, './data/test/input/test_starbucks.png', timestamp)
+    print(pred)
+    print(timestamp)
     '''
     image = cv2.imread('./data/test/input/test_starbucks.png')
     pred, timestamp = detect_logo_demo('./data/test/input/test_starbucks.png', timestamp)
