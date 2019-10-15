@@ -10,8 +10,20 @@
 #include <fstream>
 using namespace rapidjson;
 
-// curl header files
-#include "../../EXTERNAL/curl/include/curl/curl.h"
+#define CURL_STATICLIB
+// curl header file
+#include "../../EXTERNAL/curl/include/curl/curl.h" 
+// curl library files
+#ifdef _DEBUG
+#pragma comment(lib, "../../EXTERNAL/curl/lib/libcurl_a_debug.lib")   // curl-7.65.3.zip 
+#else
+#pragma comment(lib, "../../EXTERNAL/curl/lib/libcurl_a.lib")         // curl-7.65.3.zip 
+#endif
+#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "Crypt32.lib")
+#pragma comment(lib, "Wldap32.lib")
+#pragma comment(lib, "Normaliz.lib")
+#pragma execution_character_set( "utf-8" )
 
 #define M_PI 3.14159265358979323846
 

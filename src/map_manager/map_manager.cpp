@@ -104,29 +104,56 @@ bool MapManager::load(double lon, double lat, int z)
 	return true;
 }
 
+size_t write_callback(void* ptr, size_t size, size_t count, void* stream)
+{
+	((std::string*)stream)->append((char*)ptr, 0, size * count);
+	return size * count;
+}
+
 bool MapManager::generatePath()
 {
-	//TODO
+	SetConsoleOutputCP(65001);
 
+	std::string client_id = "X-NCP-APIGW-API-KEY-ID:h2weu1vyc4";
+	std::string	client_secret = "X-NCP-APIGW-API-KEY:xYSNKDADst7RfmiFnMAyi1EkTcWqusBV1oHwVmax";
+	std::string url{ "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start=127.31788462835466,36.37407414112156,start_pos&goal=127.3190043087742,36.37253204490351,end_pos&option=trafast" };
 
-		/*curl "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start={출발지}&goal={목적지}&option={탐색옵션}" \
-			- H "X-NCP-APIGW-API-KEY-ID: {애플리케이션 등록 시 발급받은 client id 값}" \
-			- H "X-NCP-APIGW-API-KEY: {애플리케이션 등록 시 발급받은 client secret값}" - v*/
+	curl_global_init(CURL_GLOBAL_ALL);
+	CURL *curl = curl_easy_init();
+	CURLcode res;
+	struct curl_slist* headers = NULL;
+	
+	if (curl) 
+	{
+		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+		headers = curl_slist_append(headers, client_id.c_str());
+		headers = curl_slist_append(headers, client_secret.c_str());
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); /* pass our list of custom made headers */
 
-			/*client_id = "h2weu1vyc4"
-			client_secret = "xYSNKDADst7RfmiFnMAyi1EkTcWqusBV1oHwVmax"
-			url = "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start=127.31788462835466,36.37407414112156,start_pos&goal=127.3190043087742,36.37253204490351,end_pos&option=trafast"
-			headers = {
-				"X-NCP-APIGW-API-KEY-ID": client_id,
-				"X-NCP-APIGW-API-KEY" : client_secret,
-				"Content-Type" : "application/octet-stream"
+		std::string response;
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+		// Perform the request, res will get the return code.
+		res = curl_easy_perform(curl);
+
+		// Always cleanup.
+		curl_slist_free_all(headers);
+		curl_easy_cleanup(curl);
+		curl_global_cleanup();
+
+		// Check for errors.
+		if (res != CURLE_OK)
+		{
+			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+			return false;
 		}
-			response = requests.get(url, headers = headers)
-			rescode = response.status_code
-			if (rescode == 200) :
-				print(response.text)
-			else:
-		print("Error : " + response.text)*/
+		else
+		{
+			fprintf(stdout, "%s\n", response.c_str());
+		}
+	}
 
 	return true;
 }
