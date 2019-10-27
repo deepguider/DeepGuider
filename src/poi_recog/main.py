@@ -13,8 +13,8 @@ ImageFile.LOAD_TRUNCATED_IMAGE = True
 
 from timeit import default_timer as timer
 from keras_yolo3.yolo import YOLO
-from logos import detect_logo, match_logo, detect_logo_demo
-#from similarity import load_brands_compute_cutoffs
+from logos import detect_logo, match_logo, detect_logo_demo, detect_and_match
+from similarity import load_brands_compute_cutoffs
 from utils import load_extractor_model, load_features, model_flavor_from_name, parse_input
 
 sim_threshold = 0.80
@@ -49,10 +49,10 @@ def test(filename, timestamp):
     images = [ p for p in os.listdir(os.path.join(test_dir, 'input/'))] #if p.endswith('.jpg')]
     images_path = [ os.path.join(test_dir, 'input/', p) for p in images]
 
-    with open('./data/preprocessed/input_paths.pkl', 'r') as f:
-        input_paths = pickle.load(f)
-    (img_input, feat_input, sim_cutoff, (bins, cdf_list)) = load_brands_compute_cutoffs(
-                                input_paths, (model, my_preprocess), features, sim_threshold)
+    #with open('./data/preprocessed/input_paths.pkl', 'r') as f:
+    #    input_paths = pickle.load(f)
+    #(img_input, feat_input, sim_cutoff, (bins, cdf_list)) = load_brands_compute_cutoffs(
+    #                            input_paths, (model, my_preprocess), features, sim_threshold)
 
     start = timer()
     img_size_list = []
@@ -65,9 +65,9 @@ def test(filename, timestamp):
                                           save_img_path = test_dir, postfix='_logo')
 
         ## match candidate logos to input
-        logo_txt = match_logo(image, prediction, (model, my_preprocess),
-                 outtxt, (feat_input, sim_cutoff, bins, cdf_list, input_labels),
-                 save_img = True, save_img_path=test_dir, timing=True)
+        #logo_txt = match_logo(image, prediction, (model, my_preprocess),
+        #         outtxt, (feat_input, sim_cutoff, bins, cdf_list, input_labels),
+        #         save_img = True, save_img_path=test_dir, timing=True)
 
         img_size_list.append(np.sqrt(np.prod(image.size)))
         candidate_len_list.append(len(prediction))
@@ -89,16 +89,30 @@ def initialize(filename):
                 "gpu_num" : 1,
                 "model_image_size" : (416, 416),
                 })
+    # get Inception/VGG16 model and flavor from filename
+    model_name, flavor = model_flavor_from_name(filename)
+    ## load pre-processed features database
+    features, brand_map, input_shape = load_features(filename)
+
+    ## load inception model
+    model, preprocess_input, input_shape = load_extractor_model(model_name, flavor)
+    my_preprocess = lambda x: preprocess_input(utils.pad_image(x, input_shape))
+
+    with open('./data/preprocessed/trained_brands.pkl', 'r') as f:
+        img_input, input_labels = pickle.load(f)
+
+    (img_input, feat_input, sim_cutoff, (bins, cdf_list)) = load_brands_compute_cutoffs(                                    img_input, (model, my_preprocess), features, sim_threshold)
     
-    return yolo
+    return (yolo, model, my_preprocess), (feat_input, sim_cutoff, bins, cdf_list, input_labels)
 
 
 if __name__ == '__main__':
     timestamp = 123.456
     filename = './model/inception_logo_features_200_trunc2.hdf5'
     #test(filename, timestamp)
-    model = initialize(filename)
-    pred, timestamp = detect_logo_demo(model, './data/test/input/test_starbucks.png', timestamp)
+    model_preproc, input_preproc = initialize(filename)
+    test_path = './data/test/input/test_starbucks.png'
+    pred, timestamp = detect_logo_demo(model_preproc, input_preproc, test_path, timestamp)
     print(pred)
     print(timestamp)
     '''

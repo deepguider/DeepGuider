@@ -10,6 +10,36 @@ from similarity import load_brands_compute_cutoffs, similar_matches, similarity_
 from keras_yolo3.yolo import YOLO
 
 
+def detect_and_match(model_preproc, input_features_cdf_cutoff_labels, 
+                     img_path, timestamp, save_img=False, save_img_path='./data/test/'):
+
+    image = Image.open(img_path)
+    if image.mode != 'RGB':
+        image = image.convert("RGB")
+    #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image_array = np.array(image)
+    
+    yolo, model, my_preprocess = model_preproc
+    prediction, new_image = yolo.detect_image(image)
+    candidates, i_candidates_too_small = contents_of_bbox(image, prediction) 
+    prediction = [pred for i, pred in enumerate(prediction) if i not in i_candidates_too_small]
+    features_cand = features_from_image(candidates, model, my_preprocess)
+    
+    feat_input, sim_cutoff, bins, cdf_list, input_labels = input_features_cdf_cutoff_labels
+    matches, cos_sim = similar_matches(feat_input, features_cand, sim_cutoff, bins, cdf_list)
+    
+    match_pred = []
+    for idx in matches:
+        bb = prediction[idx]
+        label = input_labels[matches[idx][0]]
+        pred = [bb[0], bb[1], bb[2], bb[3], label, bb[-1], matches[idx][1]]
+        match_pred.append(pred)
+        print('Logo #{} - {} {} - classified as {} {:.2f}'.format(idx,
+                  tuple(bb[:2]), tuple(bb[2:4]), label, matches[idx][1]))
+
+    return match_pred, timestamp
+    
+
 def detect_logo_demo(yolo, img_path, timestamp):
 
     image = Image.open(img_path)

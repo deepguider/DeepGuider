@@ -60,6 +60,7 @@ def load_brands_compute_cutoffs(input_paths, model_preproc, features, threshold 
     """
 
     start = timer()
+    '''
     img_input = []
     for path in input_paths:
         img = cv2.imread(path)
@@ -68,10 +69,10 @@ def load_brands_compute_cutoffs(input_paths, model_preproc, features, threshold 
             img_input.append(img[:,:,::-1])
         else:
             print(path)
-
+    '''
     t_read  = timer()-start
     model, my_preprocess = model_preproc
-    img_input = np.array(img_input)
+    #img_input = np.array(img_input)
     feat_input = features_from_image(img_input, model, my_preprocess)
     t_feat = timer()-start
 
