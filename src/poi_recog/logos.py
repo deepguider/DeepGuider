@@ -21,7 +21,7 @@ def detect_and_match(model_preproc, input_features_cdf_cutoff_labels,
     
     yolo, model, my_preprocess = model_preproc
     prediction, new_image = yolo.detect_image(image)
-    candidates, i_candidates_too_small = contents_of_bbox(image, prediction) 
+    candidates, i_candidates_too_small = contents_of_bbox(image_array, prediction) 
     prediction = [pred for i, pred in enumerate(prediction) if i not in i_candidates_too_small]
     features_cand = features_from_image(candidates, model, my_preprocess)
     
@@ -29,13 +29,22 @@ def detect_and_match(model_preproc, input_features_cdf_cutoff_labels,
     matches, cos_sim = similar_matches(feat_input, features_cand, sim_cutoff, bins, cdf_list)
     
     match_pred = []
-    for idx in matches:
+    keys = list(matches.keys())
+    for idx in keys:
         bb = prediction[idx]
+        if bb[-1] < 0.70:
+            matches.pop(idx)
+            continue
         label = input_labels[matches[idx][0]]
-        pred = [bb[0], bb[1], bb[2], bb[3], label, bb[-1], matches[idx][1]]
+        pred = [bb[0], bb[1], bb[2], bb[3], label, bb[-1]] #, matches[idx][1]]
         match_pred.append(pred)
         print('Logo #{} - {} {} - classified as {} {:.2f}'.format(idx,
                   tuple(bb[:2]), tuple(bb[2:4]), label, matches[idx][1]))
+
+    if save_img:
+        new_img = draw_matches(image_array, input_labels, prediction, matches)
+        saved = Image.fromarray(new_img).save(
+                        os.path.join(save_img_path, os.path.basename(img_path)))
 
     return match_pred, timestamp
     

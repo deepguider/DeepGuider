@@ -40,7 +40,7 @@ def similarity_cutoff(feat_input, features, threshold=0.95, timing=False):
     return cutoff_list, (bins, cdf_list)
 
 
-def load_brands_compute_cutoffs(input_paths, model_preproc, features, threshold = 0.95, timing=False):
+def load_brands_compute_cutoffs(img_input, model_preproc, features, threshold = 0.95, timing=False):
     """
     Given paths to input brand images, this is a wrapper to features_from_image()
     and similarity_cutoff().
@@ -86,8 +86,8 @@ def load_brands_compute_cutoffs(input_paths, model_preproc, features, threshold 
           ))
 
     print('Resulting 95% similarity threshold for targets:')
-    for path, cutoff in zip(input_paths, sim_cutoff):
-        print('    {}  {:.2f}'.format(path, cutoff))
+    #for path, cutoff in zip(input_paths, sim_cutoff):
+    #    print('    {}  {:.2f}'.format(path, cutoff))
 
     return img_input, feat_input, sim_cutoff, (bins, cdf_list)
 

@@ -6,6 +6,8 @@ import numpy as np
 import os
 import sys
 import pickle
+import utils
+import time
 
 from PIL import Image
 from PIL import ImageFile
@@ -16,8 +18,9 @@ from keras_yolo3.yolo import YOLO
 from logos import detect_logo, match_logo, detect_logo_demo, detect_and_match
 from similarity import load_brands_compute_cutoffs
 from utils import load_extractor_model, load_features, model_flavor_from_name, parse_input
+from pathlib import Path
 
-sim_threshold = 0.80
+sim_threshold = 0.90
 output_txt = 'out.txt'
 
 
@@ -81,7 +84,9 @@ def test(filename, timestamp):
 
 
 def initialize(filename):
-    
+   
+    print('Initialization in progress...!\n')
+    start = time.time()
     yolo = YOLO(**{"model_path": './model/keras_yolo3/model_data/yolo_weights_logos.h5',
                 "anchors_path": './model/keras_yolo3/model_data/yolo_anchors.txt',
                 "classes_path": './data/preprocessed/classes.txt',
@@ -98,11 +103,12 @@ def initialize(filename):
     model, preprocess_input, input_shape = load_extractor_model(model_name, flavor)
     my_preprocess = lambda x: preprocess_input(utils.pad_image(x, input_shape))
 
-    with open('./data/preprocessed/trained_brands.pkl', 'r') as f:
+    with open('./data/preprocessed/trained_brands.pkl', 'rb') as f:
         img_input, input_labels = pickle.load(f)
 
     (img_input, feat_input, sim_cutoff, (bins, cdf_list)) = load_brands_compute_cutoffs(                                    img_input, (model, my_preprocess), features, sim_threshold)
-    
+    print('Done! It tooks {:.2f} mins.\n'.format((time.time() - start)/60))
+
     return (yolo, model, my_preprocess), (feat_input, sim_cutoff, bins, cdf_list, input_labels)
 
 
@@ -111,10 +117,15 @@ if __name__ == '__main__':
     filename = './model/inception_logo_features_200_trunc2.hdf5'
     #test(filename, timestamp)
     model_preproc, input_preproc = initialize(filename)
-    test_path = './data/test/input/test_starbucks.png'
-    pred, timestamp = detect_logo_demo(model_preproc, input_preproc, test_path, timestamp)
-    print(pred)
-    print(timestamp)
+    test_path = list(Path('./data/test/input/').iterdir())
+    start = time.time()
+    for path in test_path:
+        pred, timestamp = detect_and_match(model_preproc, input_preproc, 
+                                       str(path), timestamp, save_img=False)
+        print(pred)
+        #print(timestamp)
+    #print('Logo detection and recognition complete! It tooks {:.2f} FPS'.format(len(test_path)/(time.time() - start)))
+
     '''
     image = cv2.imread('./data/test/input/test_starbucks.png')
     pred, timestamp = detect_logo_demo('./data/test/input/test_starbucks.png', timestamp)
