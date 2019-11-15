@@ -3,32 +3,87 @@
 namespace dg
 {
 
-int MapManager::long2tilex(double lon, int z)
-{
-	return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
-}
+	int MapManager::long2tilex(double lon, int z)
+	{
+		return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
+	}
 
-int MapManager::lat2tiley(double lat, int z)
-{
-	double latrad = lat * M_PI / 180.0;
-	return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
-}
+	int MapManager::lat2tiley(double lat, int z)
+	{
+		double latrad = lat * M_PI / 180.0;
+		return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
+	}
 
-double MapManager::tilex2long(int x, int z)
-{
-	return x / (double)(1 << z) * 360.0 - 180;
-}
+	double MapManager::tilex2long(int x, int z)
+	{
+		return x / (double)(1 << z) * 360.0 - 180;
+	}
 
-double MapManager::tiley2lat(int y, int z)
-{
-	double n = M_PI - 2.0 * M_PI * y / (double)(1 << z);
-	return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
-}
+	double MapManager::tiley2lat(int y, int z)
+	{
+		double n = M_PI - 2.0 * M_PI * y / (double)(1 << z);
+		return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
+	}
 
-cv::Point2i MapManager::lonlat2xy(double lon, double lat, int z)
-{
-	return cv::Point2i(long2tilex(lon, z), lat2tiley(lat, z));
-}
+	cv::Point2i MapManager::lonlat2xy(double lon, double lat, int z)
+	{
+		return cv::Point2i(long2tilex(lon, z), lat2tiley(lat, z));
+	}
+
+	size_t write_callback(void* ptr, size_t size, size_t count, void* stream)
+	{
+		((std::string*)stream)->append((char*)ptr, 0, size * count);
+		return size * count;
+	}
+	
+	bool MapManager::query2server(std::string url)
+	{
+		SetConsoleOutputCP(65001);
+
+		//std::string client_id = "X-NCP-APIGW-API-KEY-ID:h2weu1vyc4";
+		//std::string	client_secret = "X-NCP-APIGW-API-KEY:xYSNKDADst7RfmiFnMAyi1EkTcWqusBV1oHwVmax";
+		//std::string url{ "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start=127.31788462835466,36.37407414112156,start_pos&goal=127.3190043087742,36.37253204490351,end_pos&option=trafast" };
+
+		curl_global_init(CURL_GLOBAL_ALL);
+		CURL* curl = curl_easy_init();
+		CURLcode res;
+		//struct curl_slist* headers = NULL;
+
+		if (curl)
+		{
+			curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+			//headers = curl_slist_append(headers, client_id.c_str());
+			//headers = curl_slist_append(headers, client_secret.c_str());
+			//curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); /* pass our list of custom made headers */
+
+			std::string response;
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+			curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+			// Perform the request, res will get the return code.
+			res = curl_easy_perform(curl);
+
+			// Always cleanup.
+			//curl_slist_free_all(headers);
+			curl_easy_cleanup(curl);
+			curl_global_cleanup();
+
+			// Check for errors.
+			if (res != CURLE_OK)
+			{
+				fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+				return false;
+			}
+			else
+			{
+				fprintf(stdout, "%s\n", response.c_str());
+				m_json = response;
+			}
+		}
+
+		return true;
+	}
 
 void MapManager::downloadMap(cv::Point2i tile)
 {
@@ -37,31 +92,45 @@ void MapManager::downloadMap(cv::Point2i tile)
 
 }
 
+bool MapManager::downloadMap(double lat, double lon, double radius)
+{
+	const std::string url_head = "http://129.254.87.96:21502/wgs/";
+	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
+	
+
+	return query2server(url);
+}
+
 bool MapManager::load(double lon, double lat, int z)
 {
     m_map.removeAll();
 
-	downloadMap(lonlat2xy(lon, lat, z));
+	// by file
+	//downloadMap(lonlat2xy(lon, lat, z));
+	//// Convert JSON document to string
+	//const char* filename = "test_simple_map.json";
+	//auto is = std::ifstream(filename, std::ofstream::in);
+	//if (!is.is_open())
+	//{
+	//	std::cerr << "Could not open file for reading!\n";
+	//	return EXIT_FAILURE;
+	//}
+	//std::string line, text;
+	//while (std::getline(is, line))
+	//{
+	//	text += line + "\n";
+	//}
+	//const char* json = text.c_str();
+	//is.close();
 
-	// Convert JSON document to string
-	const char* filename = "test_simple_map.json";
-	auto is = std::ifstream(filename, std::ofstream::in);
-	if (!is.is_open())
-	{
-		std::cerr << "Could not open file for reading!\n";
-		return EXIT_FAILURE;
-	}
-	std::string line, text;
-	while (std::getline(is, line))
-	{
-		text += line + "\n";
-	}
-	const char* json = text.c_str();
-	is.close();
+	// by communication
+	downloadMap(36.383921, 127.367481, 1000.0);
+	const char* json = m_json.c_str();
+
 	Document document;
 	document.Parse(json);
 
-	assert(document.IsObject());
+	/*assert(document.IsObject());
 	const Value& nodes = document["nodes"];
 	assert(nodes.IsArray());
 	for (SizeType i = 0; i < nodes.Size(); i++)
@@ -99,63 +168,57 @@ bool MapManager::load(double lon, double lat, int z)
 
 			m_map.addEdge(from_node, NodeInfo(tid), edgeinfo);
 		}
-	}
+	}*/
 		
-	return true;
-}
+	assert(document.IsObject());
+	const Value& features = document["features"];
+	assert(features.IsArray());
+	for (SizeType i = 0; i < features.Size(); i++)
+	{
+		const Value& feature = features[i];
+		NodeInfo nodeinfo;
+		
+		nodeinfo.lon = feature["longitude"].GetDouble();
+		nodeinfo.lat = feature["latitude"].GetDouble();
+		nodeinfo.id = feature["id"].GetUint64();
+		const Value& streetviews = feature["streetviews"];
+		for (Value::ConstValueIterator streetview = streetviews.Begin(); streetview != streetviews.End(); ++streetview)
+			nodeinfo.sv_ids.push_back(streetview->GetUint64());
+		const Value& pois = feature["pois"];
+		for (Value::ConstValueIterator poi = pois.Begin(); poi != pois.End(); ++poi)
+			nodeinfo.pois.push_back(poi->GetString());
+		nodeinfo.type = feature["node_type"].GetInt();
+		nodeinfo.floor = feature["floor"].GetInt();
 
-size_t write_callback(void* ptr, size_t size, size_t count, void* stream)
-{
-	((std::string*)stream)->append((char*)ptr, 0, size * count);
-	return size * count;
+		m_map.addNode(nodeinfo);
+	}
+	for (SizeType i = 0; i < features.Size(); i++)
+	{
+		const Value& feature = features[i];
+		NodeInfo from_node;
+		from_node.id = feature["id"].GetUint64();
+		const Value& edges = feature["edges"];
+		EdgeInfo edgeinfo;
+		for (SizeType j = 0; j < edges.Size(); j++)
+		{
+			const Value& edge = edges[j];
+			ID tid = edge["tid"].GetUint64();
+			edgeinfo.width = edge["width"].GetDouble();
+			edgeinfo.length = edge["length"].GetDouble();
+			edgeinfo.type = edge["edge_type"].GetInt();
+
+			m_map.addEdge(from_node, NodeInfo(tid), edgeinfo);
+		}
+	}
+
+	return true;
 }
 
 bool MapManager::generatePath()
 {
-	SetConsoleOutputCP(65001);
-
-	std::string client_id = "X-NCP-APIGW-API-KEY-ID:h2weu1vyc4";
-	std::string	client_secret = "X-NCP-APIGW-API-KEY:xYSNKDADst7RfmiFnMAyi1EkTcWqusBV1oHwVmax";
-	std::string url{ "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start=127.31788462835466,36.37407414112156,start_pos&goal=127.3190043087742,36.37253204490351,end_pos&option=trafast" };
-
-	curl_global_init(CURL_GLOBAL_ALL);
-	CURL *curl = curl_easy_init();
-	CURLcode res;
-	struct curl_slist* headers = NULL;
 	
-	if (curl) 
-	{
-		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-		headers = curl_slist_append(headers, client_id.c_str());
-		headers = curl_slist_append(headers, client_secret.c_str());
-		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); /* pass our list of custom made headers */
 
-		std::string response;
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-		curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-
-		// Perform the request, res will get the return code.
-		res = curl_easy_perform(curl);
-
-		// Always cleanup.
-		curl_slist_free_all(headers);
-		curl_easy_cleanup(curl);
-		curl_global_cleanup();
-
-		// Check for errors.
-		if (res != CURLE_OK)
-		{
-			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-			return false;
-		}
-		else
-		{
-			fprintf(stdout, "%s\n", response.c_str());
-		}
-	}
-
-	return true;
+	return downloadMap(36.383921, 127.367481, 1000.0);
 }
 
 Path MapManager::getPath(const char* filename)

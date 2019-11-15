@@ -24,6 +24,7 @@ using namespace rapidjson;
 #pragma comment(lib, "Wldap32.lib")
 #pragma comment(lib, "Normaliz.lib")
 #pragma execution_character_set( "utf-8" )
+#include <atlstr.h> 
 
 #define M_PI 3.14159265358979323846
 
@@ -57,7 +58,9 @@ public:
 	int lat2tiley(double lat, int z);
 	double tilex2long(int x, int z);
 	double tiley2lat(int y, int z);
+	bool query2server(std::string url);
 	void downloadMap(cv::Point2i tile);
+	bool downloadMap(double lat, double lon, double radius);
 	cv::Point2i lonlat2xy(double lon, double lat, int z);
 	/**
 	 * Read a map from the given file
@@ -84,6 +87,8 @@ public:
 protected:
 	Map m_map;
 	Path m_path;
+
+	std::string m_json;
 
 	double m_lon = 0;
 	double m_lat = 0;
