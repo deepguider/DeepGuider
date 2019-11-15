@@ -9,12 +9,9 @@ get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
 string(REPLACE " " "_" ProjectId ${ProjectId})
 project(${ProjectId} C CXX)
 
-set(PYTHON_INCLUDE_DIRS "/home/jaeyeong/.pyenv/versions/3.6.0/include/python3.6m")
-set(PYTHON_LIBRARIES "/home/jaeyeong/.pyenv/versions/3.6.0/lib/libpython3.6m.a")
-
 find_package( PythonInterp 3.6 REQUIRED )
-#find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV REQUIRED )
+find_package( PythonLibs 3.6 REQUIRED )
+find_package( OpenCV 4.0 REQUIRED )
 
 INCLUDE_DIRECTORIES ( ${CMAKE_SOURCE_DIR}/../../src ${PYTHON_INCLUDE_DIRS} )
 
