@@ -69,7 +69,7 @@ public:
 	 * @param z zoom
 	 * @return Result of success (true) or failure (false)
 	 */
-	bool load(double lon = 128, double lat = 38, int z = 19);
+	bool load(double lat, double lon, double radius);// (double lon = 128, double lat = 38, int z = 19);
 	///**
 	// * Check whether this map is empty or not
 	// * @return True if empty (true) or not (false)

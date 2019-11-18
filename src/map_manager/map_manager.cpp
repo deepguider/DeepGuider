@@ -77,7 +77,7 @@ namespace dg
 			}
 			else
 			{
-				fprintf(stdout, "%s\n", response.c_str());
+				//fprintf(stdout, "%s\n", response.c_str());
 				m_json = response;
 			}
 		}
@@ -94,14 +94,56 @@ void MapManager::downloadMap(cv::Point2i tile)
 
 bool MapManager::downloadMap(double lat, double lon, double radius)
 {
-	const std::string url_head = "http://129.254.87.96:21502/wgs/";
+	const std::string url_head = "http://129.254.87.96:21500/wgs/"; // routing server (nodes)
 	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 	
 
 	return query2server(url);
 }
 
-bool MapManager::load(double lon, double lat, int z)
+// unicode-escape decording
+std::string to_utf8(uint32_t cp)
+{
+	/*
+	if using C++11 or later, you can do this:
+
+	std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
+	return conv.to_bytes( (char32_t)cp );
+
+	Otherwise...
+	*/
+
+	std::string result;
+
+	int count;
+	if (cp < 0x0080)
+		count = 1;
+	else if (cp < 0x0800)
+		count = 2;
+	else if (cp < 0x10000)
+		count = 3;
+	else if (cp <= 0x10FFFF)
+		count = 4;
+	else
+		return result; // or throw an exception
+
+	result.resize(count);
+
+	for (int i = count - 1; i > 0; --i)
+	{
+		result[i] = (char)(0x80 | (cp & 0x3F));
+		cp >>= 6;
+	}
+
+	for (int i = 0; i < count; ++i)
+		cp |= (1 << (7 - i));
+
+	result[0] = (char)cp;
+
+	return result;
+}
+
+bool MapManager::load(double lat, double lon, double radius)//(double lon, double lat, int z)
 {
     m_map.removeAll();
 
@@ -124,13 +166,39 @@ bool MapManager::load(double lon, double lat, int z)
 	//is.close();
 
 	// by communication
-	downloadMap(36.383921, 127.367481, 1000.0);
-	const char* json = m_json.c_str();
+	downloadMap(36.383921, 127.367481, 16.0); // 1000.0);
+	
+	// unicode-escape decording
+	std::string::size_type startIdx = 0;
+	do
+	{
+		startIdx = m_json.find("\\u", startIdx);
+		if (startIdx == std::string::npos) break;
 
+		std::string::size_type endIdx = m_json.find_first_not_of("0123456789abcdefABCDEF", startIdx + 2);
+		if (endIdx == std::string::npos) break;
+
+		std::string tmpStr = m_json.substr(startIdx + 2, endIdx - (startIdx + 2));
+		std::istringstream iss(tmpStr);
+
+		uint32_t cp;
+		if (iss >> std::hex >> cp)
+		{
+			std::string utf8 = to_utf8(cp);
+			m_json.replace(startIdx, 2 + tmpStr.length(), utf8);
+			startIdx += utf8.length();
+		}
+		else
+			startIdx += 2;
+	} while (true);
+
+	const char* json = m_json.c_str();
+	fprintf(stdout, "%s\n", json);
 	Document document;
 	document.Parse(json);
 
-	/*assert(document.IsObject());
+	/*// test_simple_map.json
+	assert(document.IsObject());
 	const Value& nodes = document["nodes"];
 	assert(nodes.IsArray());
 	for (SizeType i = 0; i < nodes.Size(); i++)
@@ -177,28 +245,19 @@ bool MapManager::load(double lon, double lat, int z)
 	{
 		const Value& feature = features[i];
 		NodeInfo nodeinfo;
-		
-		nodeinfo.lon = feature["longitude"].GetDouble();
-		nodeinfo.lat = feature["latitude"].GetDouble();
-		nodeinfo.id = feature["id"].GetUint64();
-		const Value& streetviews = feature["streetviews"];
-		for (Value::ConstValueIterator streetview = streetviews.Begin(); streetview != streetviews.End(); ++streetview)
-			nodeinfo.sv_ids.push_back(streetview->GetUint64());
-		const Value& pois = feature["pois"];
-		for (Value::ConstValueIterator poi = pois.Begin(); poi != pois.End(); ++poi)
-			nodeinfo.pois.push_back(poi->GetString());
-		nodeinfo.type = feature["node_type"].GetInt();
-		nodeinfo.floor = feature["floor"].GetInt();
-
+		assert(feature.IsObject());
+		assert(feature.HasMember("properties"));
+		const Value& properties = feature["properties"];
+		assert(properties.IsObject());
+		std::string name = properties["name"].GetString();
+		if (name == "edge") continue; //TODO
+		nodeinfo.id = properties["id"].GetUint64();
+		nodeinfo.floor = properties["floor"].GetInt();
+		nodeinfo.lat = properties["latitude"].GetDouble();
+		nodeinfo.lon = properties["longitude"].GetDouble();
 		m_map.addNode(nodeinfo);
-	}
-	for (SizeType i = 0; i < features.Size(); i++)
-	{
-		const Value& feature = features[i];
-		NodeInfo from_node;
-		from_node.id = feature["id"].GetUint64();
-		const Value& edges = feature["edges"];
 		EdgeInfo edgeinfo;
+		/*const Value& edges = feature["edges"];
 		for (SizeType j = 0; j < edges.Size(); j++)
 		{
 			const Value& edge = edges[j];
@@ -208,6 +267,14 @@ bool MapManager::load(double lon, double lat, int z)
 			edgeinfo.type = edge["edge_type"].GetInt();
 
 			m_map.addEdge(from_node, NodeInfo(tid), edgeinfo);
+		}*/
+		const Value& edge_ids = properties["edge_ids"];
+		for (Value::ConstValueIterator edge_id = edge_ids.Begin(); edge_id != edge_ids.End(); ++edge_id)
+		{
+			edgeinfo.width = 0.0; //TODO
+			edgeinfo.length = 0.0; //TODO
+			edgeinfo.type = 0; //TODO
+			m_map.addEdge(nodeinfo.id, NodeInfo(edge_id->GetUint64()), edgeinfo);
 		}
 	}
 
