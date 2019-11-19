@@ -166,7 +166,7 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 	//is.close();
 
 	// by communication
-	downloadMap(36.383921, 127.367481, 16.0); // 1000.0);
+	downloadMap(lat, lon, radius); // 1000.0);
 	
 	// unicode-escape decording
 	std::string::size_type startIdx = 0;
@@ -276,6 +276,7 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 			edgeinfo.type = 0; //TODO
 			m_map.addEdge(nodeinfo.id, NodeInfo(edge_id->GetUint64()), edgeinfo);
 		}
+		fprintf(stdout, "%d\n", i+1);
 	}
 
 	return true;
@@ -285,7 +286,7 @@ bool MapManager::generatePath()
 {
 	
 
-	return downloadMap(36.383921, 127.367481, 1000.0);
+	return true;
 }
 
 Path MapManager::getPath(const char* filename)
