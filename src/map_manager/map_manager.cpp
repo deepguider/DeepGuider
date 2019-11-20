@@ -250,13 +250,21 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 		const Value& properties = feature["properties"];
 		assert(properties.IsObject());
 		std::string name = properties["name"].GetString();
-		if (name == "edge") continue; //TODO
-		nodeinfo.id = properties["id"].GetUint64();
-		nodeinfo.floor = properties["floor"].GetInt();
-		nodeinfo.lat = properties["latitude"].GetDouble();
-		nodeinfo.lon = properties["longitude"].GetDouble();
-		m_map.addNode(nodeinfo);
-		EdgeInfo edgeinfo;
+		if (name == "edge") //continue; //TODO
+		{
+			nodeinfo.id = properties["id"].GetUint64();
+			nodeinfo.type = properties["type"].GetInt();
+		}
+		else
+		{
+			nodeinfo.id = properties["id"].GetUint64();
+			nodeinfo.type = properties["type"].GetInt();
+			nodeinfo.floor = properties["floor"].GetInt();
+			nodeinfo.lat = properties["latitude"].GetDouble();
+			nodeinfo.lon = properties["longitude"].GetDouble();
+		}
+		dg::Map::Node* node = m_map.addNode(nodeinfo);
+		//EdgeInfo edgeinfo;
 		/*const Value& edges = feature["edges"];
 		for (SizeType j = 0; j < edges.Size(); j++)
 		{
@@ -268,15 +276,17 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 
 			m_map.addEdge(from_node, NodeInfo(tid), edgeinfo);
 		}*/
+		fprintf(stdout, "%d\n", i + 1); // the number of nodes
+		if (name == "edge") continue; //TODO
 		const Value& edge_ids = properties["edge_ids"];
 		for (Value::ConstValueIterator edge_id = edge_ids.Begin(); edge_id != edge_ids.End(); ++edge_id)
 		{
-			edgeinfo.width = 0.0; //TODO
-			edgeinfo.length = 0.0; //TODO
-			edgeinfo.type = 0; //TODO
-			m_map.addEdge(nodeinfo.id, NodeInfo(edge_id->GetUint64()), edgeinfo);
+			//edgeinfo.width = 0.0; //TODO
+			//edgeinfo.length = 0.0; //TODO
+			//edgeinfo.type = 0; //TODO
+			node->data.edge_ids.push_back(edge_id->GetUint64());
+			//m_map.addEdge(nodeinfo.id, NodeInfo(edge_id->GetUint64()), edgeinfo);
 		}
-		fprintf(stdout, "%d\n", i+1);
 	}
 
 	return true;
