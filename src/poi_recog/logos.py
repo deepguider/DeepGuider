@@ -11,7 +11,7 @@ from keras_yolo3.yolo import YOLO
 
 
 def detect_and_match(model_preproc, input_features_cdf_cutoff_labels, 
-                     img_path, timestamp, save_img=False, save_img_path='./data/test/'):
+                     img_path, timestamp, save_img=True, save_img_path='./data/test/'):
 
     image = Image.open(img_path)
     if image.mode != 'RGB':

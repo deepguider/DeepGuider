@@ -124,7 +124,7 @@ if __name__ == '__main__':
                                        str(path), timestamp, save_img=False)
         print(pred)
         #print(timestamp)
-    #print('Logo detection and recognition complete! It tooks {:.2f} FPS'.format(len(test_path)/(time.time() - start)))
+    print('Logo detection and recognition complete! It tooks {:.2f} FPS'.format(len(test_path)/(time.time() - start)))
 
     '''
     image = cv2.imread('./data/test/input/test_starbucks.png')
