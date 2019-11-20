@@ -19,28 +19,43 @@ class RoadDirectionRecognizer
 {
 	double angle = -1;
 	double prob = -1;
+	PyObject* pFuncApply = nullptr;
 
 public:
-	RoadDirectionRecognizer()
+	/**
+	 * The default constructor
+	 */
+	RoadDirectionRecognizer() { }
+
+	/**
+	 * The default destructor
+	 */
+	~RoadDirectionRecognizer()
 	{
+		close();
 	}
 
-	int apply(cv::Mat image, Timestamp t)
+	void close()
 	{
+		if (pFuncApply != nullptr)
+		{
+			Py_DECREF(pFuncApply);
+		}
+		pFuncApply = nullptr;
+	}
+
+	/**
+	 * Initialize the module
+	 * @return true if successful (false if failed)
+	 */
+	bool initialize()
+	{
+		PyObject *pName, *pModule, *pClass;
+
 		std::string src_name = "road_direction_recognizer";
 		std::string class_name = "RoadDirectionRecognizer";
-		std::string func_name = "apply";
-
-		PyObject* pName, * pModule, * pDict, * pClass, * pFunc;
-		PyObject* pArgs, * pValue;
-
-		wchar_t* program = Py_DecodeLocale("road_recog_test", NULL);
-		if (program == NULL) {
-			fprintf(stderr, "Fatal error: cannot decode road_recog_test\n");
-			exit(-1);
-		}
-		Py_SetProgramName(program);
-		Py_Initialize();
+		std::string func_name_initialize = "initialize";
+		std::string func_name_apply = "apply";
 
 		// Add module path to system path
 		PyRun_SimpleString("import sys\nsys.path.append(\"./../src/road_recog\")");
@@ -50,83 +65,96 @@ public:
 
 		// Load the module object (import python src)
 		pModule = PyImport_Import(pName);
+		Py_DECREF(pName);
 		if (pModule == nullptr) {
 			PyErr_Print();
 			fprintf(stderr, "Fails to import the module \"%s\"\n", src_name.c_str());
-			return -1;
+			return false;
 		}
-		Py_DECREF(pName);
 
 		// Get the class reference
 		pClass = PyObject_GetAttrString(pModule, class_name.c_str());
+		Py_DECREF(pModule);
 		if (pClass == nullptr) {
 			PyErr_Print();
 			fprintf(stderr, "Cannot find class \"%s\"\n", class_name.c_str());
-			return -1;
+			return false;
 		}
-		Py_DECREF(pModule);
 
 		// Get the method reference of the class
-		pFunc = PyObject_GetAttrString(pClass, func_name.c_str());
-		if (pClass == nullptr) {
+		pFuncApply = PyObject_GetAttrString(pClass, func_name_apply.c_str());
+		if (pFuncApply == nullptr) {
+			Py_DECREF(pClass);
 			PyErr_Print();
-			fprintf(stderr, "Cannot find function \"%s\"\n", func_name.c_str());
-			return -1;
+			fprintf(stderr, "Cannot find function \"%s\"\n", func_name_apply.c_str());
+			return false;
 		}
-		Py_DECREF(pClass);
 
+		// Call the module initialization
+		PyObject *pFuncInitialize = PyObject_GetAttrString(pClass, func_name_initialize.c_str());
+		Py_DECREF(pClass);
+		if (pFuncInitialize == nullptr) {
+			PyErr_Print();
+			fprintf(stderr, "Cannot find function \"%s\"\n", func_name_initialize.c_str());
+			return false;
+		}
+
+		PyObject* pArgs = PyTuple_New(1);
+		PyTuple_SetItem(pArgs, 0, pFuncInitialize);
+		PyObject_CallObject(pFuncInitialize, pArgs);
+
+		return true;
+	}
+
+	/**
+	 * Run the module for a given input
+	 * @return true if successful (false if failed)
+	 */
+	bool apply(cv::Mat image, Timestamp t)
+	{
 		// Set function arguments
-		pArgs = PyTuple_New(3);
-		PyTuple_SetItem(pArgs, 0, pFunc);
+		PyObject *pArgs = PyTuple_New(3);
+		PyTuple_SetItem(pArgs, 0, pFuncApply);
 
 		// Image
 		import_array();
 		npy_intp dimensions[3] = { image.rows, image.cols, image.channels() };
-		pValue = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)& dimensions, NPY_UINT8, image.data);
-		PyTuple_SetItem(pArgs, 1, pValue);
+		PyObject* pValue1 = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)&dimensions, NPY_UINT8, image.data);
+		if (!pValue1) {
+			fprintf(stderr, "RoadDirectionRecognizer::apply() - Cannot convert argument1\n");
+			return false;
+		}
+		PyTuple_SetItem(pArgs, 1, pValue1);
 
 		// Timestamp
-		pValue = PyFloat_FromDouble(t);
-		if (!pValue) {
-			Py_DECREF(pArgs);
-			Py_DECREF(pFunc);
-			fprintf(stderr, "Cannot convert argument\n");
-			return -1;
+		PyObject* pValue2 = PyFloat_FromDouble(t);
+		if (!pValue2) {
+			fprintf(stderr, "RoadDirectionRecognizer::apply() - Cannot convert argument2\n");
+			return false;
 		}
-		PyTuple_SetItem(pArgs, 2, pValue);
+		PyTuple_SetItem(pArgs, 2, pValue2);
 
 		// Call the python function
-		pValue = PyObject_CallObject(pFunc, pArgs);
-		Py_DECREF(pArgs);
-		if (pValue != NULL) {
-			int n_ret = PyTuple_Size(pValue);
+		PyObject *pRet = PyObject_CallObject(pFuncApply, pArgs);
+		if (pRet != NULL) {
+			int n_ret = PyTuple_Size(pRet);
 			if (n_ret != 2)
 			{
-				Py_DECREF(pFunc);
-				fprintf(stderr, "Wrong number of returns\n");
-				return -1;
-			}					   
-			PyObject* pValue0 = PyTuple_GetItem(pValue, 0);
-			if(pValue0 != NULL) angle = PyLong_AsLong(pValue0);
-			PyObject* pValue1 = PyTuple_GetItem(pValue, 1);
+				fprintf(stderr, "RoadDirectionRecognizer::apply() - Wrong number of returns\n");
+				return false;
+			}
+			PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
+			if (pValue0 != NULL) angle = PyLong_AsLong(pValue0) + t;
+			PyObject* pValue1 = PyTuple_GetItem(pRet, 1);
 			if (pValue1 != NULL) prob = PyLong_AsLong(pValue1);
-			Py_DECREF(pValue0);
-			Py_DECREF(pValue1);
-			Py_DECREF(pValue);
 		}
 		else {
-			Py_DECREF(pFunc);
 			PyErr_Print();
 			fprintf(stderr, "Call failed\n");
-			return -1;
+			return false;
 		}
-		Py_DECREF(pFunc);
 
-		// Finish the Python Interpreter
-		if (Py_FinalizeEx() < 0) {
-			return -1;
-		}
-		return 0;
+		return true;
 	}
 
 	void get(double& _angle, double& _prob)

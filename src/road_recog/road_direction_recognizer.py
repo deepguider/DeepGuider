@@ -12,6 +12,10 @@ class RoadDirectionRecognizer:
     def set_param(self):
         # set parameter
         return 0
+        
+    def initialize(self):
+        self.angle = 20.0  # road direction (radian)
+        self.prob = 2.0   # reliablity of the result. 0: fail ~ 1: success
 
     def apply(self, image, timestamp):
         self.image = image
