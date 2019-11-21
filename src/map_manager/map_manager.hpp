@@ -95,6 +95,13 @@ protected:
 	int m_z = 0;
 };
 
+class EdgeTemp : public EdgeInfo
+{
+public:
+	ID id;
+	std::vector<ID> node_ids;
+};
+
 } // End of 'dg'
 
 #endif // End of '__SIMPLE_MAP_MANAGER__'
