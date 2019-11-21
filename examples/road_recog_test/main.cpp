@@ -36,12 +36,12 @@ int main()
 		}
 
 		double ang, p;
-		road_recog.get(ang, p);
-		printf("angle = %lf, prob = %lf\n", ang, p);
+		road_recog.get(ang, p, t);
+		printf("angle = %lf, prob = %lf, timestamp = %lf\n", ang, p, t);
 	}
 
-	// Close the Python module
-	road_recog.close();
+	// Clear the Python module
+	road_recog.clear();
 
 	// Close the Python Interpreter
 	if (Py_FinalizeEx() < 0) {
