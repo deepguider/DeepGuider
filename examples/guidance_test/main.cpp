@@ -6,6 +6,112 @@
 
 //#define USE_PATHFILES 1
 
+
+std::vector<dg::Guidance::PathInfo> dg::Guidance::getPathExample()
+{
+	std::vector<PathInfo> path =
+	{
+		PathInfo(NODE, 559542564800125, POI, 0),	//Start: ETRI gate
+		PathInfo(EDGE, 0, SIDEWALK),
+		PathInfo(NODE,559542564800923, CORNER, 0),	//ETRI 13B entrance - west
+		PathInfo(EDGE, 1, CROSSWALKWOLIGHT),
+		PathInfo(NODE,559542564800922, CORNER, 0),	//ETRI 13B entrance - east
+		PathInfo(EDGE, 2, SIDEWALK),
+		PathInfo(NODE,559552564800175, CORNER, 0),	//Dormitory entrance - west
+		PathInfo(EDGE, 3, CROSSWALKWOLIGHT),
+		PathInfo(NODE,559552564800052, CORNER, 0),	//Dormitory entrance - east
+		PathInfo(EDGE, 4, SIDEWALK),
+		PathInfo(NODE,559552564800732, CORNER, 0),	//Kindergarden entrance - west
+		PathInfo(EDGE, 5, CROSSWALKWOLIGHT),
+		PathInfo(NODE,559552564800733, CORNER, 0),	//Kindergarden entrance - east
+		PathInfo(EDGE, 6, SIDEWALK),
+		PathInfo(NODE,559562564800752, CORNER, 0),	//SK View entrance - west
+		PathInfo(EDGE, 7, CROSSROAD),
+		PathInfo(NODE,559562564801071, CORNER, 0),	//SK View entrance - east
+		PathInfo(EDGE, 8, SIDEWALK),
+		PathInfo(NODE,559562564800771, CORNER, 0),	//Cafe Cocomo entrance - west
+		PathInfo(EDGE, 9, CROSSROAD),
+		PathInfo(NODE,559562564800834, CORNER, 0),	//Cafe Cocomo entrance - east
+		PathInfo(EDGE, 10, SIDEWALK),
+		PathInfo(NODE,559562564800828, CORNER, 0),	//Flower entrance - west
+		PathInfo(EDGE, 11, CROSSWALKWOLIGHT),
+		PathInfo(NODE,559562564800202, CORNER, 0),	//Flower entrance - east
+		PathInfo(EDGE, 12, SIDEWALK),
+		PathInfo(NODE,559562564800194, CORNER, 45),	//Police office
+		PathInfo(EDGE, 13, CROSSWALKWOLIGHT),
+		PathInfo(NODE,559562564801444, ISLAND, -45),	//Crosswalk island
+		PathInfo(EDGE, 14, CROSSWALKWLIGHT),
+		PathInfo(NODE,559562564801442, CORNER, 90),	//Doryong Realestate
+		PathInfo(EDGE, 15, CROSSWALKWLIGHT),
+		PathInfo(NODE,559562564801032, CORNER, 0),	//GS25
+		PathInfo(EDGE, 16, SIDEWALK),
+		PathInfo(NODE,559562564700438, POI, -90)	//Goal: Paris Baguette
+	};
+
+	return path;
+}
+
+std::vector<dg::TopometricPose> dg::Guidance::getPositionExample()
+{
+	//distance of TopometricPose refers to percentage
+	//edge data is not included
+	std::vector<dg::TopometricPose> Loc =
+	{
+		dg::TopometricPose(559542564800125, 0, 0.5),	//ETRI gate
+		dg::TopometricPose(559542564800125, 0, 0.9),	//ETRI gate
+		dg::TopometricPose(559542564800923, 1, 0),	//ETRI 13B entrance - west
+		dg::TopometricPose(559542564800923, 1, 0.5),	//ETRI 13B entrance - west
+		dg::TopometricPose(559542564800923, 1, 0.9),	//ETRI 13B entrance - west
+		dg::TopometricPose(559542564800922, 2, 0),	//ETRI 13B entrance - east
+		dg::TopometricPose(559542564800922, 2, 0.5),	//ETRI 13B entrance - east
+		dg::TopometricPose(559542564800922, 2, 0.9),	//ETRI 13B entrance - east		
+		dg::TopometricPose(559552564800175, 3, 0),	//Dormitory entrance - west	
+		dg::TopometricPose(559552564800175, 3, 0.5),	//Dormitory entrance - west
+		dg::TopometricPose(559552564800175, 3, 0.9),	//Dormitory entrance - west		
+		dg::TopometricPose(559552564800052, 4, 0),	//Dormitory entrance - east
+		dg::TopometricPose(559552564800052, 4, 0.5),	//Dormitory entrance - east
+		dg::TopometricPose(559552564800052, 4, 0.9),	//Dormitory entrance - east	
+		dg::TopometricPose(559552564800732, 5, 0),	//Kindergarden entrance - west	
+		dg::TopometricPose(559552564800732, 5, 0.5),	//Kindergarden entrance - west	
+		dg::TopometricPose(559552564800732, 5, 0.9),	//Kindergarden entrance - west		
+		dg::TopometricPose(559552564800733, 6, 0),	//Kindergarden entrance - east	
+		dg::TopometricPose(559552564800733, 6, 0.5),	//Kindergarden entrance - east	
+		dg::TopometricPose(559552564800733, 6, 0.9),	//Kindergarden entrance - east		
+		dg::TopometricPose(559562564800752, 7, 0),	//SK View entrance - west
+		dg::TopometricPose(559562564800752, 7, 0.5),	//SK View entrance - west
+		dg::TopometricPose(559562564800752, 7, 0.9),	//SK View entrance - west		
+		dg::TopometricPose(559562564801071, 8, 0),	//SK View entrance - east
+		dg::TopometricPose(559562564801071, 8, 0.5),	//SK View entrance - east	
+		dg::TopometricPose(559562564801071, 8, 0.9),	//SK View entrance - east		
+		dg::TopometricPose(559562564800771, 9, 0),	//Cafe Cocomo entrance - west
+		dg::TopometricPose(559562564800771, 9, 0.5),	//Cafe Cocomo entrance - west
+		dg::TopometricPose(559562564800771, 9, 0.9),	//Cafe Cocomo entrance - west	
+		dg::TopometricPose(559562564800834, 10, 0),	//Cafe Cocomo entrance - east
+		dg::TopometricPose(559562564800834, 10, 0.5),	//Cafe Cocomo entrance - east
+		dg::TopometricPose(559562564800834, 10, 0.9),	//Cafe Cocomo entrance - east	
+		dg::TopometricPose(559562564800828, 11, 0),	//Flower entrance - west
+		dg::TopometricPose(559562564800828, 11, 0.5),	//Flower entrance - west	
+		dg::TopometricPose(559562564800828, 11, 0.9),	//Flower entrance - west		
+		dg::TopometricPose(559562564800202, 12, 0),	//Flower entrance - east
+		dg::TopometricPose(559562564800202, 12, 0.5),	//Flower entrance - east	
+		dg::TopometricPose(559562564800202, 12, 0.9),	//Flower entrance - east		
+		dg::TopometricPose(559562564800194, 13, 0),	//Police office		
+		dg::TopometricPose(559562564800194, 13, 0.5),	//Police office		
+		dg::TopometricPose(559562564800194, 13, 0.9),	//Police office
+		dg::TopometricPose(559562564801444, 14, 0),	//Crosswalk island
+		dg::TopometricPose(559562564801444, 14, 0.5),	//Crosswalk island
+		dg::TopometricPose(559562564801444, 14, 0.9),	//Crosswalk island	
+		dg::TopometricPose(559562564801442, 15, 0),	//Doryong Realestate	
+		dg::TopometricPose(559562564801442, 15, 0.5),	//Doryong Realestate	
+		dg::TopometricPose(559562564801442, 15, 0.9),	//Doryong Realestate		
+		dg::TopometricPose(559562564801032, 16, 0),	//GS25
+		dg::TopometricPose(559562564801032, 16, 0.9),	//GS25
+		dg::TopometricPose(559562564700438, 16, 0)	//Goal: Paris Baguette
+	};
+
+	return Loc;
+}
+
 int main()
 {
 /* //Use this when there is no example.
@@ -64,7 +170,6 @@ int main()
 	}
 	return 0;
 }
-
 /* Use this for simulator.
 
 dg::SimpleRoadMap getExampleMap()
