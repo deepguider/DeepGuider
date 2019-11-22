@@ -364,7 +364,7 @@ class vps:
 
 
         ##### Results #####
-        return self.gps_lat,self.gps_long,self.vps_lat,self.vps_long,self.prob
+        return self.vps_lat,self.vps_long,self.prob,self.gps_lat,self.gps_long
 
     def getPosVPS(self):
         return self.GPS_Latitude, self.GPS_Longitude
