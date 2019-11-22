@@ -106,7 +106,8 @@ def initialize(filename):
     with open('./data/preprocessed/trained_brands.pkl', 'rb') as f:
         img_input, input_labels = pickle.load(f)
 
-    (img_input, feat_input, sim_cutoff, (bins, cdf_list)) = load_brands_compute_cutoffs(                                    img_input, (model, my_preprocess), features, sim_threshold)
+    (img_input, feat_input, sim_cutoff, (bins, cdf_list)) = load_brands_compute_cutoffs(                                    
+                                            img_input, (model, my_preprocess), features, sim_threshold)
     print('Done! It tooks {:.2f} mins.\n'.format((time.time() - start)/60))
 
     return (yolo, model, my_preprocess), (feat_input, sim_cutoff, bins, cdf_list, input_labels)
@@ -118,10 +119,12 @@ if __name__ == '__main__':
     #test(filename, timestamp)
     model_preproc, input_preproc = initialize(filename)
     test_path = list(Path('./data/test/input/').iterdir())
+    #print(len(test_path))
     start = time.time()
     for path in test_path:
+        img = cv2.imread(str(path))
         pred, timestamp = detect_and_match(model_preproc, input_preproc, 
-                                       str(path), timestamp, save_img=False)
+                                       img, str(path), timestamp, save_img=True)
         print(pred)
         #print(timestamp)
     print('Logo detection and recognition complete! It tooks {:.2f} FPS'.format(len(test_path)/(time.time() - start)))

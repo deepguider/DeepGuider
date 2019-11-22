@@ -67,7 +67,7 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 {
     std::vector<std::pair<std::string, cv::Vec3d>> dataset =
     {
-        std::make_pair("Pose",      cv::Vec3d(0, 0, cx::cvtDeg2Rad(95))),
+        std::make_pair("Pose",      cv::Vec3d(0.1, 0.1, cx::cvtDeg2Rad(95))),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
         std::make_pair("Odometry",  cv::Vec3d(0.1, 0)),
@@ -89,7 +89,7 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
     return dataset;
 }
 
-int testLocSimpleMetricLocalizer(int wait_msec = 1)
+int testLocSimpleLocalizer(int wait_msec = 1)
 {
     // Load a map
     dg::SimpleMetricLocalizer localizer;
@@ -108,18 +108,24 @@ int testLocSimpleMetricLocalizer(int wait_msec = 1)
     auto dataset = getExampleDataset();
     for (size_t t = 0; t < dataset.size(); t++)
     {
+        dg::Timestamp time = static_cast<dg::Timestamp>(t);
         const cv::Vec3d& d = dataset[t].second;
-        if (dataset[t].first == "Pose")     VVS_CHECK_TRUE(localizer.applyPose(dg::Pose2(d[0], d[1], d[2]), t));
-        if (dataset[t].first == "Odometry") VVS_CHECK_TRUE(localizer.applyOdometry(dg::Polar2(d[0], d[1]), t));
-        if (dataset[t].first == "LocClue")  VVS_CHECK_TRUE(localizer.applyLocClue(int(d[0]), dg::Polar2(d[1], d[2]), t));
+        if (dataset[t].first == "Pose")        VVS_CHECK_TRUE(localizer.applyPose(dg::Pose2(d[0], d[1], d[2]), time));
+        if (dataset[t].first == "Position")    VVS_CHECK_TRUE(localizer.applyPosition(dg::Point2(d[0], d[1]), time));
+        if (dataset[t].first == "Orientation") VVS_CHECK_TRUE(localizer.applyOrientation(d[0], time));
+        if (dataset[t].first == "Odometry")    VVS_CHECK_TRUE(localizer.applyOdometry(dg::Polar2(d[0], d[1]), time));
+        if (dataset[t].first == "LocClue")     VVS_CHECK_TRUE(localizer.applyLocClue(int(d[0]), dg::Polar2(d[1], d[2]), time));
 
         if (wait_msec >= 0)
         {
             cv::Mat image = map_image.clone();
-            dg::Pose2 pose = localizer.getPose();
-            VVS_CHECK_TRUE(painter.drawNode(image, map_info, dg::Point2ID(0, pose.x, pose.y), 0.1, 0, cx::COLOR_MAGENTA));
+            dg::Pose2 pose_metr = localizer.getPose();
+            dg::TopometricPose pose_topo = localizer.getPoseTopometric();
+            VVS_CHECK_TRUE(painter.drawNode(image, map_info, dg::Point2ID(0, pose_metr.x, pose_metr.y), 0.1, 0, cx::COLOR_MAGENTA));
+            cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
+            cv::putText(image, info_topo, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
 
-            cv::imshow("testLocSimpleMetricLocalizer", image);
+            cv::imshow("testLocSimpleLocalizer", image);
             int key = cv::waitKey(wait_msec);
             if (key == cx::KEY_ESC) return -1;
         }

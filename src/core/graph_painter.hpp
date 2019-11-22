@@ -149,7 +149,7 @@ public:
         if (!image.empty())
         {
             drawNodes(image, info, map, m_node_radius, m_node_font_scale, m_node_color, m_node_thickness);
-            for (Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
+            for (typename Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
             {
                 drawEdges(image, info, map, &(*n), m_node_radius, m_edge_color, m_edge_thickness, m_edge_arrow_length);
             }
@@ -171,7 +171,7 @@ public:
         if (map.countNodes() > 0)
         {
             Point2 box_min = map.getHeadNode()->data, box_max = map.getHeadNode()->data;
-            for (Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
+            for (typename Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
             {
                 if (n->data.x < box_min.x) box_min.x = n->data.x;
                 if (n->data.y < box_min.y) box_min.y = n->data.y;
@@ -289,7 +289,7 @@ public:
         const cv::Point font_offset(-r / 2, r / 2);
         cv::Vec3b font_color = color;
         if (thickness < 0) font_color = cv::Vec3b(255, 255, 255) - color;
-        for (Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
+        for (typename Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
         {
             const cv::Point p = cvtMeter2Pixel(n->data, info);
             cv::circle(image, p, r, color, thickness);
@@ -333,7 +333,7 @@ public:
 
         const double r = radius * info.ppm;
         const double a = arrow_length * info.ppm;
-        for (Point2IDGraph::EdgeItr e = map.getHeadEdge(node); e != map.getTailEdge(node); e++)
+        for (typename Point2IDGraph::EdgeItr e = map.getHeadEdge(node); e != map.getTailEdge(node); e++)
         {
             // Draw an edge
             Point2 p = cvtMeter2Pixel(node->data, info);

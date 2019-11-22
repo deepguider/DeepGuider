@@ -12,8 +12,10 @@ from PIL import Image
 from sklearn.neighbors import NearestNeighbors
 import h5py
 
+from ipdb import set_trace as bp
+
 #root_dir = '/nfs/ibrahimi/data/pittsburgh/'
-root_dir = './netvlad_v100_datasets/'
+root_dir = './netvlad_v100_datasets/' #you need this directory in the top.
 
 if not exists(root_dir):
     raise FileNotFoundError('root_dir is hardcoded, please adjust to point to Pittsburth dataset')
@@ -104,6 +106,7 @@ class WholeDatasetFromStruct(data.Dataset):
     def __init__(self, structFile, input_transform=None, onlyDB=False):
         super().__init__()
 
+#        bp()
         self.input_transform = input_transform
 
         self.dbStruct = parse_dbStruct(structFile)
