@@ -275,13 +275,13 @@ public:
      * @param _edge_idx Index of currently moving edge
      * @param _dist The traveled distance from the previously departed node (Unit: [m])
      */
-    TopometricPose(int _node_id = -1, int _edge_idx = -1, double _dist = 0) : node_id(_node_id), edge_idx(_edge_idx), dist(_dist) { }
+    TopometricPose(ID _node_id = 0, ID _edge_idx = 0, double _dist = 0) : node_id(_node_id), edge_idx(_edge_idx), dist(_dist) { }
 
     /** ID of previously departed node */
-    int node_id;
+    ID node_id;
 
     /** Index of currently moving edge */
-    int edge_idx;
+	ID edge_idx;
 
     /** The traveled distance from the previously departed node (Unit: [m]) */
     double dist;
