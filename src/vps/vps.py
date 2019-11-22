@@ -31,8 +31,12 @@ import sys;sys.path.insert(0,'netvlad/ccsmmutils');import img_utils as myiu
 
 class vps:
     def __init__(self):
-        self.angle = 0.0  # road direction (radian)
-        self.prob = 0.0   # reliablity of the result. 0: fail ~ 1: success
+        self.gps_lat = 0.0 #Latitude
+        self.gps_long = 0.0 #Longitude
+        self.vps_lat = 0.0 # Latitude from VPS function
+        self.vps_long = 0.0 # Longitude from VPS function
+        self.angle = -1  # road direction (radian)
+        self.prob = -1   # reliablity of the result. 0: fail ~ 1: success
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -45,7 +49,7 @@ class vps:
         self.parser.add_argument('--nEpochs', type=int, default=30, help='number of epochs to train for')
         self.parser.add_argument('--start-epoch', default=0, type=int, metavar='N', 
                 help='manual epoch number (useful on restarts)')
-        self.parser.add_argument('--nGPU', type=int, default=4, help='number of GPU to use.')
+        self.parser.add_argument('--nGPU', type=int, default=1, help='number of GPU to use.')
         self.parser.add_argument('--optim', type=str, default='SGD', help='optimizer to use', choices=['SGD', 'ADAM'])
         self.parser.add_argument('--lr', type=float, default=0.0001, help='Learning Rate.')
         self.parser.add_argument('--lrStep', type=float, default=5, help='Decay LR ever N steps.')
@@ -61,7 +65,8 @@ class vps:
                 help='Path to save checkpoints to in logdir. Default=netvlad/checkpoints/')
 #        self.parser.add_argument('--cachePath', type=str, default=environ['TMPDIR'], help='Path to save cache to.')
         self.parser.add_argument('--cachePath', type=str, default='/tmp', help='Path to save cache to.')
-        self.parser.add_argument('--resume', type=str, default='netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint_gpu4', help='Path to load checkpoint from, for resuming training or testing.')
+        self.parser.add_argument('--resume', type=str, default='netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint', help='Path to load checkpoint from, for resuming training or testing.')
+#        self.parser.add_argument('--resume', type=str, default='netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint_gpu4', help='Path to load checkpoint from, for resuming training or testing.')
         self.parser.add_argument('--ckpt', type=str, default='latest', 
                 help='Resume from latest or best checkpoint.', choices=['latest', 'best'])
         self.parser.add_argument('--evalEvery', type=int, default=1, 
@@ -322,8 +327,27 @@ class vps:
         # set parameter
         return 0
 
-    def apply(self, image, timestamp):
+    def apply(self, image=None, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
+        if image is None:
+#            self.image = -1
+            self.image = np.uint8(256*np.random.rand(720,1280,3))
+        else:
+            self.image = image
+        if gps_lat is None:
+            self.gps_lat = -1
+        if gps_long is None:
+            self.gps_long = -1
+        if gps_accuracy is None:
+            self.gps_accuracy = -1
+        if timestamp is None:
+            self.timestamp = -1
+
         opt = self.parser.parse_args()
+
+        ##### Process Input #####
+        cv.imshow("sample", self.image)
+        cv.waitKey()
+        cv.destroyWindow("sample")
 
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
@@ -338,10 +362,15 @@ class vps:
         epoch = 1
         recalls = self.test(whole_test_set, epoch, write_tboard=False)
 
+
         ##### Results #####
-        self.angle = recalls
-        self.prob = 0
-        return self.angle, self.prob
+        return self.gps_lat,self.gps_long,self.vps_lat,self.vps_long,self.prob
+
+    def getPosVPS(self):
+        return self.GPS_Latitude, self.GPS_Longitude
+
+    def getPosVPS(self):
+        return self.VPS_Latitude, self.VPS_Longitude
 
     def getAngle(self):
         return self.angle
@@ -354,5 +383,6 @@ class vps:
 if __name__ == "__main__":
     mod_vps = vps()
     mod_vps.initialize()
-    mod_vps.apply(0,0)
+    qimage = np.uint8(256*np.random.rand(720,1280,3))
+    mod_vps.apply(qimage)
 

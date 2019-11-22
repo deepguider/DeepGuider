@@ -7,8 +7,8 @@ DATASET_LINK=netvlad_v100_datasets
 DATASET_DIR=/home/ccsmm/workdir/DB_Repo/Pittsburgh250k/$DATASET_LINK
 PRETRAINED_DIR=pretrained_checkpoint
 
-#WHICH_WEIGHT="PAPER"
-WHICH_WEIGHT="ETRI"
+WHICH_WEIGHT="PAPER"
+#WHICH_WEIGHT="ETRI"
 
 chmod +x *.sh
 
