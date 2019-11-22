@@ -1,0 +1,329 @@
+#include "guidance.hpp"
+#include "dg_map_manager.hpp"
+#include "../unit_test/vvs.h"
+
+using namespace dg;
+
+bool dg::Guidance::validatePathNodeIds()
+{
+	std::list<dg::ID>::iterator it = m_pathnodeids.begin();
+	dg::ID tempid;
+	while (it != m_pathnodeids.end())
+	{
+		tempid = *it;
+		dg::Map::Node* foundNode = m_map.findNode(tempid);
+		if (foundNode == nullptr)
+		{
+			m_pathnodeids.remove(tempid);
+			it = m_pathnodeids.begin();
+		}
+		else {
+			++it;
+		}
+	}
+	return false;
+}
+
+bool dg::Guidance::savePathNodeEdgeIds()
+{
+	FILE* nodefile = fopen("PathNodeIds.txt", "w");
+	FILE* edgefile = fopen("PathEdgeIds.txt", "w");
+	
+	if (nodefile == NULL) return -1;
+
+	//dg::MapManager manager;
+	std::list<dg::ID> pathnodeids;
+	std::list<dg::ID> pathedgeids;
+
+	std::list<dg::ID> pathids = m_pathnodeids;
+	std::list<dg::ID>::iterator it = pathids.begin();
+	dg::ID pastid, curid;
+	pastid = *pathids.begin();
+	dg::Map::Node* foundnode = m_map.findNode(pastid);
+	fprintf(nodefile, "%" PRIu64 "\n", foundnode->data.id);
+	pathids.pop_front(); //첫번째 노드 삭제
+		
+	for (it = pathids.begin(); it != pathids.end(); ++it)
+	{
+		curid = *it;
+		dg::Map::Node* foundnode = m_map.findNode(curid);
+		//dg::Map::Edge* foundedge = m_map.findEdge(pastid, curid); //<--impossible! currently nodes are not connected.(by JSH 2019-11-21)
+		for (size_t i = 0; i < foundnode->data.edge_ids.size(); i++)
+		{
+			pathedgeids.push_back(foundnode->data.edge_ids[i]);
+			fprintf(edgefile, "%" PRIu64 "\n", foundnode->data.edge_ids[i]);
+		}
+		pathnodeids.push_back(foundnode->data.id);
+		fprintf(nodefile, "%" PRIu64 "\n", foundnode->data.id);
+
+		pastid = curid;
+
+	}
+
+	m_pathedgeids = pathedgeids;
+
+	fclose(nodefile);
+	fclose(edgefile);
+
+	return true;
+}
+
+
+bool dg::Guidance::loadPathFiles(const char* filename, std::list<ID>& destination)
+{
+	destination.clear();
+	//destination.clear();
+	auto is = std::ifstream(filename, std::ofstream::in);
+	assert(is.is_open());
+	std::string line, text;
+	
+	while (std::getline(is, line))
+	{
+		//text += line + "\n";				
+		destination.push_back(stoull(line));
+		//destination.push_back(stoull(line));
+	}
+	
+	is.close();
+
+	return false;
+}
+
+
+std::vector<dg::Guidance::PathInfo> dg::Guidance::getPathExample()
+{	
+	std::vector<PathInfo> path =
+	{
+		PathInfo(NODE, 559542564800125, POI, 0),	//Start: ETRI gate
+		PathInfo(EDGE, 0, SIDEWALK),
+		PathInfo(NODE,559542564800923, CORNER, 0),	//ETRI 13B entrance - west
+		PathInfo(EDGE, 1, CROSSWALKWOLIGHT),
+		PathInfo(NODE,559542564800922, CORNER, 0),	//ETRI 13B entrance - east
+		PathInfo(EDGE, 2, SIDEWALK),
+		PathInfo(NODE,559552564800175, CORNER, 0),	//Dormitory entrance - west
+		PathInfo(EDGE, 3, CROSSWALKWOLIGHT),
+		PathInfo(NODE,559552564800052, CORNER, 0),	//Dormitory entrance - east
+		PathInfo(EDGE, 4, SIDEWALK),
+		PathInfo(NODE,559552564800732, CORNER, 0),	//Kindergarden entrance - west
+		PathInfo(EDGE, 5, CROSSWALKWOLIGHT),
+		PathInfo(NODE,559552564800733, CORNER, 0),	//Kindergarden entrance - east
+		PathInfo(EDGE, 6, SIDEWALK),
+		PathInfo(NODE,559562564800752, CORNER, 0),	//SK View entrance - west
+		PathInfo(EDGE, 7, CROSSROAD),
+		PathInfo(NODE,559562564801071, CORNER, 0),	//SK View entrance - east
+		PathInfo(EDGE, 8, SIDEWALK),
+		PathInfo(NODE,559562564800771, CORNER, 0),	//Cafe Cocomo entrance - west
+		PathInfo(EDGE, 9, CROSSROAD),
+		PathInfo(NODE,559562564800834, CORNER, 0),	//Cafe Cocomo entrance - east
+		PathInfo(EDGE, 10, SIDEWALK),
+		PathInfo(NODE,559562564800828, CORNER, 0),	//Flower entrance - west
+		PathInfo(EDGE, 11, CROSSWALKWOLIGHT),
+		PathInfo(NODE,559562564800202, CORNER, 0),	//Flower entrance - east
+		PathInfo(EDGE, 12, SIDEWALK),
+		PathInfo(NODE,559562564800194, CORNER, 45),	//Police office
+		PathInfo(EDGE, 13, CROSSWALKWOLIGHT),
+		PathInfo(NODE,559562564801444, ISLAND, -45),	//Crosswalk island
+		PathInfo(EDGE, 14, CROSSWALKWLIGHT),
+		PathInfo(NODE,559562564801442, CORNER, 90),	//Doryong Realestate
+		PathInfo(EDGE, 15, CROSSWALKWLIGHT),
+		PathInfo(NODE,559562564801032, CORNER, 0),	//GS25
+		PathInfo(EDGE, 16, SIDEWALK),
+		PathInfo(NODE,559562564700438, POI, -90)	//Goal: Paris Baguette
+	};
+
+	return path;
+}
+
+std::vector<dg::TopometricPose> dg::Guidance::getPositionExample()
+{	
+	//distance of TopometricPose refers to percentage
+	//edge data is not included
+	std::vector<dg::TopometricPose> Loc =
+	{
+		dg::TopometricPose(559542564800125, 0, 0.5),	//ETRI gate
+		dg::TopometricPose(559542564800125, 0, 0.9),	//ETRI gate
+		dg::TopometricPose(559542564800923, 1, 0),	//ETRI 13B entrance - west
+		dg::TopometricPose(559542564800923, 1, 0.5),	//ETRI 13B entrance - west
+		dg::TopometricPose(559542564800923, 1, 0.9),	//ETRI 13B entrance - west
+		dg::TopometricPose(559542564800922, 2, 0),	//ETRI 13B entrance - east
+		dg::TopometricPose(559542564800922, 2, 0.5),	//ETRI 13B entrance - east
+		dg::TopometricPose(559542564800922, 2, 0.9),	//ETRI 13B entrance - east		
+		dg::TopometricPose(559552564800175, 3, 0),	//Dormitory entrance - west	
+		dg::TopometricPose(559552564800175, 3, 0.5),	//Dormitory entrance - west
+		dg::TopometricPose(559552564800175, 3, 0.9),	//Dormitory entrance - west		
+		dg::TopometricPose(559552564800052, 4, 0),	//Dormitory entrance - east
+		dg::TopometricPose(559552564800052, 4, 0.5),	//Dormitory entrance - east
+		dg::TopometricPose(559552564800052, 4, 0.9),	//Dormitory entrance - east	
+		dg::TopometricPose(559552564800732, 5, 0),	//Kindergarden entrance - west	
+		dg::TopometricPose(559552564800732, 5, 0.5),	//Kindergarden entrance - west	
+		dg::TopometricPose(559552564800732, 5, 0.9),	//Kindergarden entrance - west		
+		dg::TopometricPose(559552564800733, 6, 0),	//Kindergarden entrance - east	
+		dg::TopometricPose(559552564800733, 6, 0.5),	//Kindergarden entrance - east	
+		dg::TopometricPose(559552564800733, 6, 0.9),	//Kindergarden entrance - east		
+		dg::TopometricPose(559562564800752, 7, 0),	//SK View entrance - west
+		dg::TopometricPose(559562564800752, 7, 0.5),	//SK View entrance - west
+		dg::TopometricPose(559562564800752, 7, 0.9),	//SK View entrance - west		
+		dg::TopometricPose(559562564801071, 8, 0),	//SK View entrance - east
+		dg::TopometricPose(559562564801071, 8, 0.5),	//SK View entrance - east	
+		dg::TopometricPose(559562564801071, 8, 0.9),	//SK View entrance - east		
+		dg::TopometricPose(559562564800771, 9, 0),	//Cafe Cocomo entrance - west
+		dg::TopometricPose(559562564800771, 9, 0.5),	//Cafe Cocomo entrance - west
+		dg::TopometricPose(559562564800771, 9, 0.9),	//Cafe Cocomo entrance - west	
+		dg::TopometricPose(559562564800834, 10, 0),	//Cafe Cocomo entrance - east
+		dg::TopometricPose(559562564800834, 10, 0.5),	//Cafe Cocomo entrance - east
+		dg::TopometricPose(559562564800834, 10, 0.9),	//Cafe Cocomo entrance - east	
+		dg::TopometricPose(559562564800828, 11, 0),	//Flower entrance - west
+		dg::TopometricPose(559562564800828, 11, 0.5),	//Flower entrance - west	
+		dg::TopometricPose(559562564800828, 11, 0.9),	//Flower entrance - west		
+		dg::TopometricPose(559562564800202, 12, 0),	//Flower entrance - east
+		dg::TopometricPose(559562564800202, 12, 0.5),	//Flower entrance - east	
+		dg::TopometricPose(559562564800202, 12, 0.9),	//Flower entrance - east		
+		dg::TopometricPose(559562564800194, 13, 0),	//Police office		
+		dg::TopometricPose(559562564800194, 13, 0.5),	//Police office		
+		dg::TopometricPose(559562564800194, 13, 0.9),	//Police office
+		dg::TopometricPose(559562564801444, 14, 0),	//Crosswalk island
+		dg::TopometricPose(559562564801444, 14, 0.5),	//Crosswalk island
+		dg::TopometricPose(559562564801444, 14, 0.9),	//Crosswalk island	
+		dg::TopometricPose(559562564801442, 15, 0),	//Doryong Realestate	
+		dg::TopometricPose(559562564801442, 15, 0.5),	//Doryong Realestate	
+		dg::TopometricPose(559562564801442, 15, 0.9),	//Doryong Realestate		
+		dg::TopometricPose(559562564801032, 16, 0),	//GS25
+		dg::TopometricPose(559562564801032, 16, 0.9),	//GS25
+		dg::TopometricPose(559562564700438, 16, 0)	//Goal: Paris Baguette
+	};
+
+	return Loc;
+}
+
+dg::Guidance::Status dg::Guidance::checkStatus(dg::TopometricPose  pose)
+{
+	//Current robot location
+	dg::ID curnode = pose.node_id;
+	dg::ID curedge = pose.edge_idx;
+	double curdist = pose.dist;
+	
+	/**Check progress.
+	m_progress: 0.0 ~ 1.0
+	'm_progress' indicates where the robot is.
+	It also works as deciding the boundary for searching area in case of lost.
+	*/	
+	int pathlen = m_path.size();
+	float pastprog = m_progress;
+
+	//check whether robot's location is on the path.
+	int pathidx;	
+	for (pathidx = 0; pathidx < m_path.size(); ++pathidx)
+	{
+		PathInfo tmppath = m_path[pathidx];
+		if ((tmppath.component == NODE) && (tmppath.id == curnode))
+		{			
+			/**if the difference of current location and progress is under threshold, finish check.
+			The threshold is 10%. 
+			Checking edge is future work.
+			*/
+			if (abs(pathidx / pathlen - pastprog) < 0.1)	
+			{
+				//update progress
+				m_progress = pathidx / pathlen + curdist / pathlen;
+				m_curpathindicator = pathidx;
+			}
+			//else //if the difference is big, the robot maybe lost. Future work.
+			break;
+		}
+	}
+
+
+	//Check path following status
+	if (curdist == 0)
+	{
+		m_status = ARRIVED_NODE;
+	}
+	else if(curdist < 0.9)
+	{
+		m_status = ON_EDGE;
+	}
+	else if (curdist >= 0.9)
+	{
+		m_status = APPROACHING_NODE;
+	}
+
+	return Status(m_status);
+}
+
+
+bool dg::Guidance::generateGuide()
+{
+	bool result = false;
+
+	m_guide.clear();
+	PathInfo curnode = m_path[0];
+	PathInfo curedge(EDGE, 0, SIDEWALK);
+	PathInfo nextnode(NODE, 0, POI, 0);
+
+	int pathidx;
+	for (pathidx = 1; pathidx < m_path.size(); ++pathidx)
+	{
+		PathInfo tmppath = m_path[pathidx];
+		if (tmppath.component == EDGE)
+		{
+			curedge = tmppath;
+			continue;
+		}
+		else
+		{
+			nextnode = tmppath;
+		}
+		
+		/**guide: "until where" "in which direction" "with mode"
+		related to "NodeType" "Direction" "EdgeType" 
+		*/
+		m_guide.push_back(Guide(nextnode.id, nextnode.node, curnode.degree, curedge.edge));
+		curnode = nextnode;
+	}
+
+	m_guide.push_back(Guide(nextnode.id, nextnode.node, nextnode.degree, nextnode.edge));
+	
+	return true;;
+}
+
+
+std::vector<dg::Guidance::InstantGuide> dg::Guidance::provideNormalGuide(std::vector<InstantGuide> prevguide, Status status)
+{	
+	std::vector<InstantGuide> result;
+	int Gidx = m_curguideindicator;
+	Guide curG = m_guide[Gidx]; 
+	Guide nextG = m_guide[Gidx + 1];	
+
+	switch (status)
+	{
+	case ON_EDGE: //maintain current guide
+		result.push_back(prevguide.back());		
+		break;
+
+	case APPROACHING_NODE: //add next action
+		result.push_back(prevguide.back());
+		result.push_back(InstantGuide(curG, Action(STOP, 0)));
+		break;
+
+	case ARRIVED_NODE: //add next action		
+		if (!nextG.direction == 0)
+		{
+			result.push_back(InstantGuide(curG, Action(TURN, nextG.direction)));
+			result.push_back(InstantGuide(curG, Action(STOP, 0)));
+		}
+
+		m_curguideindicator++;
+		//finishing condition
+		if (m_curguideindicator == m_guide.size() - 1)
+			return result;
+
+		result.push_back(InstantGuide(nextG, Action(GO_FORWARD, 0)));
+		break;
+
+	default:
+		break;
+	}
+
+	
+	return result;
+}
