@@ -13,7 +13,7 @@ namespace dg
 {
 
 /**
- * @brief C++ Wrapper of Python moudle - Road direction recognizer
+ * @brief C++ Wrapper of Python module - Road direction recognizer
  */
 class RoadDirectionRecognizer
 {

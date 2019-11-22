@@ -58,6 +58,9 @@ public:
 	int lat2tiley(double lat, int z);
 	double tilex2long(int x, int z);
 	double tiley2lat(int y, int z);
+
+	bool initialize();
+
 	bool query2server(std::string url);
 	void downloadMap(cv::Point2i tile);
 	bool downloadMap(double lat, double lon, double radius);
@@ -93,6 +96,13 @@ protected:
 	double m_lon = 0;
 	double m_lat = 0;
 	int m_z = 0;
+};
+
+class EdgeTemp : public EdgeInfo
+{
+public:
+	ID id;
+	std::vector<ID> node_ids;
 };
 
 } // End of 'dg'

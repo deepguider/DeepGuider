@@ -39,8 +39,6 @@ public:
     std::vector<ID> sv_ids;
 
     std::vector<std::string> pois;
-
-	std::vector<ID> edge_ids;
 };
 
 class EdgeInfo

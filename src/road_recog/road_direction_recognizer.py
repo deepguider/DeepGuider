@@ -5,11 +5,13 @@ class RoadDirectionRecognizer:
         self.angle = -1   # road direction (radian)
         self.prob = -1    # reliablity of the result. 0: fail ~ 1: success
 
-    def initialize(self):
-        self.angle = 0.0  # road direction (radian)
-        self.prob = 1.0   # reliablity of the result. 0: fail ~ 1: success
+    ##### Time-consuming pre-initialization code here (e.g. network load)
+    def initialize(self):        
+        self.angle = 0.0
+        self.prob = 1.0
         return True
 
+    ##### Process one frame
     def apply(self, image, timestamp):
         self.image = image
         self.timestamp = timestamp

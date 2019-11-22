@@ -118,10 +118,11 @@ if __name__ == '__main__':
     #test(filename, timestamp)
     model_preproc, input_preproc = initialize(filename)
     test_path = list(Path('./data/test/input/').iterdir())
+    print(len(test_path))
     start = time.time()
     for path in test_path:
         pred, timestamp = detect_and_match(model_preproc, input_preproc, 
-                                       str(path), timestamp, save_img=False)
+                                       str(path), timestamp, save_img=True)
         print(pred)
         #print(timestamp)
     print('Logo detection and recognition complete! It tooks {:.2f} FPS'.format(len(test_path)/(time.time() - start)))
