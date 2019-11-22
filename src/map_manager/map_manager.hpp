@@ -58,6 +58,9 @@ public:
 	int lat2tiley(double lat, int z);
 	double tilex2long(int x, int z);
 	double tiley2lat(int y, int z);
+
+	bool initialize();
+
 	bool query2server(std::string url);
 	void downloadMap(cv::Point2i tile);
 	bool downloadMap(double lat, double lon, double radius);

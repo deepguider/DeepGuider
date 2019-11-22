@@ -30,6 +30,12 @@ namespace dg
 		return cv::Point2i(long2tilex(lon, z), lat2tiley(lat, z));
 	}
 
+	bool initialize()
+	{
+
+		return true;
+	}
+
 	size_t write_callback(void* ptr, size_t size, size_t count, void* stream)
 	{
 		((std::string*)stream)->append((char*)ptr, 0, size * count);
@@ -193,7 +199,9 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 	} while (true);
 
 	const char* json = m_json.c_str();
+#ifdef _DEBUG
 	fprintf(stdout, "%s\n", json);
+#endif
 	Document document;
 	document.Parse(json);
 
@@ -262,7 +270,8 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 		}
 	}
 
-	int num = 0;
+	int numNonEdges = 0;
+	int numEdges = 0;
 	for (SizeType i = 0; i < features.Size(); i++)
 	{
 		//document.Parse(json);
@@ -289,11 +298,15 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 				std::vector<EdgeTemp>::iterator itr = std::find_if(temp_edge.begin(), temp_edge.end(), [id](EdgeTemp e) -> bool { return e.id == id; });
 				if(itr != temp_edge.end())
 					itr->node_ids.push_back(nodeinfo.id);
+#ifdef _DEBUG
 				else
-					fprintf(stdout, "%d %s\n", ++num, "<=======================the number of the edge_ids without edgeinfo"); // the number of the edge_ids without edgeinfo
+					fprintf(stdout, "%d %s\n", ++numNonEdges, "<=======================the number of the edge_ids without edgeinfo"); // the number of the edge_ids without edgeinfo
+#endif
 			}
 			m_map.addNode(nodeinfo);
+#ifdef _DEBUG
 			fprintf(stdout, "%d\n", i + 1); // the number of nodes
+#endif
 		}
 		//EdgeInfo edgeinfo;
 		/*const Value& edges = feature["edges"];
@@ -318,6 +331,9 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 				if (i == j) continue;
 				m_map.addEdge(NodeInfo(*i), NodeInfo(*j), EdgeInfo(it->length, it->type, it->width));
 				m_map.addEdge(NodeInfo(*j), NodeInfo(*i), EdgeInfo(it->length, it->type, it->width));
+#ifdef _DEBUG
+					fprintf(stdout, "%d %s\n", ++numEdges, "<=======================the number of edges"); // the number of edges
+#endif
 			}
 		}
 	}
