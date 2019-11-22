@@ -11,12 +11,14 @@ from keras_yolo3.yolo import YOLO
 
 
 def detect_and_match(model_preproc, input_features_cdf_cutoff_labels, 
-                     img_path, timestamp, save_img=True, save_img_path='./data/test/'):
-
+                     image, img_path, timestamp, save_img=True, save_img_path='./data/test/'):
+    '''
     image = Image.open(img_path)
     if image.mode != 'RGB':
         image = image.convert("RGB")
-    #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    '''
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(image)
     image_array = np.array(image)
     
     yolo, model, my_preprocess = model_preproc
