@@ -24,9 +24,15 @@
     <ClCompile Include="..\..\src\localizer\simple_road_map.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\map_manager\map_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="guidance.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\map_manager\map_manager.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
