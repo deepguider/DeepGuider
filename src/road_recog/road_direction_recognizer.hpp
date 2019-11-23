@@ -133,31 +133,34 @@ public:
 	bool apply(cv::Mat image, Timestamp t)
 	{
 		// Set function arguments
+
+        // Self
+        int arg_idx = 0;
 		PyObject *pArgs = PyTuple_New(3);
-		PyTuple_SetItem(pArgs, 0, m_pInstance);
+		PyTuple_SetItem(pArgs, arg_idx++, m_pInstance);
 
 		// Image
 		import_array();
 		npy_intp dimensions[3] = { image.rows, image.cols, image.channels() };
-		PyObject* pValue1 = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)&dimensions, NPY_UINT8, image.data);
-		if (!pValue1) {
+		PyObject* pValue = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)&dimensions, NPY_UINT8, image.data);
+		if (!pValue) {
 			fprintf(stderr, "RoadDirectionRecognizer::apply() - Cannot convert argument1\n");
 			return false;
 		}
-		PyTuple_SetItem(pArgs, 1, pValue1);
+		PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
 		// Timestamp
-		PyObject* pValue2 = PyFloat_FromDouble(t);
-		if (!pValue2) {
+		pValue = PyFloat_FromDouble(t);
+		if (!pValue) {
 			fprintf(stderr, "RoadDirectionRecognizer::apply() - Cannot convert argument2\n");
 			return false;
 		}
-		PyTuple_SetItem(pArgs, 2, pValue2);
+		PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
 		// Call the method
 		PyObject *pRet = PyObject_CallObject(m_pFuncApply, pArgs);
 		if (pRet != NULL) {
-			int n_ret = PyTuple_Size(pRet);
+			Py_ssize_t n_ret = PyTuple_Size(pRet);
 			if (n_ret != 2)
 			{
 				fprintf(stderr, "RoadDirectionRecognizer::apply() - Wrong number of returns\n");
@@ -181,6 +184,12 @@ public:
 
 		return true;
 	}
+
+    void get(double& _angle, double& _prob)
+    {
+        _angle = m_angle;
+        _prob = m_prob;
+    }
 
 	void get(double& _angle, double& _prob, Timestamp& _t)
 	{
