@@ -25,6 +25,27 @@
     <Filter Include="Header Files\road_recog">
       <UniqueIdentifier>{635fed0e-f2d9-48c5-8d92-9ccc5464d824}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\exploration">
+      <UniqueIdentifier>{b693e118-5d5c-4ac8-bf20-5d1c49d2b88c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\poi_recog">
+      <UniqueIdentifier>{9816aa5c-2cb2-4a84-8f7a-3aac80b23981}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\vps">
+      <UniqueIdentifier>{7fee3a8e-5903-41c4-820f-0d55165a84b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\proj_template">
+      <UniqueIdentifier>{f535cd74-2e41-41ba-8dc1-c84496cd8d53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\road_recog_test">
+      <UniqueIdentifier>{ede1eed8-32cf-42a6-9d9d-7037f017972b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\guidance_test">
+      <UniqueIdentifier>{f5d04b8d-1599-4fea-b888-89c06e02cdc2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\map_manager_test">
+      <UniqueIdentifier>{209a7459-360d-41cc-82d1-41951154f688}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -36,8 +57,23 @@
     <ClCompile Include="..\..\src\localizer\simple_road_map.cpp">
       <Filter>Header Files\localizer</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\road_recog\road_dir_recognizer.cpp">
-      <Filter>Header Files\road_recog</Filter>
+    <ClCompile Include="..\..\src\poi_recog\poi_recognizer.cpp">
+      <Filter>Header Files\poi_recog</Filter>
+    </ClCompile>
+    <ClCompile Include="..\guidance_test\Guidance.cpp">
+      <Filter>Source Files\guidance_test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\guidance_test\main.cpp">
+      <Filter>Source Files\guidance_test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\road_recog_test\main.cpp">
+      <Filter>Source Files\road_recog_test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\proj_template\main.cpp">
+      <Filter>Source Files\proj_template</Filter>
+    </ClCompile>
+    <ClCompile Include="..\map_manager_test\main.cpp">
+      <Filter>Source Files\map_manager_test</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -59,9 +95,6 @@
     <ClInclude Include="..\..\src\core\directed_graph.hpp">
       <Filter>Header Files\core</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\core\localizer.hpp">
-      <Filter>Header Files\core</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\core\map.hpp">
       <Filter>Header Files\core</Filter>
     </ClInclude>
@@ -80,8 +113,69 @@
     <ClInclude Include="..\..\src\core\graph_painter.hpp">
       <Filter>Header Files\core</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\road_recog\road_dir_recognizer.hpp">
+    <ClInclude Include="..\..\src\localizer\localizer.hpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\poi_recog\poi_recognizer.hpp">
+      <Filter>Header Files\poi_recog</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vps\vps.hpp">
+      <Filter>Header Files\vps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\dg_poi_recog.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\dg_road_recog.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\guidance_test\Guidance.hpp">
+      <Filter>Source Files\guidance_test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\guidance_test\simple_map_manager_jsh.h">
+      <Filter>Source Files\guidance_test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\map_manager_test\test_map_manager.hpp">
+      <Filter>Source Files\map_manager_test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\road_recog\road_direction_recognizer.hpp">
       <Filter>Header Files\road_recog</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\dg_vps.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\exploration\active_navigation.py">
+      <Filter>Header Files\exploration</Filter>
+    </None>
+    <None Include="..\..\src\exploration\main.py">
+      <Filter>Header Files\exploration</Filter>
+    </None>
+    <None Include="..\..\src\poi_recog\logo_recog.py">
+      <Filter>Header Files\poi_recog</Filter>
+    </None>
+    <None Include="..\..\src\poi_recog\logos.py">
+      <Filter>Header Files\poi_recog</Filter>
+    </None>
+    <None Include="..\..\src\poi_recog\main.py">
+      <Filter>Header Files\poi_recog</Filter>
+    </None>
+    <None Include="..\..\src\poi_recog\poi_recognizer.py">
+      <Filter>Header Files\poi_recog</Filter>
+    </None>
+    <None Include="..\..\src\road_recog\main.py">
+      <Filter>Header Files\road_recog</Filter>
+    </None>
+    <None Include="..\..\src\road_recog\road_direction_recognizer.py">
+      <Filter>Header Files\road_recog</Filter>
+    </None>
+    <None Include="..\..\src\vps\vps.py">
+      <Filter>Header Files\vps</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\road_recog_test\CMakeLists.txt">
+      <Filter>Source Files\road_recog_test</Filter>
+    </Text>
   </ItemGroup>
 </Project>

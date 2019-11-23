@@ -93,24 +93,51 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
-    <ClCompile Include="..\..\src\road_recog\road_dir_recognizer.cpp" />
+    <ClCompile Include="..\..\src\poi_recog\poi_recognizer.cpp" />
+    <ClCompile Include="..\guidance_test\Guidance.cpp" />
+    <ClCompile Include="..\guidance_test\main.cpp" />
+    <ClCompile Include="..\map_manager_test\main.cpp" />
+    <ClCompile Include="..\proj_template\main.cpp" />
+    <ClCompile Include="..\road_recog_test\main.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\core\basic_type.hpp" />
     <ClInclude Include="..\..\src\core\directed_graph.hpp" />
     <ClInclude Include="..\..\src\core\graph_painter.hpp" />
-    <ClInclude Include="..\..\src\core\localizer.hpp" />
     <ClInclude Include="..\..\src\core\map.hpp" />
     <ClInclude Include="..\..\src\core\path.hpp" />
     <ClInclude Include="..\..\src\dg_core.hpp" />
     <ClInclude Include="..\..\src\dg_localizer.hpp" />
     <ClInclude Include="..\..\src\dg_map_manager.hpp" />
+    <ClInclude Include="..\..\src\dg_poi_recog.hpp" />
+    <ClInclude Include="..\..\src\dg_road_recog.hpp" />
+    <ClInclude Include="..\..\src\dg_vps.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\simple_localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\simple_road_map.hpp" />
     <ClInclude Include="..\..\src\map_manager\map_manager.hpp" />
     <ClInclude Include="..\..\src\opencx.hpp" />
-    <ClInclude Include="..\..\src\road_recog\road_dir_recognizer.hpp" />
+    <ClInclude Include="..\..\src\poi_recog\poi_recognizer.hpp" />
+    <ClInclude Include="..\..\src\road_recog\road_direction_recognizer.hpp" />
+    <ClInclude Include="..\..\src\vps\vps.hpp" />
+    <ClInclude Include="..\guidance_test\Guidance.hpp" />
+    <ClInclude Include="..\guidance_test\simple_map_manager_jsh.h" />
+    <ClInclude Include="..\map_manager_test\test_map_manager.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\exploration\active_navigation.py" />
+    <None Include="..\..\src\exploration\main.py" />
+    <None Include="..\..\src\poi_recog\logos.py" />
+    <None Include="..\..\src\poi_recog\logo_recog.py" />
+    <None Include="..\..\src\poi_recog\main.py" />
+    <None Include="..\..\src\poi_recog\poi_recognizer.py" />
+    <None Include="..\..\src\road_recog\main.py" />
+    <None Include="..\..\src\road_recog\road_direction_recognizer.py" />
+    <None Include="..\..\src\vps\vps.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\road_recog_test\CMakeLists.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
