@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 import utils
+import pickle
 
 from PIL import Image
 from timeit import default_timer as timer
@@ -42,6 +43,9 @@ def detect_and_match(model_preproc, input_features_cdf_cutoff_labels,
         match_pred.append(pred)
         print('Logo #{} - {} {} - classified as {} {:.2f}'.format(idx,
                   tuple(bb[:2]), tuple(bb[2:4]), label, matches[idx][1]))
+    
+    with open('./data/test/pred_with_timestamp.pkl', 'wb') as f:
+        pickle.dump([match_pred, timestamp], f)
 
     if save_img:
         new_img = draw_matches(image_array, input_labels, prediction, matches)
