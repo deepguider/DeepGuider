@@ -30,12 +30,12 @@ class POIRecognizer:
         print('Initialization in progress...!\n')        
         start = time.time()
         self.yolo = YOLO(**{"model_path": './model/keras_yolo3/model_data/yolo_weights_logos.h5',
-                "anchors_path": './model/keras_yolo3/model_data/yolo_anchors.txt',
-                "classes_path": './data/preprocessed/classes.txt',
-                "score" : 0.05,
-                "gpu_num" : 1,
-                "model_image_size" : (416, 416),
-                })
+            "anchors_path": './model/keras_yolo3/model_data/yolo_anchors.txt',
+            "classes_path": './data/preprocessed/classes.txt',
+            "score" : 0.05,
+            "gpu_num" : 1,
+            "model_image_size" : (416, 416),
+            })
         # get Inception/VGG16 model and flavor from filename
         model_name, flavor = model_flavor_from_name(filename)
         
@@ -57,6 +57,6 @@ class POIRecognizer:
         return True
 
     def apply(self, image, timestamp):
-        pred, timestamp = detect_and_match(self.model_preproc, self.input_preproc, image, img_path='', timestamp, save_img=True)
+        pred, timestamp = detect_and_match(self.model_preproc, self.input_preproc, image, img_path, timestamp, save_img=True)
         return pred, timestamp
         
