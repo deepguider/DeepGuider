@@ -57,6 +57,6 @@ class POIRecognizer:
         return True
 
     def apply(self, image, timestamp):
-        pred, timestamp = detect_and_match(self.model_preproc, self.input_preproc, image, timestamp, save_img=False)
+        pred, timestamp = detect_and_match(self.model_preproc, self.input_preproc, image, img_path='', timestamp, save_img=True)
         return pred, timestamp
         
