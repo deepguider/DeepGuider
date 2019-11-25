@@ -1,5 +1,6 @@
 #include "dg_core.hpp"
 #include "dg_road_recog.hpp"
+#include <chrono>
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
@@ -30,13 +31,14 @@ int main()
 	int nIter = 5;
 	for (int i = 0; i < nIter; i++)
 	{
-		Timestamp t = i;
-		if (road_recog.apply(image, t) < 0) {
+		Timestamp t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+
+		if (!road_recog.apply(image, t)) {
 			return -1;
 		}
 
 		double ang, p;
-		road_recog.get(ang, p, t);
+		road_recog.get(ang, p);
 		printf("angle = %lf, prob = %lf, timestamp = %lf\n", ang, p, t);
 	}
 

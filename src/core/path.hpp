@@ -16,7 +16,7 @@ public:
 	 * Count the number of all points in the path (time complexity: O(1))
 	 * @return The number of points
 	 */
-	int countPoints() const { return m_points.size(); }
+	int countPoints() const { return (int)m_points.size(); }
 
 	std::list<ID> m_points;
 };
