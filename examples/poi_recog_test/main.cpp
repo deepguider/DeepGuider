@@ -35,9 +35,13 @@ int main()
 			return -1;
 		}
 
-		double ang, p;
-		poi_recog.get(ang, p);
-		printf("angle = %lf, prob = %lf, timestamp = %lf\n", ang, p, t);
+        std::vector<POIResult> pois;
+		poi_recog.get(pois);
+        printf("iteration: %d\n", i);
+        for (int k = 0; k < pois.size(); k++)
+        {
+            printf("\tpoi%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, t=%lf\n", k, pois[k].xmin, pois[k].ymin, pois[k].xmax, pois[k].ymax, pois[k].label.c_str(), pois[k].confidence, t);
+        }
 	}
 
 	// Clear the Python module
