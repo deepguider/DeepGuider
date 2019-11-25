@@ -1,6 +1,5 @@
 #include "guidance.hpp"
 #include "dg_map_manager.hpp"
-#include "../unit_test/vvs.h"
 
 using namespace dg;
 
