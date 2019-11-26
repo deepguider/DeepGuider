@@ -12,7 +12,7 @@ from keras_yolo3.yolo import YOLO
 
 
 def detect_and_match(model_preproc, input_features_cdf_cutoff_labels, 
-                     image, img_path, timestamp, save_img=True, save_img_path='./data/test/'):
+                     image, timestamp, save_img=True, save_img_path='./data/test/'):
     '''
     image = Image.open(img_path)
     if image.mode != 'RGB':
@@ -52,7 +52,7 @@ def detect_and_match(model_preproc, input_features_cdf_cutoff_labels,
     if save_img:
         new_img = draw_matches(image_array, input_labels, prediction, matches)
         saved = Image.fromarray(new_img).save(
-                        os.path.join(save_img_path, os.path.basename(img_path)))
+                        os.path.join(save_img_path, 'output.jpg'))
 
     return match_pred, timestamp
     

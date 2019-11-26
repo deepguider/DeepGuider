@@ -124,7 +124,7 @@ if __name__ == '__main__':
     for path in test_path:
         img = cv2.imread(str(path))
         pred, timestamp = detect_and_match(model_preproc, input_preproc, 
-                                       img, str(path), timestamp, save_img=True)
+                                       img, timestamp, save_img=True)
         print(pred)
         #print(timestamp)
     print('Logo detection and recognition complete! It tooks {:.2f} FPS'.format(len(test_path)/(time.time() - start)))
