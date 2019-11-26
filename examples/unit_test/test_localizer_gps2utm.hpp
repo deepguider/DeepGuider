@@ -8,11 +8,11 @@
     extern void UTMXYToLatLon(double x, double y, int zone, bool southhemi, double& lat, double& lon);
 #endif
 
-int testLocRawGPS2UTM(const dg::LonLat& x, const dg::Point2& sol, bool verbose = true)
+int testLocRawGPS2UTM(const dg::LatLon& x, const dg::Point2& sol, bool verbose = true)
 {
     dg::Point2 y;
     int zone = LatLonToUTMXY(x.lat, x.lon, -1, y.x, y.y);
-    if (verbose) std::cout << "[VERBOSE] LonLat = " << x << " --> UTM = " << y << ", Zone = " << zone << std::endl;
+    if (verbose) std::cout << "[VERBOSE] LatLon = ("  << x.lat << ", " << x.lon << ") --> UTM = " << y << ", Zone = " << zone << std::endl;
     if (sol.x >= 0 || sol.y >= 0)
     {
         VVS_CHECK_RANGE(y.x, sol.x, 0.1);
@@ -21,16 +21,17 @@ int testLocRawGPS2UTM(const dg::LonLat& x, const dg::Point2& sol, bool verbose =
     return 0;
 }
 
-int testLocRawUTM2GPS(const dg::Point2& x, int zone, bool is_south, const dg::LonLat& sol, bool verbose = true)
+int testLocRawUTM2GPS(const dg::Point2& x, int zone, bool is_south, const dg::LatLon& sol, bool verbose = true)
 {
-    dg::LonLat y;
+    dg::LatLon y;
     UTMXYToLatLon(x.x, x.y, zone, is_south, y.lat, y.lon);
-    y *= 180 / CV_PI; // [rad] to [deg]
-    if (verbose) std::cout << "[VERBOSE] UTM = " << x << ", Zone = " << zone << " --> LonLat = " << y << std::endl;
-    if (sol.x >= 0 || sol.y >= 0)
+    y.lat *= 180 / CV_PI; // [rad] to [deg]
+    y.lon *= 180 / CV_PI; // [rad] to [deg]
+    if (verbose) std::cout << "[VERBOSE] UTM = " << x << ", Zone = " << zone << " --> LatLon = (" << y.lat << ", " << y.lon << ")" << std::endl;
+    if (sol.lat >= 0 || sol.lon >= 0)
     {
-        VVS_CHECK_RANGE(y.lon, sol.lon, 0.1);
         VVS_CHECK_RANGE(y.lat, sol.lat, 0.1);
+        VVS_CHECK_RANGE(y.lon, sol.lon, 0.1);
     }
     return 0;
 }

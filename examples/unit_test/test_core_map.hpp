@@ -3,101 +3,85 @@
 
 #include "dg_core.hpp"
 
-int testCoreLonLat()
+int testCoreLatLon()
 {
     // Check default values
-    dg::LonLat a;
-    VVS_CHECK_TRUE(a.lon == 0);
+    dg::LatLon a;
     VVS_CHECK_TRUE(a.lat == 0);
-    VVS_CHECK_TRUE(a.x == 0);
-    VVS_CHECK_TRUE(a.y == 0);
+    VVS_CHECK_TRUE(a.lon == 0);
 
     // Check initialization
-    dg::LonLat b(1, 2);
-    VVS_CHECK_TRUE(b.lon == 1);
-    VVS_CHECK_TRUE(b.lat == 2);
-    VVS_CHECK_TRUE(b.x == 1);
-    VVS_CHECK_TRUE(b.y == 2);
+    dg::LatLon b(1, 2);
+    VVS_CHECK_TRUE(b.lat == 1);
+    VVS_CHECK_TRUE(b.lon == 2);
 
-    // Check reference to 'x' and 'y'
-    a.lon = 1;
-    a.lat = 2;
-    VVS_CHECK_TRUE(a.lon == 1);
-    VVS_CHECK_TRUE(a.lat == 2);
-    VVS_CHECK_TRUE(a.x == 1);
-    VVS_CHECK_TRUE(a.y == 2);
-    VVS_CHECK_TRUE(a == b);
-
-    // Check assignment with 'dg::Point2'
-    b = dg::Point2(3, 4);
-    VVS_CHECK_TRUE(b.lon == 3);
-    VVS_CHECK_TRUE(b.lat == 4);
-    VVS_CHECK_TRUE(b.x == 3);
-    VVS_CHECK_TRUE(b.y == 4);
-    VVS_CHECK_TRUE(a != b);
-
-    // Check arithmetic operations
-    a = 2 * b - b;
-    VVS_CHECK_TRUE(a.lon == 3);
-    VVS_CHECK_TRUE(a.lat == 4);
-    VVS_CHECK_TRUE(a.x == 3);
-    VVS_CHECK_TRUE(a.y == 4);
-    VVS_CHECK_TRUE(a == b);
+    // Check equality and inequality
+    dg::LatLon c = b;
+    VVS_CHECK_TRUE(b == c);
+    VVS_CHECK_TRUE(b != a);
 
     return 0;
 }
 
-int testCorePoint2ID()
+int testCorePolar2()
 {
-    dg::Point2ID p, p0(1, 3, 29), p1(2, dg::Point2(3, 29));
-    dg::Point2ID q(1);
-
     // Check default values
-    VVS_CHECK_EQUL(p.id, 0);
-    VVS_CHECK_EQUL(p.x, 0);
-    VVS_CHECK_EQUL(p.y, 0);
+    dg::Polar2 a;
+    VVS_CHECK_TRUE(a.lin == 0);
+    VVS_CHECK_TRUE(a.ang == 0);
+
+    // Check initialization
+    dg::Polar2 b(1, 2);
+    VVS_CHECK_TRUE(b.lin == 1);
+    VVS_CHECK_TRUE(b.ang == 2);
 
     // Check equality and inequality
-    VVS_CHECK_TRUE(p != q);
-    VVS_CHECK_TRUE(p0 == q);
-    VVS_CHECK_TRUE(p0 != p1);
+    dg::Polar2 c = b;
+    VVS_CHECK_TRUE(b == c);
+    VVS_CHECK_TRUE(b != a);
 
     return 0;
 }
 
 int testCoreNodeInfo()
 {
-    dg::NodeInfo node;
-    VVS_CHECK_TRUE(node.id == 0);
-    VVS_CHECK_TRUE(node.x == 0);
-    VVS_CHECK_TRUE(node.y == 0);
-    VVS_CHECK_TRUE(node.lon == 0);
-    VVS_CHECK_TRUE(node.lat == 0);
-    VVS_CHECK_TRUE(node.type == 0);
-    VVS_CHECK_TRUE(node.floor == 0);
+    // Check default values
+    dg::NodeInfo a;
+    VVS_CHECK_TRUE(a.id == 0);
+    VVS_CHECK_TRUE(a.lon == 0);
+    VVS_CHECK_TRUE(a.lat == 0);
+    VVS_CHECK_TRUE(a.type == 0);
+    VVS_CHECK_TRUE(a.floor == 0);
 
-    node.id = 3335;
-    node.lon = 82;
-    node.lat = 329;
-    VVS_CHECK_TRUE(node.id == 3335);
-    VVS_CHECK_TRUE(node.x == 82);
-    VVS_CHECK_TRUE(node.y == 329);
-    VVS_CHECK_TRUE(node.lon == 82);
-    VVS_CHECK_TRUE(node.lat == 329);
+    // Check initialization
+    dg::NodeInfo b(3335, dg::LatLon(82, 329), 7, 14);
+    VVS_CHECK_TRUE(b.id == 3335);
+    VVS_CHECK_TRUE(b.lat == 82);
+    VVS_CHECK_TRUE(b.lon == 329);
+    VVS_CHECK_TRUE(b.type == 7);
+    VVS_CHECK_TRUE(b.floor == 14);
 
-    // Check down casting to 'dg::LonLatID'
-    dg::LonLatID ll = node;
-    VVS_CHECK_TRUE(ll.id == 3335);
-    VVS_CHECK_TRUE(ll.x == 82);
-    VVS_CHECK_TRUE(ll.y == 329);
-    VVS_CHECK_TRUE(ll.lon == 82);
-    VVS_CHECK_TRUE(ll.lat == 329);
+    // Check equality and inequality
+    dg::NodeInfo c(3335);
+    VVS_CHECK_TRUE(b == c);
+    VVS_CHECK_TRUE(b != a);
 
-    // Check down casting to 'dg::Point2ID'
-    dg::Point2ID pt = node;
-    VVS_CHECK_TRUE(pt.id == 3335);
-    VVS_CHECK_TRUE(pt.x == 82);
-    VVS_CHECK_TRUE(pt.y == 329);
+    return 0;
+}
+
+int testCoreEdgeInfo()
+{
+    // Check default values
+    dg::EdgeInfo a;
+    VVS_CHECK_TRUE(a.length == 1);
+    VVS_CHECK_TRUE(a.width == 1);
+    VVS_CHECK_TRUE(a.type == 0);
+
+    // Check initialization
+    dg::EdgeInfo b(3, 2, 3);
+    VVS_CHECK_TRUE(b.length == 3);
+    VVS_CHECK_TRUE(b.width == 2);
+    VVS_CHECK_TRUE(b.type == 3);
 
     return 0;
 }
@@ -136,23 +120,23 @@ int testCoreMap()
     VVS_CHECK_TRUE(map.addRoad(6, 8));
     VVS_CHECK_TRUE(map.addRoad(7, 8));
 
-    // Check each node data
-    VVS_CHECK_TRUE(map.findNode(1)->data.x == 0);
-    VVS_CHECK_TRUE(map.findNode(1)->data.y == 0);
-    VVS_CHECK_TRUE(map.findNode(2)->data.x == 0);
-    VVS_CHECK_TRUE(map.findNode(2)->data.y == 1);
-    VVS_CHECK_TRUE(map.findNode(3)->data.x == 1);
-    VVS_CHECK_TRUE(map.findNode(3)->data.y == 1);
-    VVS_CHECK_TRUE(map.findNode(4)->data.x == 1);
-    VVS_CHECK_TRUE(map.findNode(4)->data.y == 0);
-    VVS_CHECK_TRUE(map.findNode(5)->data.x == 2);
-    VVS_CHECK_TRUE(map.findNode(5)->data.y == 1);
-    VVS_CHECK_TRUE(map.findNode(6)->data.x == 3);
-    VVS_CHECK_TRUE(map.findNode(6)->data.y == 1);
-    VVS_CHECK_TRUE(map.findNode(7)->data.x == 2);
-    VVS_CHECK_TRUE(map.findNode(7)->data.y == 0);
-    VVS_CHECK_TRUE(map.findNode(8)->data.x == 3);
-    VVS_CHECK_TRUE(map.findNode(8)->data.y == 0);
+    // Check each a data
+    VVS_CHECK_TRUE(map.findNode(1)->data.lat == 0);
+    VVS_CHECK_TRUE(map.findNode(1)->data.lon == 0);
+    VVS_CHECK_TRUE(map.findNode(2)->data.lat == 0);
+    VVS_CHECK_TRUE(map.findNode(2)->data.lon == 1);
+    VVS_CHECK_TRUE(map.findNode(3)->data.lat == 1);
+    VVS_CHECK_TRUE(map.findNode(3)->data.lon == 1);
+    VVS_CHECK_TRUE(map.findNode(4)->data.lat == 1);
+    VVS_CHECK_TRUE(map.findNode(4)->data.lon == 0);
+    VVS_CHECK_TRUE(map.findNode(5)->data.lat == 2);
+    VVS_CHECK_TRUE(map.findNode(5)->data.lon == 1);
+    VVS_CHECK_TRUE(map.findNode(6)->data.lat == 3);
+    VVS_CHECK_TRUE(map.findNode(6)->data.lon == 1);
+    VVS_CHECK_TRUE(map.findNode(7)->data.lat == 2);
+    VVS_CHECK_TRUE(map.findNode(7)->data.lon == 0);
+    VVS_CHECK_TRUE(map.findNode(8)->data.lat == 3);
+    VVS_CHECK_TRUE(map.findNode(8)->data.lon == 0);
 
     // Check some connectivity
     VVS_CHECK_TRUE(map.isConnected(dg::NodeInfo(1), dg::NodeInfo(2)));
@@ -183,6 +167,7 @@ int testCoreMap()
     return 0;
 }
 
+/*
 int testCoreMapPainter(int wait_msec = 1)
 {
     // An example map
@@ -226,5 +211,6 @@ int testCoreMapPainter(int wait_msec = 1)
 
     return 0;
 }
+*/
 
 #endif // End of '__TEST_CORE__'

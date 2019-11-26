@@ -93,11 +93,11 @@ int testLocSimpleLocalizer(int wait_msec = 1)
 {
     // Load a map
     dg::SimpleMetricLocalizer localizer;
-    dg::Map map = getExampleMap();
+    dg::SimpleRoadMap map = getExampleSimpleRoadMap();
     VVS_CHECK_TRUE(localizer.loadMap(map));
 
     // Prepare visualization
-    dg::MapPainter painter;
+    dg::SimpleRoadPainter painter;
     VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 200));
     VVS_CHECK_TRUE(painter.setParamValue("node_font_scale", 2 * 0.5));
     dg::CanvasInfo map_info = painter.getCanvasInfo(map);
