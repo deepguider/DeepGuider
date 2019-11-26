@@ -198,13 +198,22 @@ namespace cx
         }
 
         /**
+         * Check whether VideoWriter is properly initialized
+         * @return True if successfully configured (false if not)
+         */
+        virtual bool isConfiged() const
+        {
+            return !m_filename.empty() && m_fps > 0;
+        }
+
+        /**
          * Push the given image to the recording video
          * @param image An image to record
          */
         virtual void write(const cv::Mat& image)
         {
             if (isOpened()) cv::VideoWriter::write(image);
-            else if (!m_filename.empty() && m_fps >= 0)
+            else if (isConfiged())
             {
                 if (cv::VideoWriter::open(m_filename, m_fourcc, m_fps, image.size(), image.channels() > 1))
                     cv::VideoWriter::write(image);
@@ -226,7 +235,7 @@ namespace cx
          * @param image An image to record
          * @return The given video recording instance
          */
-        friend VideoWriter& operator>>(VideoWriter& vr, const cv::Mat& image)
+        friend VideoWriter& operator<<(VideoWriter& vr, const cv::Mat& image)
         {
             vr.write(image);
             return vr;
