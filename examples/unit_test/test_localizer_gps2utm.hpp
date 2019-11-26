@@ -2,6 +2,7 @@
 #define __TEST_GPS_2_UTM__
 
 #include "dg_core.hpp"
+#include "dg_localizer.hpp"
 
 #ifndef UTM_H
     extern int  LatLonToUTMXY(double lat, double lon, int zone, double& x, double& y);
@@ -33,6 +34,44 @@ int testLocRawUTM2GPS(const dg::Point2& x, int zone, bool is_south, const dg::La
         VVS_CHECK_RANGE(y.lat, sol.lat, 0.1);
         VVS_CHECK_RANGE(y.lon, sol.lon, 0.1);
     }
+    return 0;
+}
+
+int testLocUTMConverter()
+{
+    dg::UTMConverter converter;
+
+    // Check reference
+    dg::LatLon refer_ll = dg::LatLon(37, 127);
+    dg::Point2UTM refer_utm = converter.cvtLatLon2UTM(refer_ll);
+
+    VVS_CHECK_TRUE(converter.setReference(refer_ll));
+    {
+        dg::Point2UTM refer = converter.getReference();
+        VVS_CHECK_EQUL(refer_utm.is_south, refer.is_south);
+        VVS_CHECK_EQUL(refer_utm.zone, refer.zone);
+        VVS_CHECK_NEAR(refer_utm.x, refer.x);
+        VVS_CHECK_NEAR(refer_utm.y, refer.y);
+    }
+
+    VVS_CHECK_TRUE(converter.setReference(refer_utm));
+    {
+        dg::Point2UTM refer = converter.getReference();
+        VVS_CHECK_EQUL(refer_utm.is_south, refer.is_south);
+        VVS_CHECK_EQUL(refer_utm.zone, refer.zone);
+        VVS_CHECK_NEAR(refer_utm.x, refer.x);
+        VVS_CHECK_NEAR(refer_utm.y, refer.y);
+    }
+
+    // Check several points
+    dg::Point2 origin = converter.toMetric(refer_ll);
+    VVS_CHECK_NEAR(origin.x, 0);
+    VVS_CHECK_NEAR(origin.y, 0);
+
+    dg::Point2 p = converter.toMetric(dg::LatLon(38, 128));
+    VVS_CHECK_TRUE(p.x > 0);
+    VVS_CHECK_TRUE(p.y > 0);
+
     return 0;
 }
 

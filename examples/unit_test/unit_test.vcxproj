@@ -93,6 +93,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
     <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
+    <ClCompile Include="..\..\src\localizer\utm_converter.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
