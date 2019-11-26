@@ -18,13 +18,15 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\guidance\guidance.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\guidance\guidance.hpp">
+    <ClInclude Include="..\..\src\poi_recog\poi_recognizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\poi_recog\poi_recognizer.py">
+      <Filter>Header Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

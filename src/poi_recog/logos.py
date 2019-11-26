@@ -24,6 +24,8 @@ def detect_and_match(model_preproc, input_features_cdf_cutoff_labels,
     
     yolo, model, my_preprocess = model_preproc
     prediction, new_image = yolo.detect_image(image)
+    #new_image.save(os.path.join(save_img_path, 'detect_' + os.path.basename(img_path)))
+
     candidates, i_candidates_too_small = contents_of_bbox(image_array, prediction) 
     prediction = [pred for i, pred in enumerate(prediction) if i not in i_candidates_too_small]
     features_cand = features_from_image(candidates, model, my_preprocess)
@@ -55,9 +57,11 @@ def detect_and_match(model_preproc, input_features_cdf_cutoff_labels,
     return match_pred, timestamp
     
 
-def detect_logo_demo(yolo, img_path, timestamp):
+def detect_logo_demo(yolo, img, img_path, timestamp):
+    
+    image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(image)
 
-    image = Image.open(img_path)
     if image.mode != 'RGB':
         image = image.convert("RGB")
     #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)

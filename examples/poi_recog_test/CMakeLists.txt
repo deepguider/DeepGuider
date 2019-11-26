@@ -15,7 +15,7 @@ find_package( OpenCV 4.0 REQUIRED )
 
 INCLUDE_DIRECTORIES ( ${CMAKE_SOURCE_DIR}/../../src ${PYTHON_INCLUDE_DIRS} )
 
-file(GLOB SOURCES ${CMAKE_SOURCE_DIR}/../../src/*.cpp ${CMAKE_SOURCE_DIR}/../../src/core/*.cpp ${CMAKE_SOURCE_DIR}/../../src/localizer/*.cpp ${CMAKE_SOURCE_DIR}/../../src/map_manager/*.cpp ${CMAKE_SOURCE_DIR}/../../src/guidance/*.cpp *.cpp)
+file(GLOB SOURCES ${CMAKE_SOURCE_DIR}/../../src/*.cpp ${CMAKE_SOURCE_DIR}/../../src/core/*.cpp ${CMAKE_SOURCE_DIR}/../../src/poi_recog/*.cpp *.cpp)
  
 add_executable(${PROJECT_NAME} ${SOURCES}  )
 target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES})

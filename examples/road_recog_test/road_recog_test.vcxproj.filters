@@ -24,4 +24,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\road_recog\road_direction_recognizer.py">
+      <Filter>Header Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>

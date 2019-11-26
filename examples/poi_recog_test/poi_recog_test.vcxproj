@@ -94,10 +94,10 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\road_recog\road_direction_recognizer.hpp" />
+    <ClInclude Include="..\..\src\poi_recog\poi_recognizer.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\src\road_recog\road_direction_recognizer.py" />
+    <None Include="..\..\src\poi_recog\poi_recognizer.py" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

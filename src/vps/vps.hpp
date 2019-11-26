@@ -173,9 +173,9 @@ namespace dg
                 PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
                 if (pValue0 != NULL) m_lat = PyLong_AsLong(pValue0);
                 PyObject* pValue1 = PyTuple_GetItem(pRet, 1);
-                if (pValue0 != NULL) m_lon = PyLong_AsLong(pValue1);
+                if (pValue1 != NULL) m_lon = PyLong_AsLong(pValue1);
                 PyObject* pValue2 = PyTuple_GetItem(pRet, 2);
-                if (pValue1 != NULL) m_prob = PyLong_AsLong(pValue2);
+                if (pValue2 != NULL) m_prob = PyLong_AsLong(pValue2);
                 Py_DECREF(pValue0);
                 Py_DECREF(pValue1);
                 Py_DECREF(pValue2);

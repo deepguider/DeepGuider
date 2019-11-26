@@ -1,7 +1,7 @@
 #ifndef __POI_RECOGNIZER__
 #define __POI_RECOGNIZER__
 
-#include "../dg_core.hpp"
+#include "dg_core.hpp"
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
@@ -11,138 +11,222 @@ using namespace std;
 
 namespace dg
 {
+    struct POIResult
+    {
+        int xmin, ymin, xmax, ymax;
+        std::string label;
+        double confidence;
+    };
 
-/**
- * @brief Road direction recognizer
- */
-class POIRecognizer
-{
-	int x1 = 0;
-    int y1 = 0;
-    int x2 = -1;
-    int y2 = -1;
-	double prob = -1;
+    /**
+     * @brief C++ Wrapper of Python module - POIRecognizer
+     */
+    class POIRecognizer
+    {
+    public:
+        /**
+         * The default constructor
+         */
+        POIRecognizer() { }
 
-public:
-	POIRecognizer()
-	{
-	}
+        /**
+         * The default destructor
+         */
+        ~POIRecognizer()
+        {
+            clear();
+        }
 
-	int apply(cv::Mat image, Timestamp t)
-	{
-		std::string src_name = "logos";
-        //std::string class_name = "POIRecognizer";
-		std::string func_name = "detect_logo_demo";
+        /**
+         * Reset variables and clear the memory
+         */
+        void clear()
+        {
+            if (m_pFuncApply != nullptr)
+            {
+                Py_DECREF(m_pFuncApply);
+                m_pFuncApply = nullptr;
+            }
+            if (m_pInstance != nullptr)
+            {
+                Py_DECREF(m_pInstance);
+                m_pInstance = nullptr;
+            }
+        }
 
-		PyObject* pName, * pModule, * pDict, * pClass, * pFunc;
-		PyObject* pArgs, * pValue;
+        /**
+         * Initialize the module
+         * @return true if successful (false if failed)
+         */
+        bool initialize()
+        {
+            std::string module_name = "poi_recognizer";            	// python module name
+            std::string class_name = "POIRecognizer";          		// python class name
+            std::string func_name_init = "initialize";				// python method name for initialization
+            std::string func_name_apply = "apply";					// python method name for apply
 
-		wchar_t* program = Py_DecodeLocale("poi_recog_test", NULL);
-		if (program == NULL) {
-			fprintf(stderr, "Fatal error: cannot decode poi_recog_test\n");
-			exit(-1);
-		}
-		Py_SetProgramName(program);
-		Py_Initialize();
+            // Add module path to system path
+            PyRun_SimpleString("import sys\nsys.path.append(\"./../src/poi_recog\")");
 
-		// Add module path to system path
-		PyRun_SimpleString("import sys\nsys.path.append(\"./../src/poi_recog\")");
+            // Import the Python module
+            PyObject* pName = PyUnicode_FromString(module_name.c_str());
+            PyObject* pModule = PyImport_Import(pName);
+            Py_DECREF(pName);
+            if (pModule == nullptr) {
+                PyErr_Print();
+                fprintf(stderr, "Fails to import the module \"%s\"\n", module_name.c_str());
+                return false;
+            }
 
-		// Build the name object (python srcname)
-		pName = PyUnicode_FromString(src_name.c_str());
+            // Get the class reference
+            PyObject* pClass = PyObject_GetAttrString(pModule, class_name.c_str());
+            Py_DECREF(pModule);
+            if (pClass == nullptr) {
+                PyErr_Print();
+                fprintf(stderr, "Cannot find class \"%s\"\n", class_name.c_str());
+                return false;
+            }
 
-		// Load the module object (import python src)
-		pModule = PyImport_Import(pName);
-		if (pModule == nullptr) {
-			PyErr_Print();
-			fprintf(stderr, "Fails to import the module \"%s\"\n", src_name.c_str());
-			return -1;
-		}
-		Py_DECREF(pName);
-        
-        /*
-		// Get the class reference
-		pClass = PyObject_GetAttrString(pModule, class_name.c_str());
-		if (pClass == nullptr) {
-			PyErr_Print();
-			fprintf(stderr, "Cannot find class \"%s\"\n", class_name.c_str());
-			return -1;
-		}
-		Py_DECREF(pModule);
-        */
-		// Get the method reference of the class
-		pFunc = PyObject_GetAttrString(pModule, func_name.c_str());
-		if (pClass == nullptr) {
-			PyErr_Print();
-			fprintf(stderr, "Cannot find function \"%s\"\n", func_name.c_str());
-			return -1;
-		}
-		Py_DECREF(pModule); // (pClass);
+            // Get the method references of the class
+            m_pFuncApply = PyObject_GetAttrString(pClass, func_name_apply.c_str());
+            if (m_pFuncApply == nullptr) {
+                Py_DECREF(pClass);
+                PyErr_Print();
+                fprintf(stderr, "Cannot find function \"%s\"\n", func_name_apply.c_str());
+                return false;
+            }
+            PyObject* pFuncInitialize = PyObject_GetAttrString(pClass, func_name_init.c_str());
+            if (pFuncInitialize == nullptr) {
+                PyErr_Print();
+                fprintf(stderr, "Cannot find function \"%s\"\n", func_name_init.c_str());
+                return false;
+            }
 
-		// Set function arguments
-		pArgs = PyTuple_New(3);
-		PyTuple_SetItem(pArgs, 0, pFunc);
+            // Create the class instance
+            m_pInstance = PyClassMethod_New(pClass);
+            Py_DECREF(pClass);
+            if (m_pInstance == nullptr) {
+                PyErr_Print();
+                fprintf(stderr, "Cannot create class instance \"%s\"\n", class_name.c_str());
+                return false;
+            }
 
-		// Image
-		import_array();
-		npy_intp dimensions[3] = { image.rows, image.cols, image.channels() };
-		pValue = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)& dimensions, NPY_UINT8, image.data);
-		PyTuple_SetItem(pArgs, 1, pValue);
+            // Call the initialization method of the class instance
+            PyObject* pArgs = PyTuple_New(1);
+            PyTuple_SetItem(pArgs, 0, m_pInstance);
+            PyObject* pRet = PyObject_CallObject(pFuncInitialize, pArgs);
+            if (pRet != NULL)
+            {
+                if (!PyObject_IsTrue(pRet))
+                {
+                    fprintf(stderr, "Unsuccessful instance initialization\n");
+                    return false;
+                }
+            }
+            else {
+                PyErr_Print();
+                fprintf(stderr, "POIRecognizer::initialize() - Call failed\n");
+                return false;
+            }
 
-		// Timestamp
-		pValue = PyFloat_FromDouble(t);
-		if (!pValue) {
-			Py_DECREF(pArgs);
-			Py_DECREF(pFunc);
-			fprintf(stderr, "Cannot convert argument\n");
-			return -1;
-		}
-		PyTuple_SetItem(pArgs, 2, pValue);
+            return true;
+        }
 
-		// Call the python function
-		pValue = PyObject_CallObject(pFunc, pArgs);
-		Py_DECREF(pArgs);
-		if (pValue != NULL) {
-			int n_ret = PyTuple_Size(pValue);
-			if (n_ret != 2)
-			{
-				Py_DECREF(pFunc);
-				fprintf(stderr, "Wrong number of returns\n");
-				return -1;
-			}					   
-			PyObject* pValue0 = PyTuple_GetItem(pValue, 0);
-			if(pValue0 != NULL) angle = PyLong_AsLong(pValue0);
-			PyObject* pValue1 = PyTuple_GetItem(pValue, 1);
-			if (pValue1 != NULL) prob = PyLong_AsLong(pValue1);
-			Py_DECREF(pValue0);
-			Py_DECREF(pValue1);
-			Py_DECREF(pValue);
-		}
-		else {
-			Py_DECREF(pFunc);
-			PyErr_Print();
-			fprintf(stderr, "Call failed\n");
-			return -1;
-		}
-		Py_DECREF(pFunc);
+        /**
+         * Run once the module for a given input
+         * @return true if successful (false if failed)
+         */
+        bool apply(cv::Mat image, dg::Timestamp t)
+        {
+            // Set function arguments
 
-		// Finish the Python Interpreter
-		if (Py_FinalizeEx() < 0) {
-			return -1;
-		}
-		return 0;
-	}
+            // Self
+            int arg_idx = 0;
+            PyObject* pArgs = PyTuple_New(3);
+            PyTuple_SetItem(pArgs, arg_idx++, m_pInstance);
 
-	void get(double& _angle, double& _prob) //(int& _x1, int& _y1, int& _x2, int& _y2, double& _prob)
-	{
-		//_x1 = x1;
-        //_y1 = y1;
-        //_x2 = x2;
-        //_y2 = y2;
-        _angle = 36.5;
-		_prob = prob;
-	}
-};
+            // Image
+            import_array();
+            npy_intp dimensions[3] = { image.rows, image.cols, image.channels() };
+            PyObject* pValue = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)&dimensions, NPY_UINT8, image.data);
+            if (!pValue) {
+                fprintf(stderr, "POIRecognizer::apply() - Cannot convert argument1\n");
+                return false;
+            }
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+
+            // Timestamp
+            pValue = PyFloat_FromDouble(t);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+
+            // Call the method
+            PyObject* pRet = PyObject_CallObject(m_pFuncApply, pArgs);
+            if (pRet != NULL) {
+                Py_ssize_t n_ret = PyTuple_Size(pRet);
+                if (n_ret != 2)
+                {
+                    fprintf(stderr, "POIRecognizer::apply() - Wrong number of returns\n");
+                    return false;
+                }
+
+                m_pois.clear();
+                PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
+                if (pValue0 != NULL)
+                {
+                    Py_ssize_t sz = PyList_Size(pValue0);
+                    int nattr = 6;
+                    int npoi = sz / nattr;
+                    for (int i = 0; i < npoi; i++)
+                    {
+                        POIResult poi;
+                        pValue = PyList_GetItem(pValue0, i * nattr + 0);
+                        poi.xmin = PyLong_AsLong(pValue);
+                        pValue = PyList_GetItem(pValue0, i * nattr + 1);
+                        poi.ymin = PyLong_AsLong(pValue);
+                        pValue = PyList_GetItem(pValue0, i * nattr + 2);
+                        poi.xmax = PyLong_AsLong(pValue);
+                        pValue = PyList_GetItem(pValue0, i * nattr + 3);
+                        poi.ymax = PyLong_AsLong(pValue);
+                        pValue = PyList_GetItem(pValue0, i * nattr + 4);
+                        poi.label = PyUnicode_AsUTF8(pValue);
+                        pValue = PyList_GetItem(pValue0, i * nattr + 5);
+                        poi.confidence = PyLong_AsLong(pValue);
+
+                        m_pois.push_back(poi);
+                    }
+                }
+                Py_DECREF(pValue0);
+            }
+            else {
+                PyErr_Print();
+                fprintf(stderr, "POIRecognizer::apply() - Call failed\n");
+                return false;
+            }
+
+            // Update Timestamp
+            m_timestamp = t;
+
+            return true;
+        }
+
+        void get(std::vector<POIResult>& pois)
+        {
+            pois = m_pois;
+        }
+
+        void get(std::vector<POIResult>& pois, Timestamp& t)
+        {
+            pois = m_pois;
+            t = m_timestamp;
+        }
+
+    protected:
+        std::vector<POIResult> m_pois;
+        Timestamp m_timestamp = -1;
+
+        PyObject* m_pFuncApply = nullptr;
+        PyObject* m_pInstance = nullptr;
+    };
 
 } // End of 'dg'
 
