@@ -26,7 +26,7 @@ protected:
     void close_python_environment();
     bool m_python_initialized = false;
 
-    void generateSensorDataGPSFromPath(dg::Map& map, dg::Path& path, std::vector<dg::LonLat>& gps_data, int interval, double noise_level);
+    void generateSensorDataGPSFromPath(dg::Map& map, dg::Path& path, std::vector<dg::LatLon>& gps_data, int interval, double noise_level);
 
     dg::RoadDirectionRecognizer m_recognizer_roaddir;
     dg::VPS m_recognizer_vps;
@@ -101,7 +101,7 @@ void DeepGuiderSimple::close_python_environment()
 }
 
 
-void DeepGuiderSimple::generateSensorDataGPSFromPath(dg::Map& map, dg::Path& path, std::vector<dg::LonLat>& gps_data, int interval, double noise_level)
+void DeepGuiderSimple::generateSensorDataGPSFromPath(dg::Map& map, dg::Path& path, std::vector<dg::LatLon>& gps_data, int interval, double noise_level)
 {
     if (path.countPoints() < 2)
     {
@@ -112,7 +112,7 @@ void DeepGuiderSimple::generateSensorDataGPSFromPath(dg::Map& map, dg::Path& pat
     gps_data.clear();
 
     // extract path node gps
-    std::vector<dg::LonLat> path_gps;
+    std::vector<dg::LatLon> path_gps;
     for (std::list<dg::ID>::iterator it = path.m_points.begin(); it != path.m_points.end(); it++)
     {
         dg::ID id = (*it);
@@ -121,7 +121,7 @@ void DeepGuiderSimple::generateSensorDataGPSFromPath(dg::Map& map, dg::Path& pat
         double lon = node->data.lon;
 
         printf("id = %llu, lat = %lf, lon = %lf\n", id, lat, lon);
-        path_gps.push_back(dg::LonLat(lon, lat));
+        path_gps.push_back(dg::LatLon(lat, lon));
     }
 
     // exdend gps data by interpolation
@@ -136,7 +136,7 @@ void DeepGuiderSimple::generateSensorDataGPSFromPath(dg::Map& map, dg::Path& pat
         {
             double lat = lat_prev + k * (lat_cur - lat_prev) / interval;
             double lon = lon_prev + k * (lon_cur - lon_prev) / interval;
-            gps_data.push_back(dg::LonLat(lon, lat));
+            gps_data.push_back(dg::LatLon(lat, lon));
         }
     }
 }
@@ -173,7 +173,7 @@ int DeepGuiderSimple::run()
     // generate virtual gps sensor data from the path
     int interval = 10;
     double noise_level = 0;    
-    std::vector<dg::LonLat> gps_data;
+    std::vector<dg::LatLon> gps_data;
     generateSensorDataGPSFromPath(map, path, gps_data, interval, noise_level);
     printf("\tSample gps data generated!\n");
 
@@ -233,8 +233,9 @@ int DeepGuiderSimple::run()
         // gps update
         if (itr < (int)gps_data.size())
         {
-            dg::LonLat gps = gps_data[itr];
-            m_localizer.applyPosition(gps, t);
+            dg::LatLon gps = gps_data[itr];
+            //m_localizer.applyPosition()
+            //m_localizer.applyPosition(gps, t);
             printf("lat=%lf, lon=%lf, time=%lf\n", gps.lat, gps.lon, t);
         }
 
