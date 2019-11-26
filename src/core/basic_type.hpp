@@ -16,7 +16,52 @@ typedef double Timestamp;
 typedef uint64_t ID;
 
 /**
- * @brief 2D point
+ * @brief 2D point in the geodesic notation
+ *
+ * A 2D point is represented in the geodesic notation.
+ * Its member variables includes lon (longitude) and lat (latitude).
+ *
+ * @see Point2 2D vector in the rectangular coordinate
+ * @see Polar2 2D vector in the polar coordinate
+ */
+class LatLon
+{
+public:
+    /**
+     * The default constructor
+     */
+    LatLon() : lat(0), lon(0) { }
+
+    /**
+     * A constructor with initialization
+     * @param _lat A value for latitude (Unit: [deg])
+     * @param _lon A value for longitude (Unit: [deg])
+     */
+    LatLon(double _lat, double _lon) : lat(_lat), lon(_lon) { }
+
+    /**
+     * Overriding the equality operator
+     * @param rhs A 2D vector in the right-hand side
+     * @return The assigned instance
+     */
+    bool operator==(const LatLon& rhs) const { return (lat == rhs.lat) && (lon == rhs.lon); }
+
+    /**
+     * Overriding the inequality operator
+     * @param rhs A 2D vector in the right-hand side
+     * @return The assigned instance
+     */
+    bool operator!=(const LatLon& rhs) const { return (lat != rhs.lat) || (lon != rhs.lon); }
+
+    /** Latitude (Unit: [deg]) */
+    double lat;
+
+    /** Longitude (Unit: [deg]) */
+    double lon;
+};
+
+/**
+ * @brief 2D point in the rectangular coordinate
  *
  * A 2D point is defined in the rectangular coordinate.
  * Its member variables includes x and y.
@@ -67,55 +112,6 @@ public:
 
     /** The angular component (Unit: [rad]) */
     double ang;
-};
-
-/**
- * @brief 2D point in the geodesic notation
- *
- * A 2D point is represented in the geodesic notation.
- * Its member variables includes lon (longitude) and lat (latitude).
- * Similarly to Point2, two member variables can be also referred as x and y, respectively.
- *
- * @see Point2 2D vector in the rectangular coordinate
- */
-class LonLat : public Point2
-{
-public:
-    /**
-     * The default constructor
-     */
-    LonLat() : lon(x), lat(y) { }
-
-    /**
-     * A constructor with initialization
-     * @param _lon A value for longitude
-     * @param _lat A value for latitude
-     */
-    LonLat(double _lon, double _lat) : Point2(_lon, _lat), lon(x), lat(y) { }
-
-    /**
-     * A constructor with initialization
-     * @param p A 2D point
-     */
-    LonLat(const Point2& p) : Point2(p), lon(x), lat(y) { }
-
-    /**
-     * Overriding the assignment operator
-     * @param rhs A 2D point in the right-hand side
-     * @return The assigned instance
-     */
-    LonLat& operator=(const Point2& rhs)
-    {
-        x = rhs.x;
-        y = rhs.y;
-        return *this;
-    }
-
-    /** Latitude */
-    double& lon;
-
-    /** Latitude */
-    double& lat;
 };
 
 /**
@@ -216,49 +212,6 @@ public:
 
     /** The given identifier */
     ID id;
-};
-
-/**
- * @brief 2D point in the geodesic notation with ID
- *
- * A 2D point in the geodesic notation is defined with the identifier (shortly ID).
- * It is the counter part of LonLat, similar to Point2 and Point2ID.
- */
-class LonLatID : public Point2ID
-{
-public:
-    /**
-     * A constructor with ID assignment
-     * @param _id The given ID
-     */
-    LonLatID(ID _id = 0) : Point2ID(_id), lon(x), lat(y) { }
-
-    /**
-     * A constructor with ID, x, and y assignment
-     * @param _id The given ID
-     * @param _x The given X
-     * @param _y The given Y
-     */
-    LonLatID(ID _id, double _lon, double _lat) : Point2ID(_id, _lon, _lat), lon(x), lat(y) { }
-
-    /**
-     * A constructor with ID, x, and y assignment
-     * @param _id The given ID
-     * @param p The given 2D point
-     */
-    LonLatID(ID _id, const Point2& p) : Point2ID(_id, p), lon(x), lat(y) { }
-
-    /**
-     * A constructor with ID, x, and y assignment
-     * @param pid The given 2D point with ID
-     */
-    LonLatID(const Point2ID& pid) : Point2ID(pid), lon(x), lat(y) { }
-
-    /** Latitude */
-    double& lon;
-
-    /** Latitude */
-    double& lat;
 };
 
 /**

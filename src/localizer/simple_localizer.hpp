@@ -2,6 +2,7 @@
 #define __SIMPLE_LOCALIZER__
 
 #include "localizer/localizer.hpp"
+#include "opencx.hpp"
 
 namespace dg
 {
@@ -67,6 +68,8 @@ public:
 
     virtual bool loadMap(const Map& map, bool is_lonlat = false)
     {
+        return false;
+        /*
         cv::AutoLock lock(m_mutex);
         // Copy nodes
         m_map.removeAll();
@@ -92,6 +95,7 @@ public:
             }
         }
         return true;
+        */
     }
 
     virtual bool loadMap(const SimpleRoadMap& map)

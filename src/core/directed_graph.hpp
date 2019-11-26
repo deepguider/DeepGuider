@@ -196,7 +196,13 @@ public:
     {
         Node* node = NULL;
         for (NodeItr node_itr = getHeadNode(); node_itr != getTailNode(); node_itr++)
-            if (node_itr->data == data) { node = &(*node_itr); break; }
+        {
+            if (node_itr->data == data)
+            {
+                node = &(*node_itr);
+                break;
+            }
+        }
         return node;
     }
 
