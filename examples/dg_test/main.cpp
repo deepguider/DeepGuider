@@ -26,6 +26,8 @@ protected:
     void close_python_environment();
     bool m_python_initialized = false;
 
+    void generateSensorDataGPSFromPath(dg::Map& map, dg::Path& path, std::vector<dg::LonLat>& gps_data, int interval, double noise_level);
+
     dg::RoadDirectionRecognizer m_recognizer_roaddir;
     dg::VPS m_recognizer_vps;
     dg::POIRecognizer m_recognizer_poi;
@@ -99,6 +101,47 @@ void DeepGuiderSimple::close_python_environment()
 }
 
 
+void DeepGuiderSimple::generateSensorDataGPSFromPath(dg::Map& map, dg::Path& path, std::vector<dg::LonLat>& gps_data, int interval, double noise_level)
+{
+    if (path.countPoints() < 2)
+    {
+        printf("Error! Path length has to be at least 2\n");
+        return;
+    }
+
+    gps_data.clear();
+
+    // extract path node gps
+    std::vector<dg::LonLat> path_gps;
+    for (std::list<dg::ID>::iterator it = path.m_points.begin(); it != path.m_points.end(); it++)
+    {
+        dg::ID id = (*it);
+        dg::Map::Node* node = map.findNode(id);
+        double lat = node->data.lat;
+        double lon = node->data.lon;
+
+        printf("id = %llu, lat = %lf, lon = %lf\n", id, lat, lon);
+        path_gps.push_back(dg::LonLat(lon, lat));
+    }
+
+    // exdend gps data by interpolation
+    gps_data.push_back(path_gps[0]);
+    for (int i = 1; i < (int)path_gps.size(); i++)
+    {
+        double lat_prev = path_gps[i - 1].lat;
+        double lon_prev = path_gps[i - 1].lon;
+        double lat_cur = path_gps[i].lat;
+        double lon_cur = path_gps[i].lon;
+        for (int k = 1; k <= interval; k++)
+        {
+            double lat = lat_prev + k * (lat_cur - lat_prev) / interval;
+            double lon = lon_prev + k * (lon_cur - lon_prev) / interval;
+            gps_data.push_back(dg::LonLat(lon, lat));
+        }
+    }
+}
+
+
 int DeepGuiderSimple::run()
 {
     printf("Run deepguider system...\n");
@@ -114,7 +157,25 @@ int DeepGuiderSimple::run()
     dg::Path path = m_map_manager.getPath("test_simple_Path.json");
     dg::ID start_node = path.m_points.front();
     dg::ID dest_node = path.m_points.back();
-    printf("\tSample Path generated!\n");
+    printf("\tSample Path generated! start=%llu, dest=%llu\n", start_node, dest_node);
+
+    // load map along the path
+    if (!m_map_manager.load(36.384063, 127.374733, 650.0))
+    {
+        printf("\tFailed to load sample map!\n");
+    }
+    printf("\tSample Map loaded!\n");
+
+    // set map to localizer
+    dg::Map map = m_map_manager.getMap();
+    m_localizer.loadMap(map);
+
+    // generate virtual gps sensor data from the path
+    int interval = 10;
+    double noise_level = 0;    
+    std::vector<dg::LonLat> gps_data;
+    generateSensorDataGPSFromPath(map, path, gps_data, interval, noise_level);
+    printf("\tSample gps data generated!\n");
 
     //load files for guidance test (ask JSH)
     m_guider.loadPathFiles("Path_ETRIFrontgateToParisBaguette.txt", m_guider.m_path);
@@ -130,17 +191,6 @@ int DeepGuiderSimple::run()
     dg::TopometricPose curPose;
     dg::Guidance::Status curStatus;
 
-    // load map along the path
-    if (!m_map_manager.load(36.384063, 127.374733, 650.0))
-    {
-        printf("\tFailed to load sample map!\n");
-    }
-    printf("\tSample Map loaded!\n");
-
-    // set map to localizer
-    dg::Map map = m_map_manager.getMap();
-    m_localizer.loadMap(map);
-
     // set initial pose
     dg::Timestamp t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
     m_localizer.applyLocClue(start_node, Polar2(-1, -1), t, 1);
@@ -150,9 +200,11 @@ int DeepGuiderSimple::run()
     double confidence = m_localizer.getPoseConfidence();
 
     // run iteration
-    int nitr = 2;
-    int i = 0;
+    int nitr = (int)gps_data.size();
+    //nitr = 2;
+    int itr = 0;
     bool is_arrive = false;
+    printf("\n");
     while (!is_arrive)
     {
         // sensor data
@@ -164,8 +216,8 @@ int DeepGuiderSimple::run()
         if (ok)
         {
             double angle, prob;
-            m_recognizer_roaddir.get(angle, prob);
-            m_localizer.applyLocClue(pose_topo.node_id, Polar2(-1, angle), t, prob);
+            //m_recognizer_roaddir.get(angle, prob);
+            //m_localizer.applyLocClue(pose_topo.node_id, Polar2(-1, angle), t, prob);
         }
 
         /*
@@ -178,10 +230,19 @@ int DeepGuiderSimple::run()
         }
         */
 
+        // gps update
+        if (itr < (int)gps_data.size())
+        {
+            dg::LonLat gps = gps_data[itr];
+            m_localizer.applyPosition(gps, t);
+            printf("lat=%lf, lon=%lf, time=%lf\n", gps.lat, gps.lon, t);
+        }
+
         // get updated pose & localization confidence
         pose_metr = m_localizer.getPose();
         pose_topo = m_localizer.getPoseTopometric();
         confidence = m_localizer.getPoseConfidence();
+        printf("x=%lf, y=%lf, theta=%lf, time=%lf\n", pose_metr.x, pose_metr.y, pose_metr.theta, t);
 
         // generate navigation guidance
         if (confidence > 0.5)
@@ -194,15 +255,19 @@ int DeepGuiderSimple::run()
         }
 
         // generate guidance (ask JSH)
-        curPose = Loc[i];
+        curPose = Loc[itr];
         curStatus = m_guider.checkStatus(curPose);
         curGuide = m_guider.provideNormalGuide(curGuide, curStatus);
 
         // check arrival
-        if (++i >= nitr)
+        if (++itr >= nitr)
         {
             is_arrive = true;
         }
+
+        // user break
+        char key = cv::waitKey(1);
+        if (key == 27) break;
     }
 
     return 0;
