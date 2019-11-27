@@ -7,7 +7,7 @@
 namespace dg
 {
 
-class SimpleMetricLocalizer : public Localizer, public TopometricLocalizer
+class SimpleMetricLocalizer : public Localizer, public TopometricLocalizer, public UTMConverter
 {
 public:
     virtual Pose2 getPose() const
@@ -66,36 +66,62 @@ public:
         return -1;
     }
 
-    virtual bool loadMap(const Map& map, bool is_lonlat = false)
+    static SimpleRoadMap cvtMap2SimpleRoadMap(const Map& map, const UTMConverter& converter, bool auto_cost = true)
     {
-        return false;
-        /*
-        cv::AutoLock lock(m_mutex);
+        SimpleRoadMap simple_map;
+
         // Copy nodes
-        m_map.removeAll();
         for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
         {
-            if (m_map.addNode(node->data) == NULL)
+            Point2ID simple_node(node->data.id, converter.toMetric(node->data));
+            if (simple_map.addNode(simple_node) == NULL)
             {
-                m_map.removeAll();
-                return false;
+                // Return an empty map if failed
+                simple_map.removeAll();
+                return simple_map;
             }
         }
 
-        // Copy edges
-        for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
+        if (auto_cost)
         {
-            for (auto edge = map.getHeadEdgeConst(node); edge != map.getTailEdgeConst(node); edge++)
+            // Copy edges with automatic distance calculation
+            for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
             {
-                if (m_map.addEdge(node->data, edge->to->data) == NULL)
+                for (auto edge = map.getHeadEdgeConst(node); edge != map.getTailEdgeConst(node); edge++)
                 {
-                    m_map.removeAll();
-                    return false;
+                    if (simple_map.addEdge(node->data.id, edge->to->data.id, -1) == NULL)
+                    {
+                        // Return an empty map if failed
+                        simple_map.removeAll();
+                        return simple_map;
+                    }
                 }
             }
         }
+        else
+        {
+            // Copy edges with automatic distance calculation
+            for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
+            {
+                for (auto edge = map.getHeadEdgeConst(node); edge != map.getTailEdgeConst(node); edge++)
+                {
+                    if (simple_map.addEdge(node->data.id, edge->to->data.id, edge->cost.length) == NULL)
+                    {
+                        // Return an empty map if failed
+                        simple_map.removeAll();
+                        return simple_map;
+                    }
+                }
+            }
+        }
+        return simple_map;
+    }
+
+    virtual bool loadMap(const Map& map, bool auto_cost = false)
+    {
+        cv::AutoLock lock(m_mutex);
+        m_map = cvtMap2SimpleRoadMap(map, *this, auto_cost);
         return true;
-        */
     }
 
     virtual bool loadMap(const SimpleRoadMap& map)

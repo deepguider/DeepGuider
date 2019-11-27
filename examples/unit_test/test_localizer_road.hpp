@@ -121,7 +121,7 @@ int testLocSimpleRoadPainter(int wait_msec = 1)
     VVS_CHECK_TRUE(image.empty() == false);
 
     // Draw additional nodes
-    dg::CanvasInfo info = painter.getCanvasInfo(map);
+    dg::CanvasInfo info = painter.getCanvasInfo(map, image.size());
     dg::SimpleRoadMap::NodeItr node1 = map.getHeadNode();
     VVS_CHECK_TRUE(node1 != map.getTailNode());
     VVS_CHECK_TRUE(painter.drawNode(image, info, node1->data, 0.1, 0.5, cx::COLOR_MAGENTA, 2));

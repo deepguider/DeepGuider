@@ -19,6 +19,8 @@ public:
     double ppm;
 
     double margin;
+
+    Point2 offset;
 };
 
 template<typename D, typename C>
@@ -71,6 +73,7 @@ public:
 
         CX_LOAD_PARAM_COUNT(fn, "canvas_margin", m_canvas_margin, n_read);
         CX_LOAD_PARAM_COUNT(fn, "canvas_color", m_canvas_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "canvas_offset", m_canvas_offset, n_read);
 
         CX_LOAD_PARAM_COUNT(fn, "box_color", m_box_color, n_read);
         CX_LOAD_PARAM_COUNT(fn, "box_thickness", m_box_thickness, n_read);
@@ -107,6 +110,7 @@ public:
 
             fs << "canvas_margin" << m_canvas_margin;
             fs << "canvas_color" << m_canvas_color;
+            fs << "canvas_offset" << m_canvas_offset;
 
             fs << "box_color" << m_box_color;
             fs << "box_thickness" << m_box_thickness;
@@ -138,29 +142,47 @@ public:
 
     bool drawMap(cv::Mat& image, Point2IDGraph& map) const
     {
-        CanvasInfo info = getCanvasInfo(map);
+        // Prepare a canvas
+        CanvasInfo info = getCanvasInfo(map, image.size());
         if (image.empty())
         {
-            if (!clearCanvas(image, info, m_canvas_color)) return false;
-            drawGrid(image, info, m_grid_step, m_grid_color, m_grid_thickness, m_grid_unit_font_scale, m_grid_unit_color);
-            drawBox(image, info, m_box_color, m_box_thickness);
-            drawAxes(image, info, m_axes_length, m_axes_x_color, m_axes_y_color, m_axes_thickness);
+            if (!clearCanvas(image, info, m_canvas_color))
+                return false;
         }
+        drawGrid(image, info, m_grid_step, m_grid_color, m_grid_thickness, m_grid_unit_font_scale, m_grid_unit_color, m_grid_unit_pos);
+        drawBox(image, info, m_box_color, m_box_thickness);
+        drawAxes(image, info, m_axes_length, m_axes_x_color, m_axes_y_color, m_axes_thickness);
+
+        // Draw nodes and edges
         if (!image.empty())
         {
-            drawNodes(image, info, map, m_node_radius, m_node_font_scale, m_node_color, m_node_thickness);
             for (typename Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
             {
                 drawEdges(image, info, map, &(*n), m_node_radius, m_edge_color, m_edge_thickness, m_edge_arrow_length);
             }
+            drawNodes(image, info, map, m_node_radius, m_node_font_scale, m_node_color, m_node_thickness);
             return true;
         }
         return false;
     }
 
-    CanvasInfo getCanvasInfo(Point2IDGraph& map) const
+    CanvasInfo getCanvasInfo(Point2IDGraph& map, const cv::Size& sz = cv::Size()) const
     {
-        return buildCanvasInfo(map, m_pixel_per_meter, m_canvas_margin);
+        CanvasInfo info = buildCanvasInfo(map, m_pixel_per_meter, m_canvas_margin);
+        if (sz.width > 0 && sz.height > 0)
+        {
+            info.width = sz.width;
+            info.height = sz.height;
+
+            int margin_p = static_cast<int>(info.margin * info.ppm + 0.5); // + 0.5: Rounding
+            info.box_p.x = margin_p;
+            info.box_p.y = margin_p;
+            info.box_p.width = info.width - 2 * margin_p;
+            info.box_p.height = info.height - 2 * margin_p;
+
+            info.offset = m_canvas_offset;
+        }
+        return info;
     }
 
     static CanvasInfo buildCanvasInfo(Point2IDGraph& map, double ppm, double margin)
@@ -189,6 +211,8 @@ public:
             info.box_p.width = info.width - 2 * margin_p;
             info.box_p.height = info.height - 2 * margin_p;
         }
+        info.offset.x = 2 * margin * ppm;
+        info.offset.y = info.height - 2 * margin * ppm;
         return info;
     }
 
@@ -212,7 +236,7 @@ public:
     static bool drawAxes(cv::Mat& image, const CanvasInfo& info, double length, const cv::Vec3b& color_x, const cv::Vec3b& color_y, int thickness = 1)
     {
         CV_DbgAssert(!image.empty());
-        if (thickness <= 0) return false;
+        if (length <= 0 || thickness <= 0) return false;
 
         cv::Point axes_0 = cvtMeter2Pixel(Point2(0, 0), info) + Point2(0.5, 0.5);       // + 0.5: Rounding
         cv::Point axes_x = cvtMeter2Pixel(Point2(length, 0), info) + Point2(0.5, 0.5);  // + 0.5: Rounding
@@ -356,18 +380,20 @@ public:
         return true;
     }
 
-    static Point2 cvtMeter2Pixel(const Point2& p, const CanvasInfo& info)
+    static Point2 cvtMeter2Pixel(const Point2& mt, const CanvasInfo& info)
     {
-        Point2 m;
-        m.x = (p.x + 2 * info.margin) * info.ppm;
-        m.y = info.height - (p.y + 2 * info.margin) * info.ppm;
-        return m;
+        Point2 px;
+        px.x = mt.x * info.ppm + info.offset.x;
+        px.y = info.offset.y - mt.y * info.ppm;
+        return px;
     }
 
 protected:
     double m_pixel_per_meter;
 
     double m_canvas_margin;
+
+    Point2 m_canvas_offset;
 
     cv::Vec3b m_canvas_color;
 

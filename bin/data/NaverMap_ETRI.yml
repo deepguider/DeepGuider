@@ -1,0 +1,18 @@
+%YAML:1.0
+---
+region_data:
+   - { name:Region 0, random_color:[ 0, 0, 255 ], mode:2, pts:[ 321, 298,
+       399, 281, 480, 258, 534, 226, 613, 167, 667, 145, 770, 130, 899,
+       107, 985, 97, 1169, 93, 1213, 94, 1260, 93, 1308, 94, 1343, 120,
+       1342, 221, 1340, 440, 1340, 588, 1340, 852 ] }
+viz_wait_msec: 10
+viz_line_thickness: 2
+viz_pts_radius: 10
+viz_pts_thickness: 2
+viz_pts_font_scale: 2.9999999999999999e-01
+viz_pts_font_offset: [ -5, 3 ]
+viz_info_font_scale: 5.9999999999999998e-01
+viz_info_offset: [ 10, 25 ]
+viz_info_color: [ 0, 255, 0 ]
+viz_zoom_radius: 25
+viz_zoom_level: 4

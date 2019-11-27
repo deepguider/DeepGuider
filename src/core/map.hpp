@@ -181,9 +181,6 @@ public:
     }
 };
 
-/** A map visualizer for dg::Map */
-//typedef GraphPainter<NodeInfo, EdgeInfo> MapPainter;
-
 } // End of 'dg'
 
 #endif // End of '__MAP__'
