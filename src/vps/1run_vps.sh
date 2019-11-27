@@ -2,8 +2,8 @@
 
 Dataset="deepguider"
 #Dataset="'pittsburgh'"
-#nGPU=`python -c "import torch;print(torch.cuda.device_count())"`
-nGPU=1
+nGPU=`python -c "import torch;print(torch.cuda.device_count())"`
+#nGPU=1
 
 if [ ${nGPU} -eq 4 ]; then
 	python vps.py \
