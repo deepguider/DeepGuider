@@ -32,7 +32,7 @@ class POIRecognizer:
         filename = './model/inception_logo_features_200_trunc2.hdf5'        
         print('Initialization in progress...!\n')        
         start = time.time()
-        self.yolo = YOLO(**{"model_path": './model/keras_yolo3/model_data/yolo_weights_logos.h5',
+        yolo = YOLO(**{"model_path": './model/keras_yolo3/model_data/yolo_weights_logos.h5',
             "anchors_path": './model/keras_yolo3/model_data/yolo_anchors.txt',
             "classes_path": './data/preprocessed/classes.txt',
             "score" : 0.05,
