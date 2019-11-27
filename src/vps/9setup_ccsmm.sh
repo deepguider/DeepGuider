@@ -19,6 +19,8 @@ function func_slink(){
 			ln -s $DIR $LINK
 		fi
 
+		mkdir -p $LINK/qImg/999_newquery
+
 		echo "================================================="
 		echo "Created symbolic link of $DATASET_LINK"
 	fi

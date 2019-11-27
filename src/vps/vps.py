@@ -276,6 +276,13 @@ class vps:
                     myiu.imshow(input,221,'input')
                     myiu.imshow(image_encoding[:,:3,:,:],222,'encoding')
                     myiu.plot(vlad_encoding,223,'vlad')
+
+
+                if iteration*opt.cacheBatchSize >= eval_set.dbStruct.numDb:
+                    myiu.clf()
+                    myiu.imshow(input[-1,:,:,:],221,'input')
+                    myiu.imshow(image_encoding[-1,:3,:,:],222,'encoding')
+                    myiu.plot(vlad_encoding[-1],223,'vlad')
     
                 del input, image_encoding, vlad_encoding
         del test_data_loader
@@ -335,6 +342,8 @@ class vps:
             dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
         #    IDs = ['spherical_2812920067800000','spherical_2812920067800000']
             lat,lon,deg = self.ID2LL(dbName_predicted.split('.')[0][:-2])
+            if qName in 'newquery.jpg':
+                self.vps_lat, self.vps_long = lat, lon
             if qName in dbName_predicted:
                 match_cnt = match_cnt + 1
                 print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
@@ -345,8 +354,8 @@ class vps:
         print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
 
         print('You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D')
-        bp()
-        return recalls
+#        return recalls
+        return acc
 
         
     def get_param(self):
@@ -358,11 +367,6 @@ class vps:
         return 0
 
     def apply(self, image=None, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
-        if image is None:
-#            self.image = -1
-            self.image = np.uint8(256*np.random.rand(720,1280,3))
-        else:
-            self.image = image
         if gps_lat is None:
             self.gps_lat = -1
         if gps_long is None:
@@ -384,6 +388,8 @@ class vps:
             from netvlad import pittsburgh as dataset
             whole_test_set = dataset.get_whole_test_set()
         elif opt.dataset.lower() == 'deepguider':
+            if image is not None:
+                cv.imwrite('netvlad_etri_datasets/qImg/999_newquery/newquery.jpg',image)
             from netvlad import etri_dbloader as dataset
             whole_test_set = dataset.get_dg_test_set()
             print('===> With Query captured near the ETRI Campus')
@@ -428,6 +434,7 @@ class vps:
 if __name__ == "__main__":
     mod_vps = vps()
     mod_vps.initialize()
-    qimage = np.uint8(256*np.random.rand(720,1280,3))
-    mod_vps.apply(qimage)
+    qimage = np.uint8(256*np.random.rand(1024,1024,3))
+    vps_lat,vps_long,_,_,_ = mod_vps.apply(qimage)
+    print('Lat,Long =',vps_lat,vps_long)
 
