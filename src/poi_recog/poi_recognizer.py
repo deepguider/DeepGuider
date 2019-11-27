@@ -26,6 +26,9 @@ class POIRecognizer:
         self.output_txt = 'out.txt'
 
     def initialize(self):
+        self.sim_threshold = 0.90
+        self.output_txt = 'out.txt'
+
         filename = './model/inception_logo_features_200_trunc2.hdf5'        
         print('Initialization in progress...!\n')        
         start = time.time()
