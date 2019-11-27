@@ -331,9 +331,16 @@ class vps:
         match_cnt = 0
         total_cnt = len(qImage)
         for i in range(total_cnt):
-            print(qImage[i].item(),'<==>', os.path.basename(dbImage_predicted[i].item()))
-            if os.path.basename(qImage[i]).strip() in os.path.basename(dbImage_predicted[i].item()).strip():
+            qName = os.path.basename(qImage[i].item()).strip()
+            dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
+        #    IDs = ['spherical_2812920067800000','spherical_2812920067800000']
+            lat,lon,deg = self.ID2LL(dbName_predicted.split('.')[0][:-2])
+            if qName in dbName_predicted:
                 match_cnt = match_cnt + 1
+                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
+            else:
+                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon)
+
         acc = match_cnt/total_cnt
         print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
 
@@ -404,6 +411,18 @@ class vps:
     def getProb(self):
         return self.prob
 
+    def ID2LL(self,imgID):
+        lat,lon,degree2north = -1,-1,-1
+
+        with open('netvlad_etri_datasets/poses.txt', 'r') as searchfile:
+            for line in searchfile:
+                if imgID in line:
+                    sline = line.split('\n')[0].split(' ')
+                    lat = sline[1]
+                    lon = sline[2]
+                    degree2north = sline[3]
+        
+        return lat,lon,degree2north
 
 
 if __name__ == "__main__":

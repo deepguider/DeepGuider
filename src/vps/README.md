@@ -14,10 +14,15 @@ After some step, we could make and release our own VPS code.
 # Run vps.py
 ./1run_vps.py
 ```
-#### To do
-* Test vps.py with single image
-* Train vps using DB captured near ETRI campus
-
+#### Run's Result
+```
+QueryImage <=================> predicted dbImage
+[Q] 2813x.jpg <==> [Pred] 2813x.jpg [Lat,Lon] = 36.0, 127.0 [*Matched]
+[Q] 2813x.jpg <==> [Pred] 2813x.jpg [Lat,Lon] = 36.0, 127.0 [*Matched]
+[Q] 6035x.jpg <==> [Pred] 2813x.jpg [Lat,Lon] = 36.0, 127.0 : Query from out world
+Accuracy : 2 / 3 = 66.66666666666666 % in 10 DB images
+You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D
+```
 
 
 ### To train or test netvlad itself which is a sub-fuction of vps.py
