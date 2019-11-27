@@ -15,7 +15,7 @@ import h5py
 from ipdb import set_trace as bp
 
 #root_dir = '/nfs/ibrahimi/data/pittsburgh/'
-root_dir = './netvlad_v100_datasets/' #you need this directory in the top.
+root_dir = './netvlad/netvlad_v100_datasets/' #you need this directory in the top.
 
 if not exists(root_dir):
     raise FileNotFoundError('root_dir is hardcoded, please adjust to point to Pittsburth dataset')
@@ -106,11 +106,11 @@ class WholeDatasetFromStruct(data.Dataset):
     def __init__(self, structFile, input_transform=None, onlyDB=False):
         super().__init__()
 
-#        bp()
         self.input_transform = input_transform
 
         self.dbStruct = parse_dbStruct(structFile)
         self.images = [join(root_dir, dbIm) for dbIm in self.dbStruct.dbImage]
+        bp()
         if not onlyDB:
             self.images += [join(queries_dir, qIm) for qIm in self.dbStruct.qImage]
 

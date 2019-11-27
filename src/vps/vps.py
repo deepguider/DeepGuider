@@ -73,7 +73,7 @@ class vps:
                 help='Do a validation set run, and save, every N epochs.')
         self.parser.add_argument('--patience', type=int, default=10, help='Patience for early stopping. 0 is off.')
         self.parser.add_argument('--dataset', type=str, default='pittsburgh', 
-                help='Dataset to use', choices=['pittsburgh'])
+                help='Dataset to use', choices=['pittsburgh','deepguider'])
         self.parser.add_argument('--arch', type=str, default='vgg16', 
                 help='basenetwork to use', choices=['vgg16', 'alexnet'])
         self.parser.add_argument('--vladv2', action='store_true', help='Use VLAD v2')
@@ -295,27 +295,50 @@ class vps:
     
         #we want to see 20 nearnest neighbors using following search command.
         _, predictions = faiss_index.search(qFeat, max(n_values)) #predictions : [7608,20]
+        _, predictions_k1 = faiss_index.search(qFeat, min(n_values)) #predictions : [7608,1]
     
-        # for each query get those within threshold distance
-        gt = eval_set.getPositives() #Ground Truth
-    
-        correct_at_n = np.zeros(len(n_values))
-        #TODO can we do this on the matrix in one go?
-        for qIx, pred in enumerate(predictions):
-            for i,n in enumerate(n_values):
-                # if in top N then also in top NN, where NN > N
-                if np.any(np.in1d(pred[:n], gt[qIx])):
-                    correct_at_n[i:] += 1
-                    break
-        recall_at_n = correct_at_n / eval_set.dbStruct.numQ
-    
-        recalls = {} #make dict for output
-        for i,n in enumerate(n_values):
-            recalls[n] = recall_at_n[i]
-            print("====> Recall@{}: {:.4f}".format(n, recall_at_n[i]))
-            if write_tboard: writer.add_scalar('Val/Recall@' + str(n), recall_at_n[i], epoch)
-    
-    
+#        # for each query get those within threshold distance
+#        gt = eval_set.getPositives() #Ground Truth
+#    
+#        correct_at_n = np.zeros(len(n_values))
+#        #TODO can we do this on the matrix in one go?
+#        for qIx, pred in enumerate(predictions):
+#            for i,n in enumerate(n_values):
+#                # if in top N then also in top NN, where NN > N
+#                if np.any(np.in1d(pred[:n], gt[qIx])):
+#                    correct_at_n[i:] += 1
+#                    break
+#        recall_at_n = correct_at_n / eval_set.dbStruct.numQ
+#    
+#        recalls = {} #make dict for output
+#        for i,n in enumerate(n_values):
+#            recalls[n] = recall_at_n[i]
+#            print("====> Recall@{}: {:.4f}".format(n, recall_at_n[i]))
+#            if write_tboard: writer.add_scalar('Val/Recall@' + str(n), recall_at_n[i], epoch)
+
+        print('predicted ID:\n', predictions_k1)
+        test_data_loader = DataLoader(dataset=eval_set, 
+                    num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                    pin_memory=cuda)
+
+        qImage = test_data_loader.dataset.dbStruct.qImage
+        dbImage = test_data_loader.dataset.dbStruct.dbImage
+        dbImage_predicted = test_data_loader.dataset.dbStruct.dbImage[predictions_k1]
+
+
+        import os
+        print('QueryImage <=================> predicted dbImage')
+        match_cnt = 0
+        total_cnt = len(qImage)
+        for i in range(total_cnt):
+            print(qImage[i].item(),'<==>', os.path.basename(dbImage_predicted[i].item()))
+            if os.path.basename(qImage[i]).strip() in os.path.basename(dbImage_predicted[i].item()).strip():
+                match_cnt = match_cnt + 1
+        acc = match_cnt/total_cnt
+        print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
+
+        print('You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D')
+        bp()
         return recalls
 
         
@@ -345,26 +368,29 @@ class vps:
         opt = self.parser.parse_args()
 
         ##### Process Input #####
-        cv.imshow("sample", self.image)
-        cv.waitKey()
-        cv.destroyWindow("sample")
+#        cv.imshow("sample", self.image)
+#        cv.waitKey()
+#        cv.destroyWindow("sample")
 
+        print('===> Loading dataset(s)')
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
+            whole_test_set = dataset.get_whole_test_set()
+        elif opt.dataset.lower() == 'deepguider':
+            from netvlad import etri_dbloader as dataset
+            whole_test_set = dataset.get_dg_test_set()
+            print('===> With Query captured near the ETRI Campus')
         else:
             raise Exception('Unknown dataset')
 
-        print('===> Loading dataset(s)')
-        whole_test_set = dataset.get_whole_test_set()
         print('===> Evaluating on test set')
 
         print('===> Running evaluation step')
         epoch = 1
         recalls = self.test(whole_test_set, epoch, write_tboard=False)
 
-
         ##### Results #####
-        return self.vps_lat,self.vps_long,self.prob,self.gps_lat,self.gps_long
+        return self.vps_lat, self.vps_long, self.prob, self.gps_lat, self.gps_long
 
     def getPosVPS(self):
         return self.GPS_Latitude, self.GPS_Longitude
