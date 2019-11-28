@@ -36,7 +36,8 @@ class vps:
         self.vps_lat = 0.0 # Latitude from VPS function
         self.vps_long = 0.0 # Longitude from VPS function
         self.angle = -1  # road direction (radian)
-        self.prob = -1   # reliablity of the result. 0: fail ~ 1: success
+        self.vps_prob = -1   # reliablity of the result. 0: fail ~ 1: success
+        self.K = 5 # K for knn
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -301,8 +302,7 @@ class vps:
         n_values = [1,5,10,20] #n nearest neighbors
     
         #we want to see 20 nearnest neighbors using following search command.
-        _, predictions = faiss_index.search(qFeat, max(n_values)) #predictions : [7608,20]
-        _, predictions_k1 = faiss_index.search(qFeat, min(n_values)) #predictions : [7608,1]
+#        _, predictions = faiss_index.search(qFeat, max(n_values)) #predictions : [7608,20]
     
 #        # for each query get those within threshold distance
 #        gt = eval_set.getPositives() #Ground Truth
@@ -323,14 +323,16 @@ class vps:
 #            print("====> Recall@{}: {:.4f}".format(n, recall_at_n[i]))
 #            if write_tboard: writer.add_scalar('Val/Recall@' + str(n), recall_at_n[i], epoch)
 
-        print('predicted ID:\n', predictions_k1)
+        pred_L2dist, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
+
+        print('predicted ID:\n', pred_idx)
         test_data_loader = DataLoader(dataset=eval_set, 
                     num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
                     pin_memory=cuda)
 
         qImage = test_data_loader.dataset.dbStruct.qImage
         dbImage = test_data_loader.dataset.dbStruct.dbImage
-        dbImage_predicted = test_data_loader.dataset.dbStruct.dbImage[predictions_k1]
+        dbImage_predicted = test_data_loader.dataset.dbStruct.dbImage[pred_idx[:,0]] #Use first K for display
 
 
         import os
@@ -342,8 +344,13 @@ class vps:
             dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
         #    IDs = ['spherical_2812920067800000','spherical_2812920067800000']
             lat,lon,deg = self.ID2LL(dbName_predicted.split('.')[0][:-2])
+
             if qName in 'newquery.jpg':
-                self.vps_lat, self.vps_long = lat, lon
+                flist = test_data_loader.dataset.dbStruct.dbImage[pred_idx[i]]
+                vps_imgID = self.Fname2ID(flist)
+                vps_imgConf = [val for val in pred_L2dist[i]]
+                self.vps_IDandConf = [vps_imgID, vps_imgConf]
+
             if qName in dbName_predicted:
                 match_cnt = match_cnt + 1
                 print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
@@ -366,7 +373,7 @@ class vps:
         # set parameter
         return 0
 
-    def apply(self, image=None, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
+    def apply(self, image=None,K_nn = 5, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
         if gps_lat is None:
             self.gps_lat = -1
         if gps_long is None:
@@ -376,6 +383,7 @@ class vps:
         if timestamp is None:
             self.timestamp = -1
 
+        self.K = K_nn
         opt = self.parser.parse_args()
 
         ##### Process Input #####
@@ -403,7 +411,8 @@ class vps:
         recalls = self.test(whole_test_set, epoch, write_tboard=False)
 
         ##### Results #####
-        return self.vps_lat, self.vps_long, self.prob, self.gps_lat, self.gps_long
+        return self.vps_IDandConf
+#        return self.vps_lat, self.vps_long, self.vps_prob, self.gps_lat, self.gps_long
 
     def getPosVPS(self):
         return self.GPS_Latitude, self.GPS_Longitude
@@ -416,6 +425,17 @@ class vps:
 
     def getProb(self):
         return self.prob
+
+    def Fname2ID(self,flist):
+        import os
+        ID = []
+        fcnt = len(flist)
+        for i in range(fcnt):
+            imgID = os.path.basename(flist[i]).strip() #'spherical_2813220026700000_f.jpg'
+            imgID = imgID.split('_')[1] #2813220026700000
+            ID.append(imgID)
+        return ID
+
 
     def ID2LL(self,imgID):
         lat,lon,degree2north = -1,-1,-1
@@ -435,6 +455,8 @@ if __name__ == "__main__":
     mod_vps = vps()
     mod_vps.initialize()
     qimage = np.uint8(256*np.random.rand(1024,1024,3))
-    vps_lat,vps_long,_,_,_ = mod_vps.apply(qimage)
-    print('Lat,Long =',vps_lat,vps_long)
+    vps_IDandConf = mod_vps.apply(qimage,5) # k=5 for knn
+    print('vps_IDandConf',vps_IDandConf)
+#    vps_lat,vps_long,_,_,_ = mod_vps.apply(qimage)
+#    print('Lat,Long =',vps_lat,vps_long)
 
