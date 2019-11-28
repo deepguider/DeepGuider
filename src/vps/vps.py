@@ -343,7 +343,7 @@ class vps:
             qName = os.path.basename(qImage[i].item()).strip()
             dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
         #    IDs = ['spherical_2812920067800000','spherical_2812920067800000']
-            lat,lon,deg = self.ID2LL(dbName_predicted.split('_')[1])
+            lat,lon,deg = self.ID2LL(self.Fname2ID(dbName_predicted))
 
             if qName in 'newquery.jpg':
                 flist = test_data_loader.dataset.dbStruct.dbImage[pred_idx[i]]
@@ -351,7 +351,7 @@ class vps:
                 vps_imgConf = [val for val in pred_L2dist[i]]
                 self.vps_IDandConf = [vps_imgID, vps_imgConf]
 
-            if qName in dbName_predicted:
+            if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
                 match_cnt = match_cnt + 1
                 print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
             else:
@@ -360,7 +360,8 @@ class vps:
         acc = match_cnt/total_cnt
         print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
 
-        print('You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D')
+#        bp()
+#        print('You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D')
 #        return recalls
         return acc
 
@@ -428,17 +429,26 @@ class vps:
 
     def Fname2ID(self,flist):
         import os
+
+        if type(flist) is str:
+            flist = [flist]
         ID = []
         fcnt = len(flist)
         for i in range(fcnt):
             imgID = os.path.basename(flist[i]).strip() #'spherical_2813220026700000_f.jpg'
-            imgID = imgID.split('_')[1] #2813220026700000
+            if '_' in imgID:
+                imgID = imgID.split('_')[1] #2813220026700000
+            else:
+                imgID = imgID.split('.')[0]
             ID.append(imgID)
         return ID
 
 
     def ID2LL(self,imgID):
         lat,lon,degree2north = -1,-1,-1
+
+        if type(imgID) is not str:
+            imgID = imgID[0]
 
         with open('netvlad_etri_datasets/poses.txt', 'r') as searchfile:
             for line in searchfile:
