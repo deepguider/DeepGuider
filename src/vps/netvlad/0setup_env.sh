@@ -54,13 +54,13 @@ download_weight $PRETRAINED_FILE $DOWNLOAD_URL
 
 
 
-#if [ ! -d "$DATASET_DIR" ]; then
-#	echo "ERROR : You need to modify location of Dataset in this script file"
-#	echo "$DATASET_DIR"
-#else
-#	if [ ! -L "$DATASET_LINK" ]; then
-#		ln -s $DATASET_DIR
-#	fi
-#	echo "================================================="
-#	echo "Created symbolic link of $DATASET_LINK"
-#fi
+if [ ! -d "$DATASET_DIR" ]; then
+	echo "ERROR : You need to modify location of Dataset in this script file"
+	echo "$DATASET_DIR"
+else
+	if [ ! -L "$DATASET_LINK" ]; then
+		ln -s $DATASET_DIR
+	fi
+	echo "================================================="
+	echo "Created symbolic link of $DATASET_LINK"
+fi

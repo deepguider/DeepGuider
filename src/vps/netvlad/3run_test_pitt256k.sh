@@ -16,5 +16,5 @@ export PRETRAINED="pretrained_checkpoint/vgg16_netvlad_checkpoint_gpu4"
 
 python main.py --mode=test --split=val --resume=${PRETRAINED} \
 			--dataPath=${CHKDIR}/data --runsPath=${CHKDIR}/runs \
-			--nGPU 4
+			--nGPU 4 --cacheBatchSize 4
 #			   --nocuda

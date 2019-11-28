@@ -1,7 +1,9 @@
 from __future__ import print_function
 import argparse
 from math import log10, ceil
-import random, shutil, json
+import random
+import shutil
+import json
 from os.path import join, exists, isfile, realpath, dirname
 from os import makedirs, remove, chdir, environ
 
@@ -27,7 +29,7 @@ from netvlad import netvlad
 import cv2 as cv
 
 from ipdb import set_trace as bp
-import sys;sys.path.insert(0,'netvlad/ccsmmutils');import img_utils as myiu
+import sys; sys.path.insert(0,'netvlad/ccsmmutils'); import img_utils as myiu
 
 class vps:
     def __init__(self):
@@ -469,4 +471,3 @@ if __name__ == "__main__":
     print('vps_IDandConf',vps_IDandConf)
 #    vps_lat,vps_long,_,_,_ = mod_vps.apply(qimage)
 #    print('Lat,Long =',vps_lat,vps_long)
-
