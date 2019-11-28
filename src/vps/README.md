@@ -6,6 +6,19 @@ After some step, we could make and release our own VPS code.
 
 
 
+
+### Prepare Dataset
+You can refer src/vps/Dataset_example directory
+#### For database images
+'src/vps/Dataset_example/dbImg '  has to jpg images that named as 'xxx_IDnum_xxx.jpg'
+'src/vps/Dataset_example/dbImg '  can have sub-directory
+
+#### For query  images
+'src/vps/Dataset_example/qImg '  can have sub-directory
+'src/vps/Dataset_example/dbImg '  may have jpg images of any name
+Query image of vps.apply() function will be save at  'src/vps/Dataset_example/dbImg/999_newquery/newquery.jpg' automatically.
+
+
 ### To run vps.py
 ```
 # If it's first time to visit here after a git clone, run setup as follows:
@@ -48,4 +61,4 @@ Please refer to [**./netvlad/README.md**](netvlad/README.md) to proceed in detai
 
 # Reference
 
-[1] Arandjelovic, Relja, Petr Gronat, Akihiko Torii, Tomas Pajdla, and Josef Sivic. "NetVLAD: CNN architecture for weakly supervised place recognition." In Proceedings of the IEEE conference on computer vision and pattern recognition, pp. 5297-5307. 2016.
+[1] Arandjelovic, Relja, Petr Gronat, Akihiko Torii, Tomas Pajdla, and Josef Sivic. "NetVLAD: CNN architecture for weakly supervised place recognition." In Proceedings of the IEEE conference on computer vision and pattern recognition, pp. 5297-5307. 2

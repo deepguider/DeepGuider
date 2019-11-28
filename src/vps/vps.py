@@ -343,7 +343,7 @@ class vps:
             qName = os.path.basename(qImage[i].item()).strip()
             dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
         #    IDs = ['spherical_2812920067800000','spherical_2812920067800000']
-            lat,lon,deg = self.ID2LL(dbName_predicted.split('.')[0][:-2])
+            lat,lon,deg = self.ID2LL(dbName_predicted.split('_')[1])
 
             if qName in 'newquery.jpg':
                 flist = test_data_loader.dataset.dbStruct.dbImage[pred_idx[i]]
