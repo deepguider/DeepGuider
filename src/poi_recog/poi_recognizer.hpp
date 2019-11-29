@@ -173,26 +173,28 @@ namespace dg
                 PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
                 if (pValue0 != NULL)
                 {
-                    Py_ssize_t sz = PyList_Size(pValue0);
-                    int nattr = 6;
-                    int npoi = sz / nattr;
-                    for (int i = 0; i < npoi; i++)
+                    Py_ssize_t cnt = PyList_Size(pValue0);
+                    for (int i = 0; i < cnt; i++)
                     {
+                        PyObject* pList = PyList_GetItem(pValue0, i);
+
                         POIResult poi;
-                        pValue = PyList_GetItem(pValue0, i * nattr + 0);
+                        int idx = 0;
+                        pValue = PyList_GetItem(pList, idx++);
                         poi.xmin = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pValue0, i * nattr + 1);
+                        pValue = PyList_GetItem(pList, idx++);
                         poi.ymin = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pValue0, i * nattr + 2);
+                        pValue = PyList_GetItem(pList, idx++);
                         poi.xmax = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pValue0, i * nattr + 3);
+                        pValue = PyList_GetItem(pList, idx++);
                         poi.ymax = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pValue0, i * nattr + 4);
+                        pValue = PyList_GetItem(pList, idx++);
                         poi.label = PyUnicode_AsUTF8(pValue);
-                        pValue = PyList_GetItem(pValue0, i * nattr + 5);
-                        poi.confidence = PyLong_AsLong(pValue);
+                        pValue = PyList_GetItem(pList, idx++);
+                        poi.confidence = PyFloat_AsDouble(pValue);
 
                         m_pois.push_back(poi);
+                        Py_DECREF(pList);
                     }
                 }
                 Py_DECREF(pValue0);

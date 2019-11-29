@@ -1,7 +1,9 @@
 from __future__ import print_function
 import argparse
 from math import log10, ceil
-import random, shutil, json
+import random
+import shutil
+import json
 from os.path import join, exists, isfile, realpath, dirname
 from os import makedirs, remove, chdir, environ
 
@@ -27,7 +29,7 @@ from netvlad import netvlad
 import cv2 as cv
 
 from ipdb import set_trace as bp
-import sys;sys.path.insert(0,'netvlad/ccsmmutils');import img_utils as myiu
+import sys; sys.path.insert(0,'netvlad/ccsmmutils'); import img_utils as myiu
 
 class vps:
     def __init__(self):
@@ -36,7 +38,8 @@ class vps:
         self.vps_lat = 0.0 # Latitude from VPS function
         self.vps_long = 0.0 # Longitude from VPS function
         self.angle = -1  # road direction (radian)
-        self.prob = -1   # reliablity of the result. 0: fail ~ 1: success
+        self.vps_prob = -1   # reliablity of the result. 0: fail ~ 1: success
+        self.K = 5 # K for knn
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -73,7 +76,7 @@ class vps:
                 help='Do a validation set run, and save, every N epochs.')
         self.parser.add_argument('--patience', type=int, default=10, help='Patience for early stopping. 0 is off.')
         self.parser.add_argument('--dataset', type=str, default='pittsburgh', 
-                help='Dataset to use', choices=['pittsburgh'])
+                help='Dataset to use', choices=['pittsburgh','deepguider'])
         self.parser.add_argument('--arch', type=str, default='vgg16', 
                 help='basenetwork to use', choices=['vgg16', 'alexnet'])
         self.parser.add_argument('--vladv2', action='store_true', help='Use VLAD v2')
@@ -276,6 +279,13 @@ class vps:
                     myiu.imshow(input,221,'input')
                     myiu.imshow(image_encoding[:,:3,:,:],222,'encoding')
                     myiu.plot(vlad_encoding,223,'vlad')
+
+
+                if iteration*opt.cacheBatchSize >= eval_set.dbStruct.numDb:
+                    myiu.clf()
+                    myiu.imshow(input[-1,:,:,:],221,'input')
+                    myiu.imshow(image_encoding[-1,:3,:,:],222,'encoding')
+                    myiu.plot(vlad_encoding[-1],223,'vlad')
     
                 del input, image_encoding, vlad_encoding
         del test_data_loader
@@ -294,29 +304,68 @@ class vps:
         n_values = [1,5,10,20] #n nearest neighbors
     
         #we want to see 20 nearnest neighbors using following search command.
-        _, predictions = faiss_index.search(qFeat, max(n_values)) #predictions : [7608,20]
+#        _, predictions = faiss_index.search(qFeat, max(n_values)) #predictions : [7608,20]
     
-        # for each query get those within threshold distance
-        gt = eval_set.getPositives() #Ground Truth
-    
-        correct_at_n = np.zeros(len(n_values))
-        #TODO can we do this on the matrix in one go?
-        for qIx, pred in enumerate(predictions):
-            for i,n in enumerate(n_values):
-                # if in top N then also in top NN, where NN > N
-                if np.any(np.in1d(pred[:n], gt[qIx])):
-                    correct_at_n[i:] += 1
-                    break
-        recall_at_n = correct_at_n / eval_set.dbStruct.numQ
-    
-        recalls = {} #make dict for output
-        for i,n in enumerate(n_values):
-            recalls[n] = recall_at_n[i]
-            print("====> Recall@{}: {:.4f}".format(n, recall_at_n[i]))
-            if write_tboard: writer.add_scalar('Val/Recall@' + str(n), recall_at_n[i], epoch)
-    
-    
-        return recalls
+#        # for each query get those within threshold distance
+#        gt = eval_set.getPositives() #Ground Truth
+#    
+#        correct_at_n = np.zeros(len(n_values))
+#        #TODO can we do this on the matrix in one go?
+#        for qIx, pred in enumerate(predictions):
+#            for i,n in enumerate(n_values):
+#                # if in top N then also in top NN, where NN > N
+#                if np.any(np.in1d(pred[:n], gt[qIx])):
+#                    correct_at_n[i:] += 1
+#                    break
+#        recall_at_n = correct_at_n / eval_set.dbStruct.numQ
+#    
+#        recalls = {} #make dict for output
+#        for i,n in enumerate(n_values):
+#            recalls[n] = recall_at_n[i]
+#            print("====> Recall@{}: {:.4f}".format(n, recall_at_n[i]))
+#            if write_tboard: writer.add_scalar('Val/Recall@' + str(n), recall_at_n[i], epoch)
+
+        pred_L2dist, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
+
+        print('predicted ID:\n', pred_idx)
+        test_data_loader = DataLoader(dataset=eval_set, 
+                    num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                    pin_memory=cuda)
+
+        qImage = test_data_loader.dataset.dbStruct.qImage
+        dbImage = test_data_loader.dataset.dbStruct.dbImage
+        dbImage_predicted = test_data_loader.dataset.dbStruct.dbImage[pred_idx[:,0]] #Use first K for display
+
+
+        import os
+        print('QueryImage <=================> predicted dbImage')
+        match_cnt = 0
+        total_cnt = len(qImage)
+        for i in range(total_cnt):
+            qName = os.path.basename(qImage[i].item()).strip()
+            dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
+        #    IDs = ['spherical_2812920067800000','spherical_2812920067800000']
+            lat,lon,deg = self.ID2LL(self.Fname2ID(dbName_predicted))
+
+            if qName in 'newquery.jpg':
+                flist = test_data_loader.dataset.dbStruct.dbImage[pred_idx[i]]
+                vps_imgID = self.Fname2ID(flist)
+                vps_imgConf = [val for val in pred_L2dist[i]]
+                self.vps_IDandConf = [vps_imgID, vps_imgConf]
+
+            if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
+                match_cnt = match_cnt + 1
+                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
+            else:
+                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon)
+
+        acc = match_cnt/total_cnt
+        print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
+
+#        bp()
+#        print('You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D')
+#        return recalls
+        return acc
 
         
     def get_param(self):
@@ -327,12 +376,7 @@ class vps:
         # set parameter
         return 0
 
-    def apply(self, image=None, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
-        if image is None:
-#            self.image = -1
-            self.image = np.uint8(256*np.random.rand(720,1280,3))
-        else:
-            self.image = image
+    def apply(self, image=None,K_nn = 5, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
         if gps_lat is None:
             self.gps_lat = -1
         if gps_long is None:
@@ -342,29 +386,36 @@ class vps:
         if timestamp is None:
             self.timestamp = -1
 
+        self.K = K_nn
         opt = self.parser.parse_args()
 
         ##### Process Input #####
-        cv.imshow("sample", self.image)
-        cv.waitKey()
-        cv.destroyWindow("sample")
+#        cv.imshow("sample", self.image)
+#        cv.waitKey()
+#        cv.destroyWindow("sample")
 
+        print('===> Loading dataset(s)')
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
+            whole_test_set = dataset.get_whole_test_set()
+        elif opt.dataset.lower() == 'deepguider':
+            if image is not None:
+                cv.imwrite('netvlad_etri_datasets/qImg/999_newquery/newquery.jpg',image)
+            from netvlad import etri_dbloader as dataset
+            whole_test_set = dataset.get_dg_test_set()
+            print('===> With Query captured near the ETRI Campus')
         else:
             raise Exception('Unknown dataset')
 
-        print('===> Loading dataset(s)')
-        whole_test_set = dataset.get_whole_test_set()
         print('===> Evaluating on test set')
 
         print('===> Running evaluation step')
         epoch = 1
         recalls = self.test(whole_test_set, epoch, write_tboard=False)
 
-
         ##### Results #####
-        return self.vps_lat,self.vps_long,self.prob,self.gps_lat,self.gps_long
+        return self.vps_IDandConf
+#        return self.vps_lat, self.vps_long, self.vps_prob, self.gps_lat, self.gps_long
 
     def getPosVPS(self):
         return self.GPS_Latitude, self.GPS_Longitude
@@ -378,11 +429,45 @@ class vps:
     def getProb(self):
         return self.prob
 
+    def Fname2ID(self,flist):
+        import os
+
+        if type(flist) is str:
+            flist = [flist]
+        ID = []
+        fcnt = len(flist)
+        for i in range(fcnt):
+            imgID = os.path.basename(flist[i]).strip() #'spherical_2813220026700000_f.jpg'
+            if '_' in imgID:
+                imgID = imgID.split('_')[1] #2813220026700000
+            else:
+                imgID = imgID.split('.')[0]
+            ID.append(imgID)
+        return ID
+
+
+    def ID2LL(self,imgID):
+        lat,lon,degree2north = -1,-1,-1
+
+        if type(imgID) is not str:
+            imgID = imgID[0]
+
+        with open('netvlad_etri_datasets/poses.txt', 'r') as searchfile:
+            for line in searchfile:
+                if imgID in line:
+                    sline = line.split('\n')[0].split(' ')
+                    lat = sline[1]
+                    lon = sline[2]
+                    degree2north = sline[3]
+        
+        return lat,lon,degree2north
 
 
 if __name__ == "__main__":
     mod_vps = vps()
     mod_vps.initialize()
-    qimage = np.uint8(256*np.random.rand(720,1280,3))
-    mod_vps.apply(qimage)
-
+    qimage = np.uint8(256*np.random.rand(1024,1024,3))
+    vps_IDandConf = mod_vps.apply(qimage,5) # k=5 for knn
+    print('vps_IDandConf',vps_IDandConf)
+#    vps_lat,vps_long,_,_,_ = mod_vps.apply(qimage)
+#    print('Lat,Long =',vps_lat,vps_long)

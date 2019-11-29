@@ -19,8 +19,3 @@ export CHKDIR="./checkpoint"
 python main.py --mode=cluster --arch=vgg16 --pooling=netvlad --num_clusters=64 \
 				--dataPath=${CHKDIR}/data --runsPath=${CHKDIR}/runs \
 				--nGPU 4
-
-
-python main.py --mode=train --arch=vgg16 --pooling=netvlad --num_clusters=64 \
-				--dataPath=${CHKDIR}/data --runsPath=${CHKDIR}/runs \
-				--nGPU 4

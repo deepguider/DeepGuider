@@ -24,4 +24,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\vps\vps.py">
+      <Filter>Header Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>
