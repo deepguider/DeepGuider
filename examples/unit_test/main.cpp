@@ -1,7 +1,8 @@
 #include "test_core_graph.hpp"
-#include "test_core_map.hpp"
+#include "test_core_type.hpp"
 #include "test_localizer_road.hpp"
 #include "test_localizer_simple.hpp"
+#include "test_localizer_example.hpp"
 #include "test_localizer_gps2utm.hpp"
 
 int main()
@@ -28,8 +29,8 @@ int main()
     // 1. Test simple map, painter, and localizer
     VVS_NUN_TEST(testLocSimpleRoadMap());
     VVS_NUN_TEST(testLocSimpleRoadPainter());
-    VVS_RUN_TEST(testLocMap2SimpleRoadMap(0));
     VVS_NUN_TEST(testLocSimpleLocalizer());
+    VVS_NUN_TEST(testLocMap2SimpleRoadMap());
 
     // 2. Test GPS and UTM conversion
     VVS_NUN_TEST(testLocRawGPS2UTM(dg::LatLon(38, 128), dg::Point2(412201.58, 4206286.76))); // Zone: 52S

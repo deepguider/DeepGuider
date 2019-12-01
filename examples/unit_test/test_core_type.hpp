@@ -1,5 +1,5 @@
-#ifndef __TEST_CORE__
-#define __TEST_CORE__
+#ifndef __TEST_CORE_TYPE__
+#define __TEST_CORE_TYPE__
 
 #include "dg_core.hpp"
 
@@ -194,4 +194,4 @@ int testCoreMap()
     return 0;
 }
 
-#endif // End of '__TEST_CORE__'
+#endif // End of '__TEST_CORE_TYPE__'
