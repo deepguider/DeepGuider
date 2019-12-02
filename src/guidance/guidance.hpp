@@ -20,10 +20,8 @@ public:
 	enum EdgeType
 	{
 		SIDEWALK = 0,	//Street for pedestrian
-		CROSSWALKWOLIGHT,	//Pedestrian crosswalk without traffic light
-		CROSSWALKWLIGHT,	//Pedestrian Crosswalk with traffic light
-		CROSSROAD,	//Crossing roadway without traffic light
-		ROADWAY		//Street for car
+		CROSSWALK,	//Pedestrian Crosswalk with traffic light
+		ROAD		//Street for car
 	};
 
 	/** Type of path, whether the path is node or edge. */
@@ -79,10 +77,10 @@ public:
 	class Action
 	{
 	public:
-		Action(Motion _do = STOP, int _direction = 0) : move(_do), direction(_direction) {}
+		Action(Motion _do = STOP, int _degree = 0) : move(_do), degree(_degree) {}
 
 		Motion move;
-		int direction;		
+		int degree;		
 
 	};
 
@@ -102,7 +100,7 @@ public:
 		* @param _dir Turn in direction
 		* @param _mode In which street type the robot moves
 		*/
-		Guide(ID _id, NodeType _type = POI, int _dir = 0, EdgeType _mode = SIDEWALK) : nodeid(_id), type(_type), direction(_dir), mode(_mode) {}
+		Guide(ID _id, NodeType _type = POI, int _deg = 0, EdgeType _mode = SIDEWALK) : nodeid(_id), type(_type), degree(_deg), mode(_mode) {}
 
 		/** ID of NODE which the robot is heading ahead*/
 		ID nodeid;
@@ -111,7 +109,7 @@ public:
 		NodeType type;
 
 		/**Turning direction of robot on the node*/
-		int direction;	//based on robot's past heading
+		int degree;	//based on robot's past heading
 
 		/**The robot moving mode depends on street(edge) type*/
 		EdgeType mode;
@@ -171,6 +169,7 @@ public:
 	Status checkStatus(dg::TopometricPose pose);
 	bool generateGuide();
 	std::vector<InstantGuide> provideNormalGuide(std::vector<InstantGuide> prevguide, Status status);
+	void printInstantGuide(InstantGuide instGuide);
 
 };
 
