@@ -31,6 +31,7 @@ int main()
     VVS_NUN_TEST(testLocSimpleRoadPainter());
     VVS_NUN_TEST(testLocSimpleLocalizer());
     VVS_NUN_TEST(testLocMap2SimpleRoadMap());
+    VVS_RUN_TEST(testLocExampleLocalizer());
 
     // 2. Test GPS and UTM conversion
     VVS_NUN_TEST(testLocRawGPS2UTM(dg::LatLon(38, 128), dg::Point2(412201.58, 4206286.76))); // Zone: 52S

@@ -16,13 +16,15 @@ public:
 
     virtual bool applyPosition(const Point2& xy, Timestamp time = -1, double confidence = -1) = 0;
 
+    virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1) = 0;
+
     virtual bool applyOrientation(double theta, Timestamp time = -1, double confidence = -1) = 0;
 
     virtual bool applyOdometry(const Pose2& pose_curr, const Pose2& pose_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1) = 0;
 
-    virtual bool applyOdometry(double theta_curr, double theta_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1) = 0;
-
     virtual bool applyOdometry(const Polar2& delta, Timestamp time = -1, double confidence = -1) = 0;
+
+    virtual bool applyOdometry(double theta_curr, double theta_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1) = 0;
 
     virtual bool applyLocClue(int id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
 

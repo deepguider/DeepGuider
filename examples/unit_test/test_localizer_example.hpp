@@ -5,7 +5,7 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
 
-int generateExampleMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID id_offset = 1000, double pixel_per_meter = 1, const dg::LatLon& first_latlon = dg::LatLon(36.3839003, 127.3653537))
+int generateExampleMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID id_offset = 1000, double pixel_per_meter = 1, const dg::LatLon& first_latlon = dg::LatLon(36.3838455, 127.3678567))
 {
     // Read 'yml_file' generated from 'simple_picker'
     cv::FileStorage fs;
@@ -58,28 +58,29 @@ dg::Map getExampleMap()
 {
     // An example map around ETRI
     // - Note: Geodesic data were roughly generated from 'generateExampleMap()' from manually selected nodes on Naver Map.
-    //         The geodesic data were represented based on latitude and longitude of the first node selected by Google Maps. They are not globally accurate, but relatively accurate.
-    //         To show the base point, please use the following URL, https://www.google.com/maps/@36.3839003,127.3653537,17z
+    //         The geodesic data were generated based on latitude and longitude of the first node. They are not globally accurate, but relatively accurate.
+    //         1) The geodesic values of the first node can be acquired by Google Maps. To show the base point, please use the following URL, https://www.google.com/maps/@36.3838276,127.3676621,21z
+    //         2) The geodesic values of the first node can be assigned by GPS data such as (36.3838455, 127.3678567).
 
     dg::Map map;
-    map.addNode(dg::NodeInfo(1000, 36.383900299999, 127.365353699998));
-    map.addNode(dg::NodeInfo(1001, 36.384065394720, 127.366219813688));
-    map.addNode(dg::NodeInfo(1002, 36.384285010577, 127.367118235987));
-    map.addNode(dg::NodeInfo(1003, 36.384581612379, 127.367714047117));
-    map.addNode(dg::NodeInfo(1004, 36.385125333867, 127.368583410497));
-    map.addNode(dg::NodeInfo(1005, 36.385331811615, 127.369181116144));
-    map.addNode(dg::NodeInfo(1006, 36.385482658431, 127.370326265278));
-    map.addNode(dg::NodeInfo(1007, 36.385709539421, 127.371759696097));
-    map.addNode(dg::NodeInfo(1008, 36.385812721482, 127.372716323402));
-    map.addNode(dg::NodeInfo(1009, 36.385876695470, 127.374766333677));
-    map.addNode(dg::NodeInfo(1010, 36.385874356755, 127.375256921149));
-    map.addNode(dg::NodeInfo(1011, 36.385890494250, 127.375780570079));
-    map.addNode(dg::NodeInfo(1012, 36.385888757528, 127.376315739613));
-    map.addNode(dg::NodeInfo(1013, 36.385659755637, 127.376710702477));
-    map.addNode(dg::NodeInfo(1014, 36.384749418954, 127.376718481174));
-    map.addNode(dg::NodeInfo(1015, 36.382775545623, 127.376737221723));
-    map.addNode(dg::NodeInfo(1016, 36.381441808199, 127.376764948278));
-    map.addNode(dg::NodeInfo(1017, 36.379062708225, 127.376814401930));
+    map.addNode(dg::NodeInfo(1000, 36.383845499999, 127.367856699998));
+    map.addNode(dg::NodeInfo(1001, 36.383980344326, 127.368489335844));
+    map.addNode(dg::NodeInfo(1002, 36.384199943244, 127.369387764218));
+    map.addNode(dg::NodeInfo(1003, 36.384496533926, 127.369983583772));
+    map.addNode(dg::NodeInfo(1004, 36.385040239270, 127.370852962675));
+    map.addNode(dg::NodeInfo(1005, 36.385246705794, 127.371450674120));
+    map.addNode(dg::NodeInfo(1006, 36.385397530922, 127.372595827237));
+    map.addNode(dg::NodeInfo(1007, 36.385624384793, 127.374029264149));
+    map.addNode(dg::NodeInfo(1008, 36.385727548719, 127.374985894115));
+    map.addNode(dg::NodeInfo(1009, 36.385791483728, 127.377035905513));
+    map.addNode(dg::NodeInfo(1010, 36.385789135672, 127.377526492740));
+    map.addNode(dg::NodeInfo(1011, 36.385805263210, 127.378050141951));
+    map.addNode(dg::NodeInfo(1012, 36.385803516299, 127.378585311240));
+    map.addNode(dg::NodeInfo(1013, 36.385574506719, 127.378980267293));
+    map.addNode(dg::NodeInfo(1014, 36.384664169211, 127.378988019480));
+    map.addNode(dg::NodeInfo(1015, 36.382690294056, 127.379006702550));
+    map.addNode(dg::NodeInfo(1016, 36.381356555113, 127.379034390264));
+    map.addNode(dg::NodeInfo(1017, 36.378977452428, 127.379083774640));
     map.addRoad(1000, 1001);
     map.addRoad(1001, 1002);
     map.addRoad(1002, 1003);
@@ -100,37 +101,115 @@ dg::Map getExampleMap()
     return map;
 }
 
+std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_file = "data/191115_ETRI_asen_fix.csv")
+{
+    cx::CSVReader csv;
+    VVS_CHECK_TRUE(csv.open(csv_file));
+    cx::CSVReader::CSVDouble csv_ext = csv.extract(1, { 2, 3, 7, 8 }); // Skip the header
+
+    std::vector<std::pair<double, dg::LatLon>> data;
+    for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
+    {
+        double timestamp = row->at(0) + 1e-9 * row->at(1);
+        dg::LatLon ll(row->at(2), row->at(3));
+        data.push_back(std::make_pair(timestamp, ll));
+    }
+    return data;
+}
+
 int testLocMap2SimpleRoadMap(int wait_msec = 1, const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
 {
     // Load a map
     dg::Map map = getExampleMap();
+    VVS_CHECK_TRUE(!map.isEmpty());
 
     // Convert it to 'dg::SimpleRoadMap'
     dg::UTMConverter converter;
     dg::Map::NodeItrConst refer_node = map.getHeadNodeConst(); // Select the first node as the origin
     VVS_CHECK_TRUE(converter.setReference(refer_node->data));
-    dg::SimpleRoadMap simple_map = dg::SimpleMetricLocalizer::cvtMap2SimpleRoadMap(map, converter);
+    dg::SimpleRoadMap simple_map = dg::SimpleLocalizer::cvtMap2SimpleRoadMap(map, converter);
     VVS_CHECK_TRUE(!simple_map.isEmpty());
 
     // Draw the converted map
     dg::SimpleRoadPainter painter;
     VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 1));
     VVS_CHECK_TRUE(painter.setParamValue("canvas_margin", 0));
-    VVS_CHECK_TRUE(painter.setParamValue("canvas_offset", { 323, 300 }));
+    VVS_CHECK_TRUE(painter.setParamValue("canvas_offset", { 344, 293 }));
     VVS_CHECK_TRUE(painter.setParamValue("grid_step", 100));
     VVS_CHECK_TRUE(painter.setParamValue("grid_unit_pos", { 120, 10 }));
     VVS_CHECK_TRUE(painter.setParamValue("node_radius", 5));
     VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 0, 255 }));
     VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 100, 0, 0 }));
 
-    cv::Mat image = cv::imread(background_file);
-    VVS_CHECK_TRUE(painter.drawMap(image, simple_map));
-    VVS_CHECK_TRUE(image.empty() == false);
+    cv::Mat map_image = cv::imread(background_file);
+    VVS_CHECK_TRUE(map_image.empty() == false);
+    VVS_CHECK_TRUE(painter.drawMap(map_image, simple_map));
 
     if (wait_msec >= 0)
     {
-        cv::imshow("testLocMap2SimpleRoadMap", image);
+        cv::imshow("testLocMap2SimpleRoadMap", map_image);
         cv::waitKey(wait_msec);
+    }
+
+    return 0;
+}
+
+int testLocExampleLocalizer(int wait_msec = 1, const char* gps_file = "data/191115_ETRI_asen_fix.csv", const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
+{
+    // Load a map
+    dg::SimpleLocalizer localizer;
+    dg::Map map = getExampleMap();
+    VVS_CHECK_TRUE(!map.isEmpty());
+    VVS_CHECK_TRUE(localizer.setReference(map.getHeadNode()->data));
+    VVS_CHECK_TRUE(localizer.loadMap(map, true));
+
+    // Prepare visualization
+    dg::SimpleRoadPainter painter;
+    VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 1));
+    VVS_CHECK_TRUE(painter.setParamValue("canvas_margin", 0));
+    VVS_CHECK_TRUE(painter.setParamValue("canvas_offset", { 344, 293 }));
+    VVS_CHECK_TRUE(painter.setParamValue("grid_step", 100));
+    VVS_CHECK_TRUE(painter.setParamValue("grid_unit_pos", { 120, 10 }));
+    VVS_CHECK_TRUE(painter.setParamValue("node_radius", 5));
+    VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 0, 255 }));
+    VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 100, 0, 0 }));
+
+    cv::Mat map_image = cv::imread(background_file);
+    VVS_CHECK_TRUE(!map_image.empty());
+    dg::SimpleRoadMap simple_map = localizer.getMap();
+    VVS_CHECK_TRUE(painter.drawMap(map_image, simple_map));
+    dg::CanvasInfo map_info = painter.getCanvasInfo(simple_map, map_image.size());
+
+    // Run localization
+    auto gps_data = getExampleGPSData();
+    VVS_CHECK_TRUE(!gps_data.empty());
+    auto gps_start = gps_data.front().first;
+    for (auto gps_idx = 0; gps_idx < gps_data.size(); gps_idx++)
+    {
+        const dg::Timestamp time = gps_data[gps_idx].first;
+        const dg::LatLon ll = gps_data[gps_idx].second;
+        VVS_CHECK_TRUE(localizer.applyGPS(ll, time));
+
+        if (wait_msec >= 0)
+        {
+            // Draw GPS observation
+            dg::Point2 pt = localizer.toMetric(gps_data[gps_idx].second);
+            VVS_CHECK_TRUE(painter.drawNode(map_image, map_info, dg::Point2ID(0, pt), 1, 0, cv::Vec3b(0, 0, 255)));
+
+            // Draw the robot
+            cv::Mat image = map_image.clone();
+            dg::TopometricPose pose_t = localizer.getPoseTopometric();
+            //dg::Pose2 pose_m = localizer.getPose();
+            dg::Pose2 pose_m = localizer.toTopmetric2Metric(pose_t);
+            VVS_CHECK_TRUE(painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 10, 0, cx::COLOR_BLUE));
+            cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f", pose_t.node_id, pose_t.edge_idx, pose_t.dist);
+            cv::putText(image, info_topo, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
+
+            cv::imshow("testLocExampleLocalizer", image);
+            int key = cv::waitKey(wait_msec);
+            if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+            if (key == cx::KEY_ESC) return -1;
+        }
     }
 
     return 0;

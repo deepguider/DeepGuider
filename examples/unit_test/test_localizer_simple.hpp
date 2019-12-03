@@ -63,7 +63,7 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleSimpleDataset()
 int testLocSimpleLocalizer(int wait_msec = 1)
 {
     // Load a map
-    dg::SimpleMetricLocalizer localizer;
+    dg::SimpleLocalizer localizer;
     dg::SimpleRoadMap map = getExampleSimpleRoadMap();
     VVS_CHECK_TRUE(localizer.loadMap(map));
 
@@ -77,9 +77,10 @@ int testLocSimpleLocalizer(int wait_msec = 1)
 
     // Run localization
     auto dataset = getExampleSimpleDataset();
+    VVS_CHECK_TRUE(!dataset.empty());
     for (size_t t = 0; t < dataset.size(); t++)
     {
-        dg::Timestamp time = static_cast<dg::Timestamp>(t);
+        const dg::Timestamp time = static_cast<dg::Timestamp>(t);
         const cv::Vec3d& d = dataset[t].second;
         if (dataset[t].first == "Pose")        VVS_CHECK_TRUE(localizer.applyPose(dg::Pose2(d[0], d[1], d[2]), time));
         if (dataset[t].first == "Position")    VVS_CHECK_TRUE(localizer.applyPosition(dg::Point2(d[0], d[1]), time));
@@ -90,10 +91,10 @@ int testLocSimpleLocalizer(int wait_msec = 1)
         if (wait_msec >= 0)
         {
             cv::Mat image = map_image.clone();
-            dg::Pose2 pose_metr = localizer.getPose();
-            dg::TopometricPose pose_topo = localizer.getPoseTopometric();
-            VVS_CHECK_TRUE(painter.drawNode(image, map_info, dg::Point2ID(0, pose_metr.x, pose_metr.y), 0.1, 0, cx::COLOR_MAGENTA));
-            cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
+            dg::TopometricPose pose_t = localizer.getPoseTopometric();
+            dg::Pose2 pose_m = localizer.getPose();
+            VVS_CHECK_TRUE(painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 0.1, 0, cx::COLOR_MAGENTA));
+            cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f", pose_t.node_id, pose_t.edge_idx, pose_t.dist);
             cv::putText(image, info_topo, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
 
             cv::imshow("testLocSimpleLocalizer", image);

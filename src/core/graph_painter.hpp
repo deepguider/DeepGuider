@@ -301,7 +301,8 @@ public:
         if (thickness < 0) font_color = cv::Vec3b(255, 255, 255) - color;
         const cv::Point p = cvtMeter2Pixel(node, info);
         cv::circle(image, p, r, color, thickness);
-        cv::putText(image, cv::format("%d", node.id), p + font_offset, cv::FONT_HERSHEY_DUPLEX, font_scale, font_color, int(font_scale));
+        if (font_scale > 0)
+            cv::putText(image, cv::format("%d", node.id), p + font_offset, cv::FONT_HERSHEY_DUPLEX, font_scale, font_color, int(font_scale));
         return true;
     }
 
@@ -317,7 +318,8 @@ public:
         {
             const cv::Point p = cvtMeter2Pixel(n->data, info);
             cv::circle(image, p, r, color, thickness);
-            cv::putText(image, cv::format("%d", n->data.id), p + font_offset, cv::FONT_HERSHEY_DUPLEX, font_scale, font_color, int(font_scale));
+            if (font_scale > 0)
+                cv::putText(image, cv::format("%d", n->data.id), p + font_offset, cv::FONT_HERSHEY_DUPLEX, font_scale, font_color, int(font_scale));
         }
         return true;
     }

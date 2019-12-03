@@ -7,21 +7,61 @@
 namespace dg
 {
 
-class SimpleMetricLocalizer : public Localizer, public TopometricLocalizer, public UTMConverter
+class SimpleLocalizer : public Localizer, public TopometricLocalizer, public UTMConverter
 {
 public:
-    virtual Pose2 getPose() const
+    Pose2 toTopmetric2Metric(const TopometricPose& t_pose)
     {
         cv::AutoLock lock(m_mutex);
-        return m_pose_metric;
+
+        // Find two nodes, 'from' and 'to'
+        SimpleRoadMap::Node* from = m_map.findNode(t_pose.node_id);
+        if (from == NULL) return Pose2();
+        SimpleRoadMap::Node* to = NULL;
+        int edge_idx = 0;
+        double edge_dist = 0;
+        for (auto edge = m_map.getHeadEdgeConst(from); edge != m_map.getTailEdgeConst(from); edge++, edge_idx++)
+        {
+            if (edge_idx == t_pose.edge_idx)
+            {
+                to = edge->to;
+                edge_dist = edge->cost;
+                break;
+            }
+        }
+        if (to == NULL || edge_dist <= 0) return Pose2();
+
+        // Calculate metric pose
+        double progress = std::min(t_pose.dist / edge_dist, 1.);
+        Pose2 m_pose = (1 - progress) * from->data + progress * to->data;
+        Point2 d = to->data - from->data;
+        m_pose.theta = atan2(d.y, d.x);
+        return m_pose;
+
     }
 
-    virtual TopometricPose getPoseTopometric() const
+    static std::pair<double, Point2> calcDist2FromLineSeg(const Point2& v, const Point2& w, const Point2& p)
+    {
+        // Ref. https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
+        Point2 d = w - v;
+        double l2 = d.x * d.x + d.y * d.y;
+        if (l2 < DBL_EPSILON)
+        {
+            d = p - v;
+            return std::make_pair(d.x * d.x + d.y * d.y, v);
+        }
+        double t = std::max(0., std::min(1., (p - v).dot(w - v) / l2));
+        Point2 projection = v + t * (w - v);
+        d = p - projection;
+        return std::make_pair(d.x * d.x + d.y * d.y, projection);
+    }
+
+    TopometricPose toMetric2Topometric(const Pose2& pose_m) const
     {
         cv::AutoLock lock(m_mutex);
 
         // Find the nearest edge
-        double min_gap = DBL_MAX;
+        std::pair<double, Point2> min_dist2 = std::make_pair(DBL_MAX, Point2());
         ID min_node_id = 0;
         int min_edge_idx = 0;
         for (auto from = m_map.getHeadNodeConst(); from != m_map.getTailNodeConst(); from++)
@@ -31,13 +71,10 @@ public:
             {
                 const SimpleRoadMap::Node* to = edge->to;
                 if (to == NULL) continue;
-                double dx = to->data.x - from->data.x;
-                double dy = to->data.y - from->data.y;
-                double a = dy, b = -dx, c = -a * from->data.x - b * from->data.y;
-                double gap = fabs(a * m_pose_metric.x + b * m_pose_metric.y + c) / sqrt(a * a + b * b);
-                if (gap < min_gap)
+                auto dist2 = calcDist2FromLineSeg(from->data, to->data, pose_m);
+                if (dist2.first < min_dist2.first)
                 {
-                    min_gap = gap;
+                    min_dist2 = dist2;
                     min_node_id = from->data.id;
                     min_edge_idx = edge_idx;
                 }
@@ -45,20 +82,31 @@ public:
         }
 
         // Return topometric pose
-        TopometricPose pose;
-        if (min_gap != DBL_MAX)
+        TopometricPose pose_t;
+        if (min_dist2.first != DBL_MAX)
         {
             auto from = m_map.getNodeConst(min_node_id);
             if (from != m_map.getTailNodeConst())
             {
-                pose.node_id = min_node_id;
-                pose.edge_idx = min_edge_idx;
-                double dx = m_pose_metric.x - from->data.x;
-                double dy = m_pose_metric.y - from->data.y;
-                pose.dist = sqrt(dx * dx + dy * dy);
+                pose_t.node_id = min_node_id;
+                pose_t.edge_idx = min_edge_idx;
+                double dx = min_dist2.second.x - from->data.x;
+                double dy = min_dist2.second.y - from->data.y;
+                pose_t.dist = sqrt(dx * dx + dy * dy);
             }
         }
-        return pose;
+        return pose_t;
+    }
+
+    virtual Pose2 getPose() const
+    {
+        cv::AutoLock lock(m_mutex);
+        return m_pose_metric;
+    }
+
+    virtual TopometricPose getPoseTopometric() const
+    {
+        return toMetric2Topometric(m_pose_metric);
     }
 
     virtual double getPoseConfidence() const
@@ -130,13 +178,7 @@ public:
         return map.copyTo(&m_map);
     }
 
-    virtual bool copyMap(SimpleRoadMap& map) const
-    {
-        cv::AutoLock lock(m_mutex);
-        return m_map.copyTo(&map);
-    }
-
-    virtual const SimpleRoadMap& getMap() const
+    virtual SimpleRoadMap getMap() const
     {
         cv::AutoLock lock(m_mutex);
         return m_map;
@@ -151,6 +193,15 @@ public:
 
     virtual bool applyPosition(const Point2& xy, Timestamp time = -1, double confidence = -1)
     {
+        cv::AutoLock lock(m_mutex);
+        m_pose_metric.x = xy.x;
+        m_pose_metric.y = xy.y;
+        return true;
+    }
+
+    virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1)
+    {
+        Point2 xy = toMetric(ll);
         cv::AutoLock lock(m_mutex);
         m_pose_metric.x = xy.x;
         m_pose_metric.y = xy.y;
@@ -176,19 +227,19 @@ public:
         return true;
     }
 
-    virtual bool applyOdometry(double theta_curr, double theta_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1)
-    {
-        cv::AutoLock lock(m_mutex);
-        m_pose_metric.theta = cx::trimRad(m_pose_metric.theta + theta_curr - theta_prev);
-        return true;
-    }
-
     virtual bool applyOdometry(const Polar2& delta, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
         m_pose_metric.x += delta.lin * cos(m_pose_metric.theta + delta.ang / 2);
         m_pose_metric.y += delta.lin * sin(m_pose_metric.theta + delta.ang / 2);
         m_pose_metric.theta = cx::trimRad(m_pose_metric.theta + delta.ang);
+        return true;
+    }
+
+    virtual bool applyOdometry(double theta_curr, double theta_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        m_pose_metric.theta = cx::trimRad(m_pose_metric.theta + theta_curr - theta_prev);
         return true;
     }
 
