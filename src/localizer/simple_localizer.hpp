@@ -253,10 +253,10 @@ public:
         return true;
     }
 
-    virtual bool applyLocClue(const std::vector<int>& node_ids, const std::vector<Polar2>& obs, Timestamp time = -1, double confidence = -1)
+    virtual bool applyLocClue(const std::vector<int>& node_ids, const std::vector<Polar2>& obs, Timestamp time = -1, const std::vector<double>& confidence = std::vector<double>())
     {
         if (node_ids.empty() || obs.empty() || node_ids.size() != obs.size()) return false;
-        return applyLocClue(node_ids.back(), obs.back(), time);
+        return applyLocClue(node_ids.front(), obs.front(), time);
     }
 
 protected:

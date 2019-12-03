@@ -179,6 +179,16 @@ public:
         Node* node2_ptr = findNode(node2);
         return addRoad(node1_ptr, node2_ptr, info);
     }
+
+    bool addOneWay(ID node1, ID node2, const EdgeInfo& info = EdgeInfo())
+    {
+        Node* node1_ptr = findNode(node1);
+        Node* node2_ptr = findNode(node2);
+        if (node1 == NULL || node2 == NULL) return false;
+
+        Edge* edge = DirectedGraph<NodeInfo, EdgeInfo>::addEdge(node1_ptr, node2_ptr, info);
+        return edge != NULL;
+    }
 };
 
 } // End of 'dg'

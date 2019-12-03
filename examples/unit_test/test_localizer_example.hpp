@@ -81,23 +81,23 @@ dg::Map getExampleMap()
     map.addNode(dg::NodeInfo(1015, 36.382690294056, 127.379006702550));
     map.addNode(dg::NodeInfo(1016, 36.381356555113, 127.379034390264));
     map.addNode(dg::NodeInfo(1017, 36.378977452428, 127.379083774640));
-    map.addRoad(1000, 1001);
-    map.addRoad(1001, 1002);
-    map.addRoad(1002, 1003);
-    map.addRoad(1003, 1004);
-    map.addRoad(1004, 1005);
-    map.addRoad(1005, 1006);
-    map.addRoad(1006, 1007);
-    map.addRoad(1007, 1008);
-    map.addRoad(1008, 1009);
-    map.addRoad(1009, 1010);
-    map.addRoad(1010, 1011);
-    map.addRoad(1011, 1012);
-    map.addRoad(1012, 1013);
-    map.addRoad(1013, 1014);
-    map.addRoad(1014, 1015);
-    map.addRoad(1015, 1016);
-    map.addRoad(1016, 1017);
+    map.addOneWay(1000, 1001);
+    map.addOneWay(1001, 1002);
+    map.addOneWay(1002, 1003);
+    map.addOneWay(1003, 1004);
+    map.addOneWay(1004, 1005);
+    map.addOneWay(1005, 1006);
+    map.addOneWay(1006, 1007);
+    map.addOneWay(1007, 1008);
+    map.addOneWay(1008, 1009);
+    map.addOneWay(1009, 1010);
+    map.addOneWay(1010, 1011);
+    map.addOneWay(1011, 1012);
+    map.addOneWay(1012, 1013);
+    map.addOneWay(1013, 1014);
+    map.addOneWay(1014, 1015);
+    map.addOneWay(1015, 1016);
+    map.addOneWay(1016, 1017);
     return map;
 }
 
@@ -154,9 +154,9 @@ int testLocMap2SimpleRoadMap(int wait_msec = 1, const char* background_file = "d
     return 0;
 }
 
-int testLocExampleLocalizer(int wait_msec = 1, const char* gps_file = "data/191115_ETRI_asen_fix.csv", const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
+int testLocExampleLocalizer(int wait_msec = 1, const char* gps_file = "data/191115_ETRI_asen_fix.csv", const char* video_file = "data/191115_ETRI.avi", const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
 {
-    // Load a map
+    // Load the ETRI map
     dg::SimpleLocalizer localizer;
     dg::Map map = getExampleMap();
     VVS_CHECK_TRUE(!map.isEmpty());
@@ -180,24 +180,46 @@ int testLocExampleLocalizer(int wait_msec = 1, const char* gps_file = "data/1911
     VVS_CHECK_TRUE(painter.drawMap(map_image, simple_map));
     dg::CanvasInfo map_info = painter.getCanvasInfo(simple_map, map_image.size());
 
-    // Run localization
+    // Prepare the ETRI dataset
     auto gps_data = getExampleGPSData();
     VVS_CHECK_TRUE(!gps_data.empty());
-    auto gps_start = gps_data.front().first;
+    cv::VideoCapture video_data;
+    VVS_CHECK_TRUE(video_data.open(video_file));
+    double video_time_offset = gps_data.front().first - 0.5, video_time_scale = 1.75; // Calculated from 'bag' files
+    double video_resize_scale = 0.4;
+    cv::Point video_offset(32, 542);
+
+    // Run localization
+    cv::Mat video_image;
+    double video_time = video_time_scale * video_data.get(cv::VideoCaptureProperties::CAP_PROP_POS_MSEC) / 1000 + video_time_offset;
     for (auto gps_idx = 0; gps_idx < gps_data.size(); gps_idx++)
     {
-        const dg::Timestamp time = gps_data[gps_idx].first;
-        const dg::LatLon ll = gps_data[gps_idx].second;
-        VVS_CHECK_TRUE(localizer.applyGPS(ll, time));
+        const dg::Timestamp gps_time = gps_data[gps_idx].first;
+        const dg::LatLon gps_datum = gps_data[gps_idx].second;
+        VVS_CHECK_TRUE(localizer.applyGPS(gps_datum, gps_time));
 
         if (wait_msec >= 0)
         {
             // Draw GPS observation
             dg::Point2 pt = localizer.toMetric(gps_data[gps_idx].second);
             VVS_CHECK_TRUE(painter.drawNode(map_image, map_info, dg::Point2ID(0, pt), 1, 0, cv::Vec3b(0, 0, 255)));
+            cv::Mat image = map_image.clone();
+
+            // Draw a video image if necessary
+            while (video_time <= gps_time)
+            {
+                video_data >> video_image;
+                if (video_image.empty()) break;
+                video_time = video_time_scale * video_data.get(cv::VideoCaptureProperties::CAP_PROP_POS_MSEC) / 1000 + video_time_offset;
+            }
+            if (!video_image.empty())
+            {
+                cv::resize(video_image, video_image, cv::Size(), video_resize_scale, video_resize_scale);
+                cv::Rect rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
+                if (rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = video_image * 1;
+            }
 
             // Draw the robot
-            cv::Mat image = map_image.clone();
             dg::TopometricPose pose_t = localizer.getPoseTopometric();
             //dg::Pose2 pose_m = localizer.getPose();
             dg::Pose2 pose_m = localizer.toTopmetric2Metric(pose_t);
