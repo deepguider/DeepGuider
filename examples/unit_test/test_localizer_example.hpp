@@ -5,7 +5,7 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
 
-int generateExampleMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID id_offset = 1000, double pixel_per_meter = 1, const dg::LatLon& first_latlon = dg::LatLon(36.3838455, 127.3678567))
+int generateExampleMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID id_offset = 1000, double pixel_per_meter = 1, const dg::LatLon& first_latlon = dg::LatLon(36.383837659737225, 127.36788082844413))
 {
     // Read 'yml_file' generated from 'simple_picker'
     cv::FileStorage fs;
@@ -63,24 +63,24 @@ dg::Map getExampleMap()
     //         2) The geodesic values of the first node can be assigned by GPS data such as (36.3838455, 127.3678567).
 
     dg::Map map;
-    map.addNode(dg::NodeInfo(1000, 36.383845499999, 127.367856699998));
-    map.addNode(dg::NodeInfo(1001, 36.383980344326, 127.368489335844));
-    map.addNode(dg::NodeInfo(1002, 36.384199943244, 127.369387764218));
-    map.addNode(dg::NodeInfo(1003, 36.384496533926, 127.369983583772));
-    map.addNode(dg::NodeInfo(1004, 36.385040239270, 127.370852962675));
-    map.addNode(dg::NodeInfo(1005, 36.385246705794, 127.371450674120));
-    map.addNode(dg::NodeInfo(1006, 36.385397530922, 127.372595827237));
-    map.addNode(dg::NodeInfo(1007, 36.385624384793, 127.374029264149));
-    map.addNode(dg::NodeInfo(1008, 36.385727548719, 127.374985894115));
-    map.addNode(dg::NodeInfo(1009, 36.385791483728, 127.377035905513));
-    map.addNode(dg::NodeInfo(1010, 36.385789135672, 127.377526492740));
-    map.addNode(dg::NodeInfo(1011, 36.385805263210, 127.378050141951));
-    map.addNode(dg::NodeInfo(1012, 36.385803516299, 127.378585311240));
-    map.addNode(dg::NodeInfo(1013, 36.385574506719, 127.378980267293));
-    map.addNode(dg::NodeInfo(1014, 36.384664169211, 127.378988019480));
-    map.addNode(dg::NodeInfo(1015, 36.382690294056, 127.379006702550));
-    map.addNode(dg::NodeInfo(1016, 36.381356555113, 127.379034390264));
-    map.addNode(dg::NodeInfo(1017, 36.378977452428, 127.379083774640));
+    map.addNode(dg::NodeInfo(1000, 36.383837659737, 127.367880828442));
+    map.addNode(dg::NodeInfo(1001, 36.383972503935, 127.368513464272));
+    map.addNode(dg::NodeInfo(1002, 36.384192102671, 127.369411892631));
+    map.addNode(dg::NodeInfo(1003, 36.384488693234, 127.370007712223));
+    map.addNode(dg::NodeInfo(1004, 36.385032398405, 127.370877091215));
+    map.addNode(dg::NodeInfo(1005, 36.385238864809, 127.371474802670));
+    map.addNode(dg::NodeInfo(1006, 36.385389689704, 127.372619955728));
+    map.addNode(dg::NodeInfo(1007, 36.385616543283, 127.374053392578));
+    map.addNode(dg::NodeInfo(1008, 36.385719707014, 127.375010022487));
+    map.addNode(dg::NodeInfo(1009, 36.385783641605, 127.377060033716));
+    map.addNode(dg::NodeInfo(1010, 36.385781293449, 127.377550620897));
+    map.addNode(dg::NodeInfo(1011, 36.385797420879, 127.378074270063));
+    map.addNode(dg::NodeInfo(1012, 36.385795673859, 127.378609439303));
+    map.addNode(dg::NodeInfo(1013, 36.385566664196, 127.379004395247));
+    map.addNode(dg::NodeInfo(1014, 36.384656326678, 127.379012147148));
+    map.addNode(dg::NodeInfo(1015, 36.382682451501, 127.379030829600));
+    map.addNode(dg::NodeInfo(1016, 36.381348712540, 127.379058516894));
+    map.addNode(dg::NodeInfo(1017, 36.378969609824, 127.379107900521));
     map.addOneWay(1000, 1001);
     map.addOneWay(1001, 1002);
     map.addOneWay(1002, 1003);
