@@ -277,9 +277,9 @@ std::vector<dg::Guidance::InstantGuide> dg::Guidance::provideNormalGuide(std::ve
 		break;
 
 	case ARRIVED_NODE: //add next action		
-		if (!nextG.direction == 0)
+		if (!nextG.degree == 0)
 		{
-			result.push_back(InstantGuide(curG, Action(TURN, nextG.direction)));
+			result.push_back(InstantGuide(curG, Action(TURN, nextG.degree)));
 			result.push_back(InstantGuide(curG, Action(STOP, 0)));
 		}
 
@@ -297,4 +297,70 @@ std::vector<dg::Guidance::InstantGuide> dg::Guidance::provideNormalGuide(std::ve
 
 	
 	return result;
+}
+
+void dg::Guidance::printInstantGuide(dg::Guidance::InstantGuide instGuide)
+{
+
+//	char nodetype[10];
+	std::string nodetype;
+	switch (instGuide.guide.type)
+	{
+	case POI:
+		nodetype = "POI";
+		break;
+	case CORNER:
+		nodetype = "CORNER";
+		break;
+	case ISLAND:
+		nodetype = "ISLAND";
+		break;
+	default:
+		nodetype = "Unknown";
+		break;
+	}
+
+//	char edge[10];
+	std::string edge;
+	switch (instGuide.guide.mode)
+	{
+	case SIDEWALK:
+		edge = "SIDEWALK";
+		break;
+	case CROSSWALK:
+		edge = "CROSSWALK";
+		break;
+	case ROAD:
+		edge = "ROAD";
+		break;
+	default:
+		edge = "Unknown";
+		break;
+	}
+
+	std::string move;
+	switch (instGuide.action.move)
+	{
+	case GO_FORWARD:
+		move = "GO_FORWARD on ";
+		break;
+	case STOP:
+		move = "STOP at ";
+		break;
+	case TURN:
+		move = "TURN at ";
+		break;
+	default:
+		move = "Unknown";
+		break;
+	}
+
+	std::string id = std::to_string(instGuide.guide.nodeid);
+
+	std::string deg = std::to_string(instGuide.action.degree);
+	
+	std::string result = "[Guide] Until next " + nodetype + "(Node ID: " + id + "), " + move + edge + " in " + deg + " degree.";
+	fprintf(stdout, "%s\n", result.c_str());
+
+	return;
 }
