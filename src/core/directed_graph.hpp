@@ -346,6 +346,17 @@ public:
     }
 
     /**
+     * Overriding the assignment operator
+     * @param rhs A directed graph in the right-hand side
+     * @return This object
+     */
+    DirectedGraph<D, C>& operator=(const DirectedGraph<D, C>& rhs)
+    {
+        rhs.copyTo(this);
+        return *this;
+    }
+
+    /**
      * Remove a node (time complexity: O(|V| |E|))<br>
      * This removes all edges connected from the node
      * @param node A node pointer to remove

@@ -50,9 +50,6 @@
     <ClInclude Include="test_core_graph.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_core_map.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="test_localizer_gps2utm.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -63,6 +60,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\localizer\localizer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_example.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="test_core_type.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

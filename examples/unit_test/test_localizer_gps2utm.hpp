@@ -1,5 +1,5 @@
-#ifndef __TEST_GPS_2_UTM__
-#define __TEST_GPS_2_UTM__
+#ifndef __TEST_LOCALIZER_GPS2UTM__
+#define __TEST_LOCALIZER_GPS2UTM__
 
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
@@ -75,4 +75,4 @@ int testLocUTMConverter()
     return 0;
 }
 
-#endif // End of '__TEST_GPS_2_UTM__'
+#endif // End of '__TEST_LOCALIZER_GPS2UTM__'

@@ -1,5 +1,5 @@
-#ifndef __TEST_SIMPLE_LOCALIZER__
-#define __TEST_SIMPLE_LOCALIZER__
+#ifndef __TEST_LOCALIZER_SIMPLE__
+#define __TEST_LOCALIZER_SIMPLE__
 
 #include "vvs.h"
 #include "dg_core.hpp"
@@ -34,36 +34,7 @@ dg::SimpleRoadMap getExampleSimpleRoadMap()
     return map;
 }
 
-dg::Map getExampleMap()
-{
-    // An example map
-    // 2 --- 3 --- 5 --- 6
-    // |     |     |     |
-    // |     |     |     |
-    // 1 --- 4     7 --- 8
-
-    dg::Map map;
-    map.addNode(dg::NodeInfo(1, 0, 0)); // ID, x, y
-    map.addNode(dg::NodeInfo(2, 0, 1));
-    map.addNode(dg::NodeInfo(3, 1, 1));
-    map.addNode(dg::NodeInfo(4, 1, 0));
-    map.addNode(dg::NodeInfo(5, 2, 1));
-    map.addNode(dg::NodeInfo(6, 3, 1));
-    map.addNode(dg::NodeInfo(7, 2, 0));
-    map.addNode(dg::NodeInfo(8, 3, 0));
-    map.addRoad(1, 2); // ID_1, ID_2
-    map.addRoad(1, 4);
-    map.addRoad(2, 3);
-    map.addRoad(3, 4);
-    map.addRoad(3, 5);
-    map.addRoad(5, 6);
-    map.addRoad(5, 7);
-    map.addRoad(6, 8);
-    map.addRoad(7, 8);
-    return map;
-}
-
-std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
+std::vector<std::pair<std::string, cv::Vec3d>> getExampleSimpleDataset()
 {
     std::vector<std::pair<std::string, cv::Vec3d>> dataset =
     {
@@ -92,7 +63,7 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleDataset()
 int testLocSimpleLocalizer(int wait_msec = 1)
 {
     // Load a map
-    dg::SimpleMetricLocalizer localizer;
+    dg::SimpleLocalizer localizer;
     dg::SimpleRoadMap map = getExampleSimpleRoadMap();
     VVS_CHECK_TRUE(localizer.loadMap(map));
 
@@ -100,15 +71,16 @@ int testLocSimpleLocalizer(int wait_msec = 1)
     dg::SimpleRoadPainter painter;
     VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 200));
     VVS_CHECK_TRUE(painter.setParamValue("node_font_scale", 2 * 0.5));
-    dg::CanvasInfo map_info = painter.getCanvasInfo(map);
     cv::Mat map_image;
     VVS_CHECK_TRUE(painter.drawMap(map_image, map));
+    dg::CanvasInfo map_info = painter.getCanvasInfo(map, map_image.size());
 
     // Run localization
-    auto dataset = getExampleDataset();
+    auto dataset = getExampleSimpleDataset();
+    VVS_CHECK_TRUE(!dataset.empty());
     for (size_t t = 0; t < dataset.size(); t++)
     {
-        dg::Timestamp time = static_cast<dg::Timestamp>(t);
+        const dg::Timestamp time = static_cast<dg::Timestamp>(t);
         const cv::Vec3d& d = dataset[t].second;
         if (dataset[t].first == "Pose")        VVS_CHECK_TRUE(localizer.applyPose(dg::Pose2(d[0], d[1], d[2]), time));
         if (dataset[t].first == "Position")    VVS_CHECK_TRUE(localizer.applyPosition(dg::Point2(d[0], d[1]), time));
@@ -119,10 +91,10 @@ int testLocSimpleLocalizer(int wait_msec = 1)
         if (wait_msec >= 0)
         {
             cv::Mat image = map_image.clone();
-            dg::Pose2 pose_metr = localizer.getPose();
-            dg::TopometricPose pose_topo = localizer.getPoseTopometric();
-            VVS_CHECK_TRUE(painter.drawNode(image, map_info, dg::Point2ID(0, pose_metr.x, pose_metr.y), 0.1, 0, cx::COLOR_MAGENTA));
-            cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
+            dg::TopometricPose pose_t = localizer.getPoseTopometric();
+            dg::Pose2 pose_m = localizer.getPose();
+            VVS_CHECK_TRUE(painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 0.1, 0, cx::COLOR_MAGENTA));
+            cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f", pose_t.node_id, pose_t.edge_idx, pose_t.dist);
             cv::putText(image, info_topo, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
 
             cv::imshow("testLocSimpleLocalizer", image);
@@ -134,4 +106,4 @@ int testLocSimpleLocalizer(int wait_msec = 1)
     return 0;
 }
 
-#endif // End of '__TEST_SIMPLE_LOCALIZER__'
+#endif // End of '__TEST_LOCALIZER_SIMPLE__'
