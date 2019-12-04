@@ -26,6 +26,8 @@ from tensorboardX import SummaryWriter
 import numpy as np
 from netvlad import netvlad
 
+from scipy import io as sio
+
 import cv2 as cv
 
 from ipdb import set_trace as bp
@@ -87,6 +89,14 @@ class vps:
         self.parser.add_argument('--split', type=str, default='val', help='Data split to use for testing. Default is val', 
                 choices=['test', 'test250k', 'train', 'val'])
         self.parser.add_argument('--fromscratch', action='store_true', help='Train from scratch rather than using pretrained models')
+
+        self.parser.add_argument('--use_saved_dbFeat', default=False, action='store_true', help='Use save dbFeat feature which is calucated in adavnce')
+        self.parser.add_argument('--use_saved_qFeat', default=False, action='store_true', help='Use save qFeat feature which is calucated in adavnce')
+        self.parser.add_argument('--save_dbFeat', default=False, action='store_true', help='Save dbFeat')
+        self.parser.add_argument('--save_qFeat', default=False, action='store_true', help='Save qFeat')
+
+        self.parser.add_argument('--dbFeat_fname', type=str, default='./prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
+        self.parser.add_argument('--qFeat_fname', type=str, default='./prebuilt_qFeat.mat', help='dbFeat file calculated in advance')
 
 
     def initialize(self):
@@ -248,6 +258,145 @@ class vps:
     
         self.model = model
 
+    
+
+    def test_sub(self,eval_set,epoch=0):
+        opt = self.parser.parse_args()
+        cuda = not opt.nocuda
+        device = torch.device("cuda" if cuda else "cpu")
+
+        test_data_loader = DataLoader(dataset=eval_set, 
+                    num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                    pin_memory=cuda)
+    
+        self.model.eval()
+
+        with torch.no_grad():
+            print('====> Extracting Features')
+            pool_size = self.encoder_dim
+            if opt.pooling.lower() == 'netvlad': pool_size *= opt.num_clusters
+            Feat = np.empty((len(eval_set), pool_size))
+        
+            for iteration, (input, indices) in enumerate(test_data_loader, 1):
+                input = input.to(device) #[24, 3, 480, 640]
+                image_encoding = self.model.encoder(input) #[24, 512, 30, 40]
+                vlad_encoding = self.model.pool(image_encoding) #[24,32768] 
+        
+                #Feat : [17608, 32768]
+                Feat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy() #[24,32768]
+                try:
+                    if (iteration-1) % 2 == 0:
+                        print("==> Batch ({}/{})".format(iteration,len(test_data_loader)), flush=True)
+                        avp = self.GAP1dChannel(image_encoding)
+                        myiu.clf()
+                        myiu.imshow(input,221,'input')
+                        myiu.imshow(-avp*0.1,222,'encoding')
+                        myiu.plot(vlad_encoding,223,'vlad')
+                except:
+                    print("Cannot Display")
+            del input, image_encoding, vlad_encoding
+        del test_data_loader
+        return Feat
+    
+    def GAP1dChannel(self,img):
+        n,c,w,h = img.shape
+        img1 = img.view(n,c,w*h).permute(0,2,1) #[n,w*h,c]
+        tnn  = nn.AvgPool1d(kernel_size=c)
+        img2 = tnn(img1) #[n,w*h,1]
+        img = img2.permute(0,2,1).view(n,1,w,h) #[n,1,w,h]
+        img = img.repeat(1,3,1,1) #[n,3,w,h]
+        return img
+
+
+    def test_dg(self,eval_set_db,eval_set_q, epoch=0, write_tboard=False):
+        # TODO what if features dont fit in memory? 
+        opt = self.parser.parse_args()
+        cuda = not opt.nocuda
+
+        if opt.use_saved_dbFeat:
+            dbFeat = sio.loadmat(opt.dbFeat_fname)
+            dbFeat = dbFeat['Feat']
+            dbFeat = np.ascontiguousarray(dbFeat)
+        else:
+            # extracted for db, now split in own sets
+            dbFeat = self.test_sub(eval_set_db,epoch=epoch)
+            dbFeat = dbFeat.astype('float32') #[ndbImg,32768]
+
+        if opt.use_saved_qFeat:
+            qFeat = sio.loadmat(opt.qFeat_fname)
+            qFeat = qFeat['Feat']
+            qFeat = np.ascontiguousarray(qFeat)
+        else:
+            # extracted for query, now split in own sets
+            qFeat = self.test_sub(eval_set_q,epoch=epoch)
+            qFeat = qFeat.astype('float32') #[nqImg,32768]
+
+        if opt.save_dbFeat:
+            dbFeat_dict={'Feat':dbFeat}
+            sio.savemat(opt.dbFeat_fname,dbFeat_dict)
+
+        if opt.save_qFeat:
+            qFeat_dict={'Feat':qFeat}
+            sio.savemat(opt.qFeat_fname,qFeat_dict)
+
+
+        test_db_data_loader = DataLoader(dataset=eval_set_db, 
+                    num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                    pin_memory=cuda)
+
+        test_q_data_loader = DataLoader(dataset=eval_set_q, 
+                    num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                    pin_memory=cuda)
+
+        
+        print('====> Building faiss index')
+        pool_size = dbFeat[-1].size
+        faiss_index = faiss.IndexFlatL2(pool_size) #32768
+        faiss_index.add(dbFeat)
+    
+        print('====> Calculating recall @ N')
+        n_values = [1,5,10,20] #n nearest neighbors
+    
+        pred_L2dist, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
+
+        print('predicted ID:\n', pred_idx)
+
+        qImage  = test_q_data_loader.dataset.ImgStruct.Image
+        dbImage = test_db_data_loader.dataset.ImgStruct.Image
+        dbImage_predicted = dbImage[pred_idx[:,0]] #Use first K for display
+
+        import os
+        print('QueryImage <=================> predicted dbImage')
+        match_cnt = 0
+        total_cnt = len(qImage)
+        for i in range(total_cnt):
+            qName = os.path.basename(qImage[i].item()).strip()
+            dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
+        #    IDs = ['spherical_2812920067800000','spherical_2812920067800000']
+            lat,lon,deg = self.ID2LL(self.Fname2ID(dbName_predicted))
+
+            if qName in 'newquery.jpg':
+                flist = dbImage[pred_idx[i]]
+                vps_imgID = self.Fname2ID(flist)
+                vps_imgConf = [val for val in pred_L2dist[i]]
+                self.vps_IDandConf = [vps_imgID, vps_imgConf]
+
+            if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
+                match_cnt = match_cnt + 1
+                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
+            else:
+                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon)
+
+        acc = match_cnt/total_cnt
+        print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
+
+#        bp()
+#        print('You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D')
+#        return recalls
+        return acc
+
+
+
 
     def test(self,eval_set, epoch=0, write_tboard=False):
         # TODO what if features dont fit in memory? 
@@ -260,40 +409,70 @@ class vps:
                     pin_memory=cuda)
     
         self.model.eval()
+
+        qImage = test_data_loader.dataset.dbStruct.qImage
+        dbImage = test_data_loader.dataset.dbStruct.dbImage
+
         with torch.no_grad():
             print('====> Extracting Features')
             pool_size = self.encoder_dim
             if opt.pooling.lower() == 'netvlad': pool_size *= opt.num_clusters
-            dbFeat = np.empty((len(eval_set), pool_size))
-    
+            dbqFeat = np.empty((len(eval_set), pool_size))
+        
             for iteration, (input, indices) in enumerate(test_data_loader, 1):
                 input = input.to(device) #[24, 3, 480, 640]
+#                print(indices,input.shape)
+#                if indices < eval_set.dbStruct.numDb:
+#                    print(dbImage[indices],input.shape[-1])
+#                else:
+#                    print(qImage[indices-eval_set.dbStruct.numDb],input.shape[-1])
+#                continue
                 image_encoding = self.model.encoder(input) #[24, 512, 30, 40]
                 vlad_encoding = self.model.pool(image_encoding) #[24,32768] 
-    
-                #dbFeat : [17608, 32768]
-                dbFeat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy() #[24,32768]
-                if iteration % 50 == 0 or len(test_data_loader) <= 10:
-                    print("==> Batch ({}/{})".format(iteration,len(test_data_loader)), flush=True)
-                    myiu.clf()
-                    myiu.imshow(input,221,'input')
-                    myiu.imshow(image_encoding[:,:3,:,:],222,'encoding')
-                    myiu.plot(vlad_encoding,223,'vlad')
-
-
-                if iteration*opt.cacheBatchSize >= eval_set.dbStruct.numDb:
-                    myiu.clf()
-                    myiu.imshow(input[-1,:,:,:],221,'input')
-                    myiu.imshow(image_encoding[-1,:3,:,:],222,'encoding')
-                    myiu.plot(vlad_encoding[-1],223,'vlad')
-    
-                del input, image_encoding, vlad_encoding
+        
+                #dbqFeat : [17608, 32768]
+                dbqFeat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy() #[24,32768]
+                try:
+                    if iteration % 50 == 0 or len(test_data_loader) <= 10:
+                        print("==> Batch ({}/{})".format(iteration,len(test_data_loader)), flush=True)
+                        myiu.clf()
+                        myiu.imshow(input,221,'input')
+                        myiu.imshow(image_encoding[:,:3,:,:],222,'encoding')
+                        myiu.plot(vlad_encoding,223,'vlad')
+                    if iteration*opt.cacheBatchSize >= eval_set.dbStruct.numDb:
+                        myiu.clf()
+                        myiu.imshow(input[-1,:,:,:],221,'input')
+                        myiu.imshow(image_encoding[-1,:3,:,:],222,'encoding')
+                        myiu.plot(vlad_encoding[-1],223,'vlad')
+                except:
+                    print("Cannot Display")
+            del input, image_encoding, vlad_encoding
         del test_data_loader
     
-        # extracted for both db and query, now split in own sets
-        qFeat = dbFeat[eval_set.dbStruct.numDb:].astype('float32') #[7608,32768]
-        dbFeat = dbFeat[:eval_set.dbStruct.numDb].astype('float32') #[10000,32768]
-        
+
+        if opt.use_saved_dbFeat:
+            dbFeat = sio.loadmat(opt.dbFeat_fname)
+            dbFeat = dbFeat['dbFeat']
+        else:
+            # extracted for db, now split in own sets
+            dbFeat = dbqFeat[:eval_set.dbStruct.numDb].astype('float32') #[10000,32768]
+
+        if opt.use_saved_qFeat:
+            qFeat = sio.loadmat(opt.qFeat_fname)
+            qFeat = qFeat['qFeat']
+        else:
+            # extracted for query, now split in own sets
+            qFeat = dbqFeat[eval_set.dbStruct.numDb:].astype('float32') #[7608,32768]
+
+
+        if opt.save_dbFeat:
+            dbFeat_dict={'dbFeat':dbFeat}
+            sio.savemat(opt.dbFeat_fname,dbFeat_dict)
+
+        if opt.save_qFeat:
+            qFeat_dict={'qFeat':qFeat}
+            sio.savemat(opt.qFeat_fname,qFeat_dict)
+
         print('====> Building faiss index')
         #qFeat  : [7608,32768], pool_size = 32768 as dimension of feature
         #dbFeat : [10000,32768]
@@ -376,7 +555,7 @@ class vps:
         # set parameter
         return 0
 
-    def apply(self, image=None,K_nn = 5, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
+    def apply(self, image=None,K = 5, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
         if gps_lat is None:
             self.gps_lat = -1
         if gps_long is None:
@@ -386,7 +565,7 @@ class vps:
         if timestamp is None:
             self.timestamp = -1
 
-        self.K = K_nn
+        self.K = K
         opt = self.parser.parse_args()
 
         ##### Process Input #####
@@ -395,23 +574,30 @@ class vps:
 #        cv.destroyWindow("sample")
 
         print('===> Loading dataset(s)')
+        epoch = 1
+
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
             whole_test_set = dataset.get_whole_test_set()
+            print('===> Evaluating on test set')
+            print('===> Running evaluation step')
+            recalls = self.test(whole_test_set, epoch, write_tboard=False)
+
         elif opt.dataset.lower() == 'deepguider':
             if image is not None:
                 cv.imwrite('netvlad_etri_datasets/qImg/999_newquery/newquery.jpg',image)
             from netvlad import etri_dbloader as dataset
-            whole_test_set = dataset.get_dg_test_set()
+            dbDir = 'dbImg'
+            qDir = 'qImg'
+            whole_db_set,whole_q_set = dataset.get_dg_test_set(dbDir,qDir)
             print('===> With Query captured near the ETRI Campus')
+            print('===> Evaluating on test set')
+            print('===> Running evaluation step')
+            recalls = self.test_dg(whole_db_set,whole_q_set, epoch, write_tboard=False)
         else:
             raise Exception('Unknown dataset')
 
-        print('===> Evaluating on test set')
 
-        print('===> Running evaluation step')
-        epoch = 1
-        recalls = self.test(whole_test_set, epoch, write_tboard=False)
 
         ##### Results #####
         return self.vps_IDandConf
@@ -467,7 +653,8 @@ if __name__ == "__main__":
     mod_vps = vps()
     mod_vps.initialize()
     qimage = np.uint8(256*np.random.rand(1024,1024,3))
-    vps_IDandConf = mod_vps.apply(qimage,5) # k=5 for knn
+#    vps_IDandConf = mod_vps.apply(qimage,5) # k=5 for knn
+    vps_IDandConf = mod_vps.apply(K=5) # K=5 for knn
     print('vps_IDandConf',vps_IDandConf)
 #    vps_lat,vps_long,_,_,_ = mod_vps.apply(qimage)
 #    print('Lat,Long =',vps_lat,vps_long)
