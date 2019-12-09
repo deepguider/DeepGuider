@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 DATASET_LINK1=netvlad_v100_datasets
 DATASET_DIR1=~/workdir/DB_Repo/Pittsburgh250k/$DATASET_LINK1
 DATASET_LINK2=netvlad_etri_datasets

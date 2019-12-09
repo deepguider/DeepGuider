@@ -1,5 +1,8 @@
 #!/bin/bash
 
+## Run your virtual environment activation script
+source ~/.virtualenvs/3venv3.5/bin/activate;
+
 Dataset="deepguider"
 #Dataset="'pittsburgh'"
 #nGPU=`python -c "import torch;print(torch.cuda.device_count())"`

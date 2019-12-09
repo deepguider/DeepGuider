@@ -1,3 +1,8 @@
+#!/bin/bash
+
+## Run your virtual environment activation script
+source ~/.virtualenvs/3venv3.5/bin/activate;
+
 export TMPDIR="/tmp"
 export CHKDIR="./checkpoint"
 
