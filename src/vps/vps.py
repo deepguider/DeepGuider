@@ -684,17 +684,19 @@ if __name__ == "__main__":
     mod_vps.initialize()
     qimage = np.uint8(256*np.random.rand(1024,1024,3))
     vps_IDandConf = mod_vps.apply(qimage,5) # k=5 for knn
-#    vps_IDandConf = mod_vps.apply(K=5) # K=5 for knn
+    #vps_IDandConf = mod_vps.apply(K=5) # K=5 for knn
     print('vps_IDandConf',vps_IDandConf)
 
-
-## Display Result
+    ## Display Result
     viz = Visdom()
-#    textwindow = viz.text("[VPS] Results")
-    qImgs  = mod_vps.get_qImgs()
-    dbImgs = mod_vps.get_dbImgs()
-    img_window = viz.images(qImgs,nrow=1,win='Query',opts=dict(title="Query Iamge",caption="Query(ETRI Cart)"))
-    img_window = viz.images(dbImgs,nrow=1,win='DB',opts=dict(title="DB Iamge",caption="DB(Naver)"))
+    qImgs  = mod_vps.get_qImgs() #  [10,3,480,640] 
+    dbImgs = mod_vps.get_dbImgs() #  [10,3,480,640] 
+    qdbImgs = torch.cat((qImgs,dbImgs),-1) #  [10,3,480,1280] 
+    img_window = viz.images(qdbImgs,nrow=1,win='Query(left)_DB(right)')
 
-#    vps_lat,vps_long,_,_,_ = mod_vps.apply(qimage)
-#    print('Lat,Long =',vps_lat,vps_long)
+    ## Debugging
+    #textwindow = viz.text("[VPS] Results")
+    #img_window = viz.images(qImgs,nrow=1,win='Query',opts=dict(title="Query Iamge",caption="Query(ETRI Cart)"))
+    #img_window = viz.images(dbImgs,nrow=1,win='DB',opts=dict(title="DB Iamge",caption="DB(Naver)"))
+    #vps_lat,vps_long,_,_,_ = mod_vps.apply(qimage)
+    #print('Lat,Long =',vps_lat,vps_long)
