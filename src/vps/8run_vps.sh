@@ -17,8 +17,8 @@ if [ ${nGPU} -eq 4 ]; then
 			--nGPU 4 --resume 'netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint_gpu4'\
 			--dataset $Dataset --cacheBatchSize 36\
 			--dbFeat_fname 'netvlad_etri_datasets/prebuilt_dbFeat.mat'\
-			--save_dbFeat
-#			--use_saved_dbFeat
+			--use_saved_dbFeat
+#			--save_dbFeat
 
 
 elif [ ${nGPU} -eq 1 ]; then
@@ -26,7 +26,8 @@ elif [ ${nGPU} -eq 1 ]; then
 			--nGPU 1 --resume 'netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint'\
 			--dataset $Dataset --cacheBatchSize 4\
 			--dbFeat_fname 'netvlad_etri_datasets/prebuilt_dbFeat.mat'\
-			--save_dbFeat
+			--use_saved_dbFeat
+#			--save_dbFeat
 #			--use_saved_dbFeat
 
 else

@@ -46,6 +46,7 @@ class vps:
         self.vps_prob = -1   # reliablity of the result. 0: fail ~ 1: success
         self.K = 5 # K for knn
         self.ToTensor = transforms.ToTensor()
+        self.vps_IDandConf = [0,0]
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -682,8 +683,8 @@ if __name__ == "__main__":
     mod_vps = vps()
     mod_vps.initialize()
     qimage = np.uint8(256*np.random.rand(1024,1024,3))
-#    vps_IDandConf = mod_vps.apply(qimage,5) # k=5 for knn
-    vps_IDandConf = mod_vps.apply(K=5) # K=5 for knn
+    vps_IDandConf = mod_vps.apply(qimage,5) # k=5 for knn
+#    vps_IDandConf = mod_vps.apply(K=5) # K=5 for knn
     print('vps_IDandConf',vps_IDandConf)
 
 
