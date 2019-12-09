@@ -22,6 +22,9 @@ import torchvision.models as models
 import h5py
 import faiss
 
+
+from visdom import Visdom
+
 from tensorboardX import SummaryWriter
 import numpy as np
 from netvlad import netvlad
@@ -42,6 +45,7 @@ class vps:
         self.angle = -1  # road direction (radian)
         self.vps_prob = -1   # reliablity of the result. 0: fail ~ 1: success
         self.K = 5 # K for knn
+        self.ToTensor = transforms.ToTensor()
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -285,7 +289,7 @@ class vps:
                 #Feat : [17608, 32768]
                 Feat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy() #[24,32768]
                 try:
-                    if (iteration-1) % 2 == 0:
+                    if (iteration-1) % 200 == 0:
                         print("==> Batch ({}/{})".format(iteration,len(test_data_loader)), flush=True)
                         avp = self.GAP1dChannel(image_encoding)
                         myiu.clf()
@@ -365,6 +369,11 @@ class vps:
         dbImage = test_db_data_loader.dataset.ImgStruct.Image
         dbImage_predicted = dbImage[pred_idx[:,0]] #Use first K for display
 
+        self.qImage = qImage
+        self.dbImage = dbImage
+        self.pred_idx = pred_idx
+        self.pred_L2dist = pred_L2dist
+
         import os
         print('QueryImage <=================> predicted dbImage')
         match_cnt = 0
@@ -390,7 +399,6 @@ class vps:
         acc = match_cnt/total_cnt
         print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
 
-#        bp()
 #        print('You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D')
 #        return recalls
         return acc
@@ -541,7 +549,6 @@ class vps:
         acc = match_cnt/total_cnt
         print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
 
-#        bp()
 #        print('You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D')
 #        return recalls
         return acc
@@ -648,6 +655,28 @@ class vps:
         
         return lat,lon,degree2north
 
+    def get_Img_pairs(self):
+        for idx in range(len(self.pred_idx)):
+            qImg  = Image.open(self.qImage[idx].strip())
+            dbImg = Image.open(self.dbImage[self.pred_idx[idx]].strip())
+            yield self.ToTensor(qImg),self.ToTensor(dbImg)
+
+    def get_qImgs(self):
+        qImgs = []
+        for idx in range(self.pred_idx.shape[0]):
+            qImg = Image.open(self.qImage[idx].strip())
+            qImg = self.ToTensor(qImg.resize((640,480)))
+            qImgs.append(qImg)
+        return torch.stack(qImgs)
+
+    def get_dbImgs(self):
+        dbImgs = []
+        for idx in range(self.pred_idx.shape[0]):
+            dbImg = Image.open(self.dbImage[self.pred_idx[idx].item(0)].strip())
+            dbImg = self.ToTensor(dbImg.resize((640,480)))
+            dbImgs.append(dbImg)
+        return torch.stack(dbImgs)
+
 
 if __name__ == "__main__":
     mod_vps = vps()
@@ -656,5 +685,15 @@ if __name__ == "__main__":
 #    vps_IDandConf = mod_vps.apply(qimage,5) # k=5 for knn
     vps_IDandConf = mod_vps.apply(K=5) # K=5 for knn
     print('vps_IDandConf',vps_IDandConf)
+
+
+## Display Result
+    viz = Visdom()
+#    textwindow = viz.text("[VPS] Results")
+    qImgs  = mod_vps.get_qImgs()
+    dbImgs = mod_vps.get_dbImgs()
+    img_window = viz.images(qImgs,nrow=1,win='Query',opts=dict(title="Query Iamge",caption="Query(ETRI Cart)"))
+    img_window = viz.images(dbImgs,nrow=1,win='DB',opts=dict(title="DB Iamge",caption="DB(Naver)"))
+
 #    vps_lat,vps_long,_,_,_ = mod_vps.apply(qimage)
 #    print('Lat,Long =',vps_lat,vps_long)
