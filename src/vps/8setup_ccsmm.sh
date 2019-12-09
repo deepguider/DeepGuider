@@ -34,4 +34,6 @@ func_slink $DATASET_LINK2 $DATASET_DIR2
 
 
 cd netvlad
-/bin/bash 0setup_env.sh
+/bin/bash 8setup_train_env.sh
+
+echo "If you meet error during installing this, plz. re-run $0"

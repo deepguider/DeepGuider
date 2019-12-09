@@ -3,11 +3,9 @@
 #ccsmm@etri.re.kr
 #2019.10.07
 
-DATASET_LINK=netvlad_v100_datasets
-DATASET_DIR=/home/ccsmm/workdir/DB_Repo/Pittsburgh250k/$DATASET_LINK
 
-WHICH_WEIGHT="PAPER"
-#WHICH_WEIGHT="ETRI"
+#WHICH_WEIGHT="PAPER"
+WHICH_WEIGHT="ETRI"
 
 chmod +x *.sh
 
@@ -51,16 +49,3 @@ download_weight $PRETRAINED_FILE $DOWNLOAD_URL
 PRETRAINED_FILE=vgg16_netvlad_checkpoint_gpu1.tar.gz
 DOWNLOAD_URL=https://drive.google.com/open?id=1yHeCIcNudj1taTg1t-cZdv4b65PhqfrG
 download_weight $PRETRAINED_FILE $DOWNLOAD_URL
-
-
-
-if [ ! -d "$DATASET_DIR" ]; then
-	echo "ERROR : You need to modify location of Dataset in this script file"
-	echo "$DATASET_DIR"
-else
-	if [ ! -L "$DATASET_LINK" ]; then
-		ln -s $DATASET_DIR
-	fi
-	echo "================================================="
-	echo "Created symbolic link of $DATASET_LINK"
-fi

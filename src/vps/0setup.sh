@@ -28,4 +28,7 @@ func_slink $DATASET_LINK1 $DATASET_DIR1
 
 
 cd netvlad
-/bin/bash 0setup_env.sh
+/bin/bash 0setup_test_env.sh
+
+
+echo "If you meet error during installing this, plz. re-run $0"
