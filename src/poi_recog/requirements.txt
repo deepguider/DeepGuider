@@ -3,4 +3,4 @@ keras==2.2.4
 pillow
 scikit-learn
 opencv-contrib-python
-tensorflow-gpu==1.14.0
+tensorflow-gpu==1.15.0
