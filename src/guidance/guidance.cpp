@@ -232,7 +232,7 @@ bool dg::Guidance::generateGuide()
 	PathInfo nextnode(NODE, 0, POI, 0);
 
 	int pathidx;
-	for (pathidx = 1; pathidx < m_path.size(); ++pathidx)
+	for (pathidx = 0; pathidx < m_path.size(); pathidx++)
 	{
 		PathInfo tmppath = m_path[pathidx];
 		if (tmppath.component == EDGE)
@@ -253,8 +253,117 @@ bool dg::Guidance::generateGuide()
 	}
 
 	m_guide.push_back(Guide(nextnode.id, nextnode.node, nextnode.degree, nextnode.edge));
-	
+
 	return true;;
+}
+
+bool dg::Guidance::generateGuidancePath(dg::Map& map, dg::Path path)
+{
+	dg::MapManager m_map_manager;
+	std::list<dg::ID>::iterator iter = path.m_points.begin();
+
+	m_path.clear();
+	m_pathnodeids.clear();
+
+	dg::ID start_node = path.m_points.front();
+	dg::ID dest_node = path.m_points.back();
+
+	dg::ID curnodeid = start_node;
+	m_pathnodeids.push_back(curnodeid);
+	iter++;
+	while (curnodeid != dest_node)
+	{
+		dg::Map::Node* curNode = map.findNode(curnodeid);
+		dg::ID nextnodeid = *iter;
+		dg::Map::Node* nextNode = map.findNode(nextnodeid);
+		if (nextNode == NULL) continue; //validate connection between nodes
+
+		//1. Find type of next node
+		//only pedestrian is connected
+		dg::Guidance::NodeType navnodetype, dgnodetype;
+		/*
+		switch (nextNode->data.type)
+		{
+		case 0:
+			navnodetype = POI;
+			break;
+		case 1:
+			navnodetype = JUNCTION;
+			break;
+		default:
+			break;
+		}
+		*/
+
+		//type compare with naver and jsh
+		//current path file misses some edges.(2020-01-14)		
+		int nEdges = map.countEdges(nextNode);
+		if (nEdges <= 1)
+		{
+			//The node is end. Need to cross road. Find next node from the map.path
+			dgnodetype = ROAD_END;
+		}
+		else if (nEdges <= 2)
+		{
+			//Continuous sidewalk, streets are connected with 180 degree
+			dgnodetype = POI;
+		}
+		else
+		{
+			//Junction, streets are connected with 90 DEGREE
+			dgnodetype = JUNCTION;
+		}
+
+		//2. Find edge connection to derive edgetype
+		dg::Guidance::EdgeType dgedgetype;
+		dg::Map::Edge* curEdge = map.findEdge(curnodeid, nextnodeid);
+		if (curEdge == NULL) //if two nodes are not linked, road.
+		{
+			dgedgetype = ROAD;
+		}
+		else if (curNode->data.type == 1 && nextNode->data.type == 1) //if types of connected two nodes are 1, crosswalk.
+		{
+			dgedgetype = CROSSWALK; //crosswalk is not identified in the Edge's type(2020-01-14, Check with naver)
+		}
+		else
+		{
+			dgedgetype = SIDEWALK;
+		}
+
+		//3. calculate degree
+		int angle;
+		if (*iter != dest_node)
+		{
+			iter++;
+			dg::ID afterNextNodeId = *iter;
+			dg::Map::Node* afterNectNode = map.findNode(afterNextNodeId);
+			if (afterNectNode == NULL) continue;
+			angle = getDegree(&curNode->data, &nextNode->data, &afterNectNode->data);			
+		}
+		else
+		{
+			angle = 0;
+		}
+		//Add node to guidance
+		dg::Guidance::PathInfo nodepath(NODE, curNode->data.id, dgnodetype, angle);
+		m_path.push_back(nodepath);
+		m_pathnodeids.push_back(curnodeid);
+
+		//Add guidance of this edge
+		dg::Guidance::PathInfo edgepath(EDGE, 00000000, dgedgetype);
+		m_path.push_back(edgepath);
+
+		curnodeid = nextnodeid;
+
+	}//while (curnode != dest_node)
+
+	//Add last node to guidance
+	dg::Map::Node* curNode = map.findNode(curnodeid);
+	dg::Guidance::PathInfo nodepath(NODE, curNode->data.id, POI, 0);
+	m_path.push_back(nodepath);
+	m_pathnodeids.push_back(curnodeid);
+
+	return true;
 }
 
 
@@ -273,22 +382,25 @@ std::vector<dg::Guidance::InstantGuide> dg::Guidance::provideNormalGuide(std::ve
 
 	case APPROACHING_NODE: //add next action
 		result.push_back(prevguide.back());
-		result.push_back(InstantGuide(curG, Action(STOP, 0)));
+		if (curG.type == NodeType::JUNCTION)
+		{
+			result.push_back(InstantGuide(curG, Action(STOP, 0)));
+		}		
 		break;
 
 	case ARRIVED_NODE: //add next action		
-		if (!nextG.degree == 0)
+		if (45 < nextG.degree && nextG.degree <= 315)
 		{
 			result.push_back(InstantGuide(curG, Action(TURN, nextG.degree)));
 			result.push_back(InstantGuide(curG, Action(STOP, 0)));
 		}
-
+		
+		result.push_back(InstantGuide(nextG, Action(GO_FORWARD, 0)));
+		
 		m_curguideindicator++;
 		//finishing condition
-		if (m_curguideindicator == m_guide.size() - 1)
+		if (m_curguideindicator == m_guide.size())
 			return result;
-
-		result.push_back(InstantGuide(nextG, Action(GO_FORWARD, 0)));
 		break;
 
 	default:
@@ -297,6 +409,58 @@ std::vector<dg::Guidance::InstantGuide> dg::Guidance::provideNormalGuide(std::ve
 
 	
 	return result;
+}
+
+/** test code
+	int t1 = m_guider.getDegree(1.0, 1.0, 1.0, 0.0, 2.0, 1.0);
+	printf("t1: %d\n", t1);
+	int t2 = m_guider.getDegree(1.0, 1.0, 1.0, 0.0, 1.0, 1.0);
+	printf("t2: %d\n", t2);
+	int t3 = m_guider.getDegree(1.0, 1.0, -1.0, 0.0, -1.0, -1.0);
+	printf("t3: %d\n", t3);
+	int t4 = m_guider.getDegree(1.0, 1.0, -1.0, 0.0, -1.0, 1.0);
+	printf("t4: %d\n", t4);
+	int dg::Guidance::getDegree(double x1, double y1, double x2, double y2, double x3, double y3)
+
+	dg::Map::Node* foundNode1 = map.findNode(559542564800587);
+	dg::Map::Node* foundNode2 = map.findNode(559542564800586);
+	dg::Map::Node* foundNode3 = map.findNode(559542564800055);
+	dg::Map::Node* foundNode4 = map.findNode(559542564800056);
+	dg::Map::Node* foundNode5 = map.findNode(559552564800620);
+
+	int angle = m_guider.getDegree(&foundNode1->data, &foundNode2->data, &foundNode3->data);
+	printf("Node: %llu --> Angle is: %d\n", foundNode1->data.id, angle);
+*/
+int dg::Guidance::getDegree(dg::NodeInfo* node1, dg::NodeInfo* node2, dg::NodeInfo* node3)
+{
+	double x1 = node1->lon;
+	double y1 = node1->lat;
+	double x2 = node2->lon;
+	double y2 = node2->lat;
+	double x3 = node3->lon;
+	double y3 = node3->lat;
+
+	double v1x = x2 - x1;
+	double v1y = y2 - y1;
+	double v2x = x3 - x2;
+	double v2y = y3 - y2;
+
+	if (!(v1x * v1x + v1y * v1y) || !(v2x * v2x + v2y * v2y))
+	{
+		int result = 0;
+		return result;
+	}
+
+	double sign = asin((v1x * v2y - v1y * v2x) / (sqrt(v1x * v1x + v1y * v1y) * sqrt(v2x * v2x + v2y * v2y)));
+	double rad = acos((v1x * v2x + v1y * v2y) / (sqrt(v1x * v1x + v1y * v1y) * sqrt(v2x * v2x + v2y * v2y)));
+
+	double rad2deg = rad / 3.14 * 180.0;
+	if (sign < 0.f) rad2deg = 360.f - rad2deg;
+
+	int result = (int) rad2deg;
+
+	return result;
+
 }
 
 void dg::Guidance::printInstantGuide(dg::Guidance::InstantGuide instGuide)
@@ -309,18 +473,30 @@ void dg::Guidance::printInstantGuide(dg::Guidance::InstantGuide instGuide)
 	case POI:
 		nodetype = "POI";
 		break;
-	case CORNER:
-		nodetype = "CORNER";
+	case JUNCTION:
+		nodetype = "JUNCTION";
 		break;
-	case ISLAND:
-		nodetype = "ISLAND";
+	case ROAD_END:
+		nodetype = "ROAD_END";
 		break;
 	default:
 		nodetype = "Unknown";
 		break;
 	}
+	std::string rotation;
+	if (315 < instGuide.action.degree || instGuide.action.degree <= 45)
+		rotation = "STRAIGHT"; //0 degree
+	else if (45 < instGuide.action.degree && instGuide.action.degree <= 135)
+		rotation = "LEFT";
+	else if (135 < instGuide.action.degree && instGuide.action.degree <= 225)
+		rotation = "BACK";
+	else if (225 < instGuide.action.degree && instGuide.action.degree <= 315)
+		rotation = "RIGHT";
+	else
+		rotation = "STRAIGHT";
 
-//	char edge[10];
+	std::string id = std::to_string(instGuide.guide.nodeid);
+
 	std::string edge;
 	switch (instGuide.guide.mode)
 	{
@@ -339,27 +515,27 @@ void dg::Guidance::printInstantGuide(dg::Guidance::InstantGuide instGuide)
 	}
 
 	std::string move;
+	std::string result;
 	switch (instGuide.action.move)
 	{
 	case GO_FORWARD:
 		move = "GO_FORWARD on ";
+		result = "[Guide] " + move + edge + " until next " + nodetype + "(Node ID : " + id + ")" ;
 		break;
 	case STOP:
 		move = "STOP at ";
+		result = "[Guide] " + move + nodetype + "(Node ID : " + id + ")";
 		break;
 	case TURN:
-		move = "TURN at ";
+		move = "TURN on ";
+		result = "[Guide] " + move + nodetype + "(Node ID : " + id + ")," + " in " + rotation + " direction";
 		break;
 	default:
 		move = "Unknown";
+		result = "[Guide] " + move + edge + " until next " + nodetype + "(Node ID : " + id + ")";
 		break;
 	}
 
-	std::string id = std::to_string(instGuide.guide.nodeid);
-
-	std::string deg = std::to_string(instGuide.action.degree);
-	
-	std::string result = "[Guide] Until next " + nodetype + "(Node ID: " + id + "), " + move + edge + " in " + deg + " degree.";
 	fprintf(stdout, "%s\n", result.c_str());
 
 	return;

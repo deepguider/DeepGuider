@@ -10,11 +10,18 @@ public:
 	/** A nodetype where the node is appointed*/
 	enum NodeType
 	{
-		POI = 0,	//Continuous sidewalk, streets are connected with 180 degree
-		CORNER,		//Junction, streets are connected with 90 DEGREE
+		POI = 0,	//# of connected edges: 2. Continuous sidewalk, streets are connected with 180 degree
+		JUNCTION,		//Junction, streets are connected with 90 DEGREE
 		ISLAND,		//Surrounded by road. streets are not connected
 		ROAD_END	//End of the sidewalk
 	};
+	//enum NodeType
+	//{
+	//	POI = 0,	//Continuous sidewalk, streets are connected with 180 degree
+	//	CORNER,		//Junction, streets are connected with 90 DEGREE
+	//	ISLAND,		//Surrounded by road. streets are not connected
+	//	ROAD_END	//End of the sidewalk
+	//};
 
 	/** An edgetype on which robot moves*/
 	enum EdgeType
@@ -142,7 +149,6 @@ public:
 		ON_EDGE = 0,
 		APPROACHING_NODE,
 		ARRIVED_NODE,
-		
 	};
 
 		
@@ -168,8 +174,12 @@ public:
 
 	Status checkStatus(dg::TopometricPose pose);
 	bool generateGuide();
+	bool generateGuidancePath(dg::Map& map, dg::Path path);
 	std::vector<InstantGuide> provideNormalGuide(std::vector<InstantGuide> prevguide, Status status);
 	void printInstantGuide(InstantGuide instGuide);
+	int getDegree(dg::NodeInfo* node1, dg::NodeInfo* node2, dg::NodeInfo* node3);
+	//int getDegree(double x1, double y1, double x2, double y2, double x3, double y3);
+	
 
 };
 
