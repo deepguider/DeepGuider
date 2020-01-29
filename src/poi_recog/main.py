@@ -80,7 +80,7 @@ def test(filename, timestamp):
     print('Processed {} images in {:.1f}sec - {:.1f}FPS'.format(
             len(images_path), end-start, len(images_path)/(end-start)
            )) 
-    print(f'Timestamp : {timestamp}')
+    print('Timestamp : {timestamp}')
 
 
 def initialize(filename):
