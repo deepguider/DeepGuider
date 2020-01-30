@@ -16,7 +16,7 @@ INCLUDE_DIRECTORIES ( ${CMAKE_SOURCE_DIR}/../../src ${PYTHON_INCLUDE_DIRS} )
 
 file(GLOB SOURCES core/*.cpp poi_recog/*.cpp *.cpp)
  
-add_executable(${PROJECT_NAME} ${SOURCES}  )
-target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES})
+add_executable( ${PROJECT_NAME} ${SOURCES} )
+target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} )
 
-install(TARGETS ${PROJECT_NAME} DESTINATION ${BINDIR})
+install( TARGETS ${PROJECT_NAME} DESTINATION ${BINDIR} )
