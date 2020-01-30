@@ -76,9 +76,9 @@ bool DeepGuiderSimple::init_python_environment()
 {
     close_python_environment();
 
-    wchar_t* program = Py_DecodeLocale("dg_test", NULL);
+    wchar_t* program = Py_DecodeLocale("python3", NULL);
     if (program == NULL){
-        fprintf(stderr, "Fatal error: cannot decode dg_test\n");
+        fprintf(stderr, "Fatal error: cannot decode locale.\n");
         return false;
     }
     Py_SetProgramName(program);

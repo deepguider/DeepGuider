@@ -11,9 +11,9 @@ using namespace std;
 int main()
 {
 	// Initialize the Python interpreter
-	wchar_t* program = Py_DecodeLocale("road_recog_test", NULL);
+	wchar_t* program = Py_DecodeLocale("python3", NULL);
 	if (program == NULL) {
-		fprintf(stderr, "Fatal error: cannot decode road_recog_test\n");
+		fprintf(stderr, "Fatal error: cannot decode locale.\n");
 		exit(-1);
 	}
 	Py_SetProgramName(program);
