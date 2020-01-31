@@ -1,6 +1,6 @@
 #ifndef __BASIC_TYPE__
 #define __BASIC_TYPE__
-
+#define NOMINMAX
 #include "opencv2/opencv.hpp"
 
 namespace dg
