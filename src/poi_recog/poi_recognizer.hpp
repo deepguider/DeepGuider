@@ -169,6 +169,7 @@ namespace dg
                     return false;
                 }
 
+                // list of list
                 m_pois.clear();
                 PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
                 if (pValue0 != NULL)

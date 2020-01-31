@@ -11,6 +11,11 @@ using namespace std;
 
 namespace dg
 {
+    struct VPSResult
+    {
+        dg::ID id;
+        double confidence;
+    };
 
     /**
      * @brief C++ Wrapper of Python module - VPS
@@ -128,9 +133,10 @@ namespace dg
 
         /**
          * Run once the module for a given input
+         * @param N number of matched images to be returned (top-N)
          * @return true if successful (false if failed)
          */
-        bool apply(cv::Mat image, dg::Timestamp t, double gps_lat, double gps_lon, double gps_accuracy)
+        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp t)
         {
             // Set function arguments
 
@@ -149,6 +155,10 @@ namespace dg
             }
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
+            // N
+            pValue = PyFloat_FromDouble(N);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+
             // GPS lat, lon, accuracy
             pValue = PyFloat_FromDouble(gps_lat);
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
@@ -165,20 +175,49 @@ namespace dg
             PyObject* pRet = PyObject_CallObject(m_pFuncApply, pArgs);
             if (pRet != NULL) {
                 Py_ssize_t n_ret = PyTuple_Size(pRet);
-                if (n_ret < 3)
+                if (n_ret < 1)
                 {
                     fprintf(stderr, "VPS::apply() - Wrong number of returns\n");
                     return false;
                 }
+
+                // [[id1,...idN],[conf1,...,confN]] : matched top-N streetview ID's and Confidences
+                std::vector<dg::ID> ids;
+                std::vector<double> confs;
                 PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
-                if (pValue0 != NULL) m_lat = PyLong_AsLong(pValue0);
-                PyObject* pValue1 = PyTuple_GetItem(pRet, 1);
-                if (pValue1 != NULL) m_lon = PyLong_AsLong(pValue1);
-                PyObject* pValue2 = PyTuple_GetItem(pRet, 2);
-                if (pValue2 != NULL) m_prob = PyLong_AsLong(pValue2);
+                if (pValue0 != NULL)
+                {
+                    // ID list
+                    PyObject* pList0 = PyList_GetItem(pValue0, 0);
+                    Py_ssize_t cnt0 = PyList_Size(pList0);
+                    for (int i = 0; i < cnt0; i++)
+                    {
+                        pValue = PyList_GetItem(pList0, i);
+                        ids.push_back(PyLong_AsLong(pValue));
+                    }
+                    Py_DECREF(pList0);
+
+                    // Confidence list
+                    PyObject* pList1 = PyList_GetItem(pValue0, 1);
+                    Py_ssize_t cnt1 = PyList_Size(pList1);
+                    for (int i = 0; i < cnt1; i++)
+                    {
+                        pValue = PyList_GetItem(pList1, i);
+                        confs.push_back(PyFloat_AsDouble(pValue));
+                    }
+                    Py_DECREF(pList1);
+                }
                 Py_DECREF(pValue0);
-                Py_DECREF(pValue1);
-                Py_DECREF(pValue2);
+
+                // save the result
+                m_streetviews.clear();
+                for (size_t i = 0; i < ids.size(); i++)
+                {
+                    VPSResult vps;
+                    vps.id = ids[i];
+                    vps.confidence = confs[i];
+                    m_streetviews.push_back(vps);
+                }
             }
             else {
                 PyErr_Print();
@@ -192,25 +231,19 @@ namespace dg
             return true;
         }
 
-        void get(double& _lat, double& _lon, double& _prob)
+        void get(std::vector<VPSResult>& streetviews)
         {
-            _lat = m_lat;
-            _lon = m_lon;
-            _prob = m_prob;
+            streetviews = m_streetviews;
         }
 
-        void get(double& _lat, double& _lon, double& _prob, Timestamp& _t)
+        void get(std::vector<VPSResult>& streetviews, Timestamp& t)
         {
-            _lat = m_lat;
-            _lon = m_lon;
-            _prob = m_prob;
-            _t = m_timestamp;
+            streetviews = m_streetviews;
+            t = m_timestamp;
         }
 
     protected:
-        double m_lat = -1;
-        double m_lon = -1;
-        double m_prob = -1;
+        std::vector<VPSResult> m_streetviews;
         Timestamp m_timestamp = -1;
 
         PyObject* m_pFuncApply = nullptr;

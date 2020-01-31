@@ -21,6 +21,12 @@
     <ClCompile Include="..\..\src\localizer\simple_road_map.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\localizer\utm_converter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

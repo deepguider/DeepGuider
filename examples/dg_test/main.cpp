@@ -1,8 +1,8 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #include "dg_core.hpp"
-#include "dg_map_manager.hpp"
 #include "dg_localizer.hpp"
+#include "dg_map_manager.hpp"
 #include "dg_road_recog.hpp"
 #include "dg_poi_recog.hpp"
 #include "dg_vps.hpp"
@@ -31,14 +31,13 @@ protected:
     dg::RoadDirectionRecognizer m_recognizer_roaddir;
     dg::VPS m_recognizer_vps;
     dg::POIRecognizer m_recognizer_poi;
-    dg::SimpleMetricLocalizer m_localizer;
+    dg::SimpleLocalizer m_localizer;
     dg::MapManager m_map_manager;
     dg::Guidance m_guider;
 };
 
 using namespace dg;
 using namespace std;
-
 
 bool DeepGuiderSimple::initialize()
 {
@@ -93,8 +92,8 @@ void DeepGuiderSimple::close_python_environment()
     if (!m_python_initialized) return;
 
     // clear recognizers memory
-    m_recognizer_roaddir.clear();
-    m_recognizer_vps.clear();
+    //m_recognizer_roaddir.clear();
+   // m_recognizer_vps.clear();
 
     // Close the Python Interpreter
     Py_FinalizeEx();
@@ -128,8 +127,8 @@ void DeepGuiderSimple::generateSensorDataGPSFromPath(dg::Map& map, dg::Path& pat
     gps_data.push_back(path_gps[0]);
     for (int i = 1; i < (int)path_gps.size(); i++)
     {
-        double lat_prev = path_gps[i - 1].lat;
-        double lon_prev = path_gps[i - 1].lon;
+        double lat_prev = path_gps[i-1].lat;
+        double lon_prev = path_gps[i-1].lon;
         double lat_cur = path_gps[i].lat;
         double lon_cur = path_gps[i].lon;
         for (int k = 1; k <= interval; k++)
@@ -220,15 +219,24 @@ int DeepGuiderSimple::run()
             //m_localizer.applyLocClue(pose_topo.node_id, Polar2(-1, angle), t, prob);
         }
 
-        /*
-        ok = m_recognizer_vps.apply(image, t, pose_metr.y, pose_metr.x, 10.0);
+        // VPS
+        int N = 3;  // top-3
+        double gps_accuracy = 10;   // meter error boundary
+        ok = m_recognizer_vps.apply(image, N, pose_metr.x, pose_metr.y, gps_accuracy, t);
         if (ok)
         {
-            double lat, lon, prob;
-            m_recognizer_vps.get(lat, lon, prob);
-            m_localizer.applyPosition(dg::LonLat(lon, lat), t, prob);
+            std::vector<VPSResult> streetviews;
+            m_recognizer_vps.get(streetviews);
+            printf("vps:\n");
+            for (int k = 0; k < streetviews.size(); k++)
+            {
+                printf("\ttop%d: id=%ld, confidence=%lf, t=%lf\n", k, streetviews[k].id, streetviews[k].confidence, t);
+            }
+            //m_localizer.applyGPS(dg::LatLon(lat, lon), t, confidence);
         }
-        */
+
+        // POI
+
 
         // gps update
         if (itr < (int)gps_data.size())

@@ -1,5 +1,7 @@
 #include "dg_core.hpp"
 #include "dg_vps.hpp"
+#include <chrono>
+
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
@@ -29,19 +31,25 @@ int main()
 	cv::Mat image = cv::imread("vps_sample.jpg");
     double gps_lat = 0;
     double gps_lon = 0;
-    double gps_accuracy = 0;        // error boundary (meter)
+    double gps_accuracy = 10;        // error boundary (meter)
 
 	int nIter = 5;
 	for (int i = 0; i < nIter; i++)
 	{
-		Timestamp t = i;
-		if (!vps.apply(image, gps_lat, gps_lon, gps_accuracy, t)) {
+        Timestamp t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        int N = 3;  // top-3
+		if (!vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t)) {
 			return -1;
 		}
 
-        double lat, lon, prob;
-		vps.get(lat, lon, prob);
-		printf("lat = %lf, lon = %lf, prob = %lf, timestamp = %lf\n", lat, lon, prob, t);
+        std::vector<VPSResult> streetviews;
+        vps.get(streetviews);
+        Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        printf("iteration: %d (it took %lf seconds)\n", i, t2 - t);
+        for (int k = 0; k < streetviews.size(); k++)
+        {
+            printf("\ttop%d: id=%ld, confidence=%lf, t=%lf\n", k, streetviews[k].id, streetviews[k].confidence, t);
+        }
 	}
 
 	// Clear the Python module
