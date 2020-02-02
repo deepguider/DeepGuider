@@ -1,6 +1,6 @@
 #ifndef __BASIC_TYPE__
 #define __BASIC_TYPE__
-#define NOMINMAX
+#define NOMINMAX // 윈도우즈(windows.h 등) 안에서 min(a,b)와 max(a,b) 메크로를 정의하지 못하게 막음
 #include "opencv2/opencv.hpp"
 
 namespace dg
