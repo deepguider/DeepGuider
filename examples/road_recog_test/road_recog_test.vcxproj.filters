@@ -23,6 +23,9 @@
     <ClInclude Include="..\..\src\road_recog\road_direction_recognizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\dg_python.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\road_recog\road_direction_recognizer.py">

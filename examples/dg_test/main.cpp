@@ -7,25 +7,22 @@
 #include "dg_poi_recog.hpp"
 #include "dg_vps.hpp"
 #include "dg_guidance.hpp"
+#include "python_embedding.hpp"
 #include <chrono>
 
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
+using namespace dg;
+using namespace std;
 
 class DeepGuiderSimple
 {
 public:
     DeepGuiderSimple() {}
-    ~DeepGuiderSimple() { close_python_environment(); }
+    ~DeepGuiderSimple();
 
     bool initialize();
     int run();
 
 protected:
-    bool init_python_environment();
-    void close_python_environment();
-    bool m_python_initialized = false;
-
     void generateSensorDataGPSFromPath(dg::Map& map, dg::Path& path, std::vector<dg::LatLon>& gps_data, int interval, double noise_level);
 
     dg::RoadDirectionRecognizer m_recognizer_roaddir;
@@ -36,8 +33,15 @@ protected:
     dg::Guidance m_guider;
 };
 
-using namespace dg;
-using namespace std;
+
+DeepGuiderSimple::~DeepGuiderSimple()
+{
+    m_recognizer_roaddir.clear();
+    m_recognizer_vps.clear();
+
+    close_python_environment();
+}
+
 
 bool DeepGuiderSimple::initialize()
 {
@@ -68,35 +72,6 @@ bool DeepGuiderSimple::initialize()
     //printf("\tVPS initialized!\n");
 
     return true;
-}
-
-
-bool DeepGuiderSimple::init_python_environment()
-{
-    close_python_environment();
-
-    wchar_t* program = Py_DecodeLocale("python3", NULL);
-    if (program == NULL){
-        fprintf(stderr, "Fatal error: cannot decode locale.\n");
-        return false;
-    }
-    Py_SetProgramName(program);
-    Py_Initialize();
-    m_python_initialized = true;
-    return true;
-}
-
-
-void DeepGuiderSimple::close_python_environment()
-{
-    if (!m_python_initialized) return;
-
-    // clear recognizers memory
-    //m_recognizer_roaddir.clear();
-   // m_recognizer_vps.clear();
-
-    // Close the Python Interpreter
-    Py_FinalizeEx();
 }
 
 

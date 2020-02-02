@@ -1,9 +1,7 @@
 #include "dg_core.hpp"
 #include "dg_road_recog.hpp"
+#include "python_embedding.hpp"
 #include <chrono>
-
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
 
 using namespace dg;
 using namespace std;
@@ -11,13 +9,7 @@ using namespace std;
 int main()
 {
 	// Initialize the Python interpreter
-	wchar_t* program = Py_DecodeLocale("python3", NULL);
-	if (program == NULL) {
-		fprintf(stderr, "Fatal error: cannot decode locale.\n");
-		exit(-1);
-	}
-	Py_SetProgramName(program);
-	Py_Initialize();
+    init_python_environment();
 
 	// Initialize Python module
 	RoadDirectionRecognizer road_recog;
@@ -46,9 +38,7 @@ int main()
 	road_recog.clear();
 
 	// Close the Python Interpreter
-	if (Py_FinalizeEx() < 0) {
-		return -1;
-	}
+    close_python_environment();
 
 	return 0;
 }
