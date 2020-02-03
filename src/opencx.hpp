@@ -9,7 +9,7 @@
  * - Homepage: https://github.com/sunglok/opencx
  *
  * @author  Sunglok Choi (http://sites.google.com/site/sunglok)
- * @version 0.2 (05/23/2019)
+ * @version 0.3 (12/10/2019)
  */
 
 /**
@@ -24,9 +24,8 @@
 #ifndef __OPEN_CX__
 #define __OPEN_CX__
 
+#include "opensx.hpp"
 #include "opencv2/opencv.hpp"
-#include <string>
-#include <fstream>
 
 #ifndef CX_LOAD_PARAM_TO
 /** A macro function to load a value from cv::FileNode */
@@ -71,7 +70,7 @@ namespace cx
          * @param filename The filename to read parameters
          * @return Result of success (true) or failure (false)
          */
-        int loadParam(const char* filename)
+        int loadParam(const std::string& filename)
         {
             cv::FileStorage fs(filename, cv::FileStorage::READ);
             if (!fs.isOpened()) return false;
@@ -84,7 +83,7 @@ namespace cx
          * @param filename The filename to write parameters
          * @return True if successful (false if failed)
          */
-        bool saveParam(const char* filename)
+        bool saveParam(const std::string& filename)
         {
             cv::FileStorage fs(filename, cv::FileStorage::WRITE);
             if (!fs.isOpened()) return false;
@@ -313,89 +312,6 @@ namespace cx
         return radian;
     }
 
-    inline cv::String trimLeft(cv::String text)
-    {
-        text.erase(text.begin(), std::find_if(text.begin(), text.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
-        return text;
-    }
-
-    inline cv::String trimRight(cv::String text)
-    {
-        text.erase(std::find_if(text.rbegin(), text.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), text.end());
-        return text;
-    }
-
-    inline cv::String trimBoth(cv::String text) { return trimLeft(trimRight(text)); }
-
-    /**
-     * Make the given string to its lower cases
-     * @param TeXt The given string
-     * @return The transformed string with lower cases
-     */
-    inline cv::String toLowerCase(cv::String text)
-    {
-        std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return std::tolower(c); });
-        return text;
-    }
-
-    class CSVReader : public std::vector<std::vector<std::string>>
-    {
-    public:
-        typedef std::vector<std::vector<double>> CSVDouble;
-
-        bool open(const char* csv_file, char separator = ',')
-        {
-            std::ifstream file(csv_file);
-            if (!file.is_open()) return false;
-
-            this->clear();
-            std::string line;
-            while (getline(file, line))
-            {
-                std::vector<std::string> datum;
-                std::string element;
-                std::stringstream temp(line);
-                while (getline(temp, element, separator))
-                    datum.push_back(trimBoth(element));
-                this->push_back(datum);
-            }
-            return true;
-        }
-
-        CSVDouble extract(int row_start = 0, const std::vector<int> columns = std::vector<int>(), double invalid_val = std::numeric_limits<double>::quiet_NaN())
-        {
-            CSVDouble data;
-            if (!this->empty())
-            {
-                // Select all columns if the given is empty
-                std::vector<int> col_select = columns;
-                if (col_select.empty())
-                {
-                    int idx = 0;
-                    col_select.resize(this->front().size());
-                    std::fill(col_select.begin(), col_select.end(), idx++);
-                }
-
-                // Extract the selected columns
-                for (auto row = row_start; row < this->size(); row++)
-                {
-                    const std::vector<std::string>& row_data = this->at(row);
-                    if (row_data.empty()) continue;
-                    std::vector<double> vals;
-                    for (auto col = col_select.begin(); col != col_select.end(); col++)
-                    {
-                        double val = invalid_val;
-                        try { val = std::stod(row_data[*col]); }
-                        catch (std::exception e) { }
-                        vals.push_back(val);
-                    }
-                    data.push_back(vals);
-                }
-            }
-            return data;
-        }
-    };
-
     /** A color code for black */
     const cv::Vec3b COLOR_BLACK(0, 0, 0);
 
@@ -430,23 +346,10 @@ namespace cx
     const int KEY_TAB = '\t';
 
     /** A key code for _Escape (ESC)_ */
-    const int KEY_ESC = 27;
+    const int KEY_ESC = 0x1B;
 
     /** A key code for _Space_ */
-    const int KEY_SPACE = 32;
-
-    /** A key code for _Up_ */
-    const int KEY_UP = 2490368;
-
-    /** A key code for _Down_ */
-    const int KEY_DOWN = 2621440;
-
-    /** A key code for _Left_ */
-    const int KEY_LEFT = 2424832;
-
-    /** A key code for _Right_ */
-    const int KEY_RIGHT = 2555904;
-
+    const int KEY_SPACE = 0x20;
 } // End of 'cx'
 
 #endif // End of '__OPEN_CX__'

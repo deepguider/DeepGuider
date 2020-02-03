@@ -105,7 +105,7 @@ std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_fil
 {
     cx::CSVReader csv;
     VVS_CHECK_TRUE(csv.open(csv_file));
-    cx::CSVReader::CSVDouble csv_ext = csv.extract(1, { 2, 3, 7, 8 }); // Skip the header
+    cx::CSVReader::Double2D csv_ext = csv.extDouble2D(1, { 2, 3, 7, 8 }); // Skip the header
 
     std::vector<std::pair<double, dg::LatLon>> data;
     for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
