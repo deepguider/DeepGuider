@@ -44,6 +44,9 @@ bool init_python_environment(char* bin_name = "python3", char* lib_path = nullpt
     setenv("PYTHONPATH", lib_path, 1);
     Py_Initialize();
     setenv("PYTHONPATH", path_old, 1);
+    
+    // Add current path to system path
+    PyRun_SimpleString("import sys\nsys.path.append(\".\")"); 
 
     return true;
 }
