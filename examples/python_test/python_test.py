@@ -1,12 +1,9 @@
-import _init_paths
-import argparse
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import sys
 import pickle
-import utils
 import time
 
 from PIL import Image
@@ -14,7 +11,7 @@ from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGE = True
 
 
-class POIRecognizer:
+class PythonTest:
     def __init__(self):
         self.sim_threshold = 0.90
         self.output_txt = 'out.txt'
