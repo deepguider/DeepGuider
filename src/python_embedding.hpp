@@ -79,14 +79,11 @@ bool PythonModuleWrapper::_initialize(const char* module_name, const char* modul
     PyObject* pRet = PyObject_CallObject(m_pFuncInitialize, nullptr);
     if (pRet != NULL)
     {
-        PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
-        if (pValue0 && !PyObject_IsTrue(pValue0))
+        if (!PyObject_IsTrue(pRet))
         {
-            Py_DECREF(pValue0);
             fprintf(stderr, "Unsuccessful instance initialization\n");
             return false;
         }
-        Py_DECREF(pValue0);
     }
     else {
         PyErr_Print();

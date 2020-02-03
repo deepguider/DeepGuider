@@ -261,9 +261,8 @@ class vps:
             else:
                 print("=> no checkpoint found at '{}'".format(resume_ckpt))
     
-        self.model = model
-
-    
+        self.model = model                
+        return True    
 
     def test_sub(self,eval_set,epoch=0):
         opt = self.parser.parse_args()
