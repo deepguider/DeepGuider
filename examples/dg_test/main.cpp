@@ -38,6 +38,7 @@ DeepGuiderSimple::~DeepGuiderSimple()
 {
     m_recognizer_roaddir.clear();
     m_recognizer_vps.clear();
+    m_recognizer_poi.clear();
 
     close_python_environment();
 }

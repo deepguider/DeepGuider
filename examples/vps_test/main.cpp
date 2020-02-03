@@ -39,7 +39,7 @@ int main()
         printf("iteration: %d (it took %lf seconds)\n", i, t2 - t);
         for (int k = 0; k < streetviews.size(); k++)
         {
-            printf("\ttop%d: id=%ld, confidence=%lf, t=%lf\n", k, streetviews[k].id, streetviews[k].confidence, t);
+            printf("\ttop%d: id=%lld, confidence=%.2lf, t=%lf\n", k, streetviews[k].id, streetviews[k].confidence, t);
         }
 	}
 
