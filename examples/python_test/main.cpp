@@ -9,7 +9,7 @@ using namespace std;
 int main()
 {
     // Initialize the Python interpreter
-    init_python_environment();
+    init_python_environment("python3", "");
 
     // Initialize Python module
     PythonTest python_test;
@@ -19,7 +19,7 @@ int main()
     }
 
     // Run the Python module
-    cv::Mat image = cv::imread("poi_sample.jpg");
+    cv::Mat image = cv::imread("python_test.jpg");
     int nIter = 5;
     for (int i = 1; i <= nIter; i++)
     {

@@ -49,7 +49,7 @@ bool DeepGuiderSimple::initialize()
     printf("Initialize deepguider system...\n");
 
     // initialize python
-    if (!init_python_environment()) return false;
+    if (!init_python_environment("python3", "")) return false;
     printf("\tPython environment initialized!\n");
 
     // initialize map manager
@@ -103,8 +103,8 @@ void DeepGuiderSimple::generateSensorDataGPSFromPath(dg::Map& map, dg::Path& pat
     gps_data.push_back(path_gps[0]);
     for (int i = 1; i < (int)path_gps.size(); i++)
     {
-        double lat_prev = path_gps[i-1].lat;
-        double lon_prev = path_gps[i-1].lon;
+        double lat_prev = path_gps[i - 1].lat;
+        double lon_prev = path_gps[i - 1].lon;
         double lat_cur = path_gps[i].lat;
         double lon_cur = path_gps[i].lon;
         for (int k = 1; k <= interval; k++)
@@ -147,7 +147,7 @@ int DeepGuiderSimple::run()
 
     // generate virtual gps sensor data from the path
     int interval = 10;
-    double noise_level = 0;    
+    double noise_level = 0;
     std::vector<dg::LatLon> gps_data;
     generateSensorDataGPSFromPath(map, path, gps_data, interval, noise_level);
     printf("\tSample gps data generated!\n");
