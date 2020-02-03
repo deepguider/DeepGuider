@@ -9,13 +9,13 @@ using namespace std;
 int main()
 {
 	// Initialize the Python interpreter
-    init_python_environment();
+  init_python_environment();
 
 	// Initialize Python module
 	PythonTest python_test;
 	if (!python_test.initialize())
 	{
-		return -1;
+    return -1;
 	}
 
 	// Run the Python module
@@ -35,7 +35,7 @@ int main()
         printf("iteration: %d (it took %lf seconds)\n", i, t2 - t);
         for (int k = 0; k < result.size(); k++)
         {
-            printf("\t[%d] sim_theshold=%.1lf, output_txt=%s, t=%lf\n", k, result[k].sim_threshold, result[k].sim_threshold, t);
+            printf("\t[%d] sim_theshold=%.1lf, output_txt=%s, t=%lf\n", k, result[k].sim_threshold, result[k].output_txt.c_str(), t);
         }
 	}
 

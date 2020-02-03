@@ -27,12 +27,12 @@ bool close_python_environment()
     return true;
 }
 
-bool init_python_environment(char* bin_name = "python3", char* lib_path = nullptr)
+bool init_python_environment(const char* name = "python3", const char* path = "")
 {
     close_python_environment();
 
     // set the name of python executable to run (e.g. python, python3, python3.6, ...)
-    wchar_t* program = Py_DecodeLocale(bin_name, NULL);
+    wchar_t* program = Py_DecodeLocale(name, NULL);
     if (program == NULL) {
         fprintf(stderr, "Fatal error: cannot decode locale.\n");
         return false;
@@ -41,7 +41,7 @@ bool init_python_environment(char* bin_name = "python3", char* lib_path = nullpt
 
     // initialize new python environment
     const char* path_old = std::getenv("PYTHONPATH");
-    setenv("PYTHONPATH", lib_path, 1);
+    setenv("PYTHONPATH", path, 1);
     Py_Initialize();
     setenv("PYTHONPATH", path_old, 1);
     
