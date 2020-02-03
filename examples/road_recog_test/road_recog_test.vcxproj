@@ -94,7 +94,6 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\dg_python.hpp" />
     <ClInclude Include="..\..\src\road_recog\road_direction_recognizer.hpp" />
   </ItemGroup>
   <ItemGroup>
