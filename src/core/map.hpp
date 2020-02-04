@@ -184,7 +184,7 @@ public:
     {
         Node* node1_ptr = findNode(node1);
         Node* node2_ptr = findNode(node2);
-        if (node1 == NULL || node2 == NULL) return false;
+        if (node1_ptr == NULL || node2_ptr == NULL) return false;
 
         Edge* edge = DirectedGraph<NodeInfo, EdgeInfo>::addEdge(node1_ptr, node2_ptr, info);
         return edge != NULL;

@@ -147,7 +147,7 @@ namespace cx
                     std::vector<std::string> vals;
                     for (auto col = col_select.begin(); col != col_select.end(); col++)
                     {
-                        if (row_data.size() <= *col) vals.push_back(row_data[*col]);
+                        if (*col < row_data.size()) vals.push_back(row_data[*col]);
                         else vals.push_back(invalid_val);
                     }
                     data.push_back(vals);
@@ -183,7 +183,7 @@ namespace cx
                         double val = invalid_val;
                         try
                         {
-                            if (row_data.size() <= *col)
+                            if (*col < row_data.size())
                                 val = std::stod(row_data[*col]);
                         }
                         catch (std::exception e) { }
@@ -222,7 +222,7 @@ namespace cx
                         int val = invalid_val;
                         try
                         {
-                            if (row_data.size() <= *col)
+                            if (*col < row_data.size())
                                 val = std::stoi(row_data[*col]);
                         }
                         catch (std::exception e) { }

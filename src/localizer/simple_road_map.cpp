@@ -124,7 +124,7 @@ bool SimpleRoadMap::addRoad(ID node1, ID node2, double cost /*= -1.0*/)
 
 SimpleRoadMap::Edge* SimpleRoadMap::addEdge(Node* from, Node* to, double cost /*= -1.0*/)
 {
-    if (from == NULL || to == NULL) return false;
+    if (from == NULL || to == NULL) return NULL;
 
     if (cost < 0)
     {

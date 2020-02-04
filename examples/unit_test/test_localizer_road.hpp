@@ -34,7 +34,7 @@ int testLocSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
     VVS_CHECK_TRUE(map.addEdge(dg::Point2ID(2), dg::Point2ID(3)) != NULL);  // Method #2 to add an edge (Point2ID)
     VVS_CHECK_TRUE(map.addEdge(3, 4) != NULL);                              // Method #3 to add an edge (ID)
     VVS_CHECK_TRUE(map.addEdge(4, 1) != NULL);
-    VVS_CHECK_TRUE(map.addRoad(3, 5) != NULL);                              // Add a bi-directional edge
+    VVS_CHECK_TRUE(map.addRoad(3, 5));                                      // Add a bi-directional edge
     VVS_CHECK_TRUE(map.addEdge(6, 5) != NULL);
     VVS_CHECK_TRUE(map.addEdge(6, 8) != NULL);
     VVS_CHECK_TRUE(map.addEdge(7, 5) != NULL);
@@ -107,7 +107,7 @@ int testLocSimpleRoadPainter(int wait_msec = 1)
     VVS_CHECK_TRUE(map.addEdge(2, 3) != NULL);
     VVS_CHECK_TRUE(map.addEdge(3, 4) != NULL);
     VVS_CHECK_TRUE(map.addEdge(4, 1) != NULL);
-    VVS_CHECK_TRUE(map.addRoad(3, 5) != NULL); // Add a bi-directional edge
+    VVS_CHECK_TRUE(map.addRoad(3, 5)); // Add a bi-directional edge
     VVS_CHECK_TRUE(map.addEdge(6, 5) != NULL);
     VVS_CHECK_TRUE(map.addEdge(6, 8) != NULL);
     VVS_CHECK_TRUE(map.addEdge(7, 5) != NULL);
