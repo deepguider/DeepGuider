@@ -2,6 +2,7 @@
 #include <thread>
 #include <chrono>
 #include <ros/ros.h>
+#include <opencv2/highgui/highgui.hpp>
 #include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
 
@@ -46,14 +47,16 @@ public:
         nh_.param<double>("wait_sec", m_wait_sec, m_wait_sec);
 
         // Initialize subscribers
-        sub_image_ = nh_.subscribe("/uvc_image_raw/compressed", 1, &YourRunnerNode::callbackImage, this);
+        sub_image_ = nh_.subscribe("/uvc_image_raw/compressed", 1, &YourRunnerNode::callbackImageCompressed, this);
 
         // Initialize publishers
-        pub_image_ = nh_.advertise<sensor_msgs::Image>("image_out", 1, true);
+        pub_image_ = nh_.advertise<sensor_msgs::CompressedImage>("image_out", 1, true);
     }
+    
+    
 
     // A callback function for subscribing a RGB image
-    void callbackImage(const sensor_msgs::Image::ConstPtr& msg)
+    void callbackImage(const sensor_msgs::CompressedImage::ConstPtr& msg)
     {
        cout << "image callback: " << msg->header.stamp.toSec() << endl;
  
@@ -72,6 +75,25 @@ public:
         }
     }
 
+    // A callback function for subscribing a compressed RGB image
+    void callbackImageCompressed(const sensor_msgs::CompressedImageConstPtr& msg)
+    {
+       cout << "compressed image callback: " << msg->header.stamp.toSec() << endl;
+ 
+        ROS_INFO_THROTTLE(1.0, "A RGB image is subscribed (timestamp: %f [sec]).", msg->header.stamp.toSec());
+        cv_bridge::CvImagePtr image_ptr;
+        cv::Mat image;
+        try
+        {
+            cv::Mat image = cv::imdecode(cv::Mat(msg->data),1);//convert compressed image data to cv::Mat
+        }
+        catch (cv_bridge::Exception& e)
+        {
+            ROS_ERROR("exception @ callbackImageCompressed(): %s", e.what());
+            return;
+        }
+    }
+    
     virtual bool runAndSpin()
     {
         ros::Rate loop(1 / m_wait_sec);
