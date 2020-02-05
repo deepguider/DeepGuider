@@ -44,8 +44,9 @@ namespace dg
 	
 	bool MapManager::query2server(std::string url)
 	{
+#ifdef WINDOWS
 		SetConsoleOutputCP(65001);
-
+#endif
 		//std::string client_id = "X-NCP-APIGW-API-KEY-ID:h2weu1vyc4";
 		//std::string	client_secret = "X-NCP-APIGW-API-KEY:xYSNKDADst7RfmiFnMAyi1EkTcWqusBV1oHwVmax";
 		//std::string url{ "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start=127.31788462835466,36.37407414112156,start_pos&goal=127.3190043087742,36.37253204490351,end_pos&option=trafast" };
