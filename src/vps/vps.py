@@ -34,7 +34,7 @@ from scipy import io as sio
 import cv2 as cv
 
 from ipdb import set_trace as bp
-import sys; sys.path.insert(0,'netvlad/ccsmmutils'); import img_utils as myiu
+import sys; sys.path.insert(0,'data_vps/netvlad/ccsmmutils'); import img_utils as myiu
 
 class vps:
     def __init__(self):
@@ -93,14 +93,14 @@ class vps:
 
         ######(begin) Following defaults are combination of 9run_vps_ccsmm.sh
         self.parser.add_argument('--nGPU', type=int, default=1, help='number of GPU to use.')
-        self.parser.add_argument('--resume', type=str, default='netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint', help='Path to load checkpoint from, for resuming training or testing.')
+        self.parser.add_argument('--resume', type=str, default='data_vps/netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint', help='Path to load checkpoint from, for resuming training or testing.')
         #self.parser.add_argument('--dataset', type=str, default='pittsburgh', help='Dataset to use', choices=['pittsburgh','deepguider'])
         self.parser.add_argument('--dataset', type=str, default='deepguider', help='Dataset to use', choices=['pittsburgh','deepguider'])
         self.parser.add_argument('--cacheBatchSize', type=int, default=4, help='Batch size for caching and testing')
 
-        self.parser.add_argument('--dbFeat_fname', type=str, default='netvlad_etri_datasets/prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
+        self.parser.add_argument('--dbFeat_fname', type=str, default='data_vps/prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
         #self.parser.add_argument('--dbFeat_fname', type=str, default='prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
-        self.parser.add_argument('--qFeat_fname', type=str, default='./prebuilt_qFeat.mat', help='dbFeat file calculated in advance')
+        self.parser.add_argument('--qFeat_fname', type=str, default='data_vps/prebuilt_qFeat.mat', help='dbFeat file calculated in advance')
         #self.parser.add_argument('--save_dbFeat', default=False, action='store_true', help='Save dbFeat')
         self.parser.add_argument('--save_dbFeat', default=True, action='store_true', help='Save dbFeat')
         #self.parser.add_argument('--save_qFeat', default=False, action='store_true', help='Save qFeat')
@@ -599,7 +599,7 @@ class vps:
 
         elif opt.dataset.lower() == 'deepguider':
             if image is not None:
-                cv.imwrite('netvlad_etri_datasets/qImg/999_newquery/newquery.jpg',image)
+                cv.imwrite('data_vps/netvlad_etri_datasets/qImg/999_newquery/newquery.jpg',image)
             from netvlad import etri_dbloader as dataset
             dbDir = 'dbImg'
             qDir = 'qImg'
@@ -650,7 +650,7 @@ class vps:
         if type(imgID) is not str:
             imgID = imgID[0]
 
-        with open('netvlad_etri_datasets/poses.txt', 'r') as searchfile:
+        with open('data_vps/netvlad_etri_datasets/poses.txt', 'r') as searchfile:
             for line in searchfile:
                 if imgID in line:
                     sline = line.split('\n')[0].split(' ')

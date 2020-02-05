@@ -11,10 +11,11 @@ cmake ..
 make install
 
 echo "####### Run vps_test ..... #######"
-cd "$topdir/bin/data_vps"
-ln -fs ../../src/vps/netvlad/ccsmmutils/img_utils.py
-ln -fs ../../src/vps/netvlad
-ln -fs ../../src/vps/netvlad_etri_datasets
+cd "$topdir/bin"
+ln -sf ../src/vps/data_vps
+#ln -fs ../../src/vps/netvlad/ccsmmutils/img_utils.py
+#ln -fs ../../src/vps/netvlad
+#ln -fs ../../src/vps/netvlad_etri_datasets
 source ~/.virtualenvs/dg_venv3.6/bin/activate
 cd "$topdir/bin"
 ./vps_test

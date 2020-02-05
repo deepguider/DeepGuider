@@ -15,10 +15,10 @@ import h5py
 from ipdb import set_trace as bp
 
 #root_dir = './netvlad_v100_datasets/' #you need this directory in the top.
-root_dir = './netvlad_etri_datasets/' #you need this directory in the top.
+root_dir = './data_vps/netvlad_etri_datasets/' #you need this directory in the top.
 
 if not exists(root_dir):
-    raise FileNotFoundError('root_dir is hardcoded, please adjust to point to Pittsburth dataset')
+    raise FileNotFoundError('root_dir is hardcoded, please adjust to point to dataset at etridbloader.py')
 
 #struct_dir = join(root_dir, 'datasets/')
 #queries_dir = join(root_dir, 'queries_real')
@@ -113,7 +113,8 @@ def input_transform():
     ])
 
 def get_dg_test_set(dbDir='dbImg',qDir='qImg'):
-    datasetDir = './netvlad_etri_datasets'
+    #datasetDir = './netvlad_etri_datasets'
+    datasetDir = root_dir
     db_dir = os.path.join(datasetDir, dbDir)
     queries_dir = os.path.join(datasetDir, qDir)
 
@@ -272,7 +273,8 @@ def collate_fn(batch):
 
 
 if __name__ == "__main__":
-    datasetDir = './netvlad_etri_datasets'
+    #datasetDir = './netvlad_etri_datasets'
+    datasetDir = root_dir
     db_dir = os.path.join(datasetDir, 'dbImg')
     queries_dir = os.path.join(datasetDir, 'qImg')
 
