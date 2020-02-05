@@ -19,7 +19,7 @@ int main()
     }
 
     // Run the Python module
-    cv::Mat image = cv::imread("vps_sample.jpg");
+    cv::Mat image = cv::imread("vps_query.jpg");
     double gps_lat = 0;
     double gps_lon = 0;
     double gps_accuracy = 10;        // error boundary (meter)

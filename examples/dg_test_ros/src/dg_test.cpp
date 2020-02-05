@@ -50,13 +50,13 @@ public:
         sub_image_ = nh_.subscribe("/uvc_image_raw/compressed", 1, &YourRunnerNode::callbackImageCompressed, this);
 
         // Initialize publishers
-        pub_image_ = nh_.advertise<sensor_msgs::Image>("image_out", 1, true);
+        pub_image_ = nh_.advertise<sensor_msgs::CompressedImage>("image_out", 1, true);
     }
     
     
 
     // A callback function for subscribing a RGB image
-    void callbackImage(const sensor_msgs::Image::ConstPtr& msg)
+    void callbackImage(const sensor_msgs::CompressedImage::ConstPtr& msg)
     {
        cout << "image callback: " << msg->header.stamp.toSec() << endl;
  
