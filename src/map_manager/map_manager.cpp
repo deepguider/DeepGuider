@@ -44,7 +44,7 @@ namespace dg
 	
 	bool MapManager::query2server(std::string url)
 	{
-#ifdef WINDOWS
+#ifdef _WIN32
 		SetConsoleOutputCP(65001);
 #endif
 		//std::string client_id = "X-NCP-APIGW-API-KEY-ID:h2weu1vyc4";

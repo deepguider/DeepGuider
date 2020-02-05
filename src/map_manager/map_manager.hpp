@@ -10,6 +10,7 @@
 #include <fstream>
 using namespace rapidjson;
 
+#ifdef _WIN32
 #define CURL_STATICLIB
 // curl header file
 #include "../../EXTERNAL/curl/include/curl/curl.h" 
@@ -24,7 +25,6 @@ using namespace rapidjson;
 #pragma comment(lib, "Wldap32.lib")
 #pragma comment(lib, "Normaliz.lib")
 #pragma execution_character_set( "utf-8" )
-#ifdef WINDOWS
 #include <atlstr.h> 
 #endif
 
