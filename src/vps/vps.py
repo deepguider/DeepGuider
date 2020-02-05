@@ -101,10 +101,10 @@ class vps:
         self.parser.add_argument('--dbFeat_fname', type=str, default='netvlad_etri_datasets/prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
         #self.parser.add_argument('--dbFeat_fname', type=str, default='prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
         self.parser.add_argument('--qFeat_fname', type=str, default='./prebuilt_qFeat.mat', help='dbFeat file calculated in advance')
-        self.parser.add_argument('--save_dbFeat', default=False, action='store_true', help='Save dbFeat')
+        #self.parser.add_argument('--save_dbFeat', default=False, action='store_true', help='Save dbFeat')
+        self.parser.add_argument('--save_dbFeat', default=True, action='store_true', help='Save dbFeat')
         #self.parser.add_argument('--save_qFeat', default=False, action='store_true', help='Save qFeat')
         #self.parser.add_argument('--use_saved_dbFeat', default=False, action='store_true', help='Use save dbFeat feature which is calucated in adavnce') #default
-        self.parser.add_argument('--use_saved_dbFeat', default=True, action='store_true', help='Use save dbFeat feature which is calucated in adavnce')
         ######(end) Following defaults are combination of 9run_vps_ccsmm.sh
 
         return 1
