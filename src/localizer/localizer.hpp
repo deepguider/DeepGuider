@@ -36,6 +36,8 @@ class MetricLocalizer
 public:
     virtual Pose2 getPose() const = 0;
 
+    virtual LatLon getPoseGPS() const = 0;
+
     virtual double getPoseConfidence() const = 0;
 };
 
