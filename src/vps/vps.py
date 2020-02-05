@@ -53,13 +53,11 @@ class vps:
         self.parser.add_argument('--mode', type=str, default='test', help='Mode', choices=['train', 'test', 'cluster'])
         self.parser.add_argument('--batchSize', type=int, default=4, 
                 help='Number of triplets (query, pos, negs). Each triplet consists of 12 images.')
-        self.parser.add_argument('--cacheBatchSize', type=int, default=24, help='Batch size for caching and testing')
         self.parser.add_argument('--cacheRefreshRate', type=int, default=1000, 
                 help='How often to refresh cache, in number of queries. 0 for off')
         self.parser.add_argument('--nEpochs', type=int, default=30, help='number of epochs to train for')
         self.parser.add_argument('--start-epoch', default=0, type=int, metavar='N', 
                 help='manual epoch number (useful on restarts)')
-        self.parser.add_argument('--nGPU', type=int, default=1, help='number of GPU to use.')
         self.parser.add_argument('--optim', type=str, default='SGD', help='optimizer to use', choices=['SGD', 'ADAM'])
         self.parser.add_argument('--lr', type=float, default=0.0001, help='Learning Rate.')
         self.parser.add_argument('--lrStep', type=float, default=5, help='Decay LR ever N steps.')
@@ -75,15 +73,12 @@ class vps:
                 help='Path to save checkpoints to in logdir. Default=netvlad/checkpoints/')
 #        self.parser.add_argument('--cachePath', type=str, default=environ['TMPDIR'], help='Path to save cache to.')
         self.parser.add_argument('--cachePath', type=str, default='/tmp', help='Path to save cache to.')
-        self.parser.add_argument('--resume', type=str, default='netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint', help='Path to load checkpoint from, for resuming training or testing.')
 #        self.parser.add_argument('--resume', type=str, default='netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint_gpu4', help='Path to load checkpoint from, for resuming training or testing.')
         self.parser.add_argument('--ckpt', type=str, default='latest', 
                 help='Resume from latest or best checkpoint.', choices=['latest', 'best'])
         self.parser.add_argument('--evalEvery', type=int, default=1, 
                 help='Do a validation set run, and save, every N epochs.')
         self.parser.add_argument('--patience', type=int, default=10, help='Patience for early stopping. 0 is off.')
-        self.parser.add_argument('--dataset', type=str, default='pittsburgh', 
-                help='Dataset to use', choices=['pittsburgh','deepguider'])
         self.parser.add_argument('--arch', type=str, default='vgg16', 
                 help='basenetwork to use', choices=['vgg16', 'alexnet'])
         self.parser.add_argument('--vladv2', action='store_true', help='Use VLAD v2')
@@ -95,13 +90,24 @@ class vps:
                 choices=['test', 'test250k', 'train', 'val'])
         self.parser.add_argument('--fromscratch', action='store_true', help='Train from scratch rather than using pretrained models')
 
-        self.parser.add_argument('--use_saved_dbFeat', default=False, action='store_true', help='Use save dbFeat feature which is calucated in adavnce')
-        self.parser.add_argument('--use_saved_qFeat', default=False, action='store_true', help='Use save qFeat feature which is calucated in adavnce')
-        self.parser.add_argument('--save_dbFeat', default=False, action='store_true', help='Save dbFeat')
-        self.parser.add_argument('--save_qFeat', default=False, action='store_true', help='Save qFeat')
 
-        self.parser.add_argument('--dbFeat_fname', type=str, default='./prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
+        ######(begin) Following defaults are combination of 9run_vps_ccsmm.sh
+        self.parser.add_argument('--nGPU', type=int, default=1, help='number of GPU to use.')
+        self.parser.add_argument('--resume', type=str, default='netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint', help='Path to load checkpoint from, for resuming training or testing.')
+        #self.parser.add_argument('--dataset', type=str, default='pittsburgh', help='Dataset to use', choices=['pittsburgh','deepguider'])
+        self.parser.add_argument('--dataset', type=str, default='deepguider', help='Dataset to use', choices=['pittsburgh','deepguider'])
+        self.parser.add_argument('--cacheBatchSize', type=int, default=4, help='Batch size for caching and testing')
+
+        self.parser.add_argument('--dbFeat_fname', type=str, default='netvlad_etri_datasets/prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
+        #self.parser.add_argument('--dbFeat_fname', type=str, default='prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
         self.parser.add_argument('--qFeat_fname', type=str, default='./prebuilt_qFeat.mat', help='dbFeat file calculated in advance')
+        self.parser.add_argument('--save_dbFeat', default=False, action='store_true', help='Save dbFeat')
+        #self.parser.add_argument('--save_qFeat', default=False, action='store_true', help='Save qFeat')
+        #self.parser.add_argument('--use_saved_dbFeat', default=False, action='store_true', help='Use save dbFeat feature which is calucated in adavnce') #default
+        self.parser.add_argument('--use_saved_dbFeat', default=True, action='store_true', help='Use save dbFeat feature which is calucated in adavnce')
+        ######(end) Following defaults are combination of 9run_vps_ccsmm.sh
+
+        return 1
 
 
     def initialize(self):
@@ -261,8 +267,9 @@ class vps:
             else:
                 print("=> no checkpoint found at '{}'".format(resume_ckpt))
     
-        self.model = model                
-        return True    
+        self.model = model
+        return 1
+    
 
     def test_sub(self,eval_set,epoch=0):
         opt = self.parser.parse_args()
@@ -317,31 +324,32 @@ class vps:
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
 
-        if opt.use_saved_dbFeat:
-            dbFeat = sio.loadmat(opt.dbFeat_fname)
-            dbFeat = dbFeat['Feat']
-            dbFeat = np.ascontiguousarray(dbFeat)
-        else:
+        if opt.save_dbFeat:
             # extracted for db, now split in own sets
             dbFeat = self.test_sub(eval_set_db,epoch=epoch)
             dbFeat = dbFeat.astype('float32') #[ndbImg,32768]
-
-        if opt.use_saved_qFeat:
-            qFeat = sio.loadmat(opt.qFeat_fname)
-            qFeat = qFeat['Feat']
-            qFeat = np.ascontiguousarray(qFeat)
-        else:
-            # extracted for query, now split in own sets
-            qFeat = self.test_sub(eval_set_q,epoch=epoch)
-            qFeat = qFeat.astype('float32') #[nqImg,32768]
-
-        if opt.save_dbFeat:
             dbFeat_dict={'Feat':dbFeat}
             sio.savemat(opt.dbFeat_fname,dbFeat_dict)
+        else:
+            dbFeat = sio.loadmat(opt.dbFeat_fname)
+            dbFeat = dbFeat['Feat']
+            dbFeat = np.ascontiguousarray(dbFeat)
 
-        if opt.save_qFeat:
-            qFeat_dict={'Feat':qFeat}
-            sio.savemat(opt.qFeat_fname,qFeat_dict)
+
+        # extracted for query, now split in own sets
+        qFeat = self.test_sub(eval_set_q,epoch=epoch)
+        qFeat = qFeat.astype('float32') #[nqImg,32768]
+
+        #if opt.save_qFeat:
+        #    # extracted for query, now split in own sets
+        #    qFeat = self.test_sub(eval_set_q,epoch=epoch)
+        #    qFeat = qFeat.astype('float32') #[nqImg,32768]
+        #    qFeat_dict={'Feat':qFeat}
+        #    sio.savemat(opt.qFeat_fname,qFeat_dict)
+        #else:
+        #    qFeat = sio.loadmat(opt.qFeat_fname)
+        #    qFeat = qFeat['Feat']
+        #    qFeat = np.ascontiguousarray(qFeat)
 
 
         test_db_data_loader = DataLoader(dataset=eval_set_db, 
@@ -457,29 +465,28 @@ class vps:
             del input, image_encoding, vlad_encoding
         del test_data_loader
     
-
-        if opt.use_saved_dbFeat:
-            dbFeat = sio.loadmat(opt.dbFeat_fname)
-            dbFeat = dbFeat['dbFeat']
-        else:
+        if opt.save_dbFeat:
             # extracted for db, now split in own sets
             dbFeat = dbqFeat[:eval_set.dbStruct.numDb].astype('float32') #[10000,32768]
-
-        if opt.use_saved_qFeat:
-            qFeat = sio.loadmat(opt.qFeat_fname)
-            qFeat = qFeat['qFeat']
-        else:
-            # extracted for query, now split in own sets
-            qFeat = dbqFeat[eval_set.dbStruct.numDb:].astype('float32') #[7608,32768]
-
-
-        if opt.save_dbFeat:
             dbFeat_dict={'dbFeat':dbFeat}
             sio.savemat(opt.dbFeat_fname,dbFeat_dict)
+        else:
+            dbFeat = sio.loadmat(opt.dbFeat_fname)
+            dbFeat = dbFeat['dbFeat']
 
-        if opt.save_qFeat:
-            qFeat_dict={'qFeat':qFeat}
-            sio.savemat(opt.qFeat_fname,qFeat_dict)
+
+        # extracted for query, now split in own sets
+        qFeat = dbqFeat[eval_set.dbStruct.numDb:].astype('float32') #[7608,32768]
+        qFeat_dict={'qFeat':qFeat}
+
+        #if opt.save_qFeat:
+        #    # extracted for query, now split in own sets
+        #    qFeat = dbqFeat[eval_set.dbStruct.numDb:].astype('float32') #[7608,32768]
+        #    qFeat_dict={'qFeat':qFeat}
+        #    sio.savemat(opt.qFeat_fname,qFeat_dict)
+        #else:
+        #    qFeat = sio.loadmat(opt.qFeat_fname)
+        #    qFeat = qFeat['qFeat']
 
         print('====> Building faiss index')
         #qFeat  : [7608,32768], pool_size = 32768 as dimension of feature
@@ -572,7 +579,7 @@ class vps:
         if timestamp is None:
             self.timestamp = -1
 
-        self.K = K
+        self.K = int(K)
         opt = self.parser.parse_args()
 
         ##### Process Input #####
@@ -603,8 +610,6 @@ class vps:
             recalls = self.test_dg(whole_db_set,whole_q_set, epoch, write_tboard=False)
         else:
             raise Exception('Unknown dataset')
-
-
 
         ##### Results #####
         return self.vps_IDandConf
