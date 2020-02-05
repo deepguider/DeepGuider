@@ -223,8 +223,9 @@ int testLocExampleLocalizer(int wait_msec = 1, const char* gps_file = "data/1911
             dg::TopometricPose pose_t = localizer.getPoseTopometric();
             //dg::Pose2 pose_m = localizer.getPose();
             dg::Pose2 pose_m = localizer.toTopmetric2Metric(pose_t);
+            dg::LatLon pose_g = localizer.getPoseGPS();
             VVS_CHECK_TRUE(painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 10, 0, cx::COLOR_BLUE));
-            cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f", pose_t.node_id, pose_t.edge_idx, pose_t.dist);
+            cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f (Lat: %.6f, Lon: %.6f)", pose_t.node_id, pose_t.edge_idx, pose_t.dist, pose_g.lat, pose_g.lon);
             cv::putText(image, info_topo, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
 
             cv::imshow("testLocExampleLocalizer", image);

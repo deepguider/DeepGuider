@@ -104,6 +104,11 @@ public:
         return m_pose_metric;
     }
 
+    virtual LatLon getPoseGPS() const
+    {
+        return toLatLon(getPose());
+    }
+
     virtual TopometricPose getPoseTopometric() const
     {
         return toMetric2Topometric(m_pose_metric);
