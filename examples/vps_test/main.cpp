@@ -24,7 +24,7 @@ int main()
     double gps_lon = 0;
     double gps_accuracy = 10;        // error boundary (meter)
 
-    int nIter = 5;
+    int nIter = 2;
     for (int i = 0; i < nIter; i++)
     {
         Timestamp t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;

@@ -77,40 +77,42 @@ namespace dg
             // Call the method
             PyObject* pRet = PyObject_CallObject(m_pFuncApply, pArgs);
             if (pRet != NULL) {
-                Py_ssize_t n_ret = PyTuple_Size(pRet);
-                if (n_ret < 1)
+                Py_ssize_t n_ret = PyList_Size(pRet);
+                if (n_ret < 2)
                 {
-                    fprintf(stderr, "VPS::apply() - Wrong number of returns\n");
+                    fprintf(stderr, "VPS::apply() - Wrong number of returns: %d\n", n_ret);
                     return false;
                 }
 
                 // [[id1,...idN],[conf1,...,confN]] : matched top-N streetview ID's and Confidences
+                
+                // ID list
                 std::vector<dg::ID> ids;
-                std::vector<double> confs;
-                PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
-                if (pValue0 != NULL)
+                PyObject* pList0 = PyList_GetItem(pRet, 0);
+                if(pList0)
                 {
-                    // ID list
-                    PyObject* pList0 = PyList_GetItem(pValue0, 0);
                     Py_ssize_t cnt0 = PyList_Size(pList0);
                     for (int i = 0; i < cnt0; i++)
                     {
                         pValue = PyList_GetItem(pList0, i);
                         ids.push_back(PyLong_AsLong(pValue));
                     }
-                    Py_DECREF(pList0);
+                }
+                Py_DECREF(pList0);
 
-                    // Confidence list
-                    PyObject* pList1 = PyList_GetItem(pValue0, 1);
+                // Confidence list
+                std::vector<double> confs;
+                PyObject* pList1 = PyList_GetItem(pRet, 1);
+                if(pList1)
+                {
                     Py_ssize_t cnt1 = PyList_Size(pList1);
                     for (int i = 0; i < cnt1; i++)
                     {
                         pValue = PyList_GetItem(pList1, i);
                         confs.push_back(PyFloat_AsDouble(pValue));
                     }
-                    Py_DECREF(pList1);
                 }
-                Py_DECREF(pValue0);
+                Py_DECREF(pList1);
 
                 // save the result
                 m_streetviews.clear();
