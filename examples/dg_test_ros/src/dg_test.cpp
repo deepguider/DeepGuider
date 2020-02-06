@@ -4,6 +4,8 @@
 #include <ros/ros.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/NavSatStatus.h>
+#include <sensor_msgs/NavSatFix.h>
 #include <cv_bridge/cv_bridge.h>
 
 using namespace std;
@@ -16,7 +18,7 @@ public:
 
     virtual bool runOnce(double timestamp)
     {
-        cout << "Time: " << timestamp << endl;
+        //cout << "Time: " << timestamp << endl;
         return true;
     }
 
@@ -47,19 +49,20 @@ public:
         nh_.param<double>("wait_sec", m_wait_sec, m_wait_sec);
 
         // Initialize subscribers
-        sub_image_ = nh_.subscribe("/uvc_image_raw/compressed", 1, &YourRunnerNode::callbackImageCompressed, this);
+        sub_image_webcam = nh_.subscribe("/uvc_image_raw/compressed", 1, &YourRunnerNode::callbackImageCompressed, this);
+        sub_gps_asen = nh_.subscribe("/asen_fix", 1, &YourRunnerNode::callbackGPSAsen, this);
+        sub_gps_novatel = nh_.subscribe("/novatel_fix", 1, &YourRunnerNode::callbackGPSNovatel, this);
+        //sub_image_ = nh_.subscribe("/imu/data", 1, &YourRunnerNode::callbackImageCompressed, this);
+        //sub_image_ = nh_.subscribe("/camera/color/image_raw/compressed", 1, &YourRunnerNode::callbackImageCompressed, this);
+        //sub_image_ = nh_.subscribe("/camera/depth/image_rect_raw/compressed", 1, &YourRunnerNode::callbackImageCompressed, this);        
 
         // Initialize publishers
         pub_image_ = nh_.advertise<sensor_msgs::CompressedImage>("image_out", 1, true);
     }
-    
-    
 
     // A callback function for subscribing a RGB image
-    void callbackImage(const sensor_msgs::CompressedImage::ConstPtr& msg)
+    void callbackImage(const sensor_msgs::Image::ConstPtr& msg)
     {
-       cout << "image callback: " << msg->header.stamp.toSec() << endl;
- 
         ROS_INFO_THROTTLE(1.0, "A RGB image is subscribed (timestamp: %f [sec]).", msg->header.stamp.toSec());
         cv_bridge::CvImagePtr image_ptr;
         cv::Mat image;
@@ -78,9 +81,7 @@ public:
     // A callback function for subscribing a compressed RGB image
     void callbackImageCompressed(const sensor_msgs::CompressedImageConstPtr& msg)
     {
-       cout << "compressed image callback: " << msg->header.stamp.toSec() << endl;
- 
-        ROS_INFO_THROTTLE(1.0, "A RGB image is subscribed (timestamp: %f [sec]).", msg->header.stamp.toSec());
+        ROS_INFO_THROTTLE(1.0, "A Compressed RGB image is subscribed (timestamp: %f [sec]).", msg->header.stamp.toSec());
         cv_bridge::CvImagePtr image_ptr;
         cv::Mat image;
         try
@@ -93,6 +94,45 @@ public:
             return;
         }
     }
+    
+    // A callback function for subscribing GPS Asen
+    void callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
+    {
+        ROS_INFO_THROTTLE(1.0, "GPS Asen is subscribed (timestamp: %f [sec]).", fix->header.stamp.toSec());
+        
+        if (fix->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) {
+            ROS_DEBUG_THROTTLE(60,"Asen: No fix.");
+            return;
+        }
+
+        if (fix->header.stamp == ros::Time(0)) {
+            return;
+        }
+        
+        double lat = fix->latitude;
+        double lon = fix->longitude;
+        ROS_INFO_THROTTLE(1.0, "GPS Asen: lat=%f, lon=%f", lat, lon);
+    }
+    
+    
+    // A callback function for subscribing GPS Novatel
+    void callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix)
+    {
+        ROS_INFO_THROTTLE(1.0, "GPS Novatel is subscribed (timestamp: %f [sec]).", fix->header.stamp.toSec());
+        
+        if (fix->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) {
+            ROS_DEBUG_THROTTLE(60,"Novatel: No fix.");
+            return;
+        }
+
+        if (fix->header.stamp == ros::Time(0)) {
+            return;
+        }
+        
+        double lat = fix->latitude;
+        double lon = fix->longitude;
+        ROS_INFO_THROTTLE(1.0, "GPS Novatel: lat=%f, lon=%f", lat, lon);
+    }    
     
     virtual bool runAndSpin()
     {
@@ -110,7 +150,9 @@ public:
 
 private:
     // Topic subscribers
-    ros::Subscriber sub_image_;
+    ros::Subscriber sub_image_webcam;
+    ros::Subscriber sub_gps_asen;
+    ros::Subscriber sub_gps_novatel;
 
     // Topic publishers
     ros::Publisher pub_image_;
