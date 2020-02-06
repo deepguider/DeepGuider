@@ -10,10 +10,10 @@
 #include <fstream>
 using namespace rapidjson;
 
-#ifdef _WIN32
 #define CURL_STATICLIB
 // curl header file
 #include "../../EXTERNAL/curl/include/curl/curl.h" 
+#ifdef _WIN32
 // curl library files
 #ifdef _DEBUG
 #pragma comment(lib, "../../EXTERNAL/curl/lib/libcurl_a_debug.lib")   // curl-7.65.3.zip 
