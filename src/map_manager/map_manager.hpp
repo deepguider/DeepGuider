@@ -4,21 +4,21 @@
 #include "dg_core.hpp"
 
 // rapidjson header files
-#include "../../EXTERNAL/rapidjson/include/rapidjson/document.h" 
-#include "../../EXTERNAL/rapidjson/include/rapidjson/stringbuffer.h"
-#include "../../EXTERNAL/rapidjson/include/rapidjson/prettywriter.h"
+#include "rapidjson/document.h" 
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/prettywriter.h"
 #include <fstream>
 using namespace rapidjson;
 
 #define CURL_STATICLIB
 // curl header file
-#include "../../EXTERNAL/curl/include/curl/curl.h" 
+#include "curl/curl.h" 
 #ifdef _WIN32
 // curl library files
 #ifdef _DEBUG
-#pragma comment(lib, "../../EXTERNAL/curl/lib/libcurl_a_debug.lib")   // curl-7.65.3.zip 
+#pragma comment(lib, "libcurl_a_debug.lib")   // curl-7.65.3.zip 
 #else
-#pragma comment(lib, "../../EXTERNAL/curl/lib/libcurl_a.lib")         // curl-7.65.3.zip 
+#pragma comment(lib, "libcurl_a.lib")         // curl-7.65.3.zip 
 #endif
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Crypt32.lib")
@@ -63,6 +63,7 @@ public:
 
 	bool initialize();
 
+	static size_t write_callback(void* ptr, size_t size, size_t count, void* stream);
 	bool query2server(std::string url);
 	void downloadMap(cv::Point2i tile);
 	bool downloadMap(double lat, double lon, double radius);

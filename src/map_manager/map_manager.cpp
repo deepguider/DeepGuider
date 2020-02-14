@@ -30,13 +30,13 @@ namespace dg
 		return cv::Point2i(long2tilex(lon, z), lat2tiley(lat, z));
 	}
 
-	bool initialize()
+	bool MapManager::initialize()
 	{
 
 		return true;
 	}
 
-	size_t write_callback(void* ptr, size_t size, size_t count, void* stream)
+	size_t MapManager::write_callback(void* ptr, size_t size, size_t count, void* stream)
 	{
 		((std::string*)stream)->append((char*)ptr, 0, size * count);
 		return size * count;
