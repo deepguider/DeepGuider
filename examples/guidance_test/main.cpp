@@ -1,7 +1,7 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
 #include "dg_map_manager.hpp"
-#include "guidance\guidance.hpp"
+#include "guidance/guidance.hpp"
 #include "../unit_test/vvs.h"
 
 #define USE_JSH_PATHFILE 0
