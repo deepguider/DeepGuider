@@ -17,9 +17,9 @@ class RoadDirectionRecognizer:
         self.timestamp = timestamp
 
         ##### Process Input #####
-        cv.imshow("sample", image)
-        cv.waitKey()
-        cv.destroyWindow("sample")
+        #cv.imshow("sample", image)
+        #cv.waitKey()
+        #cv.destroyWindow("sample")
         
         ##### Results #####
         self.angle = 10.0
