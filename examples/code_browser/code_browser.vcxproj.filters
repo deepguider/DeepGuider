@@ -46,6 +46,9 @@
     <Filter Include="Source Files\map_manager_test">
       <UniqueIdentifier>{209a7459-360d-41cc-82d1-41951154f688}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\guidance">
+      <UniqueIdentifier>{eca8c133-7479-40b9-a75c-98eb9c3ca52e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -74,6 +77,9 @@
     </ClCompile>
     <ClCompile Include="..\map_manager_test\main.cpp">
       <Filter>Source Files\map_manager_test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\guidance\guidance.cpp">
+      <Filter>Header Files\guidance</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -142,6 +148,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\dg_vps.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\guidance\guidance.hpp">
+      <Filter>Header Files\guidance</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

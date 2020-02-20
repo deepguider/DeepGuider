@@ -91,6 +91,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\guidance\guidance.cpp" />
     <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
     <ClCompile Include="..\..\src\poi_recog\poi_recognizer.cpp" />
@@ -113,6 +114,7 @@
     <ClInclude Include="..\..\src\dg_poi_recog.hpp" />
     <ClInclude Include="..\..\src\dg_road_recog.hpp" />
     <ClInclude Include="..\..\src\dg_vps.hpp" />
+    <ClInclude Include="..\..\src\guidance\guidance.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\simple_localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\simple_road_map.hpp" />
