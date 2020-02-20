@@ -20,6 +20,9 @@ int main()
 
     // Run the Python module
     cv::Mat image = cv::imread("road_sample.jpg");
+    cv::imshow("RoadTheta", image);
+    cv::waitKey(1);
+
     int nIter = 5;
     for (int i = 0; i < nIter; i++)
     {
