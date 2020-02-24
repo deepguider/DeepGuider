@@ -98,7 +98,7 @@ void DeepGuiderSimple::generateSensorDataGPSFromPath(dg::Map& map, dg::Path& pat
         double lat = node->data.lat;
         double lon = node->data.lon;
 
-        printf("id = %llu, lat = %lf, lon = %lf\n", (long long unsigned int)id, lat, lon);
+        printf("id = %zu, lat = %lf, lon = %lf\n", id, lat, lon);
         path_gps.push_back(dg::LatLon(lat, lon));
     }
 
@@ -135,7 +135,7 @@ int DeepGuiderSimple::run()
     dg::Path path = m_map_manager.getPath("test_simple_path.json");
     dg::ID start_node = path.m_points.front();
     dg::ID dest_node = path.m_points.back();
-    printf("\tSample Path generated! start=%llu, dest=%llu\n", (long long unsigned int)start_node, (long long unsigned int)dest_node);
+    printf("\tSample Path generated! start=%zu, dest=%zu\n", start_node, dest_node);
 
     // load map along the path
     if (!m_map_manager.load(36.384063, 127.374733, 650.0))
@@ -154,6 +154,7 @@ int DeepGuiderSimple::run()
     std::vector<dg::LatLon> gps_data;
     generateSensorDataGPSFromPath(map, path, gps_data, interval, noise_level);
     printf("\tSample gps data generated!\n");
+
 
     // guidance: load files for guidance test (ask JSH)
     m_guider.loadPathFiles("Path_ETRIFrontgateToParisBaguette.txt", m_guider.m_path);
@@ -223,7 +224,7 @@ int DeepGuiderSimple::run()
                 ids.push_back(streetviews[k].id);
                 obs.push_back(rel_pose_defualt);
                 confs.push_back(streetviews[k].confidence);
-                printf("\ttop%d: id=%ld, confidence=%lf, ts=%lf\n", k, streetviews[k].id, streetviews[k].confidence, ts);
+                printf("\ttop%d: id=%zu, confidence=%lf, ts=%lf\n", k, streetviews[k].id, streetviews[k].confidence, ts);
             }
             m_localizer.applyLocClue(ids, obs, ts, confs);
         }
@@ -266,7 +267,7 @@ int DeepGuiderSimple::run()
         pose_gps = m_localizer.getPoseGPS();
         pose_confidence = m_localizer.getPoseConfidence();
         printf("localizer:\n");
-        printf("\ttopo: node=%llu, edge=%d, dist=%lf, ts=%lf\n", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist, ts);
+        printf("\ttopo: node=%zu, edge=%d, dist=%lf, ts=%lf\n", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist, ts);
         printf("\tmetr: x=%lf, y=%lf, theta=%lf, ts=%lf\n", pose_metr.x, pose_metr.y, pose_metr.theta, ts);
         printf("\tconfidence: %lf\n", pose_confidence);
 
@@ -292,8 +293,8 @@ int DeepGuiderSimple::run()
         }
 
         // user break
-        //char key = cv::waitKey(1);
-        //if (key == 27) break;
+        char key = cv::waitKey(1);
+        if (key == 27) break;
     }
 
     return 0;
