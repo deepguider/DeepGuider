@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "guidance_test", "guidance_t
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "map_manager_test", "map_manager_test\map_manager_test.vcxproj", "{FB401C0A-9F85-48A5-9452-0341C0AF7D22}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dg_test", "dg_test\dg_test.vcxproj", "{7FCCC221-F1C9-46B0-9921-A4FD9DF0EB17}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -33,6 +35,10 @@ Global
 		{FB401C0A-9F85-48A5-9452-0341C0AF7D22}.Debug|x64.Build.0 = Debug|x64
 		{FB401C0A-9F85-48A5-9452-0341C0AF7D22}.Release|x64.ActiveCfg = Release|x64
 		{FB401C0A-9F85-48A5-9452-0341C0AF7D22}.Release|x64.Build.0 = Release|x64
+		{7FCCC221-F1C9-46B0-9921-A4FD9DF0EB17}.Debug|x64.ActiveCfg = Debug|x64
+		{7FCCC221-F1C9-46B0-9921-A4FD9DF0EB17}.Debug|x64.Build.0 = Debug|x64
+		{7FCCC221-F1C9-46B0-9921-A4FD9DF0EB17}.Release|x64.ActiveCfg = Release|x64
+		{7FCCC221-F1C9-46B0-9921-A4FD9DF0EB17}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -26,9 +26,9 @@ public:
 
     virtual bool applyOdometry(double theta_curr, double theta_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1) = 0;
 
-    virtual bool applyLocClue(int id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
+    virtual bool applyLocClue(ID id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
 
-    virtual bool applyLocClue(const std::vector<int>& ids, const std::vector<Polar2>& obs, Timestamp time = -1, const std::vector<double>& confidence = std::vector<double>()) = 0;
+    virtual bool applyLocClue(const std::vector<ID>& ids, const std::vector<Polar2>& obs, Timestamp time = -1, const std::vector<double>& confidence = std::vector<double>()) = 0;
 };
 
 class MetricLocalizer
