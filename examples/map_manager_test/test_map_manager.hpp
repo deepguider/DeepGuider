@@ -30,15 +30,15 @@ int testSimpleMapManager()
     // Load the map
 	VVS_CHECK_TRUE(manager.load(36.384063, 127.374733, 650.0));
     //VVS_CHECK_TRUE(manager.load(36.383921, 127.367481, 16.0));
-	VVS_CHECK_EQUL(manager.getMap().countNodes(), 4559); //8856); // 2);
+	VVS_CHECK_EQUL(manager.getMap().countNodes(), 721); //8856); // 2);
 	
-	//manager.generatePath();
+	manager.generatePath(37.503884, 127.047569, 37.5087, 127.0621);
 	dg::Path path = manager.getPath("test_simple_path.json");
 	VVS_CHECK_EQUL(path.countPoints(), 78); // 9);
 
-	dg::Map::Node* findNode = manager.getMap().findNode(559542564800735);
-	VVS_CHECK_EQUL(findNode->data.id, 559542564800735);
-	dg::Map::Edge* findEdge = manager.getMap().findEdge(559562564900779, 559562564900780);
+	dg::Map::Node* findNode = manager.getMap().findNode(559542564800095);
+	VVS_CHECK_EQUL(findNode->data.id, 559542564800095);
+	dg::Map::Edge* findEdge = manager.getMap().findEdge(559562564900154, 559562564900155);
 	VVS_CHECK_EQUL(findEdge->cost.length, 13.370689140764002);
 	
 	//std::vector<cv::Point2d> poiloc = manager.getPOIloc("UST");
