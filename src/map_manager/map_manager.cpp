@@ -266,7 +266,6 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 			edgeinfo.id = properties["id"].GetUint64();
 			edgeinfo.type = properties["type"].GetInt();
 			edgeinfo.length = properties["length"].GetDouble();
-			edgeinfo.width = properties["width"].GetDouble();
 			temp_edge.push_back(edgeinfo);
 		}
 	}
@@ -330,8 +329,8 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 			for (auto j = i; j < it->node_ids.end(); j++)
 			{
 				if (i == j) continue;
-				m_map.addEdge(NodeInfo(*i), NodeInfo(*j), EdgeInfo(it->length, it->type, it->width));
-				m_map.addEdge(NodeInfo(*j), NodeInfo(*i), EdgeInfo(it->length, it->type, it->width));
+				m_map.addEdge(NodeInfo(*i), NodeInfo(*j), EdgeInfo(it->length, it->type));
+				m_map.addEdge(NodeInfo(*j), NodeInfo(*i), EdgeInfo(it->length, it->type));
 #ifdef _DEBUG
 					fprintf(stdout, "%d %s\n", ++numEdges, "<=======================the number of edges"); // the number of edges
 #endif
@@ -342,7 +341,7 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 	return true;
 }
 
-bool MapManager::generatePath()
+bool MapManager::generatePath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths)
 {
 	
 

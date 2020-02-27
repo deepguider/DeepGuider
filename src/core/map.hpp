@@ -90,13 +90,10 @@ public:
      * The default constructor
      * TODO
      */
-    EdgeInfo(double _length = 1, double _width = 1, int _type = 0) : length(_length), width(_width), type(_type) { }
+    EdgeInfo(double _length = 1, int _type = 0) : length(_length), type(_type) { }
 
     /** The length of edge (Unit: [m]) */
     double length;
-
-    /** The width of edge (Unit: [m]) */
-    double width;
 
     /** The type of edge */
     int type;
