@@ -108,8 +108,8 @@ bool MapManager::downloadMap(double lat, double lon, double radius)
 	return query2server(url);
 }
 
-// unicode-escape decording
-std::string to_utf8(uint32_t cp)
+// unicode-escape decoding
+std::string MapManager::to_utf8(uint32_t cp)
 {
 	/*
 	if using C++11 or later, you can do this:
@@ -150,32 +150,9 @@ std::string to_utf8(uint32_t cp)
 	return result;
 }
 
-bool MapManager::load(double lat, double lon, double radius)//(double lon, double lat, int z)
+bool MapManager::decodeUni()
 {
-    m_map.removeAll();
-
-	// by file
-	//downloadMap(lonlat2xy(lon, lat, z));
-	//// Convert JSON document to string
-	//const char* filename = "test_simple_map.json";
-	//auto is = std::ifstream(filename, std::ofstream::in);
-	//if (!is.is_open())
-	//{
-	//	std::cerr << "Could not open file for reading!\n";
-	//	return EXIT_FAILURE;
-	//}
-	//std::string line, text;
-	//while (std::getline(is, line))
-	//{
-	//	text += line + "\n";
-	//}
-	//const char* json = text.c_str();
-	//is.close();
-
-	// by communication
-	downloadMap(lat, lon, radius); // 1000.0);
-	
-	// unicode-escape decording
+	// unicode-escape decoding
 	std::string::size_type startIdx = 0;
 	do
 	{
@@ -199,6 +176,35 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 			startIdx += 2;
 	} while (true);
 
+	return true;
+}
+
+bool MapManager::load(double lat, double lon, double radius)//(double lon, double lat, int z)
+{
+    m_map.removeAll();
+	m_json = "";
+
+	// by file
+	//downloadMap(lonlat2xy(lon, lat, z));
+	//// Convert JSON document to string
+	//const char* filename = "test_simple_map.json";
+	//auto is = std::ifstream(filename, std::ofstream::in);
+	//if (!is.is_open())
+	//{
+	//	std::cerr << "Could not open file for reading!\n";
+	//	return EXIT_FAILURE;
+	//}
+	//std::string line, text;
+	//while (std::getline(is, line))
+	//{
+	//	text += line + "\n";
+	//}
+	//const char* json = text.c_str();
+	//is.close();
+
+	// by communication
+	downloadMap(lat, lon, radius); // 1000.0);
+	decodeUni();
 	const char* json = m_json.c_str();
 #ifdef _DEBUG
 	fprintf(stdout, "%s\n", json);
@@ -341,15 +347,53 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 	return true;
 }
 
+bool MapManager::downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths)
+{
+	const std::string url_head = "http://129.254.87.96:20005/"; // routing server (paths)
+	std::string url = url_head + std::to_string(start_lat) + "/" + std::to_string(start_lon) + "/" + std::to_string(goal_lat) + "/" + std::to_string(goal_lon) + "/" + std::to_string(num_paths);
+
+
+	return query2server(url);
+}
+
 bool MapManager::generatePath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths)
 {
-	
+	m_path.removeAll();
+	m_json = "";
+
+	// by communication
+	downloadPath(start_lat, start_lon, goal_lat, goal_lon, num_paths);
+	decodeUni();
+	const char* json = m_json.c_str();
+
+#ifdef _DEBUG
+	fprintf(stdout, "%s\n", json);
+#endif
+	Document document;
+	document.Parse(json);
+
+	assert(document[0].IsObject());
+	const Value& features = document[0]["features"];
+	assert(features.IsArray());
+
+	for (SizeType i = 0; i < features.Size(); i++)
+	{
+		const Value& feature = features[i];
+		assert(feature.IsObject());
+		assert(feature.HasMember("properties"));
+		const Value& properties = feature["properties"];
+		assert(properties.IsObject());
+		m_path.m_points.push_back(properties["id"].GetUint64());
+	}
 
 	return true;
 }
 
 Path MapManager::getPath(const char* filename)
 {
+	m_path.removeAll();
+	m_json = "";
+
 	// Convert JSON document to string
 	auto is = std::ifstream(filename, std::ofstream::in);
 	assert(is.is_open());
@@ -371,6 +415,11 @@ Path MapManager::getPath(const char* filename)
 		m_path.m_points.push_back(path[i].GetUint64());
 	}
 
+	return m_path;
+}
+
+Path MapManager::getPath()
+{
 	return m_path;
 }
 

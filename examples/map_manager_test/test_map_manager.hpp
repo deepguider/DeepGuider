@@ -32,10 +32,15 @@ int testSimpleMapManager()
     //VVS_CHECK_TRUE(manager.load(36.383921, 127.367481, 16.0));
 	VVS_CHECK_EQUL(manager.getMap().countNodes(), 721); //8856); // 2);
 	
+	// Generate the path
 	manager.generatePath(37.503884, 127.047569, 37.5087, 127.0621);
-	dg::Path path = manager.getPath("test_simple_path.json");
-	VVS_CHECK_EQUL(path.countPoints(), 78); // 9);
 
+	// Get the path
+	dg::Path path = manager.getPath();
+	VVS_CHECK_EQUL(path.countPoints(), 109); // 78);
+	path = manager.getPath("test_simple_path.json");
+	VVS_CHECK_EQUL(path.countPoints(), 78);
+	
 	dg::Map::Node* findNode = manager.getMap().findNode(559542564800095);
 	VVS_CHECK_EQUL(findNode->data.id, 559542564800095);
 	dg::Map::Edge* findEdge = manager.getMap().findEdge(559562564900154, 559562564900155);

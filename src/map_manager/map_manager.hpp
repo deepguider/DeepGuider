@@ -67,6 +67,7 @@ public:
 	bool query2server(std::string url);
 	void downloadMap(cv::Point2i tile);
 	bool downloadMap(double lat, double lon, double radius);
+	std::string MapManager::to_utf8(uint32_t cp);
 	cv::Point2i lonlat2xy(double lon, double lat, int z);
 	/**
 	 * Read a map from the given file
@@ -82,9 +83,11 @@ public:
 	// */
 	//bool isEmpty() const;
 
+	bool decodeUni();
+	bool downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
 	bool generatePath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
-	Path getPath(const char* filename = "test_simple_Path.json");
-	
+	Path getPath(const char* filename);
+	Path MapManager::getPath();
 	Map& getMap(Path path);
 	Map& getMap();
 
