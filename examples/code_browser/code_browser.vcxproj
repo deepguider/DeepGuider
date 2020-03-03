@@ -95,11 +95,13 @@
     <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
     <ClCompile Include="..\..\src\poi_recog\poi_recognizer.cpp" />
+    <ClCompile Include="..\dg_test\main.cpp" />
     <ClCompile Include="..\guidance_test\Guidance.cpp" />
     <ClCompile Include="..\guidance_test\main.cpp" />
     <ClCompile Include="..\map_manager_test\main.cpp" />
     <ClCompile Include="..\proj_template\main.cpp" />
     <ClCompile Include="..\road_recog_test\main.cpp" />
+    <ClCompile Include="..\unit_test\main.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -126,6 +128,13 @@
     <ClInclude Include="..\guidance_test\Guidance.hpp" />
     <ClInclude Include="..\guidance_test\simple_map_manager_jsh.h" />
     <ClInclude Include="..\map_manager_test\test_map_manager.hpp" />
+    <ClInclude Include="..\unit_test\test_core_graph.hpp" />
+    <ClInclude Include="..\unit_test\test_core_type.hpp" />
+    <ClInclude Include="..\unit_test\test_localizer_example.hpp" />
+    <ClInclude Include="..\unit_test\test_localizer_gps2utm.hpp" />
+    <ClInclude Include="..\unit_test\test_localizer_road.hpp" />
+    <ClInclude Include="..\unit_test\test_localizer_simple.hpp" />
+    <ClInclude Include="..\unit_test\vvs.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\exploration\active_navigation.py" />
@@ -139,7 +148,9 @@
     <None Include="..\..\src\vps\vps.py" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="..\dg_test\CMakeLists.txt" />
     <Text Include="..\road_recog_test\CMakeLists.txt" />
+    <Text Include="..\unit_test\CMakeLists.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

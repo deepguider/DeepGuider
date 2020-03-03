@@ -49,6 +49,12 @@
     <Filter Include="Header Files\guidance">
       <UniqueIdentifier>{eca8c133-7479-40b9-a75c-98eb9c3ca52e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\dg_test">
+      <UniqueIdentifier>{a277c2ba-7320-48a0-85b3-77fba5b4012a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\unit_test">
+      <UniqueIdentifier>{ceb0b1f9-3556-48d4-bd49-1c3c66d914d6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -80,6 +86,12 @@
     </ClCompile>
     <ClCompile Include="..\..\src\guidance\guidance.cpp">
       <Filter>Header Files\guidance</Filter>
+    </ClCompile>
+    <ClCompile Include="..\unit_test\main.cpp">
+      <Filter>Source Files\unit_test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dg_test\main.cpp">
+      <Filter>Source Files\dg_test</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -152,6 +164,27 @@
     <ClInclude Include="..\..\src\guidance\guidance.hpp">
       <Filter>Header Files\guidance</Filter>
     </ClInclude>
+    <ClInclude Include="..\unit_test\test_core_graph.hpp">
+      <Filter>Source Files\unit_test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\unit_test\test_core_type.hpp">
+      <Filter>Source Files\unit_test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\unit_test\test_localizer_example.hpp">
+      <Filter>Source Files\unit_test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\unit_test\test_localizer_gps2utm.hpp">
+      <Filter>Source Files\unit_test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\unit_test\test_localizer_road.hpp">
+      <Filter>Source Files\unit_test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\unit_test\test_localizer_simple.hpp">
+      <Filter>Source Files\unit_test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\unit_test\vvs.h">
+      <Filter>Source Files\unit_test</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\exploration\active_navigation.py">
@@ -185,6 +218,12 @@
   <ItemGroup>
     <Text Include="..\road_recog_test\CMakeLists.txt">
       <Filter>Source Files\road_recog_test</Filter>
+    </Text>
+    <Text Include="..\unit_test\CMakeLists.txt">
+      <Filter>Source Files\unit_test</Filter>
+    </Text>
+    <Text Include="..\dg_test\CMakeLists.txt">
+      <Filter>Source Files\dg_test</Filter>
     </Text>
   </ItemGroup>
 </Project>
