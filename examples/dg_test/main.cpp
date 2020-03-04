@@ -157,19 +157,14 @@ int DeepGuiderSimple::run()
 
 
     // guidance: load files for guidance test (ask JSH)
-    m_guider.loadPathFiles("Path_ETRIFrontgateToParisBaguette.txt", m_guider.m_path);
-    std::vector<dg::TopometricPose> Loc;
-    m_guider.loadLocFiles("Loc_ETRIFrontgateToParisBaguette.txt", Loc);
-    m_guider.generateGuide();	//generate guide
+     m_guider.setPathNMap(path, map);
+    m_guider.initializeGuides();
     printf("\n");
 
     // guidance: Initial move (ask JSH)
-    dg::Guidance::Guide initG(m_guider.m_guide[0]);
-    dg::Guidance::Action InitA(dg::Guidance::GO_FORWARD, 0);
-    std::vector<dg::Guidance::InstantGuide> curGuide;
-    curGuide.push_back(dg::Guidance::InstantGuide(initG, InitA));
-    dg::TopometricPose curPose;
-    dg::Guidance::Status curStatus;
+    m_guider.setInitRobotGuide();
+    dg::Guidance::MoveStatus cur_status;
+    std::vector<dg::Guidance::RobotGuide> cur_guide;
 
     // some default variables
     dg::ID id_invalid = 0;
@@ -275,16 +270,17 @@ int DeepGuiderSimple::run()
         if (pose_confidence > 0.5)
         {
             // invoke normal guidance module
+            cur_status = m_guider.applyPose(pose_topo);
+            cur_guide = m_guider.getNormalGuide(cur_status);
         }
         else
         {
             // invoke exploration module
+            std::vector<dg::Guidance::RobotGuide> getActiveExplorGuide();
         }
 
-        // generate guidance (ask JSH)
-        curPose = Loc[itr];
-        curStatus = m_guider.checkStatus(curPose);
-        curGuide = m_guider.provideNormalGuide(curGuide, curStatus);        
+        // guidance (ask JSH)
+        m_guider.printRobotGuide(cur_guide);
 
         // check arrival
         if (++itr >= nitr)

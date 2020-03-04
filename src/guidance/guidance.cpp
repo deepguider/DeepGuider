@@ -337,6 +337,8 @@ void dg::Guidance::printSingleRGuide(dg::Guidance::RobotGuide instGuide)
 
 void dg::Guidance::printRobotGuide(std::vector<dg::Guidance::RobotGuide> rGuides)
 {
+	if (rGuides.empty())	return;
+	
 	for (size_t j = 0; j < rGuides.size(); j++)
 	{
 		printSingleRGuide(rGuides[j]);
@@ -469,7 +471,7 @@ bool dg::Guidance::savePathNodeEdgeIds()
 	pastid = *pathids.begin();
 	dg::Map::Node* foundnode = m_map.findNode(pastid);
 	fprintf(nodefile, "%" PRIu64 "\n", foundnode->data.id);
-	pathids.pop_front(); //첫번째 노드 삭제
+	pathids.pop_front(); //erase first node
 
 	for (it = pathids.begin(); it != pathids.end(); ++it)
 	{
