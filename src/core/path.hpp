@@ -17,7 +17,7 @@ public:
 	 * @return The number of points
 	 */
 	int countPoints() const { return (int)m_points.size(); }
-
+	bool removeAll() { m_points.clear(); return true; }
 	std::list<ID> m_points;
 };
 

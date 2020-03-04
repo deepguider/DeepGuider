@@ -56,18 +56,21 @@ public:
 	 */
 	MapManager() {}
 
-	int long2tilex(double lon, int z);
 	int lat2tiley(double lat, int z);
-	double tilex2long(int x, int z);
+	int lon2tilex(double lon, int z);
 	double tiley2lat(int y, int z);
+	double tilex2lon(int x, int z);
+	cv::Point2i latlon2xy(double lat, double lon, int z);
 
 	bool initialize();
 
 	static size_t write_callback(void* ptr, size_t size, size_t count, void* stream);
 	bool query2server(std::string url);
-	void downloadMap(cv::Point2i tile);
 	bool downloadMap(double lat, double lon, double radius);
-	cv::Point2i lonlat2xy(double lon, double lat, int z);
+	bool downloadMap(ID node_id, double radius);
+	bool downloadMap(cv::Point2i tile);
+	std::string to_utf8(uint32_t cp);
+	
 	/**
 	 * Read a map from the given file
 	 * @param lon longitude
@@ -75,16 +78,18 @@ public:
 	 * @param z zoom
 	 * @return Result of success (true) or failure (false)
 	 */
-	bool load(double lat, double lon, double radius);// (double lon = 128, double lat = 38, int z = 19);
+	bool load(double lat, double lon, double radius);
 	///**
 	// * Check whether this map is empty or not
 	// * @return True if empty (true) or not (false)
 	// */
 	//bool isEmpty() const;
 
+	bool decodeUni();
+	bool downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
 	bool generatePath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
-	Path getPath(const char* filename = "test_simple_Path.json");
-	
+	Path getPath(const char* filename);
+	Path getPath();
 	Map& getMap(Path path);
 	Map& getMap();
 
@@ -96,8 +101,8 @@ protected:
 
 	std::string m_json;
 
-	double m_lon = 0;
 	double m_lat = 0;
+	double m_lon = 0;
 	int m_z = 0;
 };
 

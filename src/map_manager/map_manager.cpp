@@ -3,20 +3,15 @@
 namespace dg
 {
 
-	int MapManager::long2tilex(double lon, int z)
-	{
-		return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
-	}
-
 	int MapManager::lat2tiley(double lat, int z)
 	{
 		double latrad = lat * M_PI / 180.0;
 		return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
 	}
 
-	double MapManager::tilex2long(int x, int z)
+	int MapManager::lon2tilex(double lon, int z)
 	{
-		return x / (double)(1 << z) * 360.0 - 180;
+		return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
 	}
 
 	double MapManager::tiley2lat(int y, int z)
@@ -25,9 +20,14 @@ namespace dg
 		return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
 	}
 
-	cv::Point2i MapManager::lonlat2xy(double lon, double lat, int z)
+	double MapManager::tilex2lon(int x, int z)
 	{
-		return cv::Point2i(long2tilex(lon, z), lat2tiley(lat, z));
+		return x / (double)(1 << z) * 360.0 - 180;
+	}
+
+	cv::Point2i MapManager::latlon2xy(double lat, double lon, int z)
+	{
+		return cv::Point2i(lon2tilex(lon, z), lat2tiley(lat, z));
 	}
 
 	bool MapManager::initialize()
@@ -47,10 +47,7 @@ namespace dg
 #ifdef _WIN32
 		SetConsoleOutputCP(65001);
 #endif
-		//std::string client_id = "X-NCP-APIGW-API-KEY-ID:h2weu1vyc4";
-		//std::string	client_secret = "X-NCP-APIGW-API-KEY:xYSNKDADst7RfmiFnMAyi1EkTcWqusBV1oHwVmax";
-		//std::string url{ "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start=127.31788462835466,36.37407414112156,start_pos&goal=127.3190043087742,36.37253204490351,end_pos&option=trafast" };
-
+		
 		curl_global_init(CURL_GLOBAL_ALL);
 		CURL* curl = curl_easy_init();
 		CURLcode res;
@@ -92,24 +89,32 @@ namespace dg
 		return true;
 	}
 
-void MapManager::downloadMap(cv::Point2i tile)
-{
-	const std::string url_head = "https://path.to.topological.map.server/";
-	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y) + "/";
-
-}
-
 bool MapManager::downloadMap(double lat, double lon, double radius)
 {
-	const std::string url_head = "http://129.254.87.96:21500/wgs/"; // routing server (nodes)
+	const std::string url_head = "http://129.254.87.96:21500/wgs/";
 	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 	
+	return query2server(url);
+}
+
+bool MapManager::downloadMap(ID node_id, double radius)
+{
+	const std::string url_head = "http://129.254.87.96:21500/node/";
+	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
 }
 
-// unicode-escape decording
-std::string to_utf8(uint32_t cp)
+bool MapManager::downloadMap(cv::Point2i tile)
+{
+	const std::string url_head = "http://129.254.87.96:21500/tile/";
+	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
+
+	return query2server(url);
+}
+
+// unicode-escape decoding
+std::string MapManager::to_utf8(uint32_t cp)
 {
 	/*
 	if using C++11 or later, you can do this:
@@ -150,32 +155,9 @@ std::string to_utf8(uint32_t cp)
 	return result;
 }
 
-bool MapManager::load(double lat, double lon, double radius)//(double lon, double lat, int z)
+bool MapManager::decodeUni()
 {
-    m_map.removeAll();
-
-	// by file
-	//downloadMap(lonlat2xy(lon, lat, z));
-	//// Convert JSON document to string
-	//const char* filename = "test_simple_map.json";
-	//auto is = std::ifstream(filename, std::ofstream::in);
-	//if (!is.is_open())
-	//{
-	//	std::cerr << "Could not open file for reading!\n";
-	//	return EXIT_FAILURE;
-	//}
-	//std::string line, text;
-	//while (std::getline(is, line))
-	//{
-	//	text += line + "\n";
-	//}
-	//const char* json = text.c_str();
-	//is.close();
-
-	// by communication
-	downloadMap(lat, lon, radius); // 1000.0);
-	
-	// unicode-escape decording
+	// unicode-escape decoding
 	std::string::size_type startIdx = 0;
 	do
 	{
@@ -199,6 +181,35 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 			startIdx += 2;
 	} while (true);
 
+	return true;
+}
+
+bool MapManager::load(double lat, double lon, double radius)
+{
+    m_map.removeAll();
+	m_json = "";
+
+	// by file
+	//downloadMap(latlon2xy(lat, lon, z));
+	//// Convert JSON document to string
+	//const char* filename = "test_simple_map.json";
+	//auto is = std::ifstream(filename, std::ofstream::in);
+	//if (!is.is_open())
+	//{
+	//	std::cerr << "Could not open file for reading!\n";
+	//	return EXIT_FAILURE;
+	//}
+	//std::string line, text;
+	//while (std::getline(is, line))
+	//{
+	//	text += line + "\n";
+	//}
+	//const char* json = text.c_str();
+	//is.close();
+
+	// by communication
+	downloadMap(lat, lon, radius); // 1000.0);
+	decodeUni();
 	const char* json = m_json.c_str();
 #ifdef _DEBUG
 	fprintf(stdout, "%s\n", json);
@@ -341,15 +352,53 @@ bool MapManager::load(double lat, double lon, double radius)//(double lon, doubl
 	return true;
 }
 
+bool MapManager::downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths)
+{
+	const std::string url_head = "http://129.254.87.96:20005/"; // routing server (paths)
+	std::string url = url_head + std::to_string(start_lat) + "/" + std::to_string(start_lon) + "/" + std::to_string(goal_lat) + "/" + std::to_string(goal_lon) + "/" + std::to_string(num_paths);
+
+
+	return query2server(url);
+}
+
 bool MapManager::generatePath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths)
 {
-	
+	m_path.removeAll();
+	m_json = "";
+
+	// by communication
+	downloadPath(start_lat, start_lon, goal_lat, goal_lon, num_paths);
+	decodeUni();
+	const char* json = m_json.c_str();
+
+#ifdef _DEBUG
+	fprintf(stdout, "%s\n", json);
+#endif
+	Document document;
+	document.Parse(json);
+
+	assert(document[0].IsObject());
+	const Value& features = document[0]["features"];
+	assert(features.IsArray());
+
+	for (SizeType i = 0; i < features.Size(); i++)
+	{
+		const Value& feature = features[i];
+		assert(feature.IsObject());
+		assert(feature.HasMember("properties"));
+		const Value& properties = feature["properties"];
+		assert(properties.IsObject());
+		m_path.m_points.push_back(properties["id"].GetUint64());
+	}
 
 	return true;
 }
 
 Path MapManager::getPath(const char* filename)
 {
+	m_path.removeAll();
+	m_json = "";
+
 	// Convert JSON document to string
 	auto is = std::ifstream(filename, std::ofstream::in);
 	assert(is.is_open());
@@ -374,16 +423,21 @@ Path MapManager::getPath(const char* filename)
 	return m_path;
 }
 
+Path MapManager::getPath()
+{
+	return m_path;
+}
+
 Map& MapManager::getMap(Path path)
 {
 	//TODO
 	CURL *curl;
 
-	double lon = 128;
 	double lat = 37.5;
-	int z = 19;
+	double lon = 128;
+	double r = 19.0;
 
-	load(lon, lat, z);
+	load(lat, lon, r);
 
 	return getMap();
 }

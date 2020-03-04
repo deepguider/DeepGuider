@@ -20,7 +20,7 @@ public:
      * The default constructor
      * TODO
      */
-    NodeInfo(ID _id = 0, double _lon = 0, double _lat = 0, int _type = 0, int _floor = 0) : id(_id), LatLon(_lon, _lat), type(_type), floor(_floor) { }
+    NodeInfo(ID _id = 0, double _lat = 0, double _lon = 0, int _type = 0, int _floor = 0) : id(_id), LatLon(_lat, _lon), type(_type), floor(_floor) { }
 
     /**
      * A constructor with initialization
