@@ -226,9 +226,8 @@ public:
 
 	GuidedPathType getHeadGuidedPath() { return m_initGuides[0]; }
 
-	bool setInitRobotGuide()
+	std::vector<RobotGuide> getInitGuide()
 	{
-		bool result = false;
 		std::vector<RobotGuide> curGuide;
 		GuidedPathType initGP = getHeadGuidedPath();
 		GuideStruct initG = setGuide(initGP.nextnid, initGP.nextntype, initGP.etype, initGP.degree );
@@ -236,8 +235,7 @@ public:
 		RobotGuide initRG = setRobotGuide(initG, initA);
 		curGuide.push_back(initRG);
 		m_prevguide = curGuide;
-		result = true;
-		return result;
+		return curGuide;
 	}
 
 	bool initializeGuides();

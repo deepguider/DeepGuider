@@ -157,14 +157,14 @@ int DeepGuiderSimple::run()
 
 
     // guidance: load files for guidance test (ask JSH)
-     m_guider.setPathNMap(path, map);
+    m_guider.setPathNMap(path, map);
     m_guider.initializeGuides();
     printf("\n");
 
     // guidance: Initial move (ask JSH)
-    m_guider.setInitRobotGuide();
     dg::Guidance::MoveStatus cur_status;
     std::vector<dg::Guidance::RobotGuide> cur_guide;
+    cur_guide = m_guider.getInitGuide();
 
     // some default variables
     dg::ID id_invalid = 0;

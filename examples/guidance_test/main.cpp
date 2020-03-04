@@ -45,9 +45,8 @@ int main()
 	guider.loadLocFiles("Loc_Path1Test.txt", Loc);
 
 	//Initial move
-	guider.setInitRobotGuide();
 	std::vector<dg::Guidance::RobotGuide> curGuide;
-	//curGuide = guider.getNormalGuide(dg::Guidance::MoveStatus::ON_EDGE);
+	curGuide = guider.getInitGuide();
 
 	dg::TopometricPose curPose;
 	dg::Guidance::MoveStatus curStatus;
