@@ -10,12 +10,11 @@ int main()
 {
 	   	 
 	dg::MapManager m_map_manager;
-	dg::Guidance m_guider;
 
 	// generate path to the destination
 
 	// load pre-defined path for the test
-	dg::Path path = m_map_manager.getPath("Path_SimpleTest.json");
+	dg::Path path = m_map_manager.getPath("Path1.json");
 	dg::ID start_node = path.m_points.front();
 	dg::ID dest_node = path.m_points.back();
 	printf("\tSample Path generated! start=%llu, dest=%llu\n", start_node, dest_node);
@@ -39,42 +38,41 @@ int main()
 #else
 
 	dg::Guidance guider;
-	guider.generateGuidancePath(map, path);
+	guider.setPathNMap(path, map);
+	guider.initializeGuides();
 
 	std::vector<dg::TopometricPose> Loc;
-	guider.loadLocFiles("Loc_SimpleTest.txt", Loc);
-
-	//generate guide
-	guider.generateGuide();
+	guider.loadLocFiles("Loc_Path1Test.txt", Loc);
 
 	//Initial move
-	dg::Guidance::Guide initG(guider.m_guide[0]);
-	dg::Guidance::Action InitA(dg::Guidance::GO_FORWARD, 0);
-	std::vector<dg::Guidance::InstantGuide> curGuide;
-	curGuide.push_back(dg::Guidance::InstantGuide(initG, InitA));
-
+	guider.setInitRobotGuide();
+	std::vector<dg::Guidance::RobotGuide> curGuide;
+	//curGuide = guider.getNormalGuide(dg::Guidance::MoveStatus::ON_EDGE);
 
 	dg::TopometricPose curPose;
-	dg::Guidance::Status curStatus;
+	dg::Guidance::MoveStatus curStatus;
 	//current locClue && current path
 	for (size_t i = 0; i < Loc.size(); i++)
 	{
-		fprintf(stdout, "Step: %d\n", i);
+		fprintf(stdout, "Step: %zd\n", i);
 
+		//print current TopometricPose
 		curPose = Loc[i];
 		fprintf(stdout, "[Pose] Node: %llu, Dist: %.1f\n", curPose.node_id, curPose.dist);
 
-		curStatus = guider.checkStatus(curPose);
+		curStatus = guider.applyPose(curPose);
+
+		//print status
 		std::string str_status;
 		switch (curStatus)
 		{
-		case dg::Guidance::ON_EDGE:
+		case dg::Guidance::MoveStatus::ON_EDGE:
 			str_status = "ON_EDGE";
 			break;
-		case dg::Guidance::APPROACHING_NODE:
+		case dg::Guidance::MoveStatus::APPROACHING_NODE:
 			str_status = "APPROACHING_NODE";
 			break;
-		case dg::Guidance::ARRIVED_NODE:
+		case dg::Guidance::MoveStatus::ARRIVED_NODE:
 			str_status = "ARRIVED_NODE";
 			break;
 		default:
@@ -82,15 +80,17 @@ int main()
 		}
 		fprintf(stdout, "[Status] %s\n", str_status.c_str());
 
-		curGuide = guider.provideNormalGuide(curGuide, curStatus);
-		for (size_t j = 0; j < curGuide.size(); j++)
-		{
-			guider.printInstantGuide(curGuide[j]);
-		}
-		fprintf(stdout, "Arrived!\n");
+		curGuide = guider.getNormalGuide(curStatus);
+
+		//print robot guide
+		guider.printRobotGuide(curGuide);
+		fprintf(stdout, "\n");
 	}
+	fprintf(stdout, "Arrived!\n");
 
 #endif
-
+	
+	getchar();
+	
 	return 0;
 }
