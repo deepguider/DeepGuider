@@ -8,6 +8,7 @@ After some step, we could make and release our own VPS code.
 - Python 3.5 ~
 - torch,torchvision, etc.
 - visdom  #  for display result
+- sudo apt install libopenblas-dev libgomp1 libomp-dev tk-dev python3-tk python3.6-tk
 
 
 ## Prepare Dataset
