@@ -92,8 +92,11 @@ public:
 	Path getPath();
 	Map& getMap(Path path);
 	Map& getMap();
-
-	std::vector<cv::Point2d> getPOIloc(const char* poiname = "UST");
+	bool downloadPOI(double lat, double lon, double radius);
+	bool downloadPOI(ID node_id, double radius);
+	bool downloadPOI(cv::Point2i tile);
+	std::vector<cv::Point2d> MapManager::getPOI(const char* poiname);
+	//std::vector<cv::Point2d> getPOIloc(const char* poiname = "UST");
 
 protected:
 	Map m_map;

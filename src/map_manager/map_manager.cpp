@@ -189,24 +189,6 @@ bool MapManager::load(double lat, double lon, double radius)
     m_map.removeAll();
 	m_json = "";
 
-	// by file
-	//downloadMap(latlon2xy(lat, lon, z));
-	//// Convert JSON document to string
-	//const char* filename = "test_simple_map.json";
-	//auto is = std::ifstream(filename, std::ofstream::in);
-	//if (!is.is_open())
-	//{
-	//	std::cerr << "Could not open file for reading!\n";
-	//	return EXIT_FAILURE;
-	//}
-	//std::string line, text;
-	//while (std::getline(is, line))
-	//{
-	//	text += line + "\n";
-	//}
-	//const char* json = text.c_str();
-	//is.close();
-
 	// by communication
 	downloadMap(lat, lon, radius); // 1000.0);
 	decodeUni();
@@ -216,48 +198,7 @@ bool MapManager::load(double lat, double lon, double radius)
 #endif
 	Document document;
 	document.Parse(json);
-
-	/*// test_simple_map.json
-	assert(document.IsObject());
-	const Value& nodes = document["nodes"];
-	assert(nodes.IsArray());
-	for (SizeType i = 0; i < nodes.Size(); i++)
-	{
-		const Value& node = nodes[i];
-		NodeInfo nodeinfo;
-		nodeinfo.id = node["id"].GetUint64();
-		nodeinfo.lon = node["longitude"].GetDouble();
-		nodeinfo.lat = node["latitude"].GetDouble();
-		const Value& streetviews = node["streetviews"];
-		for (Value::ConstValueIterator streetview = streetviews.Begin(); streetview != streetviews.End(); ++streetview)
-			nodeinfo.sv_ids.push_back(streetview->GetUint64());
-		const Value& pois = node["pois"];
-		for (Value::ConstValueIterator poi = pois.Begin(); poi != pois.End(); ++poi)
-			nodeinfo.pois.push_back(poi->GetString());
-		nodeinfo.type = node["node_type"].GetInt();
-		nodeinfo.floor = node["floor"].GetInt();
-
-		m_map.addNode(nodeinfo);
-	}
-	for (SizeType i = 0; i < nodes.Size(); i++)
-	{
-		const Value& node = nodes[i];
-		NodeInfo from_node;
-		from_node.id = node["id"].GetUint64();
-		const Value& edges = node["edges"];
-		EdgeInfo edgeinfo;
-		for (SizeType j = 0; j < edges.Size(); j++)
-		{
-			const Value& edge = edges[j];
-			ID tid = edge["tid"].GetUint64();
-			edgeinfo.width = edge["width"].GetDouble();
-			edgeinfo.length = edge["length"].GetDouble();
-			edgeinfo.type = edge["edge_type"].GetInt();
-
-			m_map.addEdge(from_node, NodeInfo(tid), edgeinfo);
-		}
-	}*/
-		
+	
 	assert(document.IsObject());
 	const Value& features = document["features"];
 	assert(features.IsArray());
@@ -420,7 +361,7 @@ Path MapManager::getPath(const char* filename)
 		m_path.m_points.push_back(path[i].GetUint64());
 	}
 
-	return m_path;
+	return getPath();
 }
 
 Path MapManager::getPath()
@@ -430,8 +371,22 @@ Path MapManager::getPath()
 
 Map& MapManager::getMap(Path path)
 {
-	//TODO
-	CURL *curl;
+	int num = 0;
+	for (std::list<ID>::iterator node_itr = path.m_points.begin(); node_itr != path.m_points.end(); ++node_itr)
+	{
+		// exclude edge ID
+		if(num % 2 != 0)
+		{
+			num++;
+			continue;
+		}
+
+		/*getMap().findNode(*node_itr)->data.lat;
+		getMap().findNode(*node_itr)->data.lon;*/
+
+		num++;
+	}
+	
 
 	double lat = 37.5;
 	double lon = 128;
@@ -447,22 +402,89 @@ Map& MapManager::getMap()
 	return m_map;
 }
 
-std::vector<cv::Point2d> MapManager::getPOIloc(const char* poiname)
+bool MapManager::downloadPOI(double lat, double lon, double radius)
+{
+	const std::string url_head = "http://129.254.87.96:21502/wgs/";
+	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
+
+	return query2server(url);
+}
+
+bool MapManager::downloadPOI(ID node_id, double radius)
+{
+	const std::string url_head = "http://129.254.87.96:21502/node/";
+	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
+
+	return query2server(url);
+}
+
+bool MapManager::downloadPOI(cv::Point2i tile)
+{
+	const std::string url_head = "http://129.254.87.96:21502/tile/";
+	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
+
+	return query2server(url);
+}
+
+std::vector<cv::Point2d> MapManager::getPOI(const char* poiname)
 {
 	std::vector<cv::Point2d> points;
-	for (dg::Map::NodeItr node_itr = m_map.getHeadNode(); node_itr != m_map.getTailNode(); node_itr++)
-	{
-		for (std::vector<std::string>::iterator it = node_itr->data.pois.begin(); it != node_itr->data.pois.end(); it++)
-		{
-			if (*(it) == poiname)
-			{
-				cv::Point2d point(node_itr->data.lon, node_itr->data.lat);
-				points.push_back(point);
-				break;
-			}
-		}
-	}
+
+	m_json = "";
+
+	// by communication
+//	downloadPOI(lat, lon, radius); // 1000.0);
+//	decodeUni();
+//	const char* json = m_json.c_str();
+//#ifdef _DEBUG
+//	fprintf(stdout, "%s\n", json);
+//#endif
+//	Document document;
+//	document.Parse(json);
+//
+//	assert(document.IsObject());
+//	const Value& features = document["features"];
+//	assert(features.IsArray());
+//
+//	std::vector<EdgeTemp> temp_edge;
+//	for (SizeType i = 0; i < features.Size(); i++)
+//	{
+//		const Value& feature = features[i];
+//		assert(feature.IsObject());
+//		assert(feature.HasMember("properties"));
+//		const Value& properties = feature["properties"];
+//		assert(properties.IsObject());
+//		std::string name = properties["name"].GetString();
+//		if (name == "edge") //continue; //TODO
+//		{
+//			EdgeTemp edgeinfo;
+//			edgeinfo.id = properties["id"].GetUint64();
+//			edgeinfo.type = properties["type"].GetInt();
+//			edgeinfo.length = properties["length"].GetDouble();
+//			temp_edge.push_back(edgeinfo);
+//		}
+//	}
+//
+	cv::Point2d point(37.0, 127.0);
+	points.push_back(point);
 	return points;
 }
+//std::vector<cv::Point2d> MapManager::getPOIloc(const char* poiname)
+//{
+//	std::vector<cv::Point2d> points;
+//	for (dg::Map::NodeItr node_itr = m_map.getHeadNode(); node_itr != m_map.getTailNode(); ++node_itr)
+//	{
+//		for (std::vector<std::string>::iterator it = node_itr->data.pois.begin(); it != node_itr->data.pois.end(); ++it)
+//		{
+//			if (*(it) == poiname)
+//			{
+//				cv::Point2d point(node_itr->data.lat, node_itr->data.lon);
+//				points.push_back(point);
+//				break;
+//			}
+//		}
+//	}
+//	return points;
+//}
 
 } // End of 'dg'
