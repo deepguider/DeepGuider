@@ -371,26 +371,27 @@ Path MapManager::getPath()
 
 Map& MapManager::getMap(Path path)
 {
-	int num = 0;
-	for (std::list<ID>::iterator node_itr = path.m_points.begin(); node_itr != path.m_points.end(); ++node_itr)
-	{
-		// exclude edge ID
-		if(num % 2 != 0)
-		{
-			num++;
-			continue;
-		}
+	//int num = 0;
+	//for (std::list<ID>::iterator node_itr = path.m_points.begin(); node_itr != path.m_points.end(); ++node_itr)
+	//{
+	//	// exclude edge ID
+	//	if(num % 2 != 0)
+	//	{
+	//		num++;
+	//		continue;
+	//	}
 
-		/*getMap().findNode(*node_itr)->data.lat;
-		getMap().findNode(*node_itr)->data.lon;*/
+	//	/*getMap().findNode(*node_itr)->data.lat;
+	//	getMap().findNode(*node_itr)->data.lon;*/
 
-		num++;
-	}
+	//	num++;
+	//}
 	
 
-	double lat = 37.5;
-	double lon = 128;
-	double r = 19.0;
+	double lat = 36.38;
+	double lon = 127.373;
+	double r = 1000.0;
+
 
 	load(lat, lon, r);
 
