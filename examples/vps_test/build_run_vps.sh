@@ -17,5 +17,5 @@ ln -sf ../src/vps/data_vps
 #ln -fs ../../src/vps/netvlad
 #ln -fs ../../src/vps/netvlad_etri_datasets
 source ~/.virtualenvs/dg_venv3.6/bin/activate
-cd "$topdir/bin"
+#gdb ./vps_test
 ./vps_test

@@ -1,6 +1,19 @@
 #!/bin/bash
 
 source ~/.virtualenvs/dg_venv3.6/bin/activate
+#Check whether visdom is running before begin
+
+PID=`pgrep -x visdom`
+if [ -z "$PID" ]
+then
+	echo "You need to run visdom before running"
+	echo "If you didn't install visdom,"
+	echo "You need to install and run it in python3.6 virtual environment"
+	exit 0
+else
+	echo "Checking vidsom... : Ok"
+fi
+
 Dataset="deepguider"
 #Dataset="'pittsburgh'"
 #nGPU=`python -c "import torch;print(torch.cuda.device_count())"`
@@ -32,3 +45,8 @@ else
 	echo "Oooops. We've prepared pretrained weights for only 1 or 4 of GPU"
 
 fi
+
+IP=`hostname -I | sed 's/ //g'`
+echo "You can navigate to http://localhost:8097 to look over the visual results"
+echo "or, you can navigate to http://${IP}:8097 on your local browser"
+
