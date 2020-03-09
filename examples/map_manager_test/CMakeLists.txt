@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS		"${CMAKE_CXX_FLAGS} -pthread")
 set(BINDIR			"${CMAKE_SOURCE_DIR}/../../bin")
 set(SRCDIR			"${CMAKE_SOURCE_DIR}/../../src")
 set(CURL_LIBRARY		"-lcurl") 
-set(RAPIDJSON_INCLUDE_DIR	"${CMAKE_SOURCE_DIR}/../../EXTERNAL/rapidjson/include/rapidjson")
+set(RAPIDJSON_INCLUDE_DIR	"${CMAKE_SOURCE_DIR}/../../EXTERNAL/rapidjson/include")
 
 get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
 string(REPLACE " " "_" ProjectId ${ProjectId})
