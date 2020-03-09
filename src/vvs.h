@@ -72,11 +72,15 @@
  */
 #define VVS_TIME_MSG                    (" --> Time: %.6f [sec]\n")
 
+#ifndef VVS_NO_ASSERT
 /**
  * A function for assert <p>
  * If you don't want to use it, please make it an empty macro.
  */
 #define VVS_ASSERT                      assert
+#else
+#define VVS_ASSERT
+#endif
 
 /**
  * Verify that the given expression is true
@@ -84,15 +88,15 @@
  */
 #define VVS_CHECK_TRUE(EXP) \
     { \
-        int _isTrue_ = (int)(EXP); \
+        int _is_true_ = (int)(EXP); \
         fprintf(VVS_OUTPUT, "[CHECK_TRUE] " #EXP); \
-        if (_isTrue_) fprintf(VVS_OUTPUT, VVS_SUCCESS_MSG); \
+        if (_is_true_) fprintf(VVS_OUTPUT, VVS_SUCCESS_MSG); \
         else \
         { \
             fprintf(VVS_OUTPUT, VVS_FAILURE_MSG); \
             fprintf(VVS_OUTPUT, VVS_LOCATION_MSG, __FILE__, __LINE__); \
         } \
-        VVS_ASSERT(_isTrue_); \
+        VVS_ASSERT(_is_true_); \
     }
 
 /**
@@ -101,15 +105,15 @@
  */
 #define VVS_CHECK_FALSE(EXP) \
     { \
-        int _isTrue_ = (int)(EXP); \
+        int _is_true_ = (int)(EXP); \
         fprintf(VVS_OUTPUT, "[CHECK_FALSE] " #EXP); \
-        if (!_isTrue_) fprintf(VVS_OUTPUT, VVS_SUCCESS_MSG); \
+        if (!_is_true_) fprintf(VVS_OUTPUT, VVS_SUCCESS_MSG); \
         else \
         { \
             fprintf(VVS_OUTPUT, VVS_FAILURE_MSG); \
             fprintf(VVS_OUTPUT, VVS_LOCATION_MSG, __FILE__, __LINE__); \
         } \
-        VVS_ASSERT(!_isTrue_); \
+        VVS_ASSERT(!_is_true_); \
     }
 
 /**
@@ -121,15 +125,15 @@
     { \
         int _val1_ = (int)(VAL1); \
         int _val2_ = (int)(VAL2); \
-        int _isEqual_ = _val1_ == _val2_; \
+        int _is_equal_ = _val1_ == _val2_; \
         fprintf(VVS_OUTPUT, "[CHECK_EQUL] " #VAL1 " == " #VAL2); \
-        if (_isEqual_) fprintf(VVS_OUTPUT, VVS_SUCCESS_MSG); \
+        if (_is_equal_) fprintf(VVS_OUTPUT, VVS_SUCCESS_MSG); \
         else \
         { \
             fprintf(VVS_OUTPUT, VVS_FAILURE_MSG1, _val1_, _val2_); \
             fprintf(VVS_OUTPUT, VVS_LOCATION_MSG, __FILE__, __LINE__); \
         } \
-        VVS_ASSERT(_isEqual_); \
+        VVS_ASSERT(_is_equal_); \
     }
 
 /**
@@ -143,15 +147,15 @@
         double _val1_ = (double)(VAL1); \
         double _val2_ = (double)(VAL2); \
         double _delta_ = _val1_ - _val2_; \
-        int _isNear_ = (-EPS < _delta_) && (_delta_ < +EPS); \
+        int _is_near_ = (-EPS < _delta_) && (_delta_ < +EPS); \
         fprintf(VVS_OUTPUT, "[CHECK_NEAR] " #VAL1 " == " #VAL2); \
-        if (_isNear_) fprintf(VVS_OUTPUT, VVS_SUCCESS_MSG); \
+        if (_is_near_) fprintf(VVS_OUTPUT, VVS_SUCCESS_MSG); \
         else \
         { \
             fprintf(VVS_OUTPUT, VVS_FAILURE_MSG2, _val1_, _val2_); \
             fprintf(VVS_OUTPUT, VVS_LOCATION_MSG, __FILE__, __LINE__); \
         } \
-        VVS_ASSERT(_isNear_); \
+        VVS_ASSERT(_is_near_); \
     }
 
 /**
@@ -174,12 +178,12 @@
  */
 #define VVS_RUN_TEST(EXP) \
     { \
-        clock_t _t; \
+        clock_t _time_; \
         fprintf(VVS_OUTPUT, "=== " #EXP " ===" "\n"); \
-        _t = clock(); \
+        _time_ = clock(); \
         (EXP); \
-        _t = clock() - _t; \
-        fprintf(VVS_OUTPUT, VVS_TIME_MSG, ((double)_t) / CLOCKS_PER_SEC); \
+        _time_ = clock() - _time_; \
+        fprintf(VVS_OUTPUT, VVS_TIME_MSG, ((double)_time_) / CLOCKS_PER_SEC); \
     } \
      
 /**
