@@ -4,7 +4,7 @@
 #include "vvs.h"
 #include "dg_localizer.hpp"
 
-int testLocSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
+int testLocRoadMap(const char* filename = "test_simple_road_map.csv")
 {
     // An example road map ('+' represents direction of edges)
     // 2 --+ 3 +-+ 5 +-- 6
@@ -13,7 +13,7 @@ int testLocSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
     // 1 +-- 4     7 +-- 8
 
     // Test degenerate cases
-    dg::SimpleRoadMap map;
+    dg::RoadMap map;
     VVS_CHECK_TRUE(map.load("nothing") == false);
     VVS_CHECK_TRUE(map.isEmpty());
     VVS_CHECK_TRUE(map.save(filename) == false);
@@ -28,8 +28,8 @@ int testLocSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
     VVS_CHECK_TRUE(map.addNode(dg::Point2ID(7, 2, 0)) != NULL);
     VVS_CHECK_TRUE(map.addNode(dg::Point2ID(8, 3, 0)) != NULL);
 
-    dg::SimpleRoadMap::Node* node1_ptr = map.getNode(dg::Point2ID(1));
-    dg::SimpleRoadMap::Node* node2_ptr = map.findNode(2);
+    dg::RoadMap::Node* node1_ptr = map.getNode(dg::Point2ID(1));
+    dg::RoadMap::Node* node2_ptr = map.findNode(2);
     VVS_CHECK_TRUE(map.addEdge(node1_ptr, node2_ptr) != NULL);              // Method #1 to add an edge (pointer)
     VVS_CHECK_TRUE(map.addEdge(dg::Point2ID(2), dg::Point2ID(3)) != NULL);  // Method #2 to add an edge (Point2ID)
     VVS_CHECK_TRUE(map.addEdge(3, 4) != NULL);                              // Method #3 to add an edge (ID)
@@ -91,10 +91,10 @@ int testLocSimpleRoadMap(const char* filename = "test_simple_road_map.csv")
     return 0;
 }
 
-int testLocSimpleRoadPainter(int wait_msec = 1)
+int testLocRoadPainter(int wait_msec = 1)
 {
     // Build an example map
-    dg::SimpleRoadMap map;
+    dg::RoadMap map;
     VVS_CHECK_TRUE(map.addNode(dg::Point2ID(1, 0, 0)) != NULL); // ID, x, y
     VVS_CHECK_TRUE(map.addNode(dg::Point2ID(2, 0, 1)) != NULL);
     VVS_CHECK_TRUE(map.addNode(dg::Point2ID(3, 1, 1)) != NULL);
@@ -122,15 +122,15 @@ int testLocSimpleRoadPainter(int wait_msec = 1)
 
     // Draw additional nodes
     dg::CanvasInfo info = painter.getCanvasInfo(map, image.size());
-    dg::SimpleRoadMap::NodeItr node1 = map.getHeadNode();
+    dg::RoadMap::NodeItr node1 = map.getHeadNode();
     VVS_CHECK_TRUE(node1 != map.getTailNode());
     VVS_CHECK_TRUE(painter.drawNode(image, info, node1->data, 0.1, 0.5, cx::COLOR_MAGENTA, 2));
-    dg::SimpleRoadMap::Node* node3 = map.getNode(dg::Point2ID(3));
+    dg::RoadMap::Node* node3 = map.getNode(dg::Point2ID(3));
     VVS_CHECK_TRUE(node3 != NULL);
     VVS_CHECK_TRUE(painter.drawNode(image, info, node3->data, 0.1, 0.5, cx::COLOR_RED, -1));
 
     // Draw additional edges
-    dg::SimpleRoadMap::EdgeItr edge = map.getHeadEdge(node1);
+    dg::RoadMap::EdgeItr edge = map.getHeadEdge(node1);
     VVS_CHECK_TRUE(edge != map.getTailEdge(node1));
     VVS_CHECK_TRUE(painter.drawEdge(image, info, node1->data, edge->to->data, 0.1, cx::COLOR_MAGENTA, 2, 0.1));
 
@@ -143,9 +143,9 @@ int testLocSimpleRoadPainter(int wait_msec = 1)
 
     if (wait_msec >= 0)
     {
-        cv::imshow("testLocSimpleRoadPainter", image);
+        cv::imshow("testLocRoadPainter", image);
         cv::waitKey(wait_msec);
-        cv::imshow("testLocSimpleRoadPainter", bigger);
+        cv::imshow("testLocRoadPainter", bigger);
         cv::waitKey(wait_msec);
     }
     return 0;

@@ -2,7 +2,7 @@
 #define __GRAPH_PAINTER__
 
 #include "opencx.hpp"
-#include "core/directed_graph.hpp"
+#include "localizer/directed_graph.hpp"
 
 namespace dg
 {

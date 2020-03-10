@@ -2,67 +2,73 @@
 #define __MAP__
 
 #include "core/basic_type.hpp"
-#include "core/directed_graph.hpp"
-//#include "core/graph_painter.hpp"
 
 namespace dg
 {
 
 /**
  * @brief Node type definition of the topological map
- * NT_BS: basic node
- * NT_JT: junction node (intersecting point, corner point, end point of the road)
- * NT_DR: door node (exit/entrance)
- * NT_EV: elevator node
- * NT_ES: escalater node
+ *
+ * NT_BS: Basic node
+ * NT_JT: Junction node (intersecting point, corner point, end point of the road)
+ * NT_DR: Door node (exit/entrance)
+ * NT_EV: Elevator node
+ * NT_ES: Escalator node
  */
-enum {NT_BS, NT_JT, NT_DR, NT_EV, NT_ES};
+enum { NT_BS = 0, NT_JT = 1, NT_DR = 2, NT_EV = 3, NT_ES = 4, NT_NUM };
 
 /**
  * @brief Edge type definition of the topological map
- * ET_SD: sidewalk
- * ET_MD: middle road (lane, ginnel, roads shared by pedestrians and cars, ...)
- * ET_CR: crosswalk
- * ET_DR: doorway
- * ET_EV: elevator section
- * ET_ES: escalator section
+ *
+ * ET_SD: Sidewalk
+ * ET_MD: Middle road (lane, ginnel, roads shared by pedestrians and cars, ...)
+ * ET_CR: Crosswalk
+ * ET_DR: Doorway
+ * ET_EV: Elevator section
+ * ET_ES: Escalator section
  */
-enum {ET_SD, ET_MD, ET_CR, ET_DR, ET_EV, ET_ES};
+enum { ET_SD = 0, ET_MD = 1, ET_CR = 2, ET_DR = 3, ET_EV = 4, ET_ES = 5, ET_NUM };
+
+class Edge;
 
 /**
- * @brief A node information for the topological map
- *
- * TODO
+ * @brief Node information for the topological map
  */
-class NodeInfo : public LatLon
+class Node : public LatLon
 {
 public:
     /**
-     * The default constructor
-     * TODO
+     * A constructor with member initialization
+     * @param _id The given ID of this node
+     * @param _lat The given latitude of this node (Unit: [deg])
+     * @param _lon The given longitude of this node (Unit: [deg])
+     * @param _type The given type of this node
+     * @param _floor The given floor of this node
      */
-    NodeInfo(ID _id = 0, double _lat = 0, double _lon = 0, int _type = 0, int _floor = 0) : id(_id), LatLon(_lat, _lon), type(_type), floor(_floor) { }
+    Node(ID _id = 0, double _lat = 0, double _lon = 0, int _type = 0, int _floor = 0) : id(_id), LatLon(_lat, _lon), type(_type), floor(_floor) { }
 
     /**
-     * A constructor with initialization
-     * TODO
+     * A constructor with member initialization
+     * @param _id The given ID of this node
+     * @param ll The given latitude and longitude of this node (Unit: [deg])
+     * @param _type The given type of this node
+     * @param _floor The given floor of this node
      */
-    NodeInfo(ID _id, const LatLon& ll, int _type = 0, int _floor = 0) : id(_id), LatLon(ll), type(_type), floor(_floor) { }
+    Node(ID _id, const LatLon& ll, int _type = 0, int _floor = 0) : id(_id), LatLon(ll), type(_type), floor(_floor) { }
 
     /**
      * Overriding the assignment operator
-     * @param rhs NodeInfo in the right-hand side
+     * @param rhs A node in the right-hand side
      * @return The assigned instance
      */
-    NodeInfo& operator=(const NodeInfo& rhs)
+    Node& operator=(const Node& rhs)
     {
         id     = rhs.id;
         lat    = rhs.lat;
         lon    = rhs.lon;
         type   = rhs.type;
         floor  = rhs.floor;
-        sv_ids = rhs.sv_ids;
-        pois   = rhs.pois;
+        edge_list = rhs.edge_list;
         return *this;
     }
 
@@ -71,19 +77,22 @@ public:
      * @param rhs The right-hand side
      * @return Equality of two operands
      */
-    bool operator==(const NodeInfo& rhs) const { return (id == rhs.id); }
+    bool operator==(const Node& rhs) const { return (id == rhs.id); }
 
     /**
      * Check inequality
      * @param rhs The right-hand side
      * @return Inequality of two operands
      */
-    bool operator!=(const NodeInfo& rhs) const { return (id != rhs.id); }
+    bool operator!=(const Node& rhs) const { return (id != rhs.id); }
 
     /** The identifier */
     ID id;
 
-    /** The type of node */
+    /**
+     * The type of node
+     * @see NT_BS, NT_JT, NT_DR, NT_EV, NT_ES
+     */
     int type;
 
     /**
@@ -92,121 +101,145 @@ public:
      */
     int floor;
 
-    /** An ID set of connected street-view images */
-    std::vector<ID> sv_ids;
-
-    /** A text set of connected POIs */
-    std::vector<std::string> pois;
+    /** A list of edges */
+    std::vector<Edge*> edge_list;
 };
 
 /**
- * @brief An edge information for the topological map
- *
- * TODO
+ * @brief Edge information for the topological map
  */
-class EdgeInfo
+class Edge
 {
 public:
     /**
-     * The default constructor
-     * TODO
+     * A constructor with member initialization
+     * @param _length The given length of edge (Unit: [m])
+     * @param _type The given type of edge
      */
-    EdgeInfo(double _length = 1, int _type = 0) : length(_length), type(_type) { }
+    Edge(double _length = 1, int _type = 0, bool _directed = false, Node* _node1 = nullptr, Node* _node2 = nullptr) : length(_length), type(_type), directed(_directed), node1(_node1), node2(_node2) { }
 
     /** The length of edge (Unit: [m]) */
     double length;
 
-    /** The type of edge */
+    /**
+     * The type of edge
+     * @see ET_SD, ET_MD, ET_CR, ET_DR, ET_EV, ET_ES
+     */
     int type;
+
+    /** A flag whether this edge is undirected (false) or directed (true) */
+    bool directed;
+
+    /** A pointer to the first node */
+    Node* node1;
+
+    /** A pointer to the second node */
+    Node* node2;
+};
+
+/**
+ * @brief Point-of-interest (POI) information for the topological map
+ */
+class POI
+{
+};
+
+/**
+ * @brief Street-view information for the topological map
+ */
+class StreetView
+{
 };
 
 /**
  * @brief A topological map
- *
- * TODO
  */
-class Map : public DirectedGraph<NodeInfo, EdgeInfo>
+class Map
 {
 public:
     /**
-     * Check whether this map is empty or not
-     * @return True if empty (true) or not (false)
+     * Add a node (time complexity: O(1))
+     * @param data Data to add
+     * @return A pointer to the added node
      */
-    bool isEmpty() const { return (countNodes() <= 0); }
-
-    /**
-     * Find a node using ID written in NodeInfo (time complexity: O(|N|))
-     * @param id ID to search
-     * @return A pointer to the found node (NULL if not exist)
-     * @see getNode
-     */
-    Node* findNode(ID id) { return getNode(NodeInfo(id)); }
-
-    /**
-     * Find an edge using ID written in NodeInfo (time complexity: O(|N| + |E|))
-     * @param from ID of the start node
-     * @param to ID of the destination node
-     * @return A pointer to the found edge (NULL if not exist)
-     * @see getEdge
-     */
-    Edge* findEdge(ID from, ID to) { return getEdge(NodeInfo(from), NodeInfo(to)); }
-
-    /**
-     * Add a bi-directional edge between two nodes (time complexity: O(1))
-     * @param node1 A pointer to the first node
-     * @param node2 A pointer to the second node
-     * @param info An edge information between two nodes
-     * @return True if successful (false if failed)
-     * @see addEdge for adding a directional edge
-     */
-    bool addRoad(Node* node1, Node* node2, const EdgeInfo& info = EdgeInfo())
+    Node* addNode(const Node& node)
     {
-        if (node1 == NULL || node2 == NULL) return false;
-
-        Edge* edge1 = DirectedGraph<NodeInfo, EdgeInfo>::addEdge(node1, node2, info);
-        Edge* edge2 = DirectedGraph<NodeInfo, EdgeInfo>::addEdge(node2, node1, info);
-        return (edge1 != NULL) && (edge2 != NULL);
+        nodes.push_back(node);
+        Node* node_ptr = &(nodes.back());
+        lookup_nodes.insert(std::make_pair(node.id, node_ptr));
+        return node_ptr;
     }
 
     /**
-     * Add a bi-directional edge between two nodes (time complexity: O(1))
-     * @param node1 Data of the first node
-     * @param node2 Data of the second node
-     * @param info An edge information between two nodes
-     * @return True if successful (false if failed)
-     * @see addEdge for adding a directional edge
-     */
-    bool addRoad(const NodeInfo& node1, const NodeInfo& node2, const EdgeInfo& info = EdgeInfo())
-    {
-        Node* node1_ptr = getNode(node1);
-        Node* node2_ptr = getNode(node2);
-        return addRoad(node1_ptr, node2_ptr, info);
-    }
-
-    /**
-     * Add a bi-directional edge between two nodes (time complexity: O(1))
+     * Add an edge between two nodes (time complexity: O(1))
      * @param node1 ID of the first node
      * @param node2 ID of the second node
      * @param info An edge information between two nodes
-     * @return True if successful (false if failed)
-     * @see addEdge for adding a directional edge
+     * @return A pointer to the added edge (`nullptr` if any node is not exist)
      */
-    bool addRoad(ID node1, ID node2, const EdgeInfo& info = EdgeInfo())
+    Edge* addEdge(ID node1, ID node2, const Edge& info = Edge())
     {
         Node* node1_ptr = findNode(node1);
         Node* node2_ptr = findNode(node2);
-        return addRoad(node1_ptr, node2_ptr, info);
+        if (node1_ptr == nullptr || node2_ptr == nullptr) return nullptr;
+
+        Edge edge = info;
+        edge.node1 = node1_ptr;
+        edge.node2 = node2_ptr;
+        edges.push_back(edge);
+        Edge* edge_ptr = &(edges.back());
+        node1_ptr->edge_list.push_back(edge_ptr);
+        if (!edge.directed) node2_ptr->edge_list.push_back(edge_ptr);
+        return edge_ptr;
     }
 
-    bool addOneWay(ID node1, ID node2, const EdgeInfo& info = EdgeInfo())
+    /**
+     * Find a node using ID (time complexity: O(1))
+     * @param id ID to search
+     * @return A pointer to the found node (`nullptr` if not exist)
+     */
+    Node* findNode(ID id)
     {
-        Node* node1_ptr = findNode(node1);
-        Node* node2_ptr = findNode(node2);
-        if (node1_ptr == NULL || node2_ptr == NULL) return false;
-
-        Edge* edge = DirectedGraph<NodeInfo, EdgeInfo>::addEdge(node1_ptr, node2_ptr, info);
-        return edge != NULL;
+        assert(nodes.size() == lookup_nodes.size()); // Disable this if you want speed-up in DEBUG mode
+        assert(lookup_nodes.count(id) <= 1);         // Disable this if you want speed-up in DEBUG mode
+        auto found = lookup_nodes.find(id);
+        if (found == lookup_nodes.end()) return nullptr;
+        return found->second;
     }
+
+    /**
+     * Find an edge using ID (time complexity: O(|E|))
+     * @param from ID of the start node
+     * @param to ID of the destination node
+     * @return A pointer to the found edge (`nullptr` if not exist)
+     */
+    Edge* findEdge(ID from, ID to)
+    {
+        Node* from_ptr = findNode(from);
+        if (from_ptr == nullptr) return nullptr;
+        for (auto edge = from_ptr->edge_list.begin(); edge != from_ptr->edge_list.end(); edge++)
+        {
+            assert((*edge)->node1 != nullptr && (*edge)->node2 != nullptr); // Disable this if you want speed-up in DEBUG mode
+            if ((*edge)->node1->id == to || (*edge)->node2->id == to) return *edge;
+        }
+        return nullptr;
+    }
+
+    /** A list of nodes */
+    std::list<Node> nodes;
+
+    /** A list of edges */
+    std::list<Edge> edges;
+
+    /** A list of POIs */
+    std::list<POI> pois;
+
+    /** A list of Street-views */
+    std::list<StreetView> views;
+
+protected:
+    /** A hash table for finding nodes */
+    std::map<ID, Node*> lookup_nodes;
 };
 
 } // End of 'dg'

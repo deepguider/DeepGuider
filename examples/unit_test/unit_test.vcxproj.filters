@@ -21,10 +21,10 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp">
+    <ClCompile Include="..\..\src\localizer\utm_converter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\localizer\utm_converter.cpp">
+    <ClCompile Include="..\..\src\localizer\road_map.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -32,19 +32,10 @@
     <ClInclude Include="..\..\src\core\basic_type.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\core\directed_graph.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\core\graph_painter.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\core\map.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\localizer\simple_localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\localizer\simple_road_map.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_core_graph.hpp">
@@ -66,6 +57,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_core_type.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\road_map.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\directed_graph.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\graph_painter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
