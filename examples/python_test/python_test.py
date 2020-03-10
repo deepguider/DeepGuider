@@ -24,6 +24,7 @@ class PythonTest:
     def initialize(self):
         print('PythonTest: Initialization...!\n')
         print(sys.version)
+        #self.value1 = 0
         self.value1 = 0
         self.value2 = 0
         return True

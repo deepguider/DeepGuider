@@ -47,6 +47,7 @@ class vps:
         self.K = 5 # K for knn
         self.ToTensor = transforms.ToTensor()
         self.vps_IDandConf = [0,0]
+        self.verbose = False # 1 : print internal results
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -105,6 +106,8 @@ class vps:
         self.parser.add_argument('--save_dbFeat', default=True, action='store_true', help='Save dbFeat')
         #self.parser.add_argument('--save_qFeat', default=False, action='store_true', help='Save qFeat')
         #self.parser.add_argument('--use_saved_dbFeat', default=False, action='store_true', help='Use save dbFeat feature which is calucated in adavnce') #default
+
+        self.parser.add_argument('--verbose', default=False, action='store_true', help='Print internal messages')
         ######(end) Following defaults are combination of 9run_vps_ccsmm.sh
 
         return 1
@@ -112,8 +115,8 @@ class vps:
 
     def initialize(self):
         self.init_param()
-
         opt = self.parser.parse_args()
+        self.verbose = opt.verbose
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
                 'margin', 'seed', 'patience']
@@ -140,7 +143,6 @@ class vps:
     
         print(opt)
     
-    
         cuda = not opt.nocuda
         if cuda and not torch.cuda.is_available():
             raise Exception("No GPU found, please run with --nocuda")
@@ -153,8 +155,7 @@ class vps:
         if cuda:
             torch.cuda.manual_seed(opt.seed)
     
-    
-        print('===> Building model')
+        print('===> Building model begin')
     
         pretrained = not opt.fromscratch
         if opt.arch.lower() == 'alexnet':
@@ -268,7 +269,9 @@ class vps:
                 print("=> no checkpoint found at '{}'".format(resume_ckpt))
     
         self.model = model
-        return 1
+        print('===> Building model end(vps.py)')
+
+        return 1 # Non-zero means success return 
     
 
     def test_sub(self,eval_set,epoch=0):
@@ -295,16 +298,17 @@ class vps:
         
                 #Feat : [17608, 32768]
                 Feat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy() #[24,32768]
-                try:
-                    if (iteration-1) % 200 == 0:
-                        print("==> Batch ({}/{})".format(iteration,len(test_data_loader)), flush=True)
-                        avp = self.GAP1dChannel(image_encoding)
-                        myiu.clf()
-                        myiu.imshow(input,221,'input')
-                        myiu.imshow(-avp*0.1,222,'encoding')
-                        myiu.plot(vlad_encoding,223,'vlad')
-                except:
-                    print("Cannot Display")
+                if self.verbose:
+                    try:
+                        if (iteration-1) % 200 == 0:
+                            print("==> Batch ({}/{})".format(iteration,len(test_data_loader)), flush=True)
+                            avp = self.GAP1dChannel(image_encoding)
+                            myiu.clf()
+                            myiu.imshow(input,221,'input')
+                            myiu.imshow(-avp*0.1,222,'encoding')
+                            myiu.plot(vlad_encoding,223,'vlad')
+                    except:
+                        print("Cannot Display")
             del input, image_encoding, vlad_encoding
         del test_data_loader
         return Feat
@@ -366,12 +370,13 @@ class vps:
         faiss_index = faiss.IndexFlatL2(pool_size) #32768
         faiss_index.add(dbFeat)
     
-        print('====> Calculating recall @ N')
-        n_values = [1,5,10,20] #n nearest neighbors
+        print('====> Calculating recall @',self.K)
+        #n_values = [1,5,10,20] #n nearest neighbors
     
         pred_L2dist, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
 
-        print('predicted ID:\n', pred_idx)
+        if self.verbose:
+            print('predicted ID:\n', pred_idx)
 
         qImage  = test_q_data_loader.dataset.ImgStruct.Image
         dbImage = test_db_data_loader.dataset.ImgStruct.Image
@@ -383,7 +388,8 @@ class vps:
         self.pred_L2dist = pred_L2dist
 
         import os
-        print('QueryImage <=================> predicted dbImage')
+        if self.verbose:
+            print('QueryImage <=================> predicted dbImage')
         match_cnt = 0
         total_cnt = len(qImage)
         for i in range(total_cnt):
@@ -396,22 +402,24 @@ class vps:
                 flist = dbImage[pred_idx[i]]
                 vps_imgID = self.Fname2ID(flist)
                 vps_imgConf = [val for val in pred_L2dist[i]]
+                vps_imgID = [int(i) for i in vps_imgID]
+                vps_imgConf = [float(1/i) for i in vps_imgConf]
                 self.vps_IDandConf = [vps_imgID, vps_imgConf]
 
-            if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
-                match_cnt = match_cnt + 1
-                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
-            else:
-                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon)
+            if self.verbose:
+                if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
+                    match_cnt = match_cnt + 1
+                    print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
+                else:
+                    print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon)
 
         acc = match_cnt/total_cnt
-        print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
+        if self.verbose:
+            print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
 
-#        print('You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D')
-#        return recalls
+        print('Return from vps.py->apply()')
+
         return acc
-
-
 
 
     def test(self,eval_set, epoch=0, write_tboard=False):
@@ -545,7 +553,8 @@ class vps:
                 flist = test_data_loader.dataset.dbStruct.dbImage[pred_idx[i]]
                 vps_imgID = self.Fname2ID(flist)
                 vps_imgConf = [val for val in pred_L2dist[i]]
-                self.vps_IDandConf = [vps_imgID, vps_imgConf]
+                #self.vps_IDandConf = [vps_imgID, vps_imgConf] #ori
+                self.vps_IDandConf = [123456, 1.33] #dbg
 
             if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
                 match_cnt = match_cnt + 1
@@ -569,7 +578,7 @@ class vps:
         # set parameter
         return 0
 
-    def apply(self, image=None,K = 5, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
+    def apply(self, image=None, K = 5, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
         if gps_lat is None:
             self.gps_lat = -1
         if gps_long is None:
@@ -687,8 +696,9 @@ if __name__ == "__main__":
     mod_vps = vps()
     mod_vps.initialize()
     qimage = np.uint8(256*np.random.rand(1024,1024,3))
-    vps_IDandConf = mod_vps.apply(qimage,5) # k=5 for knn
-    #vps_IDandConf = mod_vps.apply(K=5) # K=5 for knn
+    #(image=None, K=3, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
+    vps_IDandConf = mod_vps.apply(qimage, 3, 37, 27, 95, 100) # k=5 for knn
+    print('############## Result of vps().apply():')
     print('vps_IDandConf',vps_IDandConf)
 
     ## Display Result

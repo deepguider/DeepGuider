@@ -95,7 +95,7 @@ public:
 	bool downloadPOI(double lat, double lon, double radius);
 	bool downloadPOI(ID node_id, double radius);
 	bool downloadPOI(cv::Point2i tile);
-	std::vector<cv::Point2d> MapManager::getPOI(const char* poiname);
+	std::vector<cv::Point2d> getPOI(const char* poiname);
 	//std::vector<cv::Point2d> getPOIloc(const char* poiname = "UST");
 
 protected:

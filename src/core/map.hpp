@@ -8,11 +8,32 @@
 namespace dg
 {
 
- /**
-  * @brief A node information for the topological map
-  *
-  * TODO
-  */
+/**
+ * @brief Node type definition of the topological map
+ * NT_BS: basic node
+ * NT_JT: junction node (intersecting point, corner point, end point of the road)
+ * NT_DR: door node (exit/entrance)
+ * NT_EV: elevator node
+ * NT_ES: escalater node
+ */
+enum {NT_BS, NT_JT, NT_DR, NT_EV, NT_ES};
+
+/**
+ * @brief Edge type definition of the topological map
+ * ET_SD: sidewalk
+ * ET_MD: middle road (lane, ginnel, roads shared by pedestrians and cars, ...)
+ * ET_CR: crosswalk
+ * ET_DR: doorway
+ * ET_EV: elevator section
+ * ET_ES: escalator section
+ */
+enum {ET_SD, ET_MD, ET_CR, ET_DR, ET_EV, ET_ES};
+
+/**
+ * @brief A node information for the topological map
+ *
+ * TODO
+ */
 class NodeInfo : public LatLon
 {
 public:
@@ -78,11 +99,11 @@ public:
     std::vector<std::string> pois;
 };
 
- /**
-  * @brief An edge information for the topological map
-  *
-  * TODO
-  */
+/**
+ * @brief An edge information for the topological map
+ *
+ * TODO
+ */
 class EdgeInfo
 {
 public:
@@ -99,11 +120,11 @@ public:
     int type;
 };
 
- /**
-  * @brief A topological map
-  *
-  * TODO
-  */
+/**
+ * @brief A topological map
+ *
+ * TODO
+ */
 class Map : public DirectedGraph<NodeInfo, EdgeInfo>
 {
 public:
