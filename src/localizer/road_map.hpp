@@ -2,8 +2,8 @@
 #define __SIMPLE_ROAD_MAP__
 
 #include "core/basic_type.hpp"
-#include "core/directed_graph.hpp"
-#include "core/graph_painter.hpp"
+#include "localizer/directed_graph.hpp"
+#include "localizer/graph_painter.hpp"
 
 namespace dg
 {
@@ -13,9 +13,9 @@ namespace dg
  *
  * A <b>simple road map</b> is defined with its node as Point2ID and its edge with double-type cost.
  *
- * <b>File Format for SimpleRoadMap (CSV File)</b>
+ * <b>File Format for RoadMap (CSV File)</b>
  *
- * A SimpleRoadMap file contains its data and connectivity in the form of texts.
+ * A RoadMap file contains its data and connectivity in the form of texts.
  * In the text file, each line contains information for a node or an edge.
  *
  * In case of a node, a line starts from a prefix, <i>NODE</i>, and follows ID, X, and Y for a node.
@@ -30,7 +30,7 @@ namespace dg
  * - EDGE, 3, 4, 9.09
  * - EDGE, 4, 3, 9.09
  */
-class SimpleRoadMap : public DirectedGraph<Point2ID, double>
+class RoadMap : public DirectedGraph<Point2ID, double>
 {
 public:
     /**
@@ -137,7 +137,7 @@ public:
     Edge* addEdge(ID from, ID to, double cost = -1.0);
 };
 
-/** A map visualizer for dg::SimpleRoadMap */
+/** A map visualizer for dg::RoadMap */
 typedef GraphPainter<Point2ID, double> SimpleRoadPainter;
 
 } // End of 'dg'

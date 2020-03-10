@@ -5,7 +5,7 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
 
-dg::SimpleRoadMap getExampleSimpleRoadMap()
+dg::RoadMap getExampleSimpleRoadMap()
 {
     // An example road map ('+' represents direction of edges)
     // 2 --+ 3 +-+ 5 +-- 6
@@ -13,7 +13,7 @@ dg::SimpleRoadMap getExampleSimpleRoadMap()
     // |     +     |     +
     // 1 +-- 4     7 +-- 8
 
-    dg::SimpleRoadMap map;
+    dg::RoadMap map;
     map.addNode(dg::Point2ID(1, 0, 0)); // ID, x, y
     map.addNode(dg::Point2ID(2, 0, 1));
     map.addNode(dg::Point2ID(3, 1, 1));
@@ -64,7 +64,7 @@ int testLocSimpleLocalizer(int wait_msec = 1)
 {
     // Load a map
     dg::SimpleLocalizer localizer;
-    dg::SimpleRoadMap map = getExampleSimpleRoadMap();
+    dg::RoadMap map = getExampleSimpleRoadMap();
     VVS_CHECK_TRUE(localizer.loadMap(map));
 
     // Prepare visualization

@@ -244,7 +244,8 @@ namespace cx
         static std::vector<int> getColumns(size_t size, int start = 0, int step = 1)
         {
             std::vector<int> permutation(size);
-            std::fill(permutation.begin(), permutation.end(), start += step);
+            for (int i = 0; i < permutation.size(); i++)
+                permutation[i] = start + step * i;
             return permutation;
         }
 

@@ -14,10 +14,10 @@ public:
     {
         cv::AutoLock lock(m_mutex);
 
-        // Find two nodes, 'from' and 'to'
-        SimpleRoadMap::Node* from = m_map.findNode(t_pose.node_id);
+        // Find two nodes, 'from' and 'to_id'
+        RoadMap::Node* from = m_map.findNode(t_pose.node_id);
         if (from == NULL) return Pose2();
-        SimpleRoadMap::Node* to = NULL;
+        RoadMap::Node* to = NULL;
         int edge_idx = 0;
         double edge_dist = 0;
         for (auto edge = m_map.getHeadEdgeConst(from); edge != m_map.getTailEdgeConst(from); edge++, edge_idx++)
@@ -69,7 +69,7 @@ public:
             int edge_idx = 0;
             for (auto edge = m_map.getHeadEdgeConst(from); edge != m_map.getTailEdgeConst(from); edge++, edge_idx++)
             {
-                const SimpleRoadMap::Node* to = edge->to;
+                const RoadMap::Node* to = edge->to;
                 if (to == NULL) continue;
                 auto dist2 = calcDist2FromLineSeg(from->data, to->data, pose_m);
                 if (dist2.first < min_dist2.first)
@@ -119,14 +119,14 @@ public:
         return -1;
     }
 
-    static SimpleRoadMap cvtMap2SimpleRoadMap(const Map& map, const UTMConverter& converter, bool auto_cost = true)
+    static RoadMap cvtMap2SimpleRoadMap(const Map& map, const UTMConverter& converter, bool auto_cost = true)
     {
-        SimpleRoadMap simple_map;
+        RoadMap simple_map;
 
         // Copy nodes
-        for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
+        for (auto node = map.nodes.begin(); node != map.nodes.end(); node++)
         {
-            Point2ID simple_node(node->data.id, converter.toMetric(node->data));
+            Point2ID simple_node(node->id, converter.toMetric(*node));
             if (simple_map.addNode(simple_node) == NULL)
             {
                 // Return an empty map if failed
@@ -138,11 +138,13 @@ public:
         if (auto_cost)
         {
             // Copy edges with automatic distance calculation
-            for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
+            for (auto from = map.nodes.begin(); from != map.nodes.end(); from++)
             {
-                for (auto edge = map.getHeadEdgeConst(node); edge != map.getTailEdgeConst(node); edge++)
+                for (auto edge = from->edge_list.begin(); edge != from->edge_list.end(); edge++)
                 {
-                    if (simple_map.addEdge(node->data.id, edge->to->data.id, -1) == NULL)
+                    ID to_id = (*edge)->node2->id;
+                    if (from->id == to_id) to_id = (*edge)->node1->id;
+                    if (simple_map.addEdge(from->id, to_id, -1) == NULL)
                     {
                         // Return an empty map if failed
                         simple_map.removeAll();
@@ -154,11 +156,13 @@ public:
         else
         {
             // Copy edges with automatic distance calculation
-            for (auto node = map.getHeadNodeConst(); node != map.getTailNodeConst(); node++)
+            for (auto from = map.nodes.begin(); from != map.nodes.end(); from++)
             {
-                for (auto edge = map.getHeadEdgeConst(node); edge != map.getTailEdgeConst(node); edge++)
+                for (auto edge = from->edge_list.begin(); edge != from->edge_list.end(); edge++)
                 {
-                    if (simple_map.addEdge(node->data.id, edge->to->data.id, edge->cost.length) == NULL)
+                    ID to_id = (*edge)->node2->id;
+                    if (from->id == to_id) to_id = (*edge)->node1->id;
+                    if (simple_map.addEdge(from->id, to_id, (*edge)->length) == NULL)
                     {
                         // Return an empty map if failed
                         simple_map.removeAll();
@@ -177,13 +181,13 @@ public:
         return true;
     }
 
-    virtual bool loadMap(const SimpleRoadMap& map)
+    virtual bool loadMap(const RoadMap& map)
     {
         cv::AutoLock lock(m_mutex);
         return map.copyTo(&m_map);
     }
 
-    virtual SimpleRoadMap getMap() const
+    virtual RoadMap getMap() const
     {
         cv::AutoLock lock(m_mutex);
         return m_map;
@@ -250,7 +254,7 @@ public:
 
     virtual bool applyLocClue(ID node_id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
-        SimpleRoadMap::Node* node = m_map.getNode(Point2ID(node_id));
+        RoadMap::Node* node = m_map.getNode(Point2ID(node_id));
         if (node == NULL) return false;
         cv::AutoLock lock(m_mutex);
         m_pose_metric.x = node->data.x;
@@ -265,7 +269,7 @@ public:
     }
 
 protected:
-    SimpleRoadMap m_map;
+    RoadMap m_map;
 
     Pose2 m_pose_metric;
 
