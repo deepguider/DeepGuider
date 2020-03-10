@@ -374,15 +374,17 @@ class vps:
         
         if self.verbose:
             print('====> Building faiss index')
-        pool_size = dbFeat[-1].size
-        faiss_index = faiss.IndexFlatL2(pool_size) #32768
+        num_db, pool_size = dbFeat.shape # n,32768
+
+        #faiss_index = faiss.IndexFlatL2(pool_size) # uses distance as metric
+        faiss_index = faiss.IndexFlatIP(pool_size) # uses similarity(confidence) as metric 
         faiss_index.add(dbFeat)
     
         if self.verbose:
             print('====> Calculating recall @',self.K)
         #n_values = [1,5,10,20] #n nearest neighbors
     
-        pred_L2dist, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
+        pred_confidence, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
 
         if self.verbose:
             print('predicted ID:\n', pred_idx)
@@ -394,7 +396,7 @@ class vps:
         self.qImage = qImage
         self.dbImage = dbImage
         self.pred_idx = pred_idx
-        self.pred_L2dist = pred_L2dist
+        self.pred_confidence = pred_confidence
 
         import os
         if self.verbose:
@@ -410,9 +412,9 @@ class vps:
             if qName in 'newquery.jpg':
                 flist = dbImage[pred_idx[i]]
                 vps_imgID = self.Fname2ID(flist)
-                vps_imgConf = [val for val in pred_L2dist[i]]
+                vps_imgConf = [val for val in pred_confidence[i]]
                 vps_imgID = [int(i) for i in vps_imgID]
-                vps_imgConf = [float(1/i) for i in vps_imgConf]
+                vps_imgConf = [float(i) for i in vps_imgConf]
                 self.vps_IDandConf = [vps_imgID, vps_imgConf]
 
             if self.verbose:
@@ -509,7 +511,7 @@ class vps:
         print('====> Building faiss index')
         #qFeat  : [7608,32768], pool_size = 32768 as dimension of feature
         #dbFeat : [10000,32768]
-        faiss_index = faiss.IndexFlatL2(pool_size) #32768
+        faiss_index = faiss.IndexFlatIP(pool_size) #32768
         faiss_index.add(dbFeat)
     
         print('====> Calculating recall @ N')
@@ -537,7 +539,7 @@ class vps:
 #            print("====> Recall@{}: {:.4f}".format(n, recall_at_n[i]))
 #            if write_tboard: writer.add_scalar('Val/Recall@' + str(n), recall_at_n[i], epoch)
 
-        pred_L2dist, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
+        pred_confidence, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
 
         print('predicted ID:\n', pred_idx)
         test_data_loader = DataLoader(dataset=eval_set, 
@@ -562,7 +564,7 @@ class vps:
             if qName in 'newquery.jpg':
                 flist = test_data_loader.dataset.dbStruct.dbImage[pred_idx[i]]
                 vps_imgID = self.Fname2ID(flist)
-                vps_imgConf = [val for val in pred_L2dist[i]]
+                vps_imgConf = [val for val in pred_confidence[i]]
                 #self.vps_IDandConf = [vps_imgID, vps_imgConf] #ori
                 self.vps_IDandConf = [123456, 1.33] #dbg
 

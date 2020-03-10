@@ -24,6 +24,9 @@ int main()
     double gps_lon = 0;
     double gps_accuracy = 10;        // error boundary (meter)
 
+	//cv::imshow("query",image);
+	//cv::waitKey(1);
+
     int nIter = 2;
     for (int i = 0; i < nIter; i++)
     {
