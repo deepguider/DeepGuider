@@ -8,9 +8,11 @@
 #include "python_embedding.hpp"
 #include <chrono>
 
+#define VVS_NONASSERT
+#include "vvs.h"
+
 using namespace dg;
 using namespace std;
-
 
 class DeepGuiderSimple
 {
@@ -22,8 +24,6 @@ public:
     int run();
 
 protected:
-    void generateSensorDataGPSFromPath(dg::Map& map, dg::Path& path, std::vector<dg::LatLon>& gps_data, int interval, double noise_level);
-
     dg::RoadDirectionRecognizer m_roadTheta;
     dg::POIRecognizer m_poi;
     dg::VPS m_vps;
@@ -35,11 +35,11 @@ protected:
 
 DeepGuiderSimple::~DeepGuiderSimple()
 {
-    m_roadTheta.clear();
-    m_poi.clear();
-    m_vps.clear();
+    //m_roadTheta.clear();
+    //m_poi.clear();
+    //m_vps.clear();
 
-    close_python_environment();
+    //close_python_environment();
 }
 
 
@@ -79,44 +79,20 @@ bool DeepGuiderSimple::initialize()
 }
 
 
-void DeepGuiderSimple::generateSensorDataGPSFromPath(dg::Map& map, dg::Path& path, std::vector<dg::LatLon>& gps_data, int interval, double noise_level)
+std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_file = "data/191115_ETRI_asen_fix.csv")
 {
-    if (path.countPoints() < 2)
+    cx::CSVReader csv;
+    VVS_CHECK_TRUE(csv.open(csv_file));
+    cx::CSVReader::Double2D csv_ext = csv.extDouble2D(1, { 2, 3, 7, 8 }); // Skip the header
+
+    std::vector<std::pair<double, dg::LatLon>> data;
+    for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
     {
-        printf("Error! Path length has to be at least 2\n");
-        return;
+        double timestamp = row->at(0) + 1e-9 * row->at(1);
+        dg::LatLon ll(row->at(2), row->at(3));
+        data.push_back(std::make_pair(timestamp, ll));
     }
-
-    gps_data.clear();
-
-    // extract path node gps
-    std::vector<dg::LatLon> path_gps;
-    for (std::list<dg::ID>::iterator it = path.m_points.begin(); it != path.m_points.end(); it++)
-    {
-        dg::ID id = (*it);
-        dg::Map::Node* node = map.findNode(id);
-        double lat = node->data.lat;
-        double lon = node->data.lon;
-
-        printf("id = %zu, lat = %lf, lon = %lf\n", id, lat, lon);
-        path_gps.push_back(dg::LatLon(lat, lon));
-    }
-
-    // extend gps data by interpolation
-    gps_data.push_back(path_gps[0]);
-    for (int i = 1; i < (int)path_gps.size(); i++)
-    {
-        double lat_prev = path_gps[i - 1].lat;
-        double lon_prev = path_gps[i - 1].lon;
-        double lat_cur = path_gps[i].lat;
-        double lon_cur = path_gps[i].lon;
-        for (int k = 1; k <= interval; k++)
-        {
-            double lat = lat_prev + k * (lat_cur - lat_prev) / interval;
-            double lon = lon_prev + k * (lon_cur - lon_prev) / interval;
-            gps_data.push_back(dg::LatLon(lat, lon));
-        }
-    }
+    return data;
 }
 
 
@@ -124,54 +100,81 @@ int DeepGuiderSimple::run()
 {
     printf("Run deepguider system...\n");
 
-    // set start & destination node
-    //dg::ID start_node = 0;
-    //dg::ID dest_node = 10;
+    // load gps sensor data (ETRI dataset)
+    const char* gps_file = "data/191115_ETRI_asen_fix.csv";
+    const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png";
+    auto gps_data = getExampleGPSData();
+    VVS_CHECK_TRUE(!gps_data.empty());
+    printf("\tSample gps data loaded!\n");
+
+    // load image sensor data (ETRI dataset)
+    const char* video_file = "data/191115_ETRI.avi";
+    cv::VideoCapture video_data;
+    VVS_CHECK_TRUE(video_data.open(video_file));
+    double video_time_offset = gps_data.front().first - 0.5, video_time_scale = 1.75; // Calculated from 'bag' files
+    double video_resize_scale = 0.4;
+    cv::Point video_offset(32, 542);
+    printf("\tSample image data loaded!\n");
+
+    // start & goal position
+    dg::LatLon gps_start = gps_data.front().second;
+    dg::LatLon gps_goal = gps_data.back().second;
+    printf("\tgps_start: lat=%lf, lon=%lf\n", gps_start.lat, gps_start.lon);
+    printf("\tgps_goal: lat=%lf, lon=%lf\n", gps_goal.lat, gps_goal.lon);
 
     // generate path to the destination
-    //m_map_manager.generatePath(start_node, dest_node);
-
-    // load pre-defined path for the test
-    dg::Path path = m_map_manager.getPath("test_simple_path.json");
+    bool ok = m_map_manager.generatePath(gps_start.lat, gps_start.lon, gps_goal.lat, gps_goal.lon);
+    if(!ok) return -1;
+    dg::Path path = m_map_manager.getPath();
     dg::ID start_node = path.m_points.front();
     dg::ID dest_node = path.m_points.back();
-    printf("\tSample Path generated! start=%zu, dest=%zu\n", start_node, dest_node);
+    printf("\tPath generated! start=%zu, dest=%zu\n", start_node, dest_node);
 
-    // load map along the path
-    if (!m_map_manager.load(36.384063, 127.374733, 650.0))
+    // download map along the path
+    dg::Map map = m_map_manager.getMap(path);
+    printf("\tMap downloaded from the server!\n");
+
+    // check consistency between map and path
+    int idx = 0;
+    bool erase_edge_path = false;
+    for(auto itr = path.m_points.begin(); itr!=path.m_points.end();)
     {
-        printf("\tFailed to load sample map!\n");
+        dg::ID id = *itr;
+        dg::Map::Node* node = map.findNode(id);
+        if(node)
+        {
+            printf("\tpath[%d]: id=%zu, lat=%lf, lon=%lf, node_type=%d\n", idx, node->data.id, node->data.lat, node->data.lon, node->data.type);
+            itr++;
+        }
+        else
+        {
+            dg::ID from = *prev(itr);
+            dg::ID to = *next(itr);
+            dg::Map::Edge* edge = map.findEdge(from, to);
+            printf("\tpath[%d]: id=%zu, length=%lf, edge_type=%d\n", idx, id, edge->cost.length, edge->cost.type);
+
+            if(erase_edge_path) itr = path.m_points.erase(itr);
+            else itr++;
+        }
+        idx++;
     }
-    printf("\tSample Map loaded!\n");
 
     // set map to localizer
-    dg::Map map = m_map_manager.getMap();
-    m_localizer.loadMap(map);
-
-    // generate virtual gps sensor data along the path
-    int interval = 10;
-    double noise_level = 0;
-    std::vector<dg::LatLon> gps_data;
-    generateSensorDataGPSFromPath(map, path, gps_data, interval, noise_level);
-    printf("\tSample gps data generated!\n");
-
+    VVS_CHECK_TRUE(m_localizer.loadMap(map));
 
     // guidance: load files for guidance test (ask JSH)
-    m_guider.setPathNMap(path, map);
-    m_guider.initializeGuides();
-    printf("\n");
+    VVS_CHECK_TRUE(m_guider.setPathNMap(path, map));
+    VVS_CHECK_TRUE(m_guider.initializeGuides());
 
     // guidance: Initial move (ask JSH)
     dg::Guidance::MoveStatus cur_status;
     std::vector<dg::Guidance::RobotGuide> cur_guide;
     cur_guide = m_guider.getInitGuide();
 
-    // some default variables
+    // localizer: set initial pose of localizer
     dg::ID id_invalid = 0;
     Polar2 rel_pose_defualt(-1, CV_PI);     // default relative pose (invalid)
     double confidence_default = 1.0; 
-
-    // localizer: set initial pose of localizer
     dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
     m_localizer.applyLocClue(start_node, rel_pose_defualt, ts, confidence_default);
 
@@ -182,24 +185,27 @@ int DeepGuiderSimple::run()
     double pose_confidence = m_localizer.getPoseConfidence();
 
     // run iteration
+    
     int nitr = (int)gps_data.size();
     nitr = 2;
     int itr = 0;
-    bool is_arrive = false;
-    while (!is_arrive)
+    bool is_arrived = false;
+    while (!is_arrived)
     {
         // sensor data
         cv::Mat image = cv::imread("road_sample.jpg");
         ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
         // RoadTheta
+        /*
         bool ok = m_roadTheta.apply(image, ts);
         if (ok)
         {
             double angle, confidence;
             m_roadTheta.get(angle, confidence);
-            m_localizer.applyLocClue(id_invalid, Polar2(-1, angle), ts, confidence);
+            VVS_CHECK_TRUE(m_localizer.applyLocClue(id_invalid, Polar2(-1, angle), ts, confidence));
         }
+        */
 
         // VPS
         int N = 3;  // top-3
@@ -221,10 +227,11 @@ int DeepGuiderSimple::run()
                 confs.push_back(streetviews[k].confidence);
                 printf("\ttop%d: id=%zu, confidence=%lf, ts=%lf\n", k, streetviews[k].id, streetviews[k].confidence, ts);
             }
-            m_localizer.applyLocClue(ids, obs, ts, confs);
+            VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, ts, confs));
         }
 
         // POI
+        /*
         ok = m_poi.apply(image, ts);
         if (ok)
         {
@@ -237,20 +244,21 @@ int DeepGuiderSimple::run()
             printf("poi:\n");
             for (int k = 0; k < (int)pois.size(); k++)
             {
-                //dg::ID poi_id = map_manager.get_poi(pois[k].label);
-                //ids.push_back(poi_id);
-                //obs.push_back(rel_pose_defualt);
-                //confs.push_back(pois[k].confidence);
+                dg::ID poi_id = map_manager.get_poi(pois[k].label);
+                ids.push_back(poi_id);
+                obs.push_back(rel_pose_defualt);
+                confs.push_back(pois[k].confidence);
 
                 printf("\tpoi%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, ts=%lf\n", k, pois[k].xmin, pois[k].ymin, pois[k].xmax, pois[k].ymax, pois[k].label.c_str(), pois[k].confidence, ts);
             }
-            //m_localizer.applyLocClue(ids, obs, ts, confs);
+            VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, ts, confs));
         }
+        */
 
         // gps update
         if (itr < (int)gps_data.size())
         {
-            dg::LatLon gps = gps_data[itr];
+            dg::LatLon gps = gps_data[itr].second;
             printf("lat=%lf, lon=%lf, ts=%lf\n", gps.lat, gps.lon, ts);
 
             m_localizer.applyGPS(gps, ts);
@@ -279,13 +287,13 @@ int DeepGuiderSimple::run()
             std::vector<dg::Guidance::RobotGuide> getActiveExplorGuide();
         }
 
-        // guidance (ask JSH)
+        // generate guidance (ask JSH)
         m_guider.printRobotGuide(cur_guide);
 
         // check arrival
         if (++itr >= nitr)
         {
-            is_arrive = true;
+            is_arrived = true;
         }
 
         // user break
