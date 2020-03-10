@@ -5,9 +5,13 @@ We use their open source code as very initial example code for VPS of DeepGuider
 After some step, we could make and release our own VPS code.
 
 ## Prerequisit
-- Python 3.5 ~
-- torch,torchvision, etc.
-- visdom  #  for display result
+- Python 3.6
+  - It's recommended to use a virtualenv, if possible.
+- pip install -r requirement_vps.txt
+  - opencv
+    - pip install opencv-contrib-python-nonfree # 4.1.1.1(latest)
+  - numpy, torch,torchvision, etc.
+  - visdom  #  for display result
 - sudo apt install libopenblas-dev libgomp1 libomp-dev tk-dev python3-tk python3.6-tk
 
 

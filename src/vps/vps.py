@@ -138,10 +138,12 @@ class vps:
                     for flag in to_del: del stored_flags[flag]
     
                     train_flags = [x for x in list(sum(stored_flags.items(), tuple())) if len(x) > 0]
-                    print('Restored flags:', train_flags)
+                    if self.verbose:
+                        print('Restored flags:', train_flags)
                     opt = self.parser.parse_args(train_flags, namespace=opt)
     
-        print(opt)
+        if self.verbose:
+            print(opt)
     
         cuda = not opt.nocuda
         if cuda and not torch.cuda.is_available():
@@ -154,8 +156,9 @@ class vps:
         torch.manual_seed(opt.seed)
         if cuda:
             torch.cuda.manual_seed(opt.seed)
-    
-        print('===> Building model begin')
+      
+        if self.verbose:
+            print('===> Building model begin')
     
         pretrained = not opt.fromscratch
         if opt.arch.lower() == 'alexnet':
@@ -255,7 +258,8 @@ class vps:
                 resume_ckpt = join(opt.resume, 'checkpoints', 'model_best.pth.tar')
     
             if isfile(resume_ckpt):
-                print("=> loading checkpoint '{}'".format(resume_ckpt))
+                if self.verbose:
+                    print("=> loading checkpoint '{}'".format(resume_ckpt))
                 checkpoint = torch.load(resume_ckpt, map_location=lambda storage, loc: storage)
                 opt.start_epoch = checkpoint['epoch']
                 best_metric = checkpoint['best_score']
@@ -263,13 +267,15 @@ class vps:
                 model = model.to(device)
                 if opt.mode == 'train':
                     optimizer.load_state_dict(checkpoint['optimizer'])
-                print("=> loaded checkpoint '{}' (epoch {})"
-                      .format(resume_ckpt, checkpoint['epoch']))
+                if self.verbose:
+                    print("=> loaded checkpoint '{}' (epoch {})"
+                          .format(resume_ckpt, checkpoint['epoch']))
             else:
                 print("=> no checkpoint found at '{}'".format(resume_ckpt))
     
         self.model = model
-        print('===> Building model end(vps.py)')
+        if self.verbose:
+            print('===> Building model end(vps.py)')
 
         return 1 # Non-zero means success return 
     
@@ -286,7 +292,8 @@ class vps:
         self.model.eval()
 
         with torch.no_grad():
-            print('====> Extracting Features')
+            if self.verbose:
+                print('====> Extracting Features')
             pool_size = self.encoder_dim
             if opt.pooling.lower() == 'netvlad': pool_size *= opt.num_clusters
             Feat = np.empty((len(eval_set), pool_size))
@@ -365,12 +372,14 @@ class vps:
                     pin_memory=cuda)
 
         
-        print('====> Building faiss index')
+        if self.verbose:
+            print('====> Building faiss index')
         pool_size = dbFeat[-1].size
         faiss_index = faiss.IndexFlatL2(pool_size) #32768
         faiss_index.add(dbFeat)
     
-        print('====> Calculating recall @',self.K)
+        if self.verbose:
+            print('====> Calculating recall @',self.K)
         #n_values = [1,5,10,20] #n nearest neighbors
     
         pred_L2dist, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
@@ -417,7 +426,8 @@ class vps:
         if self.verbose:
             print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
 
-        print('Return from vps.py->apply()')
+        if self.verbose:
+            print('Return from vps.py->apply()')
 
         return acc
 
@@ -596,7 +606,8 @@ class vps:
 #        cv.waitKey()
 #        cv.destroyWindow("sample")
 
-        print('===> Loading dataset(s)')
+        if self.verbose:
+            print('===> Loading dataset(s)')
         epoch = 1
 
         if opt.dataset.lower() == 'pittsburgh':
@@ -613,9 +624,10 @@ class vps:
             dbDir = 'dbImg'
             qDir = 'qImg'
             whole_db_set,whole_q_set = dataset.get_dg_test_set(dbDir,qDir)
-            print('===> With Query captured near the ETRI Campus')
-            print('===> Evaluating on test set')
-            print('===> Running evaluation step')
+            if self.verbose:
+                print('===> With Query captured near the ETRI Campus')
+                print('===> Evaluating on test set')
+                print('===> Running evaluation step')
             recalls = self.test_dg(whole_db_set,whole_q_set, epoch, write_tboard=False)
         else:
             raise Exception('Unknown dataset')
