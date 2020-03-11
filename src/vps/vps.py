@@ -66,7 +66,6 @@ class vps:
         self.parser.add_argument('--weightDecay', type=float, default=0.001, help='Weight decay for SGD.')
         self.parser.add_argument('--momentum', type=float, default=0.9, help='Momentum for SGD.')
         self.parser.add_argument('--nocuda', action='store_true', help='Dont use cuda')
-        self.parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
         self.parser.add_argument('--seed', type=int, default=123, help='Random seed to use.')
         self.parser.add_argument('--dataPath', type=str, default='netlvad/netvlad_v100_datasets/', help='Path for centroid data.')
         self.parser.add_argument('--runsPath', type=str, default='netvlad/checkpoints/runs/', help='Path to save runs to.')
@@ -97,7 +96,8 @@ class vps:
         self.parser.add_argument('--resume', type=str, default='data_vps/netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint', help='Path to load checkpoint from, for resuming training or testing.')
         #self.parser.add_argument('--dataset', type=str, default='pittsburgh', help='Dataset to use', choices=['pittsburgh','deepguider'])
         self.parser.add_argument('--dataset', type=str, default='deepguider', help='Dataset to use', choices=['pittsburgh','deepguider'])
-        self.parser.add_argument('--cacheBatchSize', type=int, default=4, help='Batch size for caching and testing')
+        #self.parser.add_argument('--cacheBatchSize', type=int, default=4, help='Batch size for caching and testing')
+        self.parser.add_argument('--cacheBatchSize', type=int, default=1, help='Batch size for caching and testing')
 
         self.parser.add_argument('--dbFeat_fname', type=str, default='data_vps/prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
         #self.parser.add_argument('--dbFeat_fname', type=str, default='prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
@@ -107,7 +107,12 @@ class vps:
         #self.parser.add_argument('--save_qFeat', default=False, action='store_true', help='Save qFeat')
         #self.parser.add_argument('--use_saved_dbFeat', default=False, action='store_true', help='Use save dbFeat feature which is calucated in adavnce') #default
 
-        self.parser.add_argument('--verbose', default=False, action='store_true', help='Print internal messages')
+        self.parser.add_argument('--verbose', default=False, action='store_true', help='Print internal messages') #fixed, dg's issue #41
+        
+        # When you get 'ERROR: Unexpected segmentation fault encountered in worker'
+        # then, set threads to 0
+        self.parser.add_argument('--threads', type=int, default=0, help='Number of threads for each data loader to use') #fixed, dg'issue #42
+        #self.parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
         ######(end) Following defaults are combination of 9run_vps_ccsmm.sh
 
         return 1
@@ -377,7 +382,7 @@ class vps:
         num_db, pool_size = dbFeat.shape # n,32768
 
         #faiss_index = faiss.IndexFlatL2(pool_size) # uses distance as metric
-        faiss_index = faiss.IndexFlatIP(pool_size) # uses similarity(confidence) as metric 
+        faiss_index = faiss.IndexFlatIP(pool_size) # fixed, dg's issue #21. It uses similarity(confidence) as metric 
         faiss_index.add(dbFeat)
     
         if self.verbose:
@@ -413,8 +418,8 @@ class vps:
                 flist = dbImage[pred_idx[i]]
                 vps_imgID = self.Fname2ID(flist)
                 vps_imgConf = [val for val in pred_confidence[i]]
-                vps_imgID = [int(i) for i in vps_imgID]
-                vps_imgConf = [float(i) for i in vps_imgConf]
+                vps_imgID = [int(i) for i in vps_imgID] # fixed, dg'issue #36
+                vps_imgConf = [float(i) for i in vps_imgConf] # fixed, dg'issue #36
                 self.vps_IDandConf = [vps_imgID, vps_imgConf]
 
             if self.verbose:
@@ -612,6 +617,7 @@ class vps:
             print('===> Loading dataset(s)')
         epoch = 1
 
+        #bp()
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
             whole_test_set = dataset.get_whole_test_set()
@@ -711,9 +717,10 @@ if __name__ == "__main__":
     mod_vps.initialize()
     qimage = np.uint8(256*np.random.rand(1024,1024,3))
     #(image=None, K=3, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
-    vps_IDandConf = mod_vps.apply(qimage, 3, 37, 27, 95, 100) # k=5 for knn
-    print('############## Result of vps().apply():')
-    print('vps_IDandConf',vps_IDandConf)
+    for i in range(0,4):
+        vps_IDandConf = mod_vps.apply(qimage, 3, 37, 27, 95, 100) # k=5 for knn
+        #print('############## Result of vps().apply():')
+        print('vps_IDandConf',vps_IDandConf)
 
     ## Display Result
     viz = Visdom()

@@ -27,11 +27,11 @@ int main()
 	//cv::imshow("query",image);
 	//cv::waitKey(1);
 
-    int nIter = 2;
+    int nIter = 4;
     for (int i = 0; i < nIter; i++)
     {
         Timestamp t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        int N = 3;  // top-3
+        int N = 5;  // top-3
         if (!vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t)) {
             return -1;
         }
