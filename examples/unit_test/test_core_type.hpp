@@ -80,14 +80,16 @@ int testCoreNode()
     VVS_CHECK_TRUE(a.lat == 0);
     VVS_CHECK_TRUE(a.type == 0);
     VVS_CHECK_TRUE(a.floor == 0);
+    VVS_CHECK_TRUE(a.edge_list.empty());
 
     // Check initialization
-    dg::Node b(3335, dg::LatLon(82, 329), 7, 14);
+    dg::Node b(3335, dg::LatLon(82, 329), dg::NT_ES, 17);
     VVS_CHECK_TRUE(b.id == 3335);
     VVS_CHECK_TRUE(b.lat == 82);
     VVS_CHECK_TRUE(b.lon == 329);
-    VVS_CHECK_TRUE(b.type == 7);
-    VVS_CHECK_TRUE(b.floor == 14);
+    VVS_CHECK_TRUE(b.type == dg::NT_ES);
+    VVS_CHECK_TRUE(b.floor == 17);
+    VVS_CHECK_TRUE(b.edge_list.empty());
 
     // Check equality and inequality
     dg::Node c(3335);
@@ -101,13 +103,26 @@ int testCoreEdge()
 {
     // Check default values
     dg::Edge a;
+    VVS_CHECK_TRUE(a.id == 0);
     VVS_CHECK_TRUE(a.length == 1);
     VVS_CHECK_TRUE(a.type == 0);
+    VVS_CHECK_TRUE(a.directed == false);
+    VVS_CHECK_TRUE(a.node1 == nullptr);
+    VVS_CHECK_TRUE(a.node2 == nullptr);
 
     // Check initialization
-    dg::Edge b(3, 3);
+    dg::Edge b(3335, 3, dg::ET_ES, true, (dg::Node*)(0x01), (dg::Node*)(0x02));
+    VVS_CHECK_TRUE(b.id == 3335);
     VVS_CHECK_TRUE(b.length == 3);
-    VVS_CHECK_TRUE(b.type == 3);
+    VVS_CHECK_TRUE(b.type == dg::ET_ES);
+    VVS_CHECK_TRUE(b.directed == true);
+    VVS_CHECK_TRUE(b.node1 == (dg::Node*)(0x01));
+    VVS_CHECK_TRUE(b.node2 == (dg::Node*)(0x02));
+
+    // Check equality and inequality
+    dg::Edge c(3335);
+    VVS_CHECK_TRUE(b == c);
+    VVS_CHECK_TRUE(b != a);
 
     return 0;
 }
@@ -122,7 +137,7 @@ int testCoreMap()
 
     // Build an example map
     dg::Map map;
-    VVS_CHECK_TRUE(map.addNode(dg::Node(1, 0, 0)) != nullptr); // ID, latitude, longitude
+    VVS_CHECK_TRUE(map.addNode(dg::Node(1, 0, 0)) != nullptr); // Given: node ID, latitude, longitude
     VVS_CHECK_TRUE(map.addNode(dg::Node(2, 0, 1)) != nullptr);
     VVS_CHECK_TRUE(map.addNode(dg::Node(3, 1, 1)) != nullptr);
     VVS_CHECK_TRUE(map.addNode(dg::Node(4, 1, 0)) != nullptr);
@@ -131,15 +146,15 @@ int testCoreMap()
     VVS_CHECK_TRUE(map.addNode(dg::Node(7, 2, 0)) != nullptr);
     VVS_CHECK_TRUE(map.addNode(dg::Node(8, 3, 0)) != nullptr);
 
-    VVS_CHECK_TRUE(map.addEdge(1, 2) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(1, 4) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(2, 3) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(3, 4) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(3, 5) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(5, 6) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(5, 7) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(6, 8) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(7, 8) != nullptr);
+    VVS_CHECK_TRUE(map.addEdge(1, 2, dg::Edge(12)) != nullptr); // Given: node1, node2, edge ID
+    VVS_CHECK_TRUE(map.addEdge(1, 4, dg::Edge(14)) != nullptr);
+    VVS_CHECK_TRUE(map.addEdge(2, 3, dg::Edge(23)) != nullptr);
+    VVS_CHECK_TRUE(map.addEdge(3, 4, dg::Edge(34)) != nullptr);
+    VVS_CHECK_TRUE(map.addEdge(3, 5, dg::Edge(35)) != nullptr);
+    VVS_CHECK_TRUE(map.addEdge(5, 6, dg::Edge(56)) != nullptr);
+    VVS_CHECK_TRUE(map.addEdge(5, 7, dg::Edge(57)) != nullptr);
+    VVS_CHECK_TRUE(map.addEdge(6, 8, dg::Edge(68)) != nullptr);
+    VVS_CHECK_TRUE(map.addEdge(7, 8, dg::Edge(78)) != nullptr);
 
     // Check each a data
     VVS_CHECK_TRUE(map.findNode(1)->lat == 0);
@@ -170,12 +185,13 @@ int testCoreMap()
     VVS_CHECK_TRUE(map.findEdge(7, 4) == nullptr);
 
     // Check some 'length' in 'dg::EdgeCost'
-    VVS_CHECK_TRUE(map.findEdge(1, 2)->length == 1);
-    VVS_CHECK_TRUE(map.findEdge(2, 1)->length == 1);
-    VVS_CHECK_TRUE(map.findEdge(1, 4)->length == 1);
-    VVS_CHECK_TRUE(map.findEdge(4, 1)->length == 1);
-    VVS_CHECK_TRUE(map.findEdge(2, 3)->length == 1);
-    VVS_CHECK_TRUE(map.findEdge(3, 2)->length == 1);
+    VVS_CHECK_TRUE(map.findEdge(12)->length == 1);
+    VVS_CHECK_TRUE(map.findEdge(14)->length == 1);
+    VVS_CHECK_TRUE(map.findEdge(23)->length == 1);
+
+    VVS_CHECK_TRUE(map.findEdge(21) == nullptr);
+    VVS_CHECK_TRUE(map.findEdge(41) == nullptr);
+    VVS_CHECK_TRUE(map.findEdge(32) == nullptr);
 
     return 0;
 }

@@ -6,28 +6,52 @@
 namespace dg
 {
 
-/**
- * @brief Node type definition of the topological map
- *
- * NT_BS: Basic node
- * NT_JT: Junction node (intersecting point, corner point, end point of the road)
- * NT_DR: Door node (exit/entrance)
- * NT_EV: Elevator node
- * NT_ES: Escalator node
- */
-enum { NT_BS = 0, NT_JT = 1, NT_DR = 2, NT_EV = 3, NT_ES = 4, NT_NUM };
+/** Node type definition of the topological map */
+enum
+{
+    /** Basic node */
+    NT_BS = 0,
 
-/**
- * @brief Edge type definition of the topological map
- *
- * ET_SD: Sidewalk
- * ET_MD: Middle road (lane, ginnel, roads shared by pedestrians and cars, ...)
- * ET_CR: Crosswalk
- * ET_DR: Doorway
- * ET_EV: Elevator section
- * ET_ES: Escalator section
- */
-enum { ET_SD = 0, ET_MD = 1, ET_CR = 2, ET_DR = 3, ET_EV = 4, ET_ES = 5, ET_NUM };
+    /** Junction node (e.g. intersecting point, corner point, and end point of the road) */
+    NT_JT = 1,
+
+    /** Door node (e.g. exit and entrance) */
+    NT_DR = 2,
+
+    /** Elevator node */
+    NT_EV = 3,
+
+    /** Escalator node */
+    NT_ES = 4,
+
+    /** The number of node types */
+    NT_NUM
+};
+
+/** Edge type definition of the topological map */
+enum
+{
+    /** Sidewalk */
+    ET_SD = 0,
+
+    /** Middle road (e.g. lane, ginnel, roads shared by pedestrians and cars, ...) */
+    ET_MD = 1,
+
+    /** Crosswalk */
+    ET_CR = 2,
+
+    /** Doorway */
+    ET_DR = 3,
+
+    /** Elevator section */
+    ET_EV = 4,
+
+    /** Escalator section */
+    ET_ES = 5,
+
+    /** The number of edge types */
+    ET_NUM
+};
 
 class Edge;
 
@@ -58,7 +82,7 @@ public:
 
     /**
      * Overriding the assignment operator
-     * @param rhs A node in the right-hand side
+     * @param rhs The right-hand side
      * @return The assigned instance
      */
     Node& operator=(const Node& rhs)
@@ -113,10 +137,46 @@ class Edge
 public:
     /**
      * A constructor with member initialization
+     * @param _id The given identifier
      * @param _length The given length of edge (Unit: [m])
      * @param _type The given type of edge
+     * @param _directed The given flag whether the edge is undirected (false) or directed (true)
+     * @param _node1 The given pointer to the first node
+     * @param _node2 The given pointer to the second node
      */
-    Edge(double _length = 1, int _type = 0, bool _directed = false, Node* _node1 = nullptr, Node* _node2 = nullptr) : length(_length), type(_type), directed(_directed), node1(_node1), node2(_node2) { }
+    Edge(ID _id = 0, double _length = 1, int _type = 0, bool _directed = false, Node* _node1 = nullptr, Node* _node2 = nullptr) : id(_id), length(_length), type(_type), directed(_directed), node1(_node1), node2(_node2) { }
+
+    /**
+     * Overriding the assignment operator
+     * @param rhs The right-hand side
+     * @return The assigned instance
+     */
+    Edge& operator=(const Edge& rhs)
+    {
+        id     = rhs.id;
+        length = rhs.length;
+        type   = rhs.type;
+        node1  = rhs.node1;
+        node2  = rhs.node2;
+        return *this;
+    }
+
+    /**
+     * Check equality
+     * @param rhs The right-hand side
+     * @return Equality of two operands
+     */
+    bool operator==(const Edge& rhs) const { return (id == rhs.id); }
+
+    /**
+     * Check inequality
+     * @param rhs The right-hand side
+     * @return Inequality of two operands
+     */
+    bool operator!=(const Edge& rhs) const { return (id != rhs.id); }
+
+    /** The identifier */
+    ID id;
 
     /** The length of edge (Unit: [m]) */
     double length;
@@ -174,7 +234,8 @@ public:
      * Add an edge between two nodes (time complexity: O(1))
      * @param node1 ID of the first node
      * @param node2 ID of the second node
-     * @param info An edge information between two nodes
+     * @param info An edge information between two nodes<br>
+     *  Edge::node1 and Edge::node2 are not necessary to be assigned.
      * @return A pointer to the added edge (`nullptr` if any node is not exist)
      */
     Edge* addEdge(ID node1, ID node2, const Edge& info = Edge())
@@ -190,6 +251,7 @@ public:
         Edge* edge_ptr = &(edges.back());
         node1_ptr->edge_list.push_back(edge_ptr);
         if (!edge.directed) node2_ptr->edge_list.push_back(edge_ptr);
+        lookup_edges.insert(std::make_pair(edge.id, edge_ptr));
         return edge_ptr;
     }
 
@@ -200,10 +262,22 @@ public:
      */
     Node* findNode(ID id)
     {
-        assert(nodes.size() == lookup_nodes.size()); // Disable this if you want speed-up in DEBUG mode
-        assert(lookup_nodes.count(id) <= 1);         // Disable this if you want speed-up in DEBUG mode
+        assert(nodes.size() == lookup_nodes.size() && lookup_nodes.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_nodes.find(id);
         if (found == lookup_nodes.end()) return nullptr;
+        return found->second;
+    }
+
+    /**
+     * Find an edge using ID (time complexity: O(1))
+     * @param id ID to search
+     * @return A pointer to the found edge (`nullptr` if not exist)
+     */
+    Edge* findEdge(ID id)
+    {
+        assert(edges.size() == lookup_edges.size() && lookup_edges.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
+        auto found = lookup_edges.find(id);
+        if (found == lookup_edges.end()) return nullptr;
         return found->second;
     }
 
@@ -219,7 +293,7 @@ public:
         if (from_ptr == nullptr) return nullptr;
         for (auto edge = from_ptr->edge_list.begin(); edge != from_ptr->edge_list.end(); edge++)
         {
-            assert((*edge)->node1 != nullptr && (*edge)->node2 != nullptr); // Disable this if you want speed-up in DEBUG mode
+            assert((*edge)->node1 != nullptr && (*edge)->node2 != nullptr); // Verify connection (comment this line if you want speed-up in DEBUG mode)
             if ((*edge)->node1->id == to || (*edge)->node2->id == to) return *edge;
         }
         return nullptr;
@@ -240,6 +314,9 @@ public:
 protected:
     /** A hash table for finding nodes */
     std::map<ID, Node*> lookup_nodes;
+
+    /** A hash table for finding nodes */
+    std::map<ID, Edge*> lookup_edges;
 };
 
 } // End of 'dg'

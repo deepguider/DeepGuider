@@ -5,7 +5,7 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
 
-int generateExampleMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID id_offset = 1000, double pixel_per_meter = 1, const dg::LatLon& first_latlon = dg::LatLon(36.383837659737225, 127.36788082844413))
+int generateExampleMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID id_offset = 100, double pixel_per_meter = 1, const dg::LatLon& first_latlon = dg::LatLon(36.383837659737225, 127.36788082844413))
 {
     // Read 'yml_file' generated from 'simple_picker'
     cv::FileStorage fs;
@@ -63,41 +63,41 @@ dg::Map getExampleMap()
     //         2) The geodesic values of the first node can be assigned by GPS data such as (36.3838455, 127.3678567).
 
     dg::Map map;
-    map.addNode(dg::Node(1000, 36.383837659737, 127.367880828442));
-    map.addNode(dg::Node(1001, 36.383972503935, 127.368513464272));
-    map.addNode(dg::Node(1002, 36.384192102671, 127.369411892631));
-    map.addNode(dg::Node(1003, 36.384488693234, 127.370007712223));
-    map.addNode(dg::Node(1004, 36.385032398405, 127.370877091215));
-    map.addNode(dg::Node(1005, 36.385238864809, 127.371474802670));
-    map.addNode(dg::Node(1006, 36.385389689704, 127.372619955728));
-    map.addNode(dg::Node(1007, 36.385616543283, 127.374053392578));
-    map.addNode(dg::Node(1008, 36.385719707014, 127.375010022487));
-    map.addNode(dg::Node(1009, 36.385783641605, 127.377060033716));
-    map.addNode(dg::Node(1010, 36.385781293449, 127.377550620897));
-    map.addNode(dg::Node(1011, 36.385797420879, 127.378074270063));
-    map.addNode(dg::Node(1012, 36.385795673859, 127.378609439303));
-    map.addNode(dg::Node(1013, 36.385566664196, 127.379004395247));
-    map.addNode(dg::Node(1014, 36.384656326678, 127.379012147148));
-    map.addNode(dg::Node(1015, 36.382682451501, 127.379030829600));
-    map.addNode(dg::Node(1016, 36.381348712540, 127.379058516894));
-    map.addNode(dg::Node(1017, 36.378969609824, 127.379107900521));
-    map.addEdge(1000, 1001, dg::Edge(-1, 0, true));
-    map.addEdge(1001, 1002, dg::Edge(-1, 0, true));
-    map.addEdge(1002, 1003, dg::Edge(-1, 0, true));
-    map.addEdge(1003, 1004, dg::Edge(-1, 0, true));
-    map.addEdge(1004, 1005, dg::Edge(-1, 0, true));
-    map.addEdge(1005, 1006, dg::Edge(-1, 0, true));
-    map.addEdge(1006, 1007, dg::Edge(-1, 0, true));
-    map.addEdge(1007, 1008, dg::Edge(-1, 0, true));
-    map.addEdge(1008, 1009, dg::Edge(-1, 0, true));
-    map.addEdge(1009, 1010, dg::Edge(-1, 0, true));
-    map.addEdge(1010, 1011, dg::Edge(-1, 0, true));
-    map.addEdge(1011, 1012, dg::Edge(-1, 0, true));
-    map.addEdge(1012, 1013, dg::Edge(-1, 0, true));
-    map.addEdge(1013, 1014, dg::Edge(-1, 0, true));
-    map.addEdge(1014, 1015, dg::Edge(-1, 0, true));
-    map.addEdge(1015, 1016, dg::Edge(-1, 0, true));
-    map.addEdge(1016, 1017, dg::Edge(-1, 0, true));
+    map.addNode(dg::Node(100, 36.383837659737, 127.367880828442));
+    map.addNode(dg::Node(101, 36.383972503935, 127.368513464272));
+    map.addNode(dg::Node(102, 36.384192102671, 127.369411892631));
+    map.addNode(dg::Node(103, 36.384488693234, 127.370007712223));
+    map.addNode(dg::Node(104, 36.385032398405, 127.370877091215));
+    map.addNode(dg::Node(105, 36.385238864809, 127.371474802670));
+    map.addNode(dg::Node(106, 36.385389689704, 127.372619955728));
+    map.addNode(dg::Node(107, 36.385616543283, 127.374053392578));
+    map.addNode(dg::Node(108, 36.385719707014, 127.375010022487));
+    map.addNode(dg::Node(109, 36.385783641605, 127.377060033716));
+    map.addNode(dg::Node(110, 36.385781293449, 127.377550620897));
+    map.addNode(dg::Node(111, 36.385797420879, 127.378074270063));
+    map.addNode(dg::Node(112, 36.385795673859, 127.378609439303));
+    map.addNode(dg::Node(113, 36.385566664196, 127.379004395247));
+    map.addNode(dg::Node(114, 36.384656326678, 127.379012147148));
+    map.addNode(dg::Node(115, 36.382682451501, 127.379030829600));
+    map.addNode(dg::Node(116, 36.381348712540, 127.379058516894));
+    map.addNode(dg::Node(117, 36.378969609824, 127.379107900521));
+    map.addEdge(100, 101, dg::Edge(10001, -1, 0, true));
+    map.addEdge(101, 102, dg::Edge(10102, -1, 0, true));
+    map.addEdge(102, 103, dg::Edge(10203, -1, 0, true));
+    map.addEdge(103, 104, dg::Edge(10304, -1, 0, true));
+    map.addEdge(104, 105, dg::Edge(10405, -1, 0, true));
+    map.addEdge(105, 106, dg::Edge(10506, -1, 0, true));
+    map.addEdge(106, 107, dg::Edge(10607, -1, 0, true));
+    map.addEdge(107, 108, dg::Edge(10708, -1, 0, true));
+    map.addEdge(108, 109, dg::Edge(10809, -1, 0, true));
+    map.addEdge(109, 110, dg::Edge(10910, -1, 0, true));
+    map.addEdge(110, 111, dg::Edge(11011, -1, 0, true));
+    map.addEdge(111, 112, dg::Edge(11112, -1, 0, true));
+    map.addEdge(112, 113, dg::Edge(11213, -1, 0, true));
+    map.addEdge(113, 114, dg::Edge(11314, -1, 0, true));
+    map.addEdge(114, 115, dg::Edge(11415, -1, 0, true));
+    map.addEdge(115, 116, dg::Edge(11516, -1, 0, true));
+    map.addEdge(116, 117, dg::Edge(11617, -1, 0, true));
     return map;
 }
 
