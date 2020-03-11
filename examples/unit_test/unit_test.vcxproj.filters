@@ -38,7 +38,7 @@
     <ClInclude Include="..\..\src\localizer\simple_localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_core_graph.hpp">
+    <ClInclude Include="test_localizer_graph.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_localizer_gps2utm.hpp">
