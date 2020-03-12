@@ -319,11 +319,13 @@ bool MapManager::generatePath(double start_lat, double start_lon, double goal_la
 		assert(properties.IsObject());
 		if (i % 2 == 0)
 		{
-			m_path.pts.push_back(PathElement(&Node(properties["id"].GetUint64()), NULL));
+			Node node = Node(properties["id"].GetUint64());
+			m_path.pts.push_back(PathElement(&node, nullptr));
 		}
 		else
 		{
-			m_path.pts.push_back(PathElement(NULL, &Edge(properties["id"].GetUint64())));
+			Edge edge = Edge(properties["id"].GetUint64());
+			m_path.pts.push_back(PathElement(nullptr, &edge));
 		}
 	}
 
