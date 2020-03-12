@@ -9,43 +9,26 @@
 int testSimpleMapManager()
 {
 	dg::MapManager manager;
-	//manager.load(128, 37, 19);
-	//dg::NodeInfo node0(0, 128, 38);
-	//node0.sv_ids = { 0, 1, 2 };
-	//manager.getMap().addNode(node0);
-	//manager.getMap().addNode(dg::NodeInfo(1, 1, 1));
-	//dg::EdgeInfo edge01;
-	//edge01.width = 0.5;
-	//manager.getMap().addEdge(dg::NodeInfo(0), dg::NodeInfo(1), edge01);
-	//manager.getMap().addEdge(dg::NodeInfo(1), dg::NodeInfo(0), edge01);
-
-	//VVS_CHECK_EQUL(manager.getMap().countNodes(), 6);
-	//VVS_CHECK_EQUL(manager.getMap().countEdges(dg::NodeInfo(0)), 1);
-
- //   // Rest the map
-	//manager.getMap().removeAll();
- //   //VVS_CHECK_TRUE(manager.isEmpty());
- //   VVS_CHECK_EQUAL(manager.getMap().countNodes(), 0);
 
     // Load the map
 	VVS_CHECK_TRUE(manager.load(36.384063, 127.374733, 650.0));
-    //VVS_CHECK_TRUE(manager.load(36.383921, 127.367481, 16.0));
-	VVS_CHECK_EQUL(manager.getMap().countNodes(), 721); //8856); // 2);
+	VVS_CHECK_EQUL(manager.getMap().nodes.size(), 721); //8856); // 2);
 	
 	// Generate the path
 	manager.generatePath(37.503884, 127.047569, 37.5087, 127.0621);
 
 	// Get the path
 	dg::Path path = manager.getPath();
-	VVS_CHECK_EQUL(path.countPoints(), 109); // 78);
-	path = manager.getPath("test_simple_path.json");
-	VVS_CHECK_EQUL(path.countPoints(), 78);
+	VVS_CHECK_EQUL(path.pts.size(), 109); // 78);
+	/*path = manager.getPath("test_simple_path.json");
+	VVS_CHECK_EQUL(path.pts.size(), 78);*/
 	
-	dg::Map::Node* findNode = manager.getMap().findNode(559542564800095);
-	VVS_CHECK_EQUL(findNode->data.id, 559542564800095);
-	dg::Map::Edge* findEdge = manager.getMap().findEdge(559562564900154, 559562564900155);
-	VVS_CHECK_EQUL(findEdge->cost.length, 13.370689140764002);
-	
+	dg::Node* findNode = manager.getMap().findNode(559542564800095);
+	VVS_CHECK_EQUL(findNode->id, 559542564800095);
+	dg::Edge* findEdge = manager.getMap().findEdge(559562564900154, 559562564900155);
+	VVS_CHECK_EQUL(findEdge->length, 13.370689140764002);
+	VVS_CHECK_EQUL((manager.getMap().findEdge(findEdge->id))->length, 13.370689140764002);
+
 	//std::vector<cv::Point2d> poiloc = manager.getPOIloc("UST");
 	
     return 0;

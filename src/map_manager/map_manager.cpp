@@ -91,7 +91,7 @@ namespace dg
 
 bool MapManager::downloadMap(double lat, double lon, double radius)
 {
-	const std::string url_head = "http://129.254.87.96:21500/wgs/";
+	const std::string url_head = "http://localhost:21500/wgs/";
 	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 	
 	return query2server(url);
@@ -99,7 +99,7 @@ bool MapManager::downloadMap(double lat, double lon, double radius)
 
 bool MapManager::downloadMap(ID node_id, double radius)
 {
-	const std::string url_head = "http://129.254.87.96:21500/node/";
+	const std::string url_head = "http://localhost:21500/node/";
 	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -107,7 +107,7 @@ bool MapManager::downloadMap(ID node_id, double radius)
 
 bool MapManager::downloadMap(cv::Point2i tile)
 {
-	const std::string url_head = "http://129.254.87.96:21500/tile/";
+	const std::string url_head = "http://localhost:21500/tile/";
 	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
 
 	return query2server(url);
@@ -186,7 +186,7 @@ bool MapManager::decodeUni()
 
 bool MapManager::load(double lat, double lon, double radius)
 {
-    m_map.removeAll();
+    m_map.nodes.clear();
 	m_json = "";
 
 	// by communication
@@ -214,11 +214,11 @@ bool MapManager::load(double lat, double lon, double radius)
 		std::string name = properties["name"].GetString();
 		if (name == "edge") //continue; //TODO
 		{
-			EdgeTemp edgeinfo;
-			edgeinfo.id = properties["id"].GetUint64();
-			edgeinfo.type = properties["type"].GetInt();
-			edgeinfo.length = properties["length"].GetDouble();
-			temp_edge.push_back(edgeinfo);
+			EdgeTemp edge;
+			edge.id = properties["id"].GetUint64();
+			edge.type = properties["type"].GetInt();
+			edge.length = properties["length"].GetDouble();
+			temp_edge.push_back(edge);
 		}
 	}
 
@@ -236,12 +236,12 @@ bool MapManager::load(double lat, double lon, double radius)
 		std::string name = properties["name"].GetString();
 		if (name == "Node")
 		{
-			NodeInfo nodeinfo;
-			nodeinfo.id = properties["id"].GetUint64();
-			nodeinfo.type = properties["type"].GetInt();
-			nodeinfo.floor = properties["floor"].GetInt();
-			nodeinfo.lat = properties["latitude"].GetDouble();
-			nodeinfo.lon = properties["longitude"].GetDouble();
+			Node node;
+			node.id = properties["id"].GetUint64();
+			node.type = properties["type"].GetInt();
+			node.floor = properties["floor"].GetInt();
+			node.lat = properties["latitude"].GetDouble();
+			node.lon = properties["longitude"].GetDouble();
 			const Value& edge_ids = properties["edge_ids"];
 			
 			for (Value::ConstValueIterator edge_id = edge_ids.Begin(); edge_id != edge_ids.End(); ++edge_id)
@@ -249,29 +249,17 @@ bool MapManager::load(double lat, double lon, double radius)
 				ID id = edge_id->GetUint64();
 				std::vector<EdgeTemp>::iterator itr = std::find_if(temp_edge.begin(), temp_edge.end(), [id](EdgeTemp e) -> bool { return e.id == id; });
 				if(itr != temp_edge.end())
-					itr->node_ids.push_back(nodeinfo.id);
+					itr->node_ids.push_back(node.id);
 #ifdef _DEBUG
 				else
 					fprintf(stdout, "%d %s\n", ++numNonEdges, "<=======================the number of the edge_ids without edgeinfo"); // the number of the edge_ids without edgeinfo
 #endif
 			}
-			m_map.addNode(nodeinfo);
+			m_map.addNode(node);
 #ifdef _DEBUG
 			fprintf(stdout, "%d\n", i + 1); // the number of nodes
 #endif
 		}
-		//EdgeInfo edgeinfo;
-		/*const Value& edges = feature["edges"];
-		for (SizeType j = 0; j < edges.Size(); j++)
-		{
-			const Value& edge = edges[j];
-			ID tid = edge["tid"].GetUint64();
-			edgeinfo.width = edge["width"].GetDouble();
-			edgeinfo.length = edge["length"].GetDouble();
-			edgeinfo.type = edge["edge_type"].GetInt();
-
-			m_map.addEdge(from_node, NodeInfo(tid), edgeinfo);
-		}*/
 	}
 
 	for (std::vector<EdgeTemp>::iterator it = temp_edge.begin(); it < temp_edge.end(); it++)
@@ -281,8 +269,8 @@ bool MapManager::load(double lat, double lon, double radius)
 			for (auto j = i; j < it->node_ids.end(); j++)
 			{
 				if (i == j) continue;
-				m_map.addEdge(NodeInfo(*i), NodeInfo(*j), EdgeInfo(it->length, it->type));
-				m_map.addEdge(NodeInfo(*j), NodeInfo(*i), EdgeInfo(it->length, it->type));
+				m_map.addEdge(*i, *j, Edge(it->id, it->length, it->type));
+				//m_map.addEdge(*j, *i, Edge(it->id, it->length, it->type));
 #ifdef _DEBUG
 					fprintf(stdout, "%d %s\n", ++numEdges, "<=======================the number of edges"); // the number of edges
 #endif
@@ -295,7 +283,7 @@ bool MapManager::load(double lat, double lon, double radius)
 
 bool MapManager::downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths)
 {
-	const std::string url_head = "http://129.254.87.96:20005/"; // routing server (paths)
+	const std::string url_head = "http://localhost:20005/"; // routing server (paths)
 	std::string url = url_head + std::to_string(start_lat) + "/" + std::to_string(start_lon) + "/" + std::to_string(goal_lat) + "/" + std::to_string(goal_lon) + "/" + std::to_string(num_paths);
 
 
@@ -304,7 +292,7 @@ bool MapManager::downloadPath(double start_lat, double start_lon, double goal_la
 
 bool MapManager::generatePath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths)
 {
-	m_path.removeAll();
+	m_path.pts.clear();
 	m_json = "";
 
 	// by communication
@@ -329,40 +317,47 @@ bool MapManager::generatePath(double start_lat, double start_lon, double goal_la
 		assert(feature.HasMember("properties"));
 		const Value& properties = feature["properties"];
 		assert(properties.IsObject());
-		m_path.m_points.push_back(properties["id"].GetUint64());
+		if (i % 2 == 0)
+		{
+			m_path.pts.push_back(PathElement(&Node(properties["id"].GetUint64()), NULL));
+		}
+		else
+		{
+			m_path.pts.push_back(PathElement(NULL, &Edge(properties["id"].GetUint64())));
+		}
 	}
 
 	return true;
 }
 
-Path MapManager::getPath(const char* filename)
-{
-	m_path.removeAll();
-	m_json = "";
-
-	// Convert JSON document to string
-	auto is = std::ifstream(filename, std::ofstream::in);
-	assert(is.is_open());
-	std::string line, text;
-	while (std::getline(is, line))
-	{
-		text += line + "\n";
-	}
-	const char* json = text.c_str();
-	is.close();
-	Document document;
-	document.Parse(json);
-
-	assert(document.IsObject());
-	const Value& path = document["path"];
-	assert(path.IsArray());
-	for (SizeType i = 0; i < path.Size(); i++)
-	{
-		m_path.m_points.push_back(path[i].GetUint64());
-	}
-
-	return getPath();
-}
+//Path MapManager::getPath(const char* filename)
+//{
+//	m_path.pts.clear();
+//	m_json = "";
+//
+//	// Convert JSON document to string
+//	auto is = std::ifstream(filename, std::ofstream::in);
+//	assert(is.is_open());
+//	std::string line, text;
+//	while (std::getline(is, line))
+//	{
+//		text += line + "\n";
+//	}
+//	const char* json = text.c_str();
+//	is.close();
+//	Document document;
+//	document.Parse(json);
+//
+//	assert(document.IsObject());
+//	const Value& path = document["path"];
+//	assert(path.IsArray());
+//	for (SizeType i = 0; i < path.Size(); i++)
+//	{
+//		m_path.pts.push_back(path[i].GetUint64());
+//	}
+//
+//	return getPath();
+//}
 
 Path MapManager::getPath()
 {
@@ -405,7 +400,7 @@ Map& MapManager::getMap()
 
 bool MapManager::downloadPOI(double lat, double lon, double radius)
 {
-	const std::string url_head = "http://129.254.87.96:21502/wgs/";
+	const std::string url_head = "http://localhost:21502/wgs/";
 	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -413,7 +408,7 @@ bool MapManager::downloadPOI(double lat, double lon, double radius)
 
 bool MapManager::downloadPOI(ID node_id, double radius)
 {
-	const std::string url_head = "http://129.254.87.96:21502/node/";
+	const std::string url_head = "http://localhost:21502/node/";
 	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -421,7 +416,7 @@ bool MapManager::downloadPOI(ID node_id, double radius)
 
 bool MapManager::downloadPOI(cv::Point2i tile)
 {
-	const std::string url_head = "http://129.254.87.96:21502/tile/";
+	const std::string url_head = "http://localhost:21502/tile/";
 	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
 
 	return query2server(url);

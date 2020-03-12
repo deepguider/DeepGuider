@@ -30,21 +30,6 @@ using namespace rapidjson;
 
 #define M_PI 3.14159265358979323846
 
-//
-//enum NodeType
-//{
-//	NODE_BASIC = 0,
-//	NODE_CROSS = 1,
-//	NODE_DOOR = 2,
-//	NODE_ELEVATOR = 3
-//};
-//enum EdgeType
-//{
-//	EDGE_SIDEWALK = 0,
-//	EDGE_STREET = 1,
-//	EDGE_CROSSWALK = 2
-//};
-
 namespace dg
 {
 
@@ -88,7 +73,7 @@ public:
 	bool decodeUni();
 	bool downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
 	bool generatePath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
-	Path getPath(const char* filename);
+	//Path getPath(const char* filename);
 	Path getPath();
 	Map& getMap(Path path);
 	Map& getMap();
@@ -109,10 +94,10 @@ protected:
 	int m_z = 0;
 };
 
-class EdgeTemp : public EdgeInfo
+class EdgeTemp : public Edge
 {
 public:
-	ID id;
+	//ID id;
 	std::vector<ID> node_ids;
 };
 
