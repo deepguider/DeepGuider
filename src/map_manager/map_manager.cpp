@@ -91,7 +91,7 @@ namespace dg
 
 bool MapManager::downloadMap(double lat, double lon, double radius)
 {
-	const std::string url_head = "http://localhost:21500/wgs/";
+	const std::string url_head = "http://129.254.87.96:21500/wgs/";
 	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 	
 	return query2server(url);
@@ -99,7 +99,7 @@ bool MapManager::downloadMap(double lat, double lon, double radius)
 
 bool MapManager::downloadMap(ID node_id, double radius)
 {
-	const std::string url_head = "http://localhost:21500/node/";
+	const std::string url_head = "http://129.254.87.96:21500/node/";
 	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -107,7 +107,7 @@ bool MapManager::downloadMap(ID node_id, double radius)
 
 bool MapManager::downloadMap(cv::Point2i tile)
 {
-	const std::string url_head = "http://localhost:21500/tile/";
+	const std::string url_head = "http://129.254.87.96:21500/tile/";
 	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
 
 	return query2server(url);
@@ -216,7 +216,21 @@ bool MapManager::load(double lat, double lon, double radius)
 		{
 			EdgeTemp edge;
 			edge.id = properties["id"].GetUint64();
-			edge.type = properties["type"].GetInt();
+			switch (properties["type"].GetInt())
+			{
+				/** Sidewalk */
+			case 0: edge.type = ET_SD; break;
+				/** Middle road (e.g. lane, ginnel, roads shared by pedestrians and cars, ...) */
+			case 1: edge.type = ET_MD; break;
+				/** Crosswalk */
+			case 2: edge.type = ET_CR; break;
+				/** Doorway */
+			case 3: edge.type = ET_DR; break;
+				/** Elevator section */
+			case 4: edge.type = ET_EV; break;
+				/** Escalator section */
+			case 5: edge.type = ET_ES; break;
+			}
 			edge.length = properties["length"].GetDouble();
 			temp_edge.push_back(edge);
 		}
@@ -238,7 +252,19 @@ bool MapManager::load(double lat, double lon, double radius)
 		{
 			Node node;
 			node.id = properties["id"].GetUint64();
-			node.type = properties["type"].GetInt();
+			switch (properties["type"].GetInt())
+			{
+				/** Basic node */
+			case 0: node.type = NT_BS; break;
+				/** Junction node (e.g. intersecting point, corner point, and end point of the road) */
+			case 1: node.type = NT_JT; break;
+				/** Door node (e.g. exit and entrance) */
+			case 2: node.type = NT_DR; break;
+				/** Elevator node */
+			case 3: node.type = NT_EV; break;
+				/** Escalator node */
+			case 4: node.type = NT_ES; break;
+			}
 			node.floor = properties["floor"].GetInt();
 			node.lat = properties["latitude"].GetDouble();
 			node.lon = properties["longitude"].GetDouble();
@@ -283,7 +309,7 @@ bool MapManager::load(double lat, double lon, double radius)
 
 bool MapManager::downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths)
 {
-	const std::string url_head = "http://localhost:20005/"; // routing server (paths)
+	const std::string url_head = "http://129.254.87.96:20005/"; // routing server (paths)
 	std::string url = url_head + std::to_string(start_lat) + "/" + std::to_string(start_lon) + "/" + std::to_string(goal_lat) + "/" + std::to_string(goal_lon) + "/" + std::to_string(num_paths);
 
 
@@ -402,7 +428,7 @@ Map& MapManager::getMap()
 
 bool MapManager::downloadPOI(double lat, double lon, double radius)
 {
-	const std::string url_head = "http://localhost:21502/wgs/";
+	const std::string url_head = "http://129.254.87.96:21502/wgs/";
 	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -410,7 +436,7 @@ bool MapManager::downloadPOI(double lat, double lon, double radius)
 
 bool MapManager::downloadPOI(ID node_id, double radius)
 {
-	const std::string url_head = "http://localhost:21502/node/";
+	const std::string url_head = "http://129.254.87.96:21502/node/";
 	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -418,7 +444,7 @@ bool MapManager::downloadPOI(ID node_id, double radius)
 
 bool MapManager::downloadPOI(cv::Point2i tile)
 {
-	const std::string url_head = "http://localhost:21502/tile/";
+	const std::string url_head = "http://129.254.87.96:21502/tile/";
 	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
 
 	return query2server(url);
