@@ -9,29 +9,6 @@ class Guidance
 public:
 
 	Guidance()	{ }
-
-	/** The type of the node*/
-	//Map::Node::NodeType Node;
-
-	enum class NodeEnum
-	{
-		NT_BS = 0,	//POI on continuous sidewalk, streets are connected with 180 degree
-		NT_JT,		//Junction, Island, Road end, etc. streets are connected with 90 DEGREE
-		NT_DR,	//Entrance of a building
-		NT_EV,	//In front of an elevator
-		NT_ES	//In fron of an escalator
-	};
-
-	/** The type of the edge on which the robot moves*/
-	enum class EdgeEnum
-	{
-		ET_SD = 0,	//sidewalk, Street for pedestrian
-		ET_MD,	//road. no sidewalk
-		ET_CR, //Pedestrian Crosswalk with traffic light
-		ET_DR, //connecting inside and outside
-		ET_EV,	//connecting floors with an elevator
-		ET_ES		//connecting floors with an escalator
-	};
 	
 	/** Robot's moving status*/
 	enum class MoveStatus
@@ -73,13 +50,13 @@ public:
 	struct GuideStruct
 	{
 		/** ID of NODE which the robot is heading ahead*/
-		ID nodeid;
+		ID node_id;
 
 		/**The type of heading node*/
-		NodeEnum nodetype;
+		int node_type;
 
 		/**The robot moving mode depends on street(edge) type*/
-		EdgeEnum edgetype;
+		int edge_type;
 
 		/**Turning direction of robot on the node  based on robot's heading*/
 		int degree;
@@ -87,10 +64,11 @@ public:
 	};
 
 
-	/**An action of robot including motion and direction */
+	/**A realtime action of robot including motion and direction */
 	struct ActionStruct
 	{
 		Motion move;
+		double distance;
 		int degree;
 	};
 
@@ -107,18 +85,11 @@ public:
 	};
 
 
-private:
-		
-	/**Type of path, whether the path is node or edge.*/
-	enum class PathEnum
-	{
-		NODE = 0,
-		EDGE
-	};
+private:		
 
 	/**@brief A segment of guided path
 	*/
-	class GuidedPathType
+	class GuidedPathElement
 	{
 	public:
 		/** A constructor with path's segment
@@ -128,37 +99,18 @@ private:
 		* @param _degree An relative orientation from past node to current node
 		* @param _edge And element from EdgeType
 		*/
-		GuidedPathType(ID _curnid = 0, NodeEnum _curntype = NodeEnum::NT_BS,
-			ID _eid = 0, EdgeEnum _etype = EdgeEnum::ET_SD,
-			ID _nextnid = 0, NodeEnum _nextntype = NodeEnum::NT_BS,
-			int _degree = 0)
-			: curnid(_curnid), curntype(_curntype), eid(_eid), etype(_etype), 
-			nextnid(_nextnid), nextntype(_nextntype), degree(_degree) {}
+		GuidedPathElement(Node* _fromnode, Edge* _edge,
+			Node* _tonode, int _degree = 0)
+			: from_node (_fromnode), edge(_edge), to_node(_tonode), degree(_degree) {}
 
-		//GuidedPathType(PathEnum _component = PathEnum::NODE, ID _id = 0, NodeEnum _node = NodeEnum::NT_BS, int _degree = 0) : component(_component), id(_id), nodetype(_node), degree(_degree) {}
-		//GuidedPathType(PathEnum _component = PathEnum::EDGE, ID _id = 0, EdgeEnum _edge = EdgeEnum::ET_SD) : component(_component), id(_id), edgetype(_edge) {}
+		/** Current NODE*/
+		Node* from_node;
 
+		/** EDGE*/
+		Edge* edge;
 
-		/** Either Node or EDGE */
-		//PathEnum component;
-		
-		/** Current ID of NODE*/
-		ID curnid;
-
-		/** Current Type of Node*/
-		NodeEnum curntype;
-		
-		/** ID of EDGE*/
-		ID eid;
-
-		/** Type of Edge*/
-		EdgeEnum etype;
-
-		/** Next ID of NODE*/
-		ID nextnid;
-
-		/** Next Type of Node*/
-		NodeEnum nextntype;
+		/** Next NODE*/
+		Node* to_node;
 
 		/** Rotation angle at next node. [deg] 0~359*/
 		int degree;
@@ -168,27 +120,25 @@ private:
 	//Guidance member
 	dg::Path m_path;
 	dg::Map m_map;
-	std::vector <GuidedPathType> m_initGuides;
+	std::vector <GuidedPathElement> m_guides;
 
-	std::list<ID> m_pathNodeIds;
-	std::list<ID> m_pathEdgeIds;
+	std::list<ID> m_path_nodes;
+	std::list<ID> m_path_edges;
 	//int m_curPathNodeIdx = 0;
-	int m_curGuideIdx = 0;
-	double m_edgeElapse = 0;
-	std::vector<RobotGuide> m_prevguide;
+	int m_guide_idx = 0;
+	double m_edge_progress = 0;
+	std::vector<RobotGuide> m_prev_rguide;
 	MoveStatus  m_mvstatus = MoveStatus::ON_EDGE;
 	DGStatus  m_dgstatus = DGStatus::OK;
 
-	int getDegree(dg::NodeInfo* node1, dg::NodeInfo* node2, dg::NodeInfo* node3);
-	//int getDegree(double x1, double y1, double x2, double y2, double x3, double y3);
+	int getDegree(dg::Node* node1, dg::Node* node2, dg::Node* node3);
 
 	void printSingleRGuide(RobotGuide rGuide);
 	
 public:
-	//for Guidance use
 	bool setPathNMap(dg::Path path, dg::Map map)
 	{
-		if (path.countPoints() < 1)
+		if (path.pts.size() < 1)
 		{
 			fprintf(stdout, "No path input!\n");
 			return false;
@@ -198,13 +148,13 @@ public:
 		return true;
 	}
 
-	GuideStruct setGuide(ID nodeid, NodeEnum nodetype, EdgeEnum edgetype, int degree)
+	GuideStruct setGuide(ID _nodeid, int _nodetype, int _edgetype, int _degree)
 	{
 		GuideStruct guide;
-		guide.nodeid = nodeid;
-		guide.nodetype = nodetype;
-		guide.edgetype = edgetype;
-		guide.degree = degree;
+		guide.node_id = _nodeid;
+		guide.node_type = _nodetype;
+		guide.edge_type = _edgetype;
+		guide.degree = _degree;
 		return guide;
 	}
 
@@ -224,17 +174,17 @@ public:
 		return guide;
 	}
 
-	GuidedPathType getHeadGuidedPath() { return m_initGuides[0]; }
+	GuidedPathElement getHeadGuidedPath() { return m_guides[0]; }
 
 	std::vector<RobotGuide> getInitGuide()
 	{
 		std::vector<RobotGuide> curGuide;
-		GuidedPathType initGP = getHeadGuidedPath();
-		GuideStruct initG = setGuide(initGP.nextnid, initGP.nextntype, initGP.etype, initGP.degree );
+		GuidedPathElement initGP = getHeadGuidedPath();
+		GuideStruct initG = setGuide(initGP.to_node->id, initGP.to_node->type, initGP.edge->type, initGP.degree );
 		ActionStruct initA = setAction(Motion::GO_FORWARD, 0);
 		RobotGuide initRG = setRobotGuide(initG, initA);
 		curGuide.push_back(initRG);
-		m_prevguide = curGuide;
+		m_prev_rguide = curGuide;
 		return curGuide;
 	}
 
@@ -249,20 +199,6 @@ public:
 	//for temporary use
 	bool loadLocFiles(const char* filename, std::vector<dg::TopometricPose>& destination);
 
-private:
-
-	//For temporary use. To make examples of the path.
-	//std::list<ID> m_pathedgeids;
-	//std::vector<dg::NodeInfo> m_pathnodes;
-	//std::vector<dg::EdgeInfo> m_pathedges;
-	//std::vector<GuideStruct> m_guides;
-
-	//bool generateGuide();
-	//bool validatePathNodeIds(); //Validate path ids
-	//bool savePathNodeEdgeIds(); //Save file of path's node and edge IDs after loading
-	//bool loadPathFiles(const char* filename, std::list<ID>& destination);	//Load saved path's node and edge IDs file
-	//bool loadPathFiles(const char* filename, std::vector<GuidedPathType>& destination);
-	
 };
 
 
