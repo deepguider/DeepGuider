@@ -20,9 +20,9 @@ int main()
 
     // Run the Python module
     cv::Mat image = cv::imread("./data_vps/vps_query.jpg");
-    double gps_lat = 0;
-    double gps_lon = 0;
-    double gps_accuracy = 10;        // error boundary (meter)
+    double gps_lat = 36.3851418;
+    double gps_lon = 127.3768362;
+    double gps_accuracy = 0.9;    //(0~1), 
 
 	//cv::imshow("query",image);
 	//cv::waitKey(1);
