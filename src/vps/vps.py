@@ -620,17 +620,18 @@ class vps:
         else:
             self.gps_long = gps_long
         if gps_accuracy is None:
-            self.gps_accuracy = -1
+            self.gps_accuracy = 0
         else:
+            gps_accuracy = min(max(gps_accuracy,0),1)
             self.gps_accuracy = gps_accuracy
         if timestamp is None:
-            self.timestamp = -1
+            self.timestamp = -1 
         else:
             self.timestamp = timestamp
 
         self.K = int(K)
         opt = self.parser.parse_args()
-        self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters
+        self.setRadius(self.gps_accuracy)
 
         ##### Process Input #####
 #        cv.imshow("sample", self.image)
@@ -673,6 +674,9 @@ class vps:
         ##### Results #####
         return self.vps_IDandConf
 #        return self.vps_lat, self.vps_long, self.vps_prob, self.gps_lat, self.gps_long
+
+    def setRadius(self,gps_accuracy):
+        self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters
 
     def getStreetView(self,outdir='./'):
         ipaddr = self.ipaddr #'localhost'
