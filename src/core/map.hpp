@@ -212,7 +212,7 @@ public:
 	ID id;
 
 	/** The name of this POI */
-	std::string name;
+	std::wstring name;
 
 	/** The floor of this POI */
 	int floor;
@@ -236,13 +236,13 @@ public:
 	StreetView() { }
 
 	/** The identifier */
-	std::string id;
+	std::wstring id;
 
 	/** The floor of this StreetView */
 	int floor;
 
 	/** The date this StreetView was taken */
-	std::string date;
+	std::wstring date;
 
 	/** The given True north-based azimuths of this StreetView (Unit: [deg]) */
 	double heading;

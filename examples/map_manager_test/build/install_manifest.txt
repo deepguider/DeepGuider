@@ -1,1 +1,0 @@
-/home/jhlim/01_Coding/DeepGuider/examples/map_manager_test/../../bin/map_manager_test

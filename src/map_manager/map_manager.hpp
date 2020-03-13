@@ -54,8 +54,10 @@ public:
 	bool downloadMap(double lat, double lon, double radius);
 	bool downloadMap(ID node_id, double radius);
 	bool downloadMap(cv::Point2i tile);
-	std::string to_utf8(uint32_t cp);
-	
+	/*std::string to_utf8(uint32_t cp);
+	bool decodeUni();*/
+	bool utf8to16(const char* utf8, std::wstring& utf16);
+
 	/**
 	 * Read a map from the given file
 	 * @param lon longitude
@@ -70,7 +72,6 @@ public:
 	// */
 	//bool isEmpty() const;
 
-	bool decodeUni();
 	bool downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
 	bool generatePath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
 	Path getPath(const char* filename);
