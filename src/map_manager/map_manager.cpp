@@ -91,7 +91,7 @@ namespace dg
 
 bool MapManager::downloadMap(double lat, double lon, double radius)
 {
-	const std::string url_head = "http://localhost:21500/wgs/";
+	const std::string url_head = "http://129.254.87.96:21500/wgs/";
 	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 	
 	return query2server(url);
@@ -99,7 +99,7 @@ bool MapManager::downloadMap(double lat, double lon, double radius)
 
 bool MapManager::downloadMap(ID node_id, double radius)
 {
-	const std::string url_head = "http://localhost:21500/node/";
+	const std::string url_head = "http://129.254.87.96:21500/node/";
 	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -107,7 +107,7 @@ bool MapManager::downloadMap(ID node_id, double radius)
 
 bool MapManager::downloadMap(cv::Point2i tile)
 {
-	const std::string url_head = "http://localhost:21500/tile/";
+	const std::string url_head = "http://129.254.87.96:21500/tile/";
 	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
 
 	return query2server(url);
@@ -309,7 +309,7 @@ bool MapManager::load(double lat, double lon, double radius)
 
 bool MapManager::downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths)
 {
-	const std::string url_head = "http://localhost:20005/"; // routing server (paths)
+	const std::string url_head = "http://129.254.87.96:20005/"; // routing server (paths)
 	std::string url = url_head + std::to_string(start_lat) + "/" + std::to_string(start_lon) + "/" + std::to_string(goal_lat) + "/" + std::to_string(goal_lon) + "/" + std::to_string(num_paths);
 
 
@@ -438,7 +438,7 @@ Map& MapManager::getMap()
 
 bool MapManager::downloadPOI(double lat, double lon, double radius)
 {
-	const std::string url_head = "http://localhost:21502/wgs/";
+	const std::string url_head = "http://129.254.87.96:21502/wgs/";
 	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -446,7 +446,7 @@ bool MapManager::downloadPOI(double lat, double lon, double radius)
 
 bool MapManager::downloadPOI(ID node_id, double radius)
 {
-	const std::string url_head = "http://localhost:21502/node/";
+	const std::string url_head = "http://129.254.87.96:21502/node/";
 	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -454,7 +454,7 @@ bool MapManager::downloadPOI(ID node_id, double radius)
 
 bool MapManager::downloadPOI(cv::Point2i tile)
 {
-	const std::string url_head = "http://localhost:21502/tile/";
+	const std::string url_head = "http://129.254.87.96:21502/tile/";
 	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
 
 	return query2server(url);
