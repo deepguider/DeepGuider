@@ -29,6 +29,8 @@ int testSimpleMapManager()
 	VVS_CHECK_EQUL(findEdge->length, 13.370689140764002);
 	VVS_CHECK_EQUL((manager.getMap().findEdge(findEdge->id))->length, 13.370689140764002);
 
+	VVS_CHECK_EQUL(manager.getPOI(36.384063, 127.374733, 650.0).size(), 613);
+	VVS_CHECK_EQUL(manager.getPOI(559542564800095, 500.0).size(), 212);
 	//std::vector<cv::Point2d> poiloc = manager.getPOIloc("UST");
 	
     return 0;

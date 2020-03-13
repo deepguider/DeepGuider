@@ -219,17 +219,17 @@ bool MapManager::load(double lat, double lon, double radius)
 			switch (properties["type"].GetInt())
 			{
 				/** Sidewalk */
-			case 0: edge.type = ET_SD; break;
+				case 0: edge.type = ET_SD; break;
 				/** Middle road (e.g. lane, ginnel, roads shared by pedestrians and cars, ...) */
-			case 1: edge.type = ET_MD; break;
+				case 1: edge.type = ET_MD; break;
 				/** Crosswalk */
-			case 2: edge.type = ET_CR; break;
+				case 2: edge.type = ET_CR; break;
 				/** Doorway */
-			case 3: edge.type = ET_DR; break;
+				case 3: edge.type = ET_DR; break;
 				/** Elevator section */
-			case 4: edge.type = ET_EV; break;
+				case 4: edge.type = ET_EV; break;
 				/** Escalator section */
-			case 5: edge.type = ET_ES; break;
+				case 5: edge.type = ET_ES; break;
 			}
 			edge.length = properties["length"].GetDouble();
 			temp_edge.push_back(edge);
@@ -255,15 +255,15 @@ bool MapManager::load(double lat, double lon, double radius)
 			switch (properties["type"].GetInt())
 			{
 				/** Basic node */
-			case 0: node.type = NT_BS; break;
+				case 0: node.type = NT_BS; break;
 				/** Junction node (e.g. intersecting point, corner point, and end point of the road) */
-			case 1: node.type = NT_JT; break;
+				case 1: node.type = NT_JT; break;
 				/** Door node (e.g. exit and entrance) */
-			case 2: node.type = NT_DR; break;
+				case 2: node.type = NT_DR; break;
 				/** Elevator node */
-			case 3: node.type = NT_EV; break;
+				case 3: node.type = NT_EV; break;
 				/** Escalator node */
-			case 4: node.type = NT_ES; break;
+				case 4: node.type = NT_ES; break;
 			}
 			node.floor = properties["floor"].GetInt();
 			node.lat = properties["latitude"].GetDouble();
@@ -458,6 +458,89 @@ bool MapManager::downloadPOI(cv::Point2i tile)
 	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
 
 	return query2server(url);
+}
+
+std::list<POI>& MapManager::getPOI(double lat, double lon, double radius)
+{
+	m_map.pois.clear();
+	m_json = "";
+
+	// by communication
+	downloadPOI(lat, lon, radius);
+	decodeUni();
+	const char* json = m_json.c_str();
+#ifdef _DEBUG
+	fprintf(stdout, "%s\n", json);
+#endif
+	Document document;
+	document.Parse(json);
+
+	assert(document.IsObject());
+	const Value& features = document["features"];
+	assert(features.IsArray());
+
+	for (SizeType i = 0; i < features.Size(); i++)
+	{
+		const Value& feature = features[i];
+		assert(feature.IsObject());
+		assert(feature.HasMember("properties"));
+		const Value& properties = feature["properties"];
+		assert(properties.IsObject());
+		POI poi;
+		poi.id = properties["id"].GetUint64();
+		poi.name = properties["name"].GetString(); //TODO
+		poi.floor = properties["floor"].GetInt();
+		poi.lat = properties["latitude"].GetDouble();
+		poi.lon = properties["longitude"].GetDouble();
+
+		m_map.pois.push_back(poi);
+	}
+
+	return getPOI();
+}
+
+std::list<POI>& MapManager::getPOI(ID node_id, double radius)
+{
+	m_map.pois.clear();
+	m_json = "";
+
+	// by communication
+	downloadPOI(node_id, radius);
+	decodeUni();
+	const char* json = m_json.c_str();
+#ifdef _DEBUG
+	fprintf(stdout, "%s\n", json);
+#endif
+	Document document;
+	document.Parse(json);
+
+	assert(document.IsObject());
+	const Value& features = document["features"];
+	assert(features.IsArray());
+
+	for (SizeType i = 0; i < features.Size(); i++)
+	{
+		const Value& feature = features[i];
+		assert(feature.IsObject());
+		assert(feature.HasMember("properties"));
+		const Value& properties = feature["properties"];
+		assert(properties.IsObject());
+		POI poi;
+		poi.id = properties["id"].GetUint64();
+		poi.name = properties["name"].GetString();	//TODO
+		poi.floor = properties["floor"].GetInt();
+		poi.lat = properties["latitude"].GetDouble();
+		poi.lon = properties["longitude"].GetDouble();
+
+		m_map.pois.push_back(poi);
+	}
+
+	return getPOI();
+}
+
+std::list<POI>& MapManager::getPOI()
+{
+	return m_map.pois;
 }
 
 std::vector<cv::Point2d> MapManager::getPOI(const char* poiname)

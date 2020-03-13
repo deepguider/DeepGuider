@@ -80,6 +80,9 @@ public:
 	bool downloadPOI(double lat, double lon, double radius);
 	bool downloadPOI(ID node_id, double radius);
 	bool downloadPOI(cv::Point2i tile);
+	std::list<POI>& getPOI(double lat, double lon, double radius);
+	std::list<POI>& getPOI(ID node_id, double radius);
+	std::list<POI>& getPOI();
 	std::vector<cv::Point2d> getPOI(const char* poiname);
 	//std::vector<cv::Point2d> getPOIloc(const char* poiname = "UST");
 
