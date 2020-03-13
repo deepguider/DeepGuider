@@ -6,6 +6,7 @@ import shutil
 import json
 from os.path import join, exists, isfile, realpath, dirname
 from os import makedirs, remove, chdir, environ
+import os
 
 import torch
 import torch.nn as nn
@@ -22,7 +23,6 @@ import torchvision.models as models
 import h5py
 import faiss
 
-
 from visdom import Visdom
 
 from tensorboardX import SummaryWriter
@@ -36,8 +36,11 @@ import cv2 as cv
 from ipdb import set_trace as bp
 import sys; sys.path.insert(0,'data_vps/netvlad/ccsmmutils'); import img_utils as myiu
 
+from get_streetview import ImgServer
+
 class vps:
     def __init__(self):
+        self.ipaddr = 'localhost'
         self.gps_lat = 0.0 #Latitude
         self.gps_long = 0.0 #Longitude
         self.vps_lat = 0.0 # Latitude from VPS function
@@ -113,6 +116,8 @@ class vps:
         # then, set threads to 0
         self.parser.add_argument('--threads', type=int, default=0, help='Number of threads for each data loader to use') #fixed, dg'issue #42
         #self.parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
+
+        self.parser.add_argument('--ipaddr', type=str, default='localhost', help='ip address of streetview server')
         ######(end) Following defaults are combination of 9run_vps_ccsmm.sh
 
         return 1
@@ -122,6 +127,7 @@ class vps:
         self.init_param()
         opt = self.parser.parse_args()
         self.verbose = opt.verbose
+        self.ipaddr = opt.ipaddr
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
                 'margin', 'seed', 'patience']
@@ -282,7 +288,16 @@ class vps:
         if self.verbose:
             print('===> Building model end(vps.py)')
 
-        return 1 # Non-zero means success return 
+        if opt.dataset.lower() == 'pittsburgh':
+            from netvlad import pittsburgh as dataset
+            return 0 # Failed
+
+        elif opt.dataset.lower() == 'deepguider':
+            from netvlad import etri_dbloader as dataset
+            self.dataset_root_dir = dataset.root_dir
+            self.dataset_struct_dir = dataset.struct_dir
+            self.dataset_queries_dir = dataset.queries_dir
+            return 1 # Non-zero means success return 
     
 
     def test_sub(self,eval_set,epoch=0):
@@ -598,15 +613,24 @@ class vps:
     def apply(self, image=None, K = 5, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
         if gps_lat is None:
             self.gps_lat = -1
+        else:
+            self.gps_lat = gps_lat
         if gps_long is None:
             self.gps_long = -1
+        else:
+            self.gps_long = gps_long
         if gps_accuracy is None:
             self.gps_accuracy = -1
+        else:
+            self.gps_accuracy = gps_accuracy
         if timestamp is None:
             self.timestamp = -1
+        else:
+            self.timestamp = timestamp
 
         self.K = int(K)
         opt = self.parser.parse_args()
+        self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters
 
         ##### Process Input #####
 #        cv.imshow("sample", self.image)
@@ -617,7 +641,6 @@ class vps:
             print('===> Loading dataset(s)')
         epoch = 1
 
-        #bp()
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
             whole_test_set = dataset.get_whole_test_set()
@@ -626,12 +649,19 @@ class vps:
             recalls = self.test(whole_test_set, epoch, write_tboard=False)
 
         elif opt.dataset.lower() == 'deepguider':
-            if image is not None:
-                cv.imwrite('data_vps/netvlad_etri_datasets/qImg/999_newquery/newquery.jpg',image)
             from netvlad import etri_dbloader as dataset
-            dbDir = 'dbImg'
-            qDir = 'qImg'
-            whole_db_set,whole_q_set = dataset.get_dg_test_set(dbDir,qDir)
+            if image is not None:
+                fname = os.path.join(self.dataset_queries_dir,'999_newquery/newquery.jpg')
+                cv.imwrite(fname,image)
+                #cv.imwrite('data_vps/netvlad_etri_datasets/qImg/999_newquery/newquery.jpg',image)
+
+            dbdir = os.path.join(self.dataset_struct_dir,'StreetView')
+            try:
+                self.getStreetView(dbdir)
+            except:
+                print("There is no image server!!!\nLocal DBs were used")
+
+            whole_db_set,whole_q_set = dataset.get_dg_test_set()
             if self.verbose:
                 print('===> With Query captured near the ETRI Campus')
                 print('===> Evaluating on test set')
@@ -643,6 +673,21 @@ class vps:
         ##### Results #####
         return self.vps_IDandConf
 #        return self.vps_lat, self.vps_long, self.vps_prob, self.gps_lat, self.gps_long
+
+    def getStreetView(self,outdir='./'):
+        ipaddr = self.ipaddr #'localhost'
+        server_type = "streetview"
+        req_type = "wgs"
+        isv = ImgServer(ipaddr)
+        isv.SetServerType(server_type)
+        isv.SetParamsWGS(self.gps_lat,self.gps_long,self.roi_radius) # 37,27,100
+        isv.SetReqDict(req_type)
+        res = isv.QuerytoServer(json_save=True,outdir=outdir)
+        numImgs = isv.GetNumImgs()
+        if numImgs >0: 
+            imgID,imgLat,imgLong,imgDate,imgHeading,numImgs = isv.GetStreetViewInfo(0)
+            isv.SaveImages(outdir)
+
 
     def getPosVPS(self):
         return self.GPS_Latitude, self.GPS_Longitude
@@ -679,7 +724,9 @@ class vps:
         if type(imgID) is not str:
             imgID = imgID[0]
 
-        with open('data_vps/netvlad_etri_datasets/poses.txt', 'r') as searchfile:
+        #'data_vps/netvlad_etri_datasets/poses.txt'
+        fname = os.path.join(self.dataset_root_dir,'poses.txt')
+        with open(fname, 'r') as searchfile:
             for line in searchfile:
                 if imgID in line:
                     sline = line.split('\n')[0].split(' ')
@@ -718,7 +765,7 @@ if __name__ == "__main__":
     qimage = np.uint8(256*np.random.rand(1024,1024,3))
     #(image=None, K=3, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
     for i in range(0,4):
-        vps_IDandConf = mod_vps.apply(qimage, 3, 37, 27, 95, 100) # k=5 for knn
+        vps_IDandConf = mod_vps.apply(qimage, 3, 36.3851418, 127.3768362, 0.8, 1.0) # k=5 for knn
         #print('############## Result of vps().apply():')
         print('vps_IDandConf',vps_IDandConf)
 
