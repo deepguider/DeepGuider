@@ -73,7 +73,7 @@ public:
 	bool decodeUni();
 	bool downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
 	bool generatePath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
-	//Path getPath(const char* filename);
+	Path getPath(const char* filename);
 	Path getPath();
 	Map& getMap(Path path);
 	Map& getMap();

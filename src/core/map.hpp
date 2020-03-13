@@ -202,6 +202,26 @@ public:
  */
 class POI
 {
+public:
+	/**
+	 * The default constructor
+	 */
+	POI() { }
+
+	/** The identifier */
+	ID id;
+
+	/** The name of this POI */
+	std::string name;
+
+	/** The floor of this POI */
+	int floor;
+
+	/** The given latitude of this POI (Unit: [deg]) */
+	double lat;
+
+	/** The given longitude of this POI (Unit: [deg]) */
+	double lon;
 };
 
 /**
@@ -209,6 +229,29 @@ class POI
  */
 class StreetView
 {
+public:
+	/**
+	 * The default constructor
+	 */
+	StreetView() { }
+
+	/** The identifier */
+	std::string id;
+
+	/** The floor of this StreetView */
+	int floor;
+
+	/** The date this StreetView was taken */
+	std::string date;
+
+	/** The given True north-based azimuths of this StreetView (Unit: [deg]) */
+	double heading;
+
+	/** The given latitude of this POI (Unit: [deg]) */
+	double lat;
+
+	/** The given longitude of this POI (Unit: [deg]) */
+	double lon;
 };
 
 /**

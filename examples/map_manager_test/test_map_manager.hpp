@@ -20,8 +20,8 @@ int testSimpleMapManager()
 	// Get the path
 	dg::Path path = manager.getPath();
 	VVS_CHECK_EQUL(path.pts.size(), 109); // 78);
-	/*path = manager.getPath("test_simple_path.json");
-	VVS_CHECK_EQUL(path.pts.size(), 78);*/
+	path = manager.getPath("test_simple_path.json");
+	VVS_CHECK_EQUL(path.pts.size(), 78);
 	
 	dg::Node* findNode = manager.getMap().findNode(559542564800095);
 	VVS_CHECK_EQUL(findNode->id, 559542564800095);
