@@ -27,7 +27,7 @@ using namespace rapidjson;
 #pragma execution_character_set( "utf-8" )
 #include <atlstr.h> 
 #endif
-
+#include "localizer/utm_converter.hpp"
 #define M_PI 3.14159265358979323846
 
 namespace dg
@@ -58,6 +58,7 @@ public:
 	bool decodeUni();*/
 	bool utf8to16(const char* utf8, std::wstring& utf16);
 
+	bool parseMap(const char* json);
 	/**
 	 * Read a map from the given file
 	 * @param lon longitude
@@ -72,8 +73,9 @@ public:
 	// */
 	//bool isEmpty() const;
 
-	bool downloadPath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
-	bool generatePath(double start_lat, double start_lon, double goal_lat, double goal_lon, int num_paths = 2);
+	bool downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths = 2);
+	bool parsePath(const char* json);
+	bool generatePath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths = 2);
 	Path getPath(const char* filename);
 	Path getPath();
 	Map& getMap(Path path);
@@ -92,10 +94,6 @@ protected:
 	Path m_path;
 
 	std::string m_json;
-
-	double m_lat = 0;
-	double m_lon = 0;
-	int m_z = 0;
 };
 
 class EdgeTemp : public Edge
