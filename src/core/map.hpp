@@ -236,13 +236,13 @@ public:
 	StreetView() { }
 
 	/** The identifier */
-	std::wstring id;
+	std::string id;
 
 	/** The floor of this StreetView */
 	int floor;
 
 	/** The date this StreetView was taken */
-	std::wstring date;
+	std::string date;
 
 	/** The given True north-based azimuths of this StreetView (Unit: [deg]) */
 	double heading;

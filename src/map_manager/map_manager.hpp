@@ -80,14 +80,21 @@ public:
 	Path getPath();
 	Map& getMap(Path path);
 	Map& getMap();
+	bool parsePOI(const char* json);
 	bool downloadPOI(double lat, double lon, double radius);
 	bool downloadPOI(ID node_id, double radius);
 	bool downloadPOI(cv::Point2i tile);
 	std::list<POI>& getPOI(double lat, double lon, double radius);
 	std::list<POI>& getPOI(ID node_id, double radius);
 	std::list<POI>& getPOI();
-	std::vector<cv::Point2d> getPOI(const char* poiname);
 	//std::vector<cv::Point2d> getPOIloc(const char* poiname = "UST");
+	bool parseStreetView(const char* json);
+	bool downloadStreetView(double lat, double lon, double radius);
+	bool downloadStreetView(ID node_id, double radius);
+	bool downloadStreetView(cv::Point2i tile);
+	std::list<StreetView>& getStreetView(double lat, double lon, double radius);
+	std::list<StreetView>& getStreetView(ID node_id, double radius);
+	std::list<StreetView>& getStreetView();
 
 protected:
 	Map m_map;

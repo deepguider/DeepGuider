@@ -434,23 +434,6 @@ Path MapManager::getPath()
 
 Map& MapManager::getMap(Path path)
 {
-	//int num = 0;
-	//for (std::list<ID>::iterator node_itr = path.m_points.begin(); node_itr != path.m_points.end(); ++node_itr)
-	//{
-	//	// exclude edge ID
-	//	if(num % 2 != 0)
-	//	{
-	//		num++;
-	//		continue;
-	//	}
-
-	//	/*getMap().findNode(*node_itr)->data.lat;
-	//	getMap().findNode(*node_itr)->data.lon;*/
-
-	//	num++;
-	//}
-	
-
 	double lat = 36.38;
 	double lon = 127.373;
 	double r = 1000.0;
@@ -459,6 +442,41 @@ Map& MapManager::getMap(Path path)
 	load(lat, lon, r);
 
 	return getMap();
+
+	//std::vector<double> lats, lons;
+
+	//if(m_path.pts.size() == 0) return getMap();
+	//for (std::vector<PathElement>::iterator it = m_path.pts.begin(); it < m_path.pts.end(); it++)
+	//{
+	//	// swapped lat and lon
+	//	if ((it->node->lat) > (it->node->lon))
+	//	{
+	//		lats.push_back(it->node->lon);
+	//		lons.push_back(it->node->lat);
+	//		continue;
+	//	}
+	//	lats.push_back(it->node->lat);
+	//	lons.push_back(it->node->lon);
+
+	//	/*lats.push_back(it->node->lat);
+	//	lons.push_back(it->node->lon);*/
+	//}
+
+	//double min_lat = *min_element(lats.begin(), lats.end());
+	//double max_lat = *max_element(lats.begin(), lats.end());
+	//double min_lon = *min_element(lons.begin(), lons.end());
+	//double max_lon = *max_element(lons.begin(), lons.end());
+
+	//UTMConverter utm_conv;
+	//Point2 min_metric = utm_conv.toMetric(LatLon(min_lat, min_lon));
+	//Point2 max_metric = utm_conv.toMetric(LatLon(max_lat, max_lon));
+	//double dist_metric = sqrt(pow((max_metric.x - min_metric.x), 2) + pow((max_metric.y - min_metric.y), 2));
+	//double alpha = 50;
+
+	//double center_lat = (min_lat + max_lat) / 2;
+	//double center_lon = (min_lon + max_lon) / 2;
+	//bool ok = load(center_lat, center_lon, (dist_metric / 2) + alpha);
+	//if (!ok) return getMap();
 }
 
 Map& MapManager::getMap()
@@ -490,6 +508,36 @@ bool MapManager::downloadPOI(cv::Point2i tile)
 	return query2server(url);
 }
 
+bool MapManager::parsePOI(const char* json)
+{
+	Document document;
+	document.Parse(json);
+
+	if(!document.IsObject()) return false;
+	const Value& features = document["features"];
+	if(!features.IsArray()) return false;
+
+	for (SizeType i = 0; i < features.Size(); i++)
+	{
+		const Value& feature = features[i];
+		if(!feature.IsObject()) return false;
+		if(!feature.HasMember("properties")) return false;
+		const Value& properties = feature["properties"];
+		if(!properties.IsObject()) return false;
+		POI poi;
+		poi.id = properties["id"].GetUint64();
+		const char* utf8 = properties["name"].GetString();
+		utf8to16(utf8, poi.name);
+		poi.floor = properties["floor"].GetInt();
+		poi.lat = properties["latitude"].GetDouble();
+		poi.lon = properties["longitude"].GetDouble();
+
+		m_map.pois.push_back(poi);
+	}
+
+	return true;
+}
+
 std::list<POI>& MapManager::getPOI(double lat, double lon, double radius)
 {
 	m_map.pois.clear();
@@ -502,30 +550,8 @@ std::list<POI>& MapManager::getPOI(double lat, double lon, double radius)
 //#ifdef _DEBUG
 //	fprintf(stdout, "%s\n", json);
 //#endif
-	Document document;
-	document.Parse(json);
-
-	assert(document.IsObject());
-	const Value& features = document["features"];
-	assert(features.IsArray());
-
-	for (SizeType i = 0; i < features.Size(); i++)
-	{
-		const Value& feature = features[i];
-		assert(feature.IsObject());
-		assert(feature.HasMember("properties"));
-		const Value& properties = feature["properties"];
-		assert(properties.IsObject());
-		POI poi;
-		poi.id = properties["id"].GetUint64();
-		const char* utf8 = properties["name"].GetString();
-		utf8to16(utf8, poi.name);
-		poi.floor = properties["floor"].GetInt();
-		poi.lat = properties["latitude"].GetDouble();
-		poi.lon = properties["longitude"].GetDouble();
-
-		m_map.pois.push_back(poi);
-	}
+	bool ok = parsePOI(json);
+	if (!ok) m_map.pois.clear();
 
 	return getPOI();
 }
@@ -542,30 +568,8 @@ std::list<POI>& MapManager::getPOI(ID node_id, double radius)
 #ifdef _DEBUG
 	fprintf(stdout, "%s\n", json);
 #endif
-	Document document;
-	document.Parse(json);
-
-	assert(document.IsObject());
-	const Value& features = document["features"];
-	assert(features.IsArray());
-
-	for (SizeType i = 0; i < features.Size(); i++)
-	{
-		const Value& feature = features[i];
-		assert(feature.IsObject());
-		assert(feature.HasMember("properties"));
-		const Value& properties = feature["properties"];
-		assert(properties.IsObject());
-		POI poi;
-		poi.id = properties["id"].GetUint64();
-		const char* utf8 = properties["name"].GetString();
-		utf8to16(utf8, poi.name);
-		poi.floor = properties["floor"].GetInt();
-		poi.lat = properties["latitude"].GetDouble();
-		poi.lon = properties["longitude"].GetDouble();
-
-		m_map.pois.push_back(poi);
-	}
+	bool ok = parsePOI(json);
+	if (!ok) m_map.pois.clear();
 
 	return getPOI();
 }
@@ -575,49 +579,6 @@ std::list<POI>& MapManager::getPOI()
 	return m_map.pois;
 }
 
-std::vector<cv::Point2d> MapManager::getPOI(const char* poiname)
-{
-	std::vector<cv::Point2d> points;
-
-	m_json = "";
-
-	// by communication
-//	downloadPOI(lat, lon, radius); // 1000.0);
-//	decodeUni();
-//	const char* json = m_json.c_str();
-//#ifdef _DEBUG
-//	fprintf(stdout, "%s\n", json);
-//#endif
-//	Document document;
-//	document.Parse(json);
-//
-//	assert(document.IsObject());
-//	const Value& features = document["features"];
-//	assert(features.IsArray());
-//
-//	std::vector<EdgeTemp> temp_edge;
-//	for (SizeType i = 0; i < features.Size(); i++)
-//	{
-//		const Value& feature = features[i];
-//		assert(feature.IsObject());
-//		assert(feature.HasMember("properties"));
-//		const Value& properties = feature["properties"];
-//		assert(properties.IsObject());
-//		std::string name = properties["name"].GetString();
-//		if (name == "edge") //continue; //TODO
-//		{
-//			EdgeTemp edgeinfo;
-//			edgeinfo.id = properties["id"].GetUint64();
-//			edgeinfo.type = properties["type"].GetInt();
-//			edgeinfo.length = properties["length"].GetDouble();
-//			temp_edge.push_back(edgeinfo);
-//		}
-//	}
-//
-	cv::Point2d point(37.0, 127.0);
-	points.push_back(point);
-	return points;
-}
 //std::vector<cv::Point2d> MapManager::getPOIloc(const char* poiname)
 //{
 //	std::vector<cv::Point2d> points;
@@ -636,4 +597,102 @@ std::vector<cv::Point2d> MapManager::getPOI(const char* poiname)
 //	return points;
 //}
 
+bool MapManager::parseStreetView(const char* json)
+{
+	Document document;
+	document.Parse(json);
+
+	if (!document.IsObject()) return false;
+	const Value& features = document["features"];
+	if (!features.IsArray()) return false;
+
+	for (SizeType i = 0; i < features.Size(); i++)
+	{
+		const Value& feature = features[i];
+		if (!feature.IsObject()) return false;
+		if (!feature.HasMember("properties")) return false;
+		const Value& properties = feature["properties"];
+		if (!properties.IsObject()) return false;
+		StreetView sv;
+		sv.id = properties["id"].GetString();
+		std::string name = properties["name"].GetString();
+		if (!(name == "streetview" || name == "StreetView")) return false;
+		sv.floor = properties["floor"].GetInt();
+		sv.date = properties["date"].GetString();
+		sv.heading = properties["latitude"].GetDouble();
+		sv.lat = properties["latitude"].GetDouble();
+		sv.lon = properties["longitude"].GetDouble();
+
+		m_map.views.push_back(sv);
+	}
+
+	return true;
+}
+
+bool MapManager::downloadStreetView(double lat, double lon, double radius)
+{
+	const std::string url_head = "http://129.254.87.96:21501/wgs/";
+	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
+
+	return query2server(url);
+}
+
+bool MapManager::downloadStreetView(ID node_id, double radius)
+{
+	const std::string url_head = "http://129.254.87.96:21501/node/";
+	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
+
+	return query2server(url);
+}
+
+bool MapManager::downloadStreetView(cv::Point2i tile)
+{
+	const std::string url_head = "http://129.254.87.96:21501/tile/";
+	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
+
+	return query2server(url);
+}
+
+std::list<StreetView>& MapManager::getStreetView(double lat, double lon, double radius)
+{
+	m_map.views.clear();
+	m_json = "";
+
+	// by communication
+	downloadStreetView(lat, lon, radius);
+	//decodeUni();
+	const char* json = m_json.c_str();
+	//#ifdef _DEBUG
+	//	fprintf(stdout, "%s\n", json);
+	//#endif
+	bool ok = parseStreetView(json);
+	if (!ok) m_map.views.clear();
+
+	return getStreetView();
+}
+
+std::list<StreetView>& MapManager::getStreetView(ID node_id, double radius)
+{
+	m_map.views.clear();
+	m_json = "";
+
+	// by communication
+	downloadStreetView(node_id, radius);
+	//decodeUni();
+	const char* json = m_json.c_str();
+#ifdef _DEBUG
+	fprintf(stdout, "%s\n", json);
+#endif
+	bool ok = parseStreetView(json);
+	if (!ok) m_map.views.clear();
+
+	return getStreetView();
+}
+
+std::list<StreetView>& MapManager::getStreetView()
+{
+	return m_map.views;
+}
+
 } // End of 'dg'
+
