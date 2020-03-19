@@ -6,6 +6,7 @@ set(BINDIR			"${CMAKE_SOURCE_DIR}/../../bin")
 set(SRCDIR			"${CMAKE_SOURCE_DIR}/../../src")
 set(CURL_LIBRARY		"-lcurl") 
 set(RAPIDJSON_INCLUDE_DIR	"${CMAKE_SOURCE_DIR}/../../EXTERNAL/rapidjson/include")
+set(EXTDIR	"${CMAKE_SOURCE_DIR}/../../EXTERNAL")
 
 get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
 string(REPLACE " " "_" ProjectId ${ProjectId})
@@ -20,7 +21,7 @@ INCLUDE_DIRECTORIES ( ${SRCDIR} ${PYTHON_INCLUDE_DIRS} )
 INCLUDE_DIRECTORIES ( ${CURL_INCLUDE_DIR} )
 INCLUDE_DIRECTORIES ( ${RAPIDJSON_INCLUDE_DIR} )
 
-file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/map_manager/*.cpp *.cpp)
+file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/localizer/utm_converter.cpp ${EXTDIR}/qgroundcontrol/*.cpp *.cpp)
  
 add_executable( ${PROJECT_NAME} ${SOURCES} )
 
