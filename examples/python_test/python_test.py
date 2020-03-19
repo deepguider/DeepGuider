@@ -24,12 +24,21 @@ class PythonTest:
     def initialize(self):
         print('PythonTest: Initialization...!\n')
         print(sys.version)
-        #self.value1 = 0
-        self.value1 = 0
-        self.value2 = 0
+        self.value1 = 0 
+        self.value2 = 1.2
         return True
+
+    def test_imgserver(self):
+        ## Test for Img Server Begin
+        import get_streetview
+        outdir='./download_jpg'
+        get_streetview.makedir(outdir)
+        get_streetview.GetStreetView(gps_lat=36.3851418, gps_long=127.3768362,
+                roi_radius=100, ipaddr='localhost', server_type="streetview",
+                req_type="wgs",outdir=outdir)
 
     def apply(self, image, timestamp):
         print('PythonTest: Apply...!\n')
+        self.test_imgserver()
         return self.value1, self.value2
         

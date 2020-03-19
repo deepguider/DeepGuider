@@ -13,9 +13,6 @@ chmod +x *.sh
 PRETRAINED_DIR=pretrained_checkpoint
 
 
-
-
-
 function download_weight(){
     PRETRAINED_FILE=$1
 	DOWNLOAD_URL=$2

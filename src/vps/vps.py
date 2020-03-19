@@ -7,6 +7,7 @@ import json
 from os.path import join, exists, isfile, realpath, dirname
 from os import makedirs, remove, chdir, environ
 import os
+import glob
 
 import torch
 import torch.nn as nn
@@ -31,12 +32,20 @@ from netvlad import netvlad
 
 from scipy import io as sio
 
+import copy
+
 import cv2 as cv
 
-from ipdb import set_trace as bp
+    
 import sys; sys.path.insert(0,'data_vps/netvlad/ccsmmutils'); import img_utils as myiu
 
 from get_streetview import ImgServer
+import get_streetview
+
+from netvlad import etri_dbloader as dataset
+
+from ipdb import set_trace as bp
+from dmsg import dmsg
 
 class vps:
     def __init__(self):
@@ -47,10 +56,12 @@ class vps:
         self.vps_long = 0.0 # Longitude from VPS function
         self.angle = -1  # road direction (radian)
         self.vps_prob = -1   # reliablity of the result. 0: fail ~ 1: success
-        self.K = 5 # K for knn
+        self.K = int(3) # K for Top-K for best matching
+        if self.init_vps_IDandConf(self.K) < 0: #init_vps_IDandConf after setting self.K
+            bp()
         self.ToTensor = transforms.ToTensor()
-        self.vps_IDandConf = [0,0]
         self.verbose = False # 1 : print internal results
+        self.StreetViewServerAvaiable = True
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -117,6 +128,7 @@ class vps:
         self.parser.add_argument('--threads', type=int, default=0, help='Number of threads for each data loader to use') #fixed, dg'issue #42
         #self.parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
 
+        #self.parser.add_argument('--ipaddr', type=str, default='127.0.0.1', help='ip address of streetview server')
         self.parser.add_argument('--ipaddr', type=str, default='localhost', help='ip address of streetview server')
         ######(end) Following defaults are combination of 9run_vps_ccsmm.sh
 
@@ -203,7 +215,6 @@ class vps:
         encoder = nn.Sequential(*layers)
         model = nn.Module() 
         model.add_module('encoder', encoder)
-    
    
         if opt.mode.lower() != 'cluster':
             if opt.pooling.lower() == 'netvlad':
@@ -304,27 +315,28 @@ class vps:
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
         device = torch.device("cuda" if cuda else "cpu")
-
         test_data_loader = DataLoader(dataset=eval_set, 
                     num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
                     pin_memory=cuda)
-    
+                    # num_workers = 0 means that the data will be loaded in the main process. (default: 0)
         self.model.eval()
-
         with torch.no_grad():
             if self.verbose:
                 print('====> Extracting Features')
             pool_size = self.encoder_dim
             if opt.pooling.lower() == 'netvlad': pool_size *= opt.num_clusters
-            Feat = np.empty((len(eval_set), pool_size))
-        
+            Feat = np.empty([len(eval_set), pool_size])
             for iteration, (input, indices) in enumerate(test_data_loader, 1):
+                if input == None: # for broken input data, set output to zero
+                    continue
                 input = input.to(device) #[24, 3, 480, 640]
-                image_encoding = self.model.encoder(input) #[24, 512, 30, 40]
+                try:
+                    image_encoding = self.model.encoder(input) #[24, 512, 30, 40]
+                except: # for broken input data, set output to zero
+                    continue
                 vlad_encoding = self.model.pool(image_encoding) #[24,32768] 
-        
                 #Feat : [17608, 32768]
-                Feat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy() #[24,32768]
+                Feat[indices.detach().numpy(), :] = copy.deepcopy(vlad_encoding.detach().cpu().numpy()) #[24,32768]
                 if self.verbose:
                     try:
                         if (iteration-1) % 200 == 0:
@@ -336,8 +348,8 @@ class vps:
                             myiu.plot(vlad_encoding,223,'vlad')
                     except:
                         print("Cannot Display")
-            del input, image_encoding, vlad_encoding
-        del test_data_loader
+                del input, image_encoding, vlad_encoding
+            del test_data_loader
         return Feat
     
     def GAP1dChannel(self,img):
@@ -354,18 +366,16 @@ class vps:
         # TODO what if features dont fit in memory? 
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
-
         if opt.save_dbFeat:
             # extracted for db, now split in own sets
             dbFeat = self.test_sub(eval_set_db,epoch=epoch)
             dbFeat = dbFeat.astype('float32') #[ndbImg,32768]
             dbFeat_dict={'Feat':dbFeat}
-            sio.savemat(opt.dbFeat_fname,dbFeat_dict)
+            # sio.savemat(opt.dbFeat_fname,dbFeat_dict) #for speed up, savemat may cause segmentation fault in repeat.
         else:
             dbFeat = sio.loadmat(opt.dbFeat_fname)
             dbFeat = dbFeat['Feat']
             dbFeat = np.ascontiguousarray(dbFeat)
-
 
         # extracted for query, now split in own sets
         qFeat = self.test_sub(eval_set_q,epoch=epoch)
@@ -382,76 +392,107 @@ class vps:
         #    qFeat = qFeat['Feat']
         #    qFeat = np.ascontiguousarray(qFeat)
 
-
+        
         test_db_data_loader = DataLoader(dataset=eval_set_db, 
-                    num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
-                    pin_memory=cuda)
+                num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                pin_memory=cuda)
 
         test_q_data_loader = DataLoader(dataset=eval_set_q, 
-                    num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
-                    pin_memory=cuda)
+                num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                pin_memory=cuda)
 
-        
         if self.verbose:
             print('====> Building faiss index')
-        num_db, pool_size = dbFeat.shape # n,32768
-
+        num_db, pool_size = dbFeat.shape # NumDB,32768
+        # _ , _ = qbFeat.shape # NumQ,32768
+  
         #faiss_index = faiss.IndexFlatL2(pool_size) # uses distance as metric
         faiss_index = faiss.IndexFlatIP(pool_size) # fixed, dg's issue #21. It uses similarity(confidence) as metric 
         faiss_index.add(dbFeat)
-    
+        
         if self.verbose:
             print('====> Calculating recall @',self.K)
-        #n_values = [1,5,10,20] #n nearest neighbors
-    
-        pred_confidence, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
-
+        
+        pred_confidence, pred_idx = faiss_index.search(qFeat, self.K) # [ NumQ x K ]
+  
         if self.verbose:
             print('predicted ID:\n', pred_idx)
-
+  
         qImage  = test_q_data_loader.dataset.ImgStruct.Image
         dbImage = test_db_data_loader.dataset.ImgStruct.Image
-        dbImage_predicted = dbImage[pred_idx[:,0]] #Use first K for display
-
+  
         self.qImage = qImage
         self.dbImage = dbImage
         self.pred_idx = pred_idx
         self.pred_confidence = pred_confidence
 
-        import os
+        #return 0 #segmentation fault free
+
         if self.verbose:
             print('QueryImage <=================> predicted dbImage')
         match_cnt = 0
         total_cnt = len(qImage)
+        #return 0 #segmentation fault free
+
+        if total_cnt == 0:
+            return 0
         for i in range(total_cnt):
             qName = os.path.basename(qImage[i].item()).strip()
-            dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
-        #    IDs = ['spherical_2812920067800000','spherical_2812920067800000']
-            lat,lon,deg = self.ID2LL(self.Fname2ID(dbName_predicted))
-
             if qName in 'newquery.jpg':
                 flist = dbImage[pred_idx[i]]
-                vps_imgID = self.Fname2ID(flist)
-                vps_imgConf = [val for val in pred_confidence[i]]
-                vps_imgID = [int(i) for i in vps_imgID] # fixed, dg'issue #36
-                vps_imgConf = [float(i) for i in vps_imgConf] # fixed, dg'issue #36
+                vps_imgID_str = self.Fname2ID(flist) # list
+                vps_imgConf_str = [val for val in pred_confidence[i]] # list
+                #vps_imgID = [np.uint64(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
+                #vps_imgConf = [np.double(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
+                vps_imgID = [np.int(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
+                vps_imgConf = [np.float(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
                 self.vps_IDandConf = [vps_imgID, vps_imgConf]
-
+                #if self.checking_return_value() < 0:
+                #    bp()
+ 
             if self.verbose:
+                dbImage_predicted = dbImage[pred_idx[i,0]] #Use best [0] image for display
+                dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
+                #IDs = ['spherical_2812920067800000','spherical_2812920067800000']
+                lat,lon,deg = self.ID2LL(self.Fname2ID(dbName_predicted))
                 if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
                     match_cnt = match_cnt + 1
                     print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
                 else:
                     print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon)
-
+    
         acc = match_cnt/total_cnt
         if self.verbose:
             print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
-
-        if self.verbose:
             print('Return from vps.py->apply()')
 
         return acc
+
+    def checking_return_value(self):
+        K = self.K
+        vps_imgID = self.vps_IDandConf[0]
+        vps_imgConf = self.vps_IDandConf[1]
+        if (len(vps_imgID) != K) or (len(vps_imgConf) != K):
+            dsmg("Error : K result")
+            bp()
+            return -1
+        ErrCnt = K
+        for i in vps_imgID:
+             #if (isinstance(vps_imgID[0],np.uint64) == False):
+             if (isinstance(vps_imgID[0],int) == False):
+                 ErrCnt = ErrCnt - 1
+        if K != ErrCnt:
+            bp()
+            return -1
+        ErrCnt = K
+        for i in vps_imgConf:
+             #if (isinstance(vps_imgConf[0],np.double) == False):
+             if (isinstance(vps_imgConf[0],float) == False):
+                 ErrCnt = ErrCnt - 1
+        if K != ErrCnt:
+            bp()
+            return -1
+        return 0
 
 
     def test(self,eval_set, epoch=0, write_tboard=False):
@@ -570,7 +611,6 @@ class vps:
         dbImage = test_data_loader.dataset.dbStruct.dbImage
         dbImage_predicted = test_data_loader.dataset.dbStruct.dbImage[pred_idx[:,0]] #Use first K for display
 
-
         import os
         print('QueryImage <=================> predicted dbImage')
         match_cnt = 0
@@ -585,8 +625,8 @@ class vps:
                 flist = test_data_loader.dataset.dbStruct.dbImage[pred_idx[i]]
                 vps_imgID = self.Fname2ID(flist)
                 vps_imgConf = [val for val in pred_confidence[i]]
-                #self.vps_IDandConf = [vps_imgID, vps_imgConf] #ori
-                self.vps_IDandConf = [123456, 1.33] #dbg
+                self.vps_IDandConf = [vps_imgID, vps_imgConf] #ori
+                #self.vps_IDandConf = [123456, 1.33] #dbg
 
             if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
                 match_cnt = match_cnt + 1
@@ -610,73 +650,79 @@ class vps:
         # set parameter
         return 0
 
-    def apply(self, image=None, K = 5, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
-        if gps_lat is None:
-            self.gps_lat = -1
-        else:
-            self.gps_lat = gps_lat
-        if gps_long is None:
-            self.gps_long = -1
-        else:
-            self.gps_long = gps_long
-        if gps_accuracy is None:
-            self.gps_accuracy = 0
-        else:
-            gps_accuracy = min(max(gps_accuracy,0),1)
-            self.gps_accuracy = gps_accuracy
-        if timestamp is None:
-            self.timestamp = -1 
-        else:
-            self.timestamp = timestamp
+    def init_vps_IDandConf(self,K):
+        #vps_imgID = [np.uint64(i) for i in np.zeros(K)] # list of uint64, fixed dg'issue #36
+        #vps_imgConf = [np.double(i) for i in np.zeros(K)] # list of double(float64), fixed dg'issue #36
+        vps_imgID = [int(i) for i in np.zeros(K)] # list of uint64, fixed dg'issue #36
+        vps_imgConf = [float(i) for i in np.zeros(K)] # list of double(float64), fixed dg'issue #36
+        self.vps_IDandConf = [vps_imgID, vps_imgConf]
+        return 0
 
-        self.K = int(K)
+    def apply(self, image=None, K = 3, gps_lat=37.0, gps_long=127.0, gps_accuracy=0.9, timestamp=0.0):
+        ## Init.
+        self.gps_lat = float(gps_lat)
+        self.gps_long = float(gps_long)
+        self.gps_accuracy = min(max(gps_accuracy,0.0),1.0)
+        self.timestamp = float(timestamp)
+        self.K = int(K);
+        self.init_vps_IDandConf(self.K)
         opt = self.parser.parse_args()
         self.setRadius(self.gps_accuracy)
 
-        ##### Process Input #####
-#        cv.imshow("sample", self.image)
-#        cv.waitKey()
-#        cv.destroyWindow("sample")
+        ## Get DB images from streetview image server
+        dbdir = os.path.join(self.dataset_struct_dir,'StreetView')
+        try:
+            ret = self.getStreetView(dbdir)
+            if ret == -1:
+                self.StreetViewServerAvaiable = False
+        except:
+            self.StreetViewServerAvaiable = False
+        if self.StreetViewServerAvaiable == False:
+            print("Local DBs(DeepGuider/bin/data_vps/netvlad_etri_datasets/dbImg/StreetView) will be used")
 
         if self.verbose:
             print('===> Loading dataset(s)')
         epoch = 1
-
+        ## Load dataset
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
             whole_test_set = dataset.get_whole_test_set()
             print('===> Evaluating on test set')
             print('===> Running evaluation step')
             recalls = self.test(whole_test_set, epoch, write_tboard=False)
-
         elif opt.dataset.lower() == 'deepguider':
             from netvlad import etri_dbloader as dataset
             if image is not None:
                 fname = os.path.join(self.dataset_queries_dir,'999_newquery/newquery.jpg')
+                try:
+                    h, w, c = image.shape
+                except: # invalid query image
+                    return self.getIDConf()
+                if (h < 480) or (w < 640) or (c != 3): # invalid query image
+                    return self.getIDConf()
                 cv.imwrite(fname,image)
-                #cv.imwrite('data_vps/netvlad_etri_datasets/qImg/999_newquery/newquery.jpg',image)
-
-            dbdir = os.path.join(self.dataset_struct_dir,'StreetView')
-            try:
-                self.getStreetView(dbdir)
-            except:
-                print("There is no image server!!!\nLocal DBs were used")
-
             whole_db_set,whole_q_set = dataset.get_dg_test_set()
             if self.verbose:
                 print('===> With Query captured near the ETRI Campus')
                 print('===> Evaluating on test set')
                 print('===> Running evaluation step')
-            recalls = self.test_dg(whole_db_set,whole_q_set, epoch, write_tboard=False)
+            ## Calculate image feature, vlad feature and do matching of query and DBs
+            acc = self.test_dg(whole_db_set,whole_q_set, epoch, write_tboard=False) #may cause segmentation fault.
         else:
             raise Exception('Unknown dataset')
 
-        ##### Results #####
+        ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]
+        return self.getIDConf()
+
+    def getIDConf(self):
+        if self.checking_return_value() < 0:
+            print("Error : vps.py's return value")
+            bp()
         return self.vps_IDandConf
-#        return self.vps_lat, self.vps_long, self.vps_prob, self.gps_lat, self.gps_long
 
     def setRadius(self,gps_accuracy):
         self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters
+        return 0
 
     def getStreetView(self,outdir='./'):
         ipaddr = self.ipaddr #'localhost'
@@ -686,12 +732,27 @@ class vps:
         isv.SetServerType(server_type)
         isv.SetParamsWGS(self.gps_lat,self.gps_long,self.roi_radius) # 37,27,100
         isv.SetReqDict(req_type)
-        res = isv.QuerytoServer(json_save=True,outdir=outdir)
+        #return 0 # Segmentation Free
+        ret = isv.QuerytoServer(json_save=False,outdir=outdir)
+        #return 0 # Segmentation fault non-Free
+        if ret == -1:
+            #raise Exception('Image server is not available.')
+            print('Image server is not available.')
+            self.StreetViewServerAvaiable = False
+            return -1
         numImgs = isv.GetNumImgs()
         if numImgs >0: 
             imgID,imgLat,imgLong,imgDate,imgHeading,numImgs = isv.GetStreetViewInfo(0)
-            isv.SaveImages(outdir)
-
+            files = glob.glob(os.path.join(outdir,'*'))
+            for f in files:
+                os.remove(f)
+            ret = isv.SaveImages(outdir)
+            if ret == -1:
+                #raise Exception('Image server is not available.')
+                print('Image server is not available.')
+                self.StreetViewServerAvaiable = False
+                return -1
+        return 0
 
     def getPosVPS(self):
         return self.GPS_Latitude, self.GPS_Longitude
@@ -707,7 +768,6 @@ class vps:
 
     def Fname2ID(self,flist):
         import os
-
         if type(flist) is str:
             flist = [flist]
         ID = []
@@ -718,16 +778,14 @@ class vps:
                 imgID = imgID.split('_')[1] #2813220026700000
             else:
                 imgID = imgID.split('.')[0]
-            ID.append(imgID)
+            ID.append(imgID) # string
         return ID
 
 
     def ID2LL(self,imgID):
         lat,lon,degree2north = -1,-1,-1
-
         if type(imgID) is not str:
             imgID = imgID[0]
-
         #'data_vps/netvlad_etri_datasets/poses.txt'
         fname = os.path.join(self.dataset_root_dir,'poses.txt')
         with open(fname, 'r') as searchfile:
@@ -737,7 +795,6 @@ class vps:
                     lat = sline[1]
                     lon = sline[2]
                     degree2north = sline[3]
-        
         return lat,lon,degree2north
 
     def get_Img_pairs(self):
@@ -764,21 +821,39 @@ class vps:
 
 
 if __name__ == "__main__":
+    from netvlad import etri_dbloader
+    from PIL import Image
+    visdom_server = True
+    try:
+        viz = Visdom()
+    except:
+        print("Visual result can be display if you run visdom server before run this")
+        visdom_server = False
+
+    qFlist = etri_dbloader.Generate_Flist('/home/ccsmm/Naverlabs/query_etri_cart/images_2019_11_15_12_45_11',".jpg")
     mod_vps = vps()
     mod_vps.initialize()
-    qimage = np.uint8(256*np.random.rand(1024,1024,3))
+    #qimage = np.uint8(256*np.random.rand(1024,1024,3))
     #(image=None, K=3, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
-    for i in range(0,4):
-        vps_IDandConf = mod_vps.apply(qimage, 3, 36.3851418, 127.3768362, 0.8, 1.0) # k=5 for knn
-        #print('############## Result of vps().apply():')
+    for fname in qFlist:
+        qimg = cv.imread(fname)
+        try:
+            [h, w, c] = qimg.shape
+            if (h < 480) or (w < 640) or c != 3:
+                print("Invalid shape of query image :",fname,h,w,c)
+                continue
+        except:
+            print("Broken query image :", fname)
+            continue
+        qimg = cv.resize(qimg,(640,480))
+        vps_IDandConf = mod_vps.apply(qimg, 3, 36.381438, 127.378867, 0.8, 1.0) # k=5 for knn
         print('vps_IDandConf',vps_IDandConf)
-
-    ## Display Result
-    viz = Visdom()
-    qImgs  = mod_vps.get_qImgs() #  [10,3,480,640] 
-    dbImgs = mod_vps.get_dbImgs() #  [10,3,480,640] 
-    qdbImgs = torch.cat((qImgs,dbImgs),-1) #  [10,3,480,1280] 
-    img_window = viz.images(qdbImgs,nrow=1,win='Query(left)_DB(right)')
+        if visdom_server and False: # Do not display(False)
+            ## Display Result
+            qImgs  = mod_vps.get_qImgs() #  [10,3,480,640] 
+            dbImgs = mod_vps.get_dbImgs() #  [10,3,480,640] 
+            qdbImgs = torch.cat((qImgs,dbImgs),-1) #  [10,3,480,1280] 
+            img_window = viz.images(qdbImgs,nrow=1,win='Query(left)_DB(right)')
 
     ## Debugging
     #textwindow = viz.text("[VPS] Results")
