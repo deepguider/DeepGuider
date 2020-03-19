@@ -6,53 +6,6 @@
 namespace dg
 {
 
-/** Node type definition of the topological map */
-enum
-{
-    /** Basic node */
-    NT_BS = 0,
-
-    /** Junction node (e.g. intersecting point, corner point, and end point of the road) */
-    NT_JT = 1,
-
-    /** Door node (e.g. exit and entrance) */
-    NT_DR = 2,
-
-    /** Elevator node */
-    NT_EV = 3,
-
-    /** Escalator node */
-    NT_ES = 4,
-
-    /** The number of node types */
-    NT_NUM
-};
-
-/** Edge type definition of the topological map */
-enum
-{
-    /** Sidewalk */
-    ET_SD = 0,
-
-    /** Middle road (e.g. lane, ginnel, roads shared by pedestrians and cars, ...) */
-    ET_MD = 1,
-
-    /** Crosswalk */
-    ET_CR = 2,
-
-    /** Doorway */
-    ET_DR = 3,
-
-    /** Elevator section */
-    ET_EV = 4,
-
-    /** Escalator section */
-    ET_ES = 5,
-
-    /** The number of edge types */
-    ET_NUM
-};
-
 class Edge;
 
 /**
@@ -61,6 +14,28 @@ class Edge;
 class Node : public LatLon
 {
 public:
+    /** Node type definition */
+    enum
+    {
+        /** Basic node */
+        NODE_BASIC = 0,
+
+        /** Junction node (e.g. intersecting point, corner point, and end point of the road) */
+        NODE_JUNCTION = 1,
+
+        /** Door node (e.g. exit and entrance) */
+        NODE_DOOR = 2,
+
+        /** Elevator node */
+        NODE_ELEVATOR = 3,
+
+        /** Escalator node */
+        NODE_ESCALATOR = 4,
+
+        /** The number of node types */
+        TYPE_NUM
+    };
+
     /**
      * A constructor with member initialization
      * @param _id The given ID of this node
@@ -135,6 +110,31 @@ public:
 class Edge
 {
 public:
+    /** Edge type definition */
+    enum
+    {
+        /** Sidewalk */
+        EDGE_SIDEWALK = 0,
+
+        /** General road (e.g. roads shared by pedestrians and cars, street, alley, corridor, ...) */
+        EDGE_ROAD = 1,
+
+        /** Crosswalk */
+        EDGE_CROSSWALK = 2,
+
+        /** Elevator section */
+        EDGE_ELEVATOR = 3,
+
+        /** Escalator section */
+        EDGE_ESCALATOR = 4,
+
+        /** Stair section */
+        EDGE_STAIR = 5,
+
+        /** The number of edge types */
+        TYPE_NUM
+    };
+
     /**
      * A constructor with member initialization
      * @param _id The given identifier
