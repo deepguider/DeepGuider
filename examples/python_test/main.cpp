@@ -20,7 +20,7 @@ int main()
 
     // Run the Python module
     cv::Mat image = cv::imread("python_test.jpg");
-    int nIter = 5;
+    int nIter = 1000;
     for (int i = 1; i <= nIter; i++)
     {
         Timestamp t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;

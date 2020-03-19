@@ -7,18 +7,22 @@ import geojson
 import argparse
 import sys
 import numpy as np
-from ipdb import set_trace as bp
 
-#IMG_SERVER_IPADDR = "129.254.87.96"
-IMG_SERVER_IPADDR = "localhost"
+from ipdb import set_trace as bp
+from dmsg import dmsg
 
 class ImgServer:
-    def __init__(self,ipaddr=IMG_SERVER_IPADDR):
+    def __init__(self,ipaddr="localhost"): # 127.0.0.1
         self.IP=ipaddr
         self.ROUTING_SERVER_URL = 'http://{}:21500/'.format(self.IP)
         self.STREETVIEW_SERVER_URL = 'http://{}:21501/'.format(self.IP)
         self.POI_SERVER_URL = 'http://{}:21502/'.format(self.IP)
         self.SERVER_URL = self.STREETVIEW_SERVER_URL #default
+        self.req_type='wgs'
+        self.gps_lat=37.513366
+        self.gps_long=127.056132
+        self.roi_radius=100
+        self.reqdict = {'type': 'wgs', 'latitude': self.gps_lat, 'longitude': self.gps_long, 'radius': self.roi_radius}
 
 
     def SetServerType(self,server_type):
@@ -34,6 +38,7 @@ class ImgServer:
         return 0
 
     def QuerytoServer(self,json_save = False,outdir='./'):
+        import requests
         req = self.reqdict
         if req['type']=='tile':
             req_str = self.SERVER_URL + '{}/{}/{}'.format(req['type'], req['tile_num_x'], req['tile_num_y'])
@@ -43,15 +48,14 @@ class ImgServer:
             req_str = self.SERVER_URL + '{}/{}/{}'.format(req['type'], req['node_id'], req['radius'])
         else:
             print('{} is not a valid request type'.format(req['type']))
-            return None
-
-        response = requests.get(req_str)
-        response.raise_for_status()
+            return -1
+        timeout=(3, 3) # timeout of (connect, read) sec.
+        response = requests.get(req_str,timeout=timeout)
+        response.raise_for_status() # will raise error if return code is not 200 (meaning OK)
         elapsed_time = response.elapsed.total_seconds()
         self.json_outputs = response.json()
-        if json_save:
+        if json_save and (self.json_outputs != None):
             self.SaveGeoJson(outdir)
-
         return self.json_outputs
 
     def GetReqDict(self):
@@ -68,9 +72,8 @@ class ImgServer:
             self.reqdict = {'type': 'node', 'node_id': 558992539200991, 'radius': 500.0} # Valid request
             #req = {'type': 'node', 'node_id': 1000} # Invalid request
         else:
-            print("Not suppported request type")
-            self.reqdict = None
-
+            print("Not suppported request type. Set to wgs")
+            self.reqdict = self.reqdict = {'type': 'wgs', 'latitude': self.gps_lat, 'longitude': self.gps_long, 'radius': self.roi_radius}
         return self.reqdict
 
     def SetParamsWGS(self,gps_lat=37.513366,gps_long=127.056132,roi_radius=10.0):
@@ -86,7 +89,6 @@ class ImgServer:
                 #print('{} saved'.format(fname))
                 geojson.dump(res, f)
 
-
     def SaveImages(self,outdir='./',verbose=0):
         import requests
         res = self.json_outputs
@@ -96,21 +98,11 @@ class ImgServer:
             imgid = res['features'][i]['properties']['id']
             request_cmd = 'http://{}:{}/{}/{}'.format(self.IP,ports,imgid,'f') #'f' means forward
             fname = os.path.join(outdir,'{}.jpg'.format(imgid))
-            r = requests.get(request_cmd,allow_redirects=True)
+            r = requests.get(request_cmd,allow_redirects=False)
             open(fname, 'wb').write(r.content)
             if verbose:
                 print('{} saved'.format(fname))
-
-
-    def SaveImage(self,imgid):
-        import requests
-        ports = 10000
-        request_cmd = 'http://{}:{}/{}'.format(self.IP,ports,imgid)
-#        response = requests.get('http://ip.address.to.image.server/:port/29300503300')
-        fname = '{}.jpg'.format(imgid)
-        r = requests.get(request_cmd,allow_redirects=True)
-        open(fname, 'wb').write(r.content)
-        print('{} saved'.foramt(fname))
+        return 0
 
     def GetNumImgs(self):
         res = self.json_outputs
@@ -127,38 +119,61 @@ class ImgServer:
         imgID = res['features'][imgidx]['properties']['id']
         return imgID,imgLat,imgLong,imgDate,imgHeading,numImgs
 
+def makedir(fdir):
+    import os
+    if not os.path.exists(fdir):
+        os.makedirs(fdir)
 
-if __name__ == '__main__':
-## Prepare Parameter for Server
-    ipaddr = IMG_SERVER_IPADDR #ip address of server
-    server_type = "streetview" #server type, layer, or Port
-    req_type = "wgs" #coordinate
+def GetStreetView(gps_lat,gps_long,roi_radius=100,ipaddr='localhost',server_type="streetview",
+        req_type="wgs",outdir='./'):
+    ## Input
+    # gps_lat/long : latitude and longitude of gps
+    # roi_radius : radius value to download the image around the current coordinate
+    # outdir : directory to save the downloaded images
+    # ipaddr : ip address of server
+    # server_type : "streetview" which is server type, layer, or Port
+    # req_type : "wgs" which is coordinate
 
-## Initialize Image Server
+    ## Initialize image server
     isv = ImgServer(ipaddr)
     isv.SetServerType(server_type)
+    
+    ## Set position you want to view and request type
+    isv.SetParamsWGS(gps_lat,gps_long,roi_radius) # 37,27,100
+    isv.SetReqDict(req_type)
 
-## Set Position you want to view
-# 36.3851418,127.3768362 Lat/Lon near SK-View
-# 37.5148562,127.0551826 Boneunsa
+    ## Request to Server ( possibility of seg fault )
+    ret = isv.QuerytoServer(json_save=False, outdir=outdir)
+    if ret == -1:
+        #raise Exception('Image server is not available.')
+        print('Image server is not available.')
+        return -1
 
-    if True: #near ETRI
+    ## Save downloaded image at outdir
+    numImgs = isv.GetNumImgs()
+    if numImgs >0: 
+        imgID,imgLat,imgLong,imgDate,imgHeading,numImgs = isv.GetStreetViewInfo(0)
+        ret = isv.SaveImages(outdir)
+        if ret == -1:
+            print('Image server is not available.')
+            return -1
+
+if __name__ == '__main__':
+    ## Prepare Parameter for Server
+
+    ## Set Position you want to view
+    if True: #near ETRI(SK-View Apt.)
         gps_lat = 36.3851418
         gps_long = 127.3768362
     else: #near Bongeunsa
         gps_lat = 37.5148562
         gps_long = 127.0551826
+    roi_radius = 250.0 # boundary radius in meter
 
-    roi_radius = 250.0 #around radius meter
-    isv.SetParamsWGS(gps_lat,gps_long,roi_radius)
-    isv.SetReqDict(req_type)
-
-## Request to Server    
-    res = isv.QuerytoServer(json_save = True,outdir='./')
-
-## for debugging purpose
-    numImgs = isv.GetNumImgs()
-    if numImgs >0:
-        imgID,imgLat,imgLong,imgDate,imgHeading,numImgs = isv.GetStreetViewInfo(0)
-#        isv.SaveImage(imgID)
-        isv.SaveImages()
+    outdir='./download_jpg'
+    makedir(outdir)
+    for i in range(1000):
+        print(str(i) + '-th request')
+        GetStreetView(gps_lat, gps_long, roi_radius, 
+                ipaddr='localhost', server_type="streetview",
+                req_type="wgs",outdir=outdir)
