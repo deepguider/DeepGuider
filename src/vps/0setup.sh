@@ -1,6 +1,7 @@
 #!/bin/bash
 
 cd data_vps
+ln -sf ../netvlad
 
 ## Make and mount ramdisk as a temporary disk
 tmpdir="/media/ramdisk_dg"
@@ -18,7 +19,13 @@ cd ..
 mkdir -p data_vps/$datasetdir/qImg/999_newquery
 #mkdir -p data_vps/netvlad_etri_datasets/qImg/999_newquery
 
+## Make query list
+cd Dataset_example/netvlad_etri_datasets/etri_cart_db
+ls -d "$PWD"/* > ../../../data_vps/query_list.txt
+cd ../../../
+
 cd netvlad
 /bin/bash 0setup_test_env.sh
+
 
 echo "If you met error(s) during downlaoding .tar.gz(s), plz. re-run $0"
