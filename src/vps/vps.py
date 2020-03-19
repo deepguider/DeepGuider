@@ -671,12 +671,14 @@ class vps:
 
         ## Get DB images from streetview image server
         dbdir = os.path.join(self.dataset_struct_dir,'StreetView')
-        try:
-            ret = self.getStreetView(dbdir)
-            if ret == -1:
+        if self.StreetViewServerAvaiable == True:
+            try:
+                ret = self.getStreetView(dbdir)
+                if ret == -1:
+                    self.StreetViewServerAvaiable = False
+            except:
                 self.StreetViewServerAvaiable = False
-        except:
-            self.StreetViewServerAvaiable = False
+
         if self.StreetViewServerAvaiable == False:
             print("Local DBs(DeepGuider/bin/data_vps/netvlad_etri_datasets/dbImg/StreetView) will be used")
 
