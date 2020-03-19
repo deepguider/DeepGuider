@@ -55,16 +55,22 @@
     <Filter Include="Source Files\unit_test">
       <UniqueIdentifier>{ceb0b1f9-3556-48d4-bd49-1c3c66d914d6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\dg_test_ros">
+      <UniqueIdentifier>{f22ac8f8-e5d5-4bc4-a139-dbaede75c657}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\poi_recog_test">
+      <UniqueIdentifier>{da128486-9cc1-4d1b-b23f-1169538fad07}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\vps_test">
+      <UniqueIdentifier>{ea6c4a73-b8b4-4a3e-a88f-9e4df32f2838}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\python_test">
+      <UniqueIdentifier>{23cf6ac7-b896-4236-b3d8-f7b4792339aa}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp">
       <Filter>Header Files\map_manager</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp">
-      <Filter>Header Files\localizer</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\poi_recog\poi_recognizer.cpp">
       <Filter>Header Files\poi_recog</Filter>
@@ -93,58 +99,34 @@
     <ClCompile Include="..\dg_test\main.cpp">
       <Filter>Source Files\dg_test</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\localizer\road_map.cpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\localizer\utm_converter.cpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dg_test_ros\src\dg_test.cpp">
+      <Filter>Source Files\dg_test_ros</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vps_test\main.cpp">
+      <Filter>Source Files\vps_test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\poi_recog_test\main.cpp">
+      <Filter>Source Files\poi_recog_test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\python_test\main.cpp">
+      <Filter>Source Files\python_test</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\dg_core.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\dg_localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\dg_map_manager.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\opencx.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\core\basic_type.hpp">
-      <Filter>Header Files\core</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\core\directed_graph.hpp">
-      <Filter>Header Files\core</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\core\map.hpp">
-      <Filter>Header Files\core</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\core\path.hpp">
-      <Filter>Header Files\core</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\localizer\simple_localizer.hpp">
-      <Filter>Header Files\localizer</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\map_manager\map_manager.hpp">
       <Filter>Header Files\map_manager</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\localizer\simple_road_map.hpp">
-      <Filter>Header Files\localizer</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\core\graph_painter.hpp">
-      <Filter>Header Files\core</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\localizer\localizer.hpp">
-      <Filter>Header Files\localizer</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\poi_recog\poi_recognizer.hpp">
       <Filter>Header Files\poi_recog</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\vps\vps.hpp">
       <Filter>Header Files\vps</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\dg_poi_recog.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\dg_road_recog.hpp">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\guidance_test\Guidance.hpp">
       <Filter>Source Files\guidance_test</Filter>
@@ -157,9 +139,6 @@
     </ClInclude>
     <ClInclude Include="..\..\src\road_recog\road_direction_recognizer.hpp">
       <Filter>Header Files\road_recog</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\dg_vps.hpp">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\guidance\guidance.hpp">
       <Filter>Header Files\guidance</Filter>
@@ -184,6 +163,69 @@
     </ClInclude>
     <ClInclude Include="..\unit_test\vvs.h">
       <Filter>Source Files\unit_test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\core\basic_type.hpp">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\core\map.hpp">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\core\path.hpp">
+      <Filter>Header Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\directed_graph.hpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\graph_painter.hpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\localizer.hpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\road_map.hpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\simple_localizer.hpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\utm_converter.hpp">
+      <Filter>Header Files\localizer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\dg_core.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\dg_guidance.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\dg_localizer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\dg_map_manager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\dg_poi_recog.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\dg_road_recog.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\dg_vps.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\opencx.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\opensx.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\python_embedding.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vvs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\python_test\python_test.hpp">
+      <Filter>Source Files\python_test</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -214,6 +256,9 @@
     <None Include="..\..\src\vps\vps.py">
       <Filter>Header Files\vps</Filter>
     </None>
+    <None Include="..\python_test\python_test.py">
+      <Filter>Source Files\python_test</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\road_recog_test\CMakeLists.txt">
@@ -225,5 +270,22 @@
     <Text Include="..\dg_test\CMakeLists.txt">
       <Filter>Source Files\dg_test</Filter>
     </Text>
+    <Text Include="..\dg_test_ros\CMakeLists.txt">
+      <Filter>Source Files\dg_test_ros</Filter>
+    </Text>
+    <Text Include="..\vps_test\CMakeLists.txt">
+      <Filter>Source Files\vps_test</Filter>
+    </Text>
+    <Text Include="..\poi_recog_test\CMakeLists.txt">
+      <Filter>Source Files\poi_recog_test</Filter>
+    </Text>
+    <Text Include="..\python_test\CMakeLists.txt">
+      <Filter>Source Files\python_test</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="..\dg_test_ros\package.xml">
+      <Filter>Source Files\dg_test_ros</Filter>
+    </Xml>
   </ItemGroup>
 </Project>
