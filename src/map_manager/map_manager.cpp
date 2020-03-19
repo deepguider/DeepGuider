@@ -3,108 +3,84 @@
 namespace dg
 {
 
-	int MapManager::lat2tiley(double lat, int z)
-	{
-		double latrad = lat * M_PI / 180.0;
-		return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
-	}
+int MapManager::lat2tiley(double lat, int z)
+{
+	double latrad = lat * M_PI / 180.0;
+	return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
+}
 
-	int MapManager::lon2tilex(double lon, int z)
-	{
-		return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
-	}
+int MapManager::lon2tilex(double lon, int z)
+{
+	return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
+}
 
-	double MapManager::tiley2lat(int y, int z)
-	{
-		double n = M_PI - 2.0 * M_PI * y / (double)(1 << z);
-		return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
-	}
+double MapManager::tiley2lat(int y, int z)
+{
+	double n = M_PI - 2.0 * M_PI * y / (double)(1 << z);
+	return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
+}
 
-	double MapManager::tilex2lon(int x, int z)
-	{
-		return x / (double)(1 << z) * 360.0 - 180;
-	}
+double MapManager::tilex2lon(int x, int z)
+{
+	return x / (double)(1 << z) * 360.0 - 180;
+}
 
-	cv::Point2i MapManager::latlon2xy(double lat, double lon, int z)
-	{
-		return cv::Point2i(lon2tilex(lon, z), lat2tiley(lat, z));
-	}
+cv::Point2i MapManager::latlon2xy(double lat, double lon, int z)
+{
+	return cv::Point2i(lon2tilex(lon, z), lat2tiley(lat, z));
+}
 
-	bool MapManager::initialize()
-	{
+bool MapManager::initialize()
+{
 
-		return true;
-	}
+	return true;
+}
 
-	size_t MapManager::write_callback(void* ptr, size_t size, size_t count, void* stream)
-	{
-		((std::string*)stream)->append((char*)ptr, 0, size * count);
-		return size * count;
-	}
+size_t MapManager::write_callback(void* ptr, size_t size, size_t count, void* stream)
+{
+	((std::string*)stream)->append((char*)ptr, 0, size * count);
+	return size * count;
+}
 	
-	bool MapManager::query2server(std::string url)
-	{
+bool MapManager::query2server(std::string url)
+{
 #ifdef _WIN32
-		SetConsoleOutputCP(65001);
+	SetConsoleOutputCP(65001);
 #endif
 		
-		curl_global_init(CURL_GLOBAL_ALL);
-		CURL* curl = curl_easy_init();
-		CURLcode res;
+	curl_global_init(CURL_GLOBAL_ALL);
+	CURL* curl = curl_easy_init();
+	CURLcode res;
 
-		if (curl)
+	if (curl)
+	{
+		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+		std::string response;
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+		// Perform the request, res will get the return code.
+		res = curl_easy_perform(curl);
+
+		// Always cleanup.
+		curl_easy_cleanup(curl);
+		curl_global_cleanup();
+
+		// Check for errors.
+		if (res != CURLE_OK)
 		{
-			curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-			std::string response;
-			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-			curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-
-			// Perform the request, res will get the return code.
-			res = curl_easy_perform(curl);
-
-			// Always cleanup.
-			curl_easy_cleanup(curl);
-			curl_global_cleanup();
-
-			// Check for errors.
-			if (res != CURLE_OK)
-			{
-				fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-				return false;
-			}
-			else
-			{
-				//fprintf(stdout, "%s\n", response.c_str());
-				m_json = response;
-			}
+			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+			return false;
 		}
-
-		return true;
+		else
+		{
+			//fprintf(stdout, "%s\n", response.c_str());
+			m_json = response;
+		}
 	}
 
-bool MapManager::downloadMap(double lat, double lon, double radius)
-{
-	const std::string url_head = "http://129.254.87.96:21500/wgs/";
-	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
-	
-	return query2server(url);
-}
-
-bool MapManager::downloadMap(ID node_id, double radius)
-{
-	const std::string url_head = "http://129.254.87.96:21500/node/";
-	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
-
-	return query2server(url);
-}
-
-bool MapManager::downloadMap(cv::Point2i tile)
-{
-	const std::string url_head = "http://129.254.87.96:21500/tile/";
-	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
-
-	return query2server(url);
+	return true;
 }
 
 //// unicode-escape decoding
@@ -198,6 +174,30 @@ bool MapManager::utf8to16(const char* utf8, std::wstring& utf16)
 	return true;
 }
 
+bool MapManager::downloadMap(double lat, double lon, double radius)
+{
+	const std::string url_head = "http://129.254.87.96:21500/wgs/";
+	std::string url = url_head + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
+	
+	return query2server(url);
+}
+
+bool MapManager::downloadMap(ID node_id, double radius)
+{
+	const std::string url_head = "http://129.254.87.96:21500/node/";
+	std::string url = url_head + std::to_string(node_id) + "/" + std::to_string(radius);
+
+	return query2server(url);
+}
+
+bool MapManager::downloadMap(cv::Point2i tile)
+{
+	const std::string url_head = "http://129.254.87.96:21500/tile/";
+	std::string url = url_head + std::to_string(tile.x) + "/" + std::to_string(tile.y);
+
+	return query2server(url);
+}
+
 bool MapManager::parseMap(const char* json)
 {
 	Document document;
@@ -222,18 +222,18 @@ bool MapManager::parseMap(const char* json)
 			edge.id = properties["id"].GetUint64();
 			switch (properties["type"].GetInt())
 			{
-				/** Sidewalk */
-				case 0: edge.type = ET_SD; break;
-				/** Middle road (e.g. lane, ginnel, roads shared by pedestrians and cars, ...) */
-				case 1: edge.type = ET_MD; break;
-				/** Crosswalk */
-				case 2: edge.type = ET_CR; break;
-				/** Doorway */
-				case 3: edge.type = ET_DR; break;
-				/** Elevator section */
-				case 4: edge.type = ET_EV; break;
-				/** Escalator section */
-				case 5: edge.type = ET_ES; break;
+			/** Sidewalk */
+			case 0: edge.type = Edge::EDGE_SIDEWALK; break;
+			/** General road (e.g. roads shared by pedestrians and cars, street, alley, corridor, ...) */
+			case 1: edge.type = Edge::EDGE_ROAD; break;
+			/** Crosswalk */
+			case 2: edge.type = Edge::EDGE_CROSSWALK; break;
+			/** Elevator section */
+			case 3: edge.type = Edge::EDGE_ELEVATOR; break;
+			/** Escalator section */
+			case 4: edge.type = Edge::EDGE_ESCALATOR; break;
+			/** Stair section */
+			case 5: edge.type = Edge::EDGE_STAIR; break;
 			}
 			edge.length = properties["length"].GetDouble();
 			temp_edge.push_back(edge);
@@ -256,16 +256,16 @@ bool MapManager::parseMap(const char* json)
 			node.id = properties["id"].GetUint64();
 			switch (properties["type"].GetInt())
 			{
-				/** Basic node */
-				case 0: node.type = NT_BS; break;
-				/** Junction node (e.g. intersecting point, corner point, and end point of the road) */
-				case 1: node.type = NT_JT; break;
-				/** Door node (e.g. exit and entrance) */
-				case 2: node.type = NT_DR; break;
-				/** Elevator node */
-				case 3: node.type = NT_EV; break;
-				/** Escalator node */
-				case 4: node.type = NT_ES; break;
+			/** Basic node */
+			case 0: node.type = Node::NODE_BASIC; break;
+			/** Junction node (e.g. intersecting point, corner point, and end point of the road) */
+			case 1: node.type = Node::NODE_JUNCTION; break;
+			/** Door node (e.g. exit and entrance) */
+			case 2: node.type = Node::NODE_DOOR; break;
+			/** Elevator node */
+			case 3: node.type = Node::NODE_ELEVATOR; break;
+			/** Escalator node */
+			case 4: node.type = Node::NODE_ESCALATOR; break;
 			}
 			node.floor = properties["floor"].GetInt();
 			node.lat = properties["latitude"].GetDouble();
@@ -283,7 +283,7 @@ bool MapManager::parseMap(const char* json)
 				//					fprintf(stdout, "%d %s\n", ++numNonEdges, "<=======================the number of the edge_ids without edgeinfo"); // the number of the edge_ids without edgeinfo
 				//#endif
 			}
-			m_map.addNode(node);
+			m_map->addNode(node);
 			//#ifdef _DEBUG
 			//			fprintf(stdout, "%d\n", i + 1); // the number of nodes
 			//#endif
@@ -297,7 +297,7 @@ bool MapManager::parseMap(const char* json)
 			for (auto j = i; j < it->node_ids.end(); j++)
 			{
 				if (i == j) continue;
-				m_map.addEdge(*i, *j, Edge(it->id, it->length, it->type));
+				m_map->addEdge(*i, *j, Edge(it->id, it->length, it->type));
 				//m_map.addEdge(*j, *i, Edge(it->id, it->length, it->type));
 //#ifdef _DEBUG
 //					fprintf(stdout, "%d %s\n", ++numEdges, "<=======================the number of edges"); // the number of edges
@@ -309,9 +309,18 @@ bool MapManager::parseMap(const char* json)
 	return true;
 }
 
-bool MapManager::load(double lat, double lon, double radius)
+bool MapManager::loadMap(double lat, double lon, double radius)
 {
-    m_map.nodes.clear();
+	if (m_isMap)
+	{
+		delete m_map;
+		m_isMap = false;
+
+		m_path.pts.clear();
+	}
+	m_map = new Map();
+	m_isMap = true;
+    //m_map->nodes.clear();
 	m_json = "";
 
 	// by communication
@@ -325,11 +334,70 @@ bool MapManager::load(double lat, double lon, double radius)
 	return parseMap(json);
 }
 
+Map& MapManager::getMap(double lat, double lon, double radius)
+{
+	loadMap(lat, lon, radius);
+
+	return getMap();
+}
+
+Map& MapManager::getMap(Path path)
+{
+	/*double lat = 36.38;
+	double lon = 127.373;
+	double r = 1000.0;
+
+
+	loadMap(lat, lon, r);
+
+	return getMap();*/
+
+	std::vector<double> lats, lons;
+
+	if(path.pts.size() == 0) return getMap();
+	for (std::vector<PathElement>::iterator it = path.pts.begin(); it < path.pts.end(); it++)
+	{
+		// swapped lat and lon
+		if ((it->node->lat) > (it->node->lon))
+		{
+			lats.push_back(it->node->lon);
+			lons.push_back(it->node->lat);
+			continue;
+		}
+		lats.push_back(it->node->lat);
+		lons.push_back(it->node->lon);
+
+		/*lats.push_back(it->node->lat);
+		lons.push_back(it->node->lon);*/
+	}
+
+	double min_lat = *min_element(lats.begin(), lats.end());
+	double max_lat = *max_element(lats.begin(), lats.end());
+	double min_lon = *min_element(lons.begin(), lons.end());
+	double max_lon = *max_element(lons.begin(), lons.end());
+
+	UTMConverter utm_conv;
+	Point2 min_metric = utm_conv.toMetric(LatLon(min_lat, min_lon));
+	Point2 max_metric = utm_conv.toMetric(LatLon(max_lat, max_lon));
+	double dist_metric = sqrt(pow((max_metric.x - min_metric.x), 2) + pow((max_metric.y - min_metric.y), 2));
+	double alpha = 20;
+	double center_lat = (min_lat + max_lat) / 2;
+	double center_lon = (min_lon + max_lon) / 2;
+
+	loadMap(center_lat, center_lon, (dist_metric / 2) + alpha);
+
+	return getMap();
+}
+
+Map& MapManager::getMap()
+{
+	return *m_map;
+}
+
 bool MapManager::downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
 {
 	const std::string url_head = "http://129.254.87.96:20005/"; // routing server (paths)
 	std::string url = url_head + std::to_string(start_lat) + "/" + std::to_string(start_lon) + "/" + std::to_string(dest_lat) + "/" + std::to_string(dest_lon) + "/" + std::to_string(num_paths);
-
 
 	return query2server(url);
 }
@@ -343,7 +411,8 @@ bool MapManager::parsePath(const char* json)
 	const Value& features = document[0]["features"];
 	if(!features.IsArray()) return false;
 
-	std::vector<dg::ID> ids;
+	Node* node = nullptr;
+	Edge* edge = nullptr;
 	for (SizeType i = 0; i < features.Size(); i++)
 	{
 		const Value& feature = features[i];
@@ -351,26 +420,59 @@ bool MapManager::parsePath(const char* json)
 		if(!feature.HasMember("properties")) return false;
 		const Value& properties = feature["properties"];
 		if(!properties.IsObject()) return false;
-		dg::ID id = properties["id"].GetUint64();
 		std::string name = properties["name"].GetString();
 		if (i % 2 == 0)	// node
 		{
-			if(!(name == "Node" || name == "node")) return false;
+			if (!(name == "Node" || name == "node")) return false;
+			node = new Node();
+			node->id = properties["id"].GetUint64();
+			//switch (properties["type"].GetInt())
+			//{
+			///** Basic node */
+			//case 0: node->type = Node::NODE_BASIC; break;
+			///** Junction node (e.g. intersecting point, corner point, and end point of the road) */
+			//case 1: node->type = Node::NODE_JUNCTION; break;
+			///** Door node (e.g. exit and entrance) */
+			//case 2: node->type = Node::NODE_DOOR; break;
+			///** Elevator node */
+			//case 3: node->type = Node::NODE_ELEVATOR; break;
+			///** Escalator node */
+			//case 4: node->type = Node::NODE_ESCALATOR; break;
+			//}
+			//node->floor = properties["floor"].GetInt();
+			node->lat = properties["latitude"].GetDouble();
+			node->lon = properties["longitude"].GetDouble();
+		
+			if (!((i + 1) < features.Size()))
+			{
+				edge = nullptr;
+				m_path.pts.push_back(PathElement(node, edge));
+			}
 		}
 		else			// edge
 		{
 			if(!(name == "Edge" || name == "edge")) return false;
-		}
-		ids.push_back(id);
-	}
+			edge = new Edge();
+			edge->id = properties["id"].GetUint64();
+			//switch (properties["type"].GetInt())
+			//{
+			///** Sidewalk */
+			//case 0: edge->type = Edge::EDGE_SIDEWALK; break;
+			///** General road (e.g. roads shared by pedestrians and cars, street, alley, corridor, ...) */
+			//case 1: edge->type = Edge::EDGE_ROAD; break;
+			///** Crosswalk */
+			//case 2: edge->type = Edge::EDGE_CROSSWALK; break;
+			///** Elevator section */
+			//case 3: edge->type = Edge::EDGE_ELEVATOR; break;
+			///** Escalator section */
+			//case 4: edge->type = Edge::EDGE_ESCALATOR; break;
+			///** Stair section */
+			//case 5: edge->type = Edge::EDGE_STAIR; break;
+			//}
+			//edge->length = properties["length"].GetDouble();
 
-	for (size_t i = 0; i < ids.size(); i += 2)
-	{
-		PathElement p;
-		p.node = m_map.findNode(ids[i]);
-		if ((i + 1) < ids.size()) p.edge = m_map.findEdge(ids[i + 1]);
-		else p.edge = nullptr;
-		m_path.pts.push_back(p);
+			m_path.pts.push_back(PathElement(node, edge));
+		}
 	}
 
 	return true;
@@ -386,7 +488,7 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 
 	//double center_lat = (start_lat + dest_lat) / 2;
 	//double center_lon = (start_lon + dest_lon) / 2;
-	//bool ok = load(center_lat, center_lon, 200);//(dist_metric / 2) + alpha);
+	//bool ok = loadMap(center_lat, center_lon, 200);//(dist_metric / 2) + alpha);
 	//if (!ok) return false;
 
 	m_path.pts.clear();
@@ -398,11 +500,41 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	//decodeUni();
 	const char* json = m_json.c_str();
 
-#ifdef _DEBUG
-	fprintf(stdout, "%s\n", json);
-#endif
+//#ifdef _DEBUG
+//	fprintf(stdout, "%s\n", json);
+//#endif
 
-	return parsePath(json);
+	ok = parsePath(json);
+	if (!ok) return false;
+
+	Path path = m_path;
+	getMap(path);
+
+	m_path.pts.clear();
+	for (size_t i = 0; i < path.pts.size(); i++)
+	{
+		PathElement p;
+		p.node = m_map->findNode(path.pts[i].node->id);
+		
+		if ((i + 1) < path.pts.size())
+		{
+			if ((i + 1) < path.pts.size()) p.edge = m_map->findEdge(path.pts[i].edge->id);
+		}
+		else p.edge = nullptr;
+		m_path.pts.push_back(p);
+
+		delete path.pts[i].node;
+		delete path.pts[i].edge;
+	}
+
+	return true;
+}
+
+Path MapManager::getPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
+{
+	generatePath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
+
+	return getPath();
 }
 
 Path MapManager::getPath(const char* filename)
@@ -430,58 +562,6 @@ Path MapManager::getPath(const char* filename)
 Path MapManager::getPath()
 {
 	return m_path;
-}
-
-Map& MapManager::getMap(Path path)
-{
-	double lat = 36.38;
-	double lon = 127.373;
-	double r = 1000.0;
-
-
-	load(lat, lon, r);
-
-	return getMap();
-
-	//std::vector<double> lats, lons;
-
-	//if(m_path.pts.size() == 0) return getMap();
-	//for (std::vector<PathElement>::iterator it = m_path.pts.begin(); it < m_path.pts.end(); it++)
-	//{
-	//	// swapped lat and lon
-	//	if ((it->node->lat) > (it->node->lon))
-	//	{
-	//		lats.push_back(it->node->lon);
-	//		lons.push_back(it->node->lat);
-	//		continue;
-	//	}
-	//	lats.push_back(it->node->lat);
-	//	lons.push_back(it->node->lon);
-
-	//	/*lats.push_back(it->node->lat);
-	//	lons.push_back(it->node->lon);*/
-	//}
-
-	//double min_lat = *min_element(lats.begin(), lats.end());
-	//double max_lat = *max_element(lats.begin(), lats.end());
-	//double min_lon = *min_element(lons.begin(), lons.end());
-	//double max_lon = *max_element(lons.begin(), lons.end());
-
-	//UTMConverter utm_conv;
-	//Point2 min_metric = utm_conv.toMetric(LatLon(min_lat, min_lon));
-	//Point2 max_metric = utm_conv.toMetric(LatLon(max_lat, max_lon));
-	//double dist_metric = sqrt(pow((max_metric.x - min_metric.x), 2) + pow((max_metric.y - min_metric.y), 2));
-	//double alpha = 50;
-
-	//double center_lat = (min_lat + max_lat) / 2;
-	//double center_lon = (min_lon + max_lon) / 2;
-	//bool ok = load(center_lat, center_lon, (dist_metric / 2) + alpha);
-	//if (!ok) return getMap();
-}
-
-Map& MapManager::getMap()
-{
-	return m_map;
 }
 
 bool MapManager::downloadPOI(double lat, double lon, double radius)
@@ -532,7 +612,7 @@ bool MapManager::parsePOI(const char* json)
 		poi.lat = properties["latitude"].GetDouble();
 		poi.lon = properties["longitude"].GetDouble();
 
-		m_map.pois.push_back(poi);
+		m_map->pois.push_back(poi);
 	}
 
 	return true;
@@ -540,7 +620,7 @@ bool MapManager::parsePOI(const char* json)
 
 std::list<POI>& MapManager::getPOI(double lat, double lon, double radius)
 {
-	m_map.pois.clear();
+	m_map->pois.clear();
 	m_json = "";
 
 	// by communication
@@ -551,32 +631,32 @@ std::list<POI>& MapManager::getPOI(double lat, double lon, double radius)
 //	fprintf(stdout, "%s\n", json);
 //#endif
 	bool ok = parsePOI(json);
-	if (!ok) m_map.pois.clear();
+	if (!ok) m_map->pois.clear();
 
 	return getPOI();
 }
 
 std::list<POI>& MapManager::getPOI(ID node_id, double radius)
 {
-	m_map.pois.clear();
+	m_map->pois.clear();
 	m_json = "";
 
 	// by communication
 	downloadPOI(node_id, radius);
 	//decodeUni();
 	const char* json = m_json.c_str();
-#ifdef _DEBUG
-	fprintf(stdout, "%s\n", json);
-#endif
+//#ifdef _DEBUG
+//	fprintf(stdout, "%s\n", json);
+//#endif
 	bool ok = parsePOI(json);
-	if (!ok) m_map.pois.clear();
+	if (!ok) m_map->pois.clear();
 
 	return getPOI();
 }
 
 std::list<POI>& MapManager::getPOI()
 {
-	return m_map.pois;
+	return m_map->pois;
 }
 
 //std::vector<cv::Point2d> MapManager::getPOIloc(const char* poiname)
@@ -623,7 +703,7 @@ bool MapManager::parseStreetView(const char* json)
 		sv.lat = properties["latitude"].GetDouble();
 		sv.lon = properties["longitude"].GetDouble();
 
-		m_map.views.push_back(sv);
+		m_map->views.push_back(sv);
 	}
 
 	return true;
@@ -655,43 +735,43 @@ bool MapManager::downloadStreetView(cv::Point2i tile)
 
 std::list<StreetView>& MapManager::getStreetView(double lat, double lon, double radius)
 {
-	m_map.views.clear();
+	m_map->views.clear();
 	m_json = "";
 
 	// by communication
 	downloadStreetView(lat, lon, radius);
 	//decodeUni();
 	const char* json = m_json.c_str();
-	//#ifdef _DEBUG
-	//	fprintf(stdout, "%s\n", json);
-	//#endif
+//#ifdef _DEBUG
+//	fprintf(stdout, "%s\n", json);
+//#endif
 	bool ok = parseStreetView(json);
-	if (!ok) m_map.views.clear();
+	if (!ok) m_map->views.clear();
 
 	return getStreetView();
 }
 
 std::list<StreetView>& MapManager::getStreetView(ID node_id, double radius)
 {
-	m_map.views.clear();
+	m_map->views.clear();
 	m_json = "";
 
 	// by communication
 	downloadStreetView(node_id, radius);
 	//decodeUni();
 	const char* json = m_json.c_str();
-#ifdef _DEBUG
-	fprintf(stdout, "%s\n", json);
-#endif
+//#ifdef _DEBUG
+//	fprintf(stdout, "%s\n", json);
+//#endif
 	bool ok = parseStreetView(json);
-	if (!ok) m_map.views.clear();
+	if (!ok) m_map->views.clear();
 
 	return getStreetView();
 }
 
 std::list<StreetView>& MapManager::getStreetView()
 {
-	return m_map.views;
+	return m_map->views;
 }
 
 } // End of 'dg'

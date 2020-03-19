@@ -39,7 +39,19 @@ public:
 	/**
 	 * The default constructor
 	 */
-	MapManager() {}
+	MapManager()
+	{
+		m_isMap = false;
+	}
+
+	~MapManager()
+	{
+		if (m_isMap)
+		{
+			delete m_map;
+			m_isMap = false;
+		}
+	}
 
 	int lat2tiley(double lat, int z);
 	int lon2tilex(double lon, int z);
@@ -51,13 +63,14 @@ public:
 
 	static size_t write_callback(void* ptr, size_t size, size_t count, void* stream);
 	bool query2server(std::string url);
-	bool downloadMap(double lat, double lon, double radius);
-	bool downloadMap(ID node_id, double radius);
-	bool downloadMap(cv::Point2i tile);
+
 	/*std::string to_utf8(uint32_t cp);
 	bool decodeUni();*/
 	bool utf8to16(const char* utf8, std::wstring& utf16);
 
+	bool downloadMap(double lat, double lon, double radius);
+	bool downloadMap(ID node_id, double radius);
+	bool downloadMap(cv::Point2i tile);
 	bool parseMap(const char* json);
 	/**
 	 * Read a map from the given file
@@ -66,20 +79,18 @@ public:
 	 * @param z zoom
 	 * @return Result of success (true) or failure (false)
 	 */
-	bool load(double lat, double lon, double radius);
-	///**
-	// * Check whether this map is empty or not
-	// * @return True if empty (true) or not (false)
-	// */
-	//bool isEmpty() const;
+	bool loadMap(double lat, double lon, double radius);
+	Map& getMap(double lat, double lon, double radius);
+	Map& getMap(Path path);
+	Map& getMap();
 
 	bool downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths = 2);
 	bool parsePath(const char* json);
 	bool generatePath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths = 2);
+	Path getPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths = 2);
 	Path getPath(const char* filename);
 	Path getPath();
-	Map& getMap(Path path);
-	Map& getMap();
+
 	bool parsePOI(const char* json);
 	bool downloadPOI(double lat, double lon, double radius);
 	bool downloadPOI(ID node_id, double radius);
@@ -88,6 +99,7 @@ public:
 	std::list<POI>& getPOI(ID node_id, double radius);
 	std::list<POI>& getPOI();
 	//std::vector<cv::Point2d> getPOIloc(const char* poiname = "UST");
+
 	bool parseStreetView(const char* json);
 	bool downloadStreetView(double lat, double lon, double radius);
 	bool downloadStreetView(ID node_id, double radius);
@@ -97,10 +109,12 @@ public:
 	std::list<StreetView>& getStreetView();
 
 protected:
-	Map m_map;
+	Map* m_map;
 	Path m_path;
-
 	std::string m_json;
+
+private:
+	bool m_isMap;
 };
 
 class EdgeTemp : public Edge
