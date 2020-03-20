@@ -1,7 +1,7 @@
 #ifndef __TEST_SIMPLE_MAP__
 #define __TEST_SIMPLE_MAP__
 
-#include "../unit_test/vvs.h"
+#include "vvs.h"
 #include "dg_map_manager.hpp"
 #include <stdint.h>
 #include <cstdint>
