@@ -78,6 +78,8 @@ int main()
         }
     }
 
+	printf("Finished\n");
+
     // Clear the Python module
     vps.clear();
 

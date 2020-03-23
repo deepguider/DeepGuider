@@ -7,7 +7,7 @@ import json
 from os.path import join, exists, isfile, realpath, dirname
 from os import makedirs, remove, chdir, environ
 import os
-import glob
+import glob # may cause segmentation fault in (C+Python) environment
 
 import torch
 import torch.nn as nn
@@ -62,6 +62,7 @@ class vps:
         self.ToTensor = transforms.ToTensor()
         self.verbose = False # 1 : print internal results
         self.StreetViewServerAvaiable = True
+        self.callcounter_gSV = 0 # N of call of getStreetView(), for debugging purpose
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -671,13 +672,14 @@ class vps:
 
         ## Get DB images from streetview image server
         dbdir = os.path.join(self.dataset_struct_dir,'StreetView')
-        if self.StreetViewServerAvaiable == True:
-            try:
-                ret = self.getStreetView(dbdir)
-                if ret == -1:
-                    self.StreetViewServerAvaiable = False
-            except:
-                self.StreetViewServerAvaiable = False
+        ret = self.getStreetView(dbdir)
+        #if self.StreetViewServerAvaiable == True:
+        #    try:
+        #        ret = self.getStreetView(dbdir)
+        #        if ret == -1:
+        #            self.StreetViewServerAvaiable = False
+        #    except:
+        #        self.StreetViewServerAvaiable = False
 
         if self.StreetViewServerAvaiable == False:
             print("Local DBs(DeepGuider/bin/data_vps/netvlad_etri_datasets/dbImg/StreetView) will be used")
@@ -723,7 +725,8 @@ class vps:
         return self.vps_IDandConf
 
     def setRadius(self,gps_accuracy):
-        self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters
+        self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters, ori
+        #self.roi_radius = int(10 + 200*(1-gps_accuracy)) # meters, faster for debugging 
         return 0
 
     def getStreetView(self,outdir='./'):
@@ -735,8 +738,8 @@ class vps:
         isv.SetParamsWGS(self.gps_lat,self.gps_long,self.roi_radius) # 37,27,100
         isv.SetReqDict(req_type)
         #return 0 # Segmentation Free
-        ret = isv.QuerytoServer(json_save=False,outdir=outdir)
-        #return 0 # Segmentation fault non-Free
+        ret = isv.QuerytoServer(json_save=False, outdir=outdir, PythonOnly=False)
+        #return 0 # Segmentation fault Free using os.system call instead of requests.get()
         if ret == -1:
             #raise Exception('Image server is not available.')
             print('Image server is not available.')
@@ -745,10 +748,11 @@ class vps:
         numImgs = isv.GetNumImgs()
         if numImgs >0: 
             imgID,imgLat,imgLong,imgDate,imgHeading,numImgs = isv.GetStreetViewInfo(0)
-            files = glob.glob(os.path.join(outdir,'*'))
-            for f in files:
-                os.remove(f)
-            ret = isv.SaveImages(outdir)
+            #files = glob.glob(os.path.join(outdir,'*')) may cause seg.fault in C+Python environment
+            #for f in files:
+            #    os.remove(f) # may cause seg.fault in C+Python environment
+            os.system("rm -rf " + os.path.join(outdir,'*.jpg')) # You have to pay attention to code 'rm -rf' command
+            ret = isv.SaveImages(outdir=outdir, verbose=0, PythonOnly=False)
             if ret == -1:
                 #raise Exception('Image server is not available.')
                 print('Image server is not available.')

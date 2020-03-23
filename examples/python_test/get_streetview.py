@@ -4,11 +4,13 @@ import base64
 import requests
 import os
 import geojson
+import json
 import argparse
 import sys
 import numpy as np
 
 from ipdb import set_trace as bp
+from dmsg import dmsg
 
 class ImgServer:
     def __init__(self,ipaddr="localhost"): # 127.0.0.1
@@ -17,7 +19,11 @@ class ImgServer:
         self.STREETVIEW_SERVER_URL = 'http://{}:21501/'.format(self.IP)
         self.POI_SERVER_URL = 'http://{}:21502/'.format(self.IP)
         self.SERVER_URL = self.STREETVIEW_SERVER_URL #default
-
+        self.req_type='wgs'
+        self.gps_lat=37.513366
+        self.gps_long=127.056132
+        self.roi_radius=100
+        self.reqdict = {'type': 'wgs', 'latitude': self.gps_lat, 'longitude': self.gps_long, 'radius': self.roi_radius}
 
     def SetServerType(self,server_type):
         self.server_type=server_type
@@ -31,7 +37,12 @@ class ImgServer:
             self.SERVER_URL = self.STREETVIEW_SERVER_URL
         return 0
 
-    def QuerytoServer(self,json_save = False,outdir='./'):
+    def SystemCall(self,cmd_str): # "curl http://google.com"
+        import subprocess
+        ret = subprocess.check_output (cmd_str + " 2>&1", shell=True)
+        return ret
+
+    def QuerytoServer(self, json_save = False, outdir='./', PythonOnly=False):
         req = self.reqdict
         if req['type']=='tile':
             req_str = self.SERVER_URL + '{}/{}/{}'.format(req['type'], req['tile_num_x'], req['tile_num_y'])
@@ -43,17 +54,23 @@ class ImgServer:
             print('{} is not a valid request type'.format(req['type']))
             return -1
         try:
-            timeout=(3.05, 27) # timeout of (connect, read) sec.
-            response = requests.get(req_str,timeout=timeout)
+            if PythonOnly: # Code runs in "Python only" Environment
+                import requests
+                timeout=(3, 3) # timeout of (connect, read) sec.
+                response = requests.get(req_str,timeout=timeout) # may cause seg.fault in (C+Python Environ.)
+                response.raise_for_status() # will raise error if return code is not 200 (meaning OK)
+                elapsed_time = response.elapsed.total_seconds()
+                self.json_outputs = response.json()
+            else:  # Code runs in "C++ + Python" environment
+                cmd_str = "curl --silent " + req_str # curl --silent http://localhost:21501/wgs/36.381448000000006/127.378867/30 
+                ret = self.SystemCall(cmd_str)
+                ret_json = json.loads(ret)
+                self.json_outputs = ret_json
         except:
             return -1
-        response.raise_for_status()
-        elapsed_time = response.elapsed.total_seconds()
-        self.json_outputs = response.json()
         if json_save and (self.json_outputs != None):
             self.SaveGeoJson(outdir)
-
-        return self.json_outputs
+        return 0
 
     def GetReqDict(self):
         return self.reqdict
@@ -69,9 +86,8 @@ class ImgServer:
             self.reqdict = {'type': 'node', 'node_id': 558992539200991, 'radius': 500.0} # Valid request
             #req = {'type': 'node', 'node_id': 1000} # Invalid request
         else:
-            print("Not suppported request type")
-            self.reqdict = None
-
+            print("Not suppported request type. Set to wgs")
+            self.reqdict = self.reqdict = {'type': 'wgs', 'latitude': self.gps_lat, 'longitude': self.gps_long, 'radius': self.roi_radius}
         return self.reqdict
 
     def SetParamsWGS(self,gps_lat=37.513366,gps_long=127.056132,roi_radius=10.0):
@@ -87,8 +103,9 @@ class ImgServer:
                 #print('{} saved'.format(fname))
                 geojson.dump(res, f)
 
-    def SaveImages(self,outdir='./',verbose=0):
+    def SaveImages(self, outdir='./', verbose=0, PythonOnly=False):
         import requests
+        import os
         res = self.json_outputs
         ports = 10000
         numImgs = np.size(res['features'])
@@ -97,11 +114,16 @@ class ImgServer:
             request_cmd = 'http://{}:{}/{}/{}'.format(self.IP,ports,imgid,'f') #'f' means forward
             fname = os.path.join(outdir,'{}.jpg'.format(imgid))
             try:
-                r = requests.get(request_cmd,allow_redirects=True)
+                if PythonOnly: # Code runs in "Python only" Environment
+                    r = requests.get(request_cmd,allow_redirects=False)
+                    open(fname, 'wb').write(r.content)
+                else:  # Code runs in "C++ + Python" environment
+                    # curl http://ip.address.to.image.server:port/29300503300 --output test.jpg
+                    curl_cmd ="curl --silent " + request_cmd + " --output " + fname
+                    os.system(curl_cmd)
+                    #self.SystemCall(curl_cmd)
             except:
-                bp()
                 return -1
-            open(fname, 'wb').write(r.content)
             if verbose:
                 print('{} saved'.format(fname))
         return 0
@@ -145,7 +167,7 @@ def GetStreetView(gps_lat,gps_long,roi_radius=100,ipaddr='localhost',server_type
     isv.SetReqDict(req_type)
 
     ## Request to Server ( possibility of seg fault )
-    ret = isv.QuerytoServer(json_save=True,outdir=outdir)
+    ret = isv.QuerytoServer(json_save=False, outdir=outdir, PythonOnly=True)
     if ret == -1:
         #raise Exception('Image server is not available.')
         print('Image server is not available.')
@@ -157,7 +179,6 @@ def GetStreetView(gps_lat,gps_long,roi_radius=100,ipaddr='localhost',server_type
         imgID,imgLat,imgLong,imgDate,imgHeading,numImgs = isv.GetStreetViewInfo(0)
         ret = isv.SaveImages(outdir)
         if ret == -1:
-            #raise Exception('Image server is not available.')
             print('Image server is not available.')
             return -1
 
