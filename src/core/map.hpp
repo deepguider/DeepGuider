@@ -229,8 +229,8 @@ public:
      */
     StreetView() { }
 
-    /** The identifier */
-    std::string id;
+	/** The identifier */
+	ID id;
 
     /** The floor of this StreetView */
     int floor;
