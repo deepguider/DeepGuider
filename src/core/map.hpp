@@ -44,7 +44,7 @@ public:
      * @param _type The given type of this node
      * @param _floor The given floor of this node
      */
-    Node(ID _id = 0, double _lat = 0, double _lon = 0, int _type = 0, int _floor = 0) : id(_id), LatLon(_lat, _lon), type(_type), floor(_floor) { }
+    Node(ID _id = 0, double _lat = 0, double _lon = 0, int _type = 0, int _floor = 0) : LatLon(_lat, _lon), id(_id), type(_type), floor(_floor) { }
 
     /**
      * A constructor with member initialization
@@ -53,7 +53,7 @@ public:
      * @param _type The given type of this node
      * @param _floor The given floor of this node
      */
-    Node(ID _id, const LatLon& ll, int _type = 0, int _floor = 0) : id(_id), LatLon(ll), type(_type), floor(_floor) { }
+    Node(ID _id, const LatLon& ll, int _type = 0, int _floor = 0) : LatLon(ll), id(_id), type(_type), floor(_floor) { }
 
     /**
      * Overriding the assignment operator
@@ -200,58 +200,46 @@ public:
 /**
  * @brief Point-of-interest (POI) information for the topological map
  */
-class POI
+class POI : public LatLon
 {
 public:
-	/**
-	 * The default constructor
-	 */
-	POI() { }
+    /**
+     * The default constructor
+     */
+    POI() { }
 
-	/** The identifier */
-	ID id;
+    /** The identifier */
+    ID id;
 
-	/** The name of this POI */
-	std::wstring name;
+    /** The name of this POI */
+    std::wstring name;
 
-	/** The floor of this POI */
-	int floor;
-
-	/** The given latitude of this POI (Unit: [deg]) */
-	double lat;
-
-	/** The given longitude of this POI (Unit: [deg]) */
-	double lon;
+    /** The floor of this POI */
+    int floor;
 };
 
 /**
  * @brief Street-view information for the topological map
  */
-class StreetView
+class StreetView : public LatLon
 {
 public:
-	/**
-	 * The default constructor
-	 */
-	StreetView() { }
+    /**
+     * The default constructor
+     */
+    StreetView() { }
 
-	/** The identifier */
-	std::string id;
+    /** The identifier */
+    std::string id;
 
-	/** The floor of this StreetView */
-	int floor;
+    /** The floor of this StreetView */
+    int floor;
 
-	/** The date this StreetView was taken */
-	std::string date;
+    /** The date this StreetView was taken */
+    std::string date;
 
-	/** The given True north-based azimuths of this StreetView (Unit: [deg]) */
-	double heading;
-
-	/** The given latitude of this POI (Unit: [deg]) */
-	double lat;
-
-	/** The given longitude of this POI (Unit: [deg]) */
-	double lon;
+    /** The given True north-based azimuths of this StreetView (Unit: [deg]) */
+    double heading;
 };
 
 /**

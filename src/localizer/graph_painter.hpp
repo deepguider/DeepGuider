@@ -302,7 +302,7 @@ public:
         const cv::Point p = cvtMeter2Pixel(node, info);
         cv::circle(image, p, r, color, thickness);
         if (font_scale > 0)
-            cv::putText(image, cv::format("%d", node.id), p + font_offset, cv::FONT_HERSHEY_DUPLEX, font_scale, font_color, int(font_scale));
+            cv::putText(image, cv::format("%zd", node.id), p + font_offset, cv::FONT_HERSHEY_DUPLEX, font_scale, font_color, int(font_scale));
         return true;
     }
 
@@ -319,7 +319,7 @@ public:
             const cv::Point p = cvtMeter2Pixel(n->data, info);
             cv::circle(image, p, r, color, thickness);
             if (font_scale > 0)
-                cv::putText(image, cv::format("%d", n->data.id), p + font_offset, cv::FONT_HERSHEY_DUPLEX, font_scale, font_color, int(font_scale));
+                cv::putText(image, cv::format("%zd", n->data.id), p + font_offset, cv::FONT_HERSHEY_DUPLEX, font_scale, font_color, int(font_scale));
         }
         return true;
     }

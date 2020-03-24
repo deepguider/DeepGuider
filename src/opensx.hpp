@@ -130,17 +130,17 @@ namespace cx
          * @param invalid_val The value to represent invalid (e.g. non-numeric) elements
          * @return The selected columns as a 2D vector of strings
          */
-        String2D extString2D(int row_start = 0, const std::vector<int> columns = std::vector<int>(), const std::string& invalid_val = "None")
+        String2D extString2D(int row_start = 0, const std::vector<size_t> columns = std::vector<size_t>(), const std::string& invalid_val = "None")
         {
             String2D data;
             if (!this->empty())
             {
                 // Select all columns if the given is empty
-                std::vector<int> col_select = columns;
+                std::vector<size_t> col_select = columns;
                 if (col_select.empty()) col_select = getColumns(this->front().size());
 
                 // Extract the selected columns
-                for (auto row = row_start; row < this->size(); row++)
+                for (size_t row = row_start; row < this->size(); row++)
                 {
                     const std::vector<std::string>& row_data = this->at(row);
                     if (row_data.empty()) continue;
@@ -163,17 +163,17 @@ namespace cx
          * @param invalid_val The value to represent invalid (e.g. non-numeric) elements
          * @return The selected columns as a 2D vector of doubles
          */
-        Double2D extDouble2D(int row_start = 0, const std::vector<int> columns = std::vector<int>(), double invalid_val = std::numeric_limits<double>::quiet_NaN())
+        Double2D extDouble2D(int row_start = 0, const std::vector<size_t> columns = std::vector<size_t>(), double invalid_val = std::numeric_limits<double>::quiet_NaN())
         {
             Double2D data;
             if (!this->empty())
             {
                 // Select all columns if the given is empty
-                std::vector<int> col_select = columns;
+                std::vector<size_t> col_select = columns;
                 if (col_select.empty()) col_select = getColumns(this->front().size());
 
                 // Extract the selected columns
-                for (auto row = row_start; row < this->size(); row++)
+                for (size_t row = row_start; row < this->size(); row++)
                 {
                     const std::vector<std::string>& row_data = this->at(row);
                     if (row_data.empty()) continue;
@@ -202,17 +202,17 @@ namespace cx
          * @param invalid_val The value to represent invalid (e.g. non-numeric) elements
          * @return The selected columns as a 2D vector of integers
          */
-        Int2D extInt2D(int row_start = 0, const std::vector<int> columns = std::vector<int>(), int invalid_val = -1)
+        Int2D extInt2D(int row_start = 0, const std::vector<size_t> columns = std::vector<size_t>(), int invalid_val = -1)
         {
             Int2D data;
             if (!this->empty())
             {
                 // Select all columns if the given is empty
-                std::vector<int> col_select = columns;
+                std::vector<size_t> col_select = columns;
                 if (col_select.empty()) col_select = getColumns(this->front().size());
 
                 // Extract the selected columns
-                for (auto row = row_start; row < this->size(); row++)
+                for (size_t row = row_start; row < this->size(); row++)
                 {
                     const std::vector<std::string>& row_data = this->at(row);
                     if (row_data.empty()) continue;
@@ -241,10 +241,10 @@ namespace cx
          * @param step The given step
          * @return A series of integers
          */
-        static std::vector<int> getColumns(size_t size, int start = 0, int step = 1)
+        static std::vector<size_t> getColumns(size_t size, size_t start = 0, size_t step = 1)
         {
-            std::vector<int> permutation(size);
-            for (int i = 0; i < permutation.size(); i++)
+            std::vector<size_t> permutation(size);
+            for (size_t i = 0; i < permutation.size(); i++)
                 permutation[i] = start + step * i;
             return permutation;
         }

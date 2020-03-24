@@ -121,57 +121,81 @@ public:
 
     static RoadMap cvtMap2SimpleRoadMap(const Map& map, const UTMConverter& converter, bool auto_cost = true)
     {
-        RoadMap simple_map;
+        RoadMap road_map;
 
         // Copy nodes
         for (auto node = map.nodes.begin(); node != map.nodes.end(); node++)
         {
-            Point2ID simple_node(node->id, converter.toMetric(*node));
-            if (simple_map.addNode(simple_node) == NULL)
+            Point2ID road_node(node->id, converter.toMetric(*node));
+            if (road_map.addNode(road_node) == NULL)
             {
                 // Return an empty map if failed
-                simple_map.removeAll();
-                return simple_map;
+                road_map.removeAll();
+                return road_map;
             }
         }
 
+        // Copy edges
         if (auto_cost)
         {
-            // Copy edges with automatic distance calculation
             for (auto from = map.nodes.begin(); from != map.nodes.end(); from++)
             {
                 for (auto edge = from->edge_list.begin(); edge != from->edge_list.end(); edge++)
                 {
                     ID to_id = (*edge)->node2->id;
                     if (from->id == to_id) to_id = (*edge)->node1->id;
-                    if (simple_map.addEdge(from->id, to_id, -1) == NULL)
+                    if (road_map.addEdge(from->id, to_id, -1) == NULL)
                     {
                         // Return an empty map if failed
-                        simple_map.removeAll();
-                        return simple_map;
+                        road_map.removeAll();
+                        return road_map;
                     }
                 }
             }
         }
         else
         {
-            // Copy edges with automatic distance calculation
             for (auto from = map.nodes.begin(); from != map.nodes.end(); from++)
             {
                 for (auto edge = from->edge_list.begin(); edge != from->edge_list.end(); edge++)
                 {
                     ID to_id = (*edge)->node2->id;
                     if (from->id == to_id) to_id = (*edge)->node1->id;
-                    if (simple_map.addEdge(from->id, to_id, (*edge)->length) == NULL)
+                    if (road_map.addEdge(from->id, to_id, (*edge)->length) == NULL)
                     {
                         // Return an empty map if failed
-                        simple_map.removeAll();
-                        return simple_map;
+                        road_map.removeAll();
+                        return road_map;
                     }
                 }
             }
         }
-        return simple_map;
+
+        // Copy POIs
+        for (auto poi = map.pois.begin(); poi != map.pois.end(); poi++)
+        {
+            Point2ID road_node(poi->id, converter.toMetric(*poi));
+            if (road_map.addNode(road_node) == NULL)
+            {
+                // Return an empty map if failed
+                road_map.removeAll();
+                return road_map;
+            }
+        }
+
+        // Copy StreetViews
+        for (auto view = map.views.begin(); view != map.views.end(); view++)
+        {
+            //Point2ID road_node(view->id, converter.toMetric(*view));
+            //if (road_map.addNode(road_node) == NULL)
+            //{
+            //    // Return an empty map if failed
+            //    road_map.removeAll();
+            //    return road_map;
+            //}
+        }
+
+        return road_map;
     }
 
     virtual bool loadMap(const Map& map, bool auto_cost = false)

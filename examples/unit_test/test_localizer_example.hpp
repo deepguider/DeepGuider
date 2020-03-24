@@ -122,27 +122,32 @@ dg::Map getExampleMap()
 /*
 #include "dg_map_manager.hpp"
 
-int saveETRIMap(const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442))
+int saveETRIMap(const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442), double radius = 10000)
 {
+    // Load GPS data
     auto gps_data = getETRIGPSData();
     VVS_CHECK_TRUE(!gps_data.empty());
     auto gps_start = gps_data.front().second;
     auto gps_dest = gps_data.back().second;
 
+    // Load a map including POIs and StreetViews
     dg::MapManager map_manager;
     dg::Path path = map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon);
     dg::Map map = map_manager.getMap();
     for (auto node = map.nodes.begin(); node != map.nodes.end(); node++)
     {
+        // Fix a wrong node
         if (node->lat > 90)
         {
-            // Fix a wrong node
             double temp = node->lat;
             node->lat = node->lon;
             node->lon = temp;
         }
     }
+    map_manager.getPOI(gps_start.lat, gps_start.lon, radius);
+    map_manager.getStreetView(gps_start.lat, gps_start.lon, radius);
 
+    // Convert the map to 'dg::RoadMap' and save it
     dg::UTMConverter converter;
     VVS_CHECK_TRUE(converter.setReference(ref_gps));
     dg::RoadMap road_map = dg::SimpleLocalizer::cvtMap2SimpleRoadMap(map, converter, false);
@@ -175,7 +180,7 @@ int runLocalizerETRIGPS(dg::SimpleLocalizer* localizer, dg::SimpleRoadPainter* p
     // Run localization
     cv::Mat video_image;
     double video_time = video_time_scale * video_data.get(cv::VideoCaptureProperties::CAP_PROP_POS_MSEC) / 1000 + video_time_offset;
-    for (auto gps_idx = 0; gps_idx < gps_data.size(); gps_idx++)
+    for (size_t gps_idx = 0; gps_idx < gps_data.size(); gps_idx++)
     {
         const dg::Timestamp gps_time = gps_data[gps_idx].first;
         const dg::LatLon gps_datum = gps_data[gps_idx].second;
@@ -296,11 +301,11 @@ int testLocSimpleETRI(int wait_msec = 1, const char* map_file = "data/NaverLabs_
     VVS_CHECK_TRUE(painter.setParamValue("canvas_offset", { 344, 293 }));
     VVS_CHECK_TRUE(painter.setParamValue("grid_step", 100));
     VVS_CHECK_TRUE(painter.setParamValue("grid_unit_pos", { 120, 10 }));
-    VVS_CHECK_TRUE(painter.setParamValue("node_radius", 4));
+    VVS_CHECK_TRUE(painter.setParamValue("node_radius", 2));
     VVS_CHECK_TRUE(painter.setParamValue("node_font_scale", 0));
     VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 50, 255 }));
     VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 200, 100, 100 }));
-    VVS_CHECK_TRUE(painter.setParamValue("edge_thickness", 2));
+    VVS_CHECK_TRUE(painter.setParamValue("edge_thickness", 1));
 
     return runLocalizerETRIGPS(&localizer, &painter, wait_msec);
 }

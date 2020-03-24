@@ -187,14 +187,14 @@ public:
      * @param _x The given X
      * @param _y The given Y
      */
-    Point2ID(ID _id, double _x, double _y) : id(_id), Point2(_x, _y) { }
+    Point2ID(ID _id, double _x, double _y) : Point2(_x, _y), id(_id) { }
 
     /**
      * A constructor with ID, x, and y assignment
      * @param _id The given ID
      * @param p The given 2D point
      */
-    Point2ID(ID _id, const Point2& p) : id(_id), Point2(p) { }
+    Point2ID(ID _id, const Point2& p) : Point2(p), id(_id) { }
 
     /**
      * Check equality
