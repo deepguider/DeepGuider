@@ -51,11 +51,6 @@
 #define VVS_FAILURE_MSG                 (" --> Failure!\n")
 
 /**
- * A text (with two integer values) to notify the given test is failed
- */
-#define VVS_FAILURE_MSG1                (" --> Failure! (%d, %d)\n")
-
-/**
  * A text (with two real values) to notify the given test is failed
  */
 #define VVS_FAILURE_MSG2                (" --> Failure! (%f, %f)\n")
@@ -123,14 +118,14 @@
  */
 #define VVS_CHECK_EQUAL(VAL1, VAL2) \
     { \
-        int _val1_ = (int)(VAL1); \
-        int _val2_ = (int)(VAL2); \
+        double _val1_ = (double)(VAL1); \
+        double _val2_ = (double)(VAL2); \
         int _is_equal_ = _val1_ == _val2_; \
         fprintf(VVS_OUTPUT, "[CHECK_EQUL] " #VAL1 " == " #VAL2); \
         if (_is_equal_) fprintf(VVS_OUTPUT, VVS_SUCCESS_MSG); \
         else \
         { \
-            fprintf(VVS_OUTPUT, VVS_FAILURE_MSG1, _val1_, _val2_); \
+            fprintf(VVS_OUTPUT, VVS_FAILURE_MSG2, _val1_, _val2_); \
             fprintf(VVS_OUTPUT, VVS_LOCATION_MSG, __FILE__, __LINE__); \
         } \
         VVS_ASSERT(_is_equal_); \
@@ -171,6 +166,15 @@
  * @param VAL2 the second real value
  */
 #define VVS_CHECK_NEAR(VAL1, VAL2)      VVS_CHECK_RANGE(VAL1, VAL2, VVS_EPSILON)
+
+/**
+ * Print a text message
+ * @param TEXT A message
+ */
+#define VVS_PRINT_TEXT(TEXT) \
+    { \
+        fprintf(VVS_OUTPUT, TEXT); \
+    } \
 
 /**
  * Run the given expression or function (a set of tests)

@@ -23,7 +23,7 @@ bool RoadMap::load(const char* filename)
         {
             // Read nodes
             if ((token = strtok(NULL, ",")) == NULL) goto ROADMAP_LOADMAP_FAIL;
-            int id = strtol(token, NULL, 10);
+            ID id = strtoll(token, NULL, 10);
             if ((token = strtok(NULL, ",")) == NULL) goto ROADMAP_LOADMAP_FAIL;
             double x = strtod(token, NULL);
             if ((token = strtok(NULL, ",")) == NULL) goto ROADMAP_LOADMAP_FAIL;
@@ -35,9 +35,9 @@ bool RoadMap::load(const char* filename)
         {
             // Read edges
             if ((token = strtok(NULL, ",")) == NULL) goto ROADMAP_LOADMAP_FAIL;
-            int id1 = strtol(token, NULL, 10);
+            ID id1 = strtoll(token, NULL, 10);
             if ((token = strtok(NULL, ",")) == NULL) goto ROADMAP_LOADMAP_FAIL;
-            int id2 = strtol(token, NULL, 10);
+            ID id2 = strtoll(token, NULL, 10);
             if ((token = strtok(NULL, ",")) == NULL) goto ROADMAP_LOADMAP_FAIL;
             double cost = strtod(token, NULL);
             Node* node1 = getNode(Point2ID(id1));

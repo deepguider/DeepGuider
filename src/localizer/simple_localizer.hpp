@@ -10,19 +10,19 @@ namespace dg
 class SimpleLocalizer : public Localizer, public TopometricLocalizer, public UTMConverter
 {
 public:
-    Pose2 toTopmetric2Metric(const TopometricPose& t_pose)
+    Pose2 toTopmetric2Metric(const TopometricPose& pose_t)
     {
         cv::AutoLock lock(m_mutex);
 
         // Find two nodes, 'from' and 'to_id'
-        RoadMap::Node* from = m_map.findNode(t_pose.node_id);
+        RoadMap::Node* from = m_map.findNode(pose_t.node_id);
         if (from == NULL) return Pose2();
         RoadMap::Node* to = NULL;
         int edge_idx = 0;
         double edge_dist = 0;
         for (auto edge = m_map.getHeadEdgeConst(from); edge != m_map.getTailEdgeConst(from); edge++, edge_idx++)
         {
-            if (edge_idx == t_pose.edge_idx)
+            if (edge_idx == pose_t.edge_idx)
             {
                 to = edge->to;
                 edge_dist = edge->cost;
@@ -31,12 +31,12 @@ public:
         }
         if (to == NULL || edge_dist <= 0) return Pose2();
 
-        // Calculate metric pose
-        double progress = std::min(t_pose.dist / edge_dist, 1.);
-        Pose2 m_pose = (1 - progress) * from->data + progress * to->data;
+        // Calculate metric pose_m
+        double progress = std::min(pose_t.dist / edge_dist, 1.);
+        Pose2 pose_m = (1 - progress) * from->data + progress * to->data;
         Point2 d = to->data - from->data;
-        m_pose.theta = atan2(d.y, d.x);
-        return m_pose;
+        pose_m.theta = atan2(d.y, d.x);
+        return pose_m;
 
     }
 

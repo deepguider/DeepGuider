@@ -83,11 +83,11 @@ int testCoreNode()
     VVS_CHECK_TRUE(a.edge_list.empty());
 
     // Check initialization
-    dg::Node b(3335, dg::LatLon(82, 329), dg::NT_ES, 17);
+    dg::Node b(3335, dg::LatLon(82, 329), dg::Node::NODE_ESCALATOR, 17);
     VVS_CHECK_TRUE(b.id == 3335);
     VVS_CHECK_TRUE(b.lat == 82);
     VVS_CHECK_TRUE(b.lon == 329);
-    VVS_CHECK_TRUE(b.type == dg::NT_ES);
+    VVS_CHECK_TRUE(b.type == dg::Node::NODE_ESCALATOR);
     VVS_CHECK_TRUE(b.floor == 17);
     VVS_CHECK_TRUE(b.edge_list.empty());
 
@@ -111,10 +111,10 @@ int testCoreEdge()
     VVS_CHECK_TRUE(a.node2 == nullptr);
 
     // Check initialization
-    dg::Edge b(3335, 3, dg::ET_ES, true, (dg::Node*)(0x01), (dg::Node*)(0x02));
+    dg::Edge b(3335, 3, dg::Edge::EDGE_ESCALATOR, true, (dg::Node*)(0x01), (dg::Node*)(0x02));
     VVS_CHECK_TRUE(b.id == 3335);
     VVS_CHECK_TRUE(b.length == 3);
-    VVS_CHECK_TRUE(b.type == dg::ET_ES);
+    VVS_CHECK_TRUE(b.type == dg::Edge::EDGE_ESCALATOR);
     VVS_CHECK_TRUE(b.directed == true);
     VVS_CHECK_TRUE(b.node1 == (dg::Node*)(0x01));
     VVS_CHECK_TRUE(b.node2 == (dg::Node*)(0x02));
