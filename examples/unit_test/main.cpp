@@ -7,8 +7,6 @@
 
 int main()
 {
-    // Please change 'NUN' to 'RUN' if you want run a test
-
     // Test 'core' module
     // 1. Test basic data structures
     VVS_RUN_TEST(testCoreLatLon());
@@ -40,9 +38,9 @@ int main()
     VVS_RUN_TEST(testLocRoadPainter());
 
     // 4. Test localizers
-    VVS_RUN_TEST(testLocSimpleLocalizer());
     VVS_RUN_TEST(testLocMap2RoadMap());
-    VVS_RUN_TEST(testLocExampleLocalizer());
+    VVS_RUN_TEST(testLocSimpleExample());
+    VVS_RUN_TEST(testLocSimpleETRI());
 
     return 0;
 }

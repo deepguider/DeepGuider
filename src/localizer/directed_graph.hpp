@@ -294,12 +294,7 @@ public:
      * @param to Data of the destination node
      * @return True if they are connected (false if not connected)
      */
-    bool isConnected(const D& from, const D& to)
-    {
-        Edge* edge = getEdge(from, to);
-        if (edge == NULL) return false;
-        return true;
-    }
+    bool isConnected(const D& from, const D& to) { return (getEdgeCost(from, to) >= 0); }
 
     /**
      * Check connectivity from a start node to a destination node (time complexity: O(|E|))
@@ -307,12 +302,7 @@ public:
      * @param to A pointer to the destination node
      * @return True if they are connected (false if not connected)
      */
-    bool isConnected(Node* from, Node* to)
-    {
-        Edge* edge = getEdge(from, to);
-        if (edge == NULL) return false;
-        return true;
-    }
+    bool isConnected(Node* from, Node* to) { return (getEdgeCost(from, to) >= 0); }
 
     /**
      * Check connectivity from a start node to a destination node (time complexity: O(|E|))
@@ -320,12 +310,7 @@ public:
      * @param to A const_iterator of the destination node
      * @return True if they are connected (false if not connected)
      */
-    bool isConnected(NodeItrConst from, NodeItrConst to) const
-    {
-        EdgeItrConst edge = getEdgeConst(from, to);
-        if (edge == getTailEdgeConst(from)) return false;
-        return true;
-    }
+    bool isConnected(NodeItrConst from, NodeItrConst to) const { return (getEdgeCost(from, to) >= 0); }
 
     /**
      * Copy this to the other graph (time complexity: O(|N||E|))
@@ -452,18 +437,18 @@ public:
      * Count the number of all nodes (time complexity: O(1))
      * @return The number of nodes
      */
-    int countNodes() const { return static_cast<int>(m_node_list.size()); }
+    size_t countNodes() const { return m_node_list.size(); }
 
     /**
      * Count the number of edges starting from the given node (time complexity: O(1))
-     * @param node Data of the node
+     * @param data Data of the node
      * @return The number of edges
      */
-    int countEdges(const D& data) const
+    size_t countEdges(const D& data) const
     {
         NodeItrConst node_itr = getNodeConst(data);
         if (node_itr == getTailNodeConst()) return 0;
-        return static_cast<int>(node_itr->m_edge_list.size());
+        return node_itr->m_edge_list.size();
     }
 
     /**
@@ -471,10 +456,10 @@ public:
      * @param node A pointer to the node
      * @return The number of edges
      */
-    int countEdges(const Node* node) const
+    size_t countEdges(const Node* node) const
     {
         if (node == NULL) return 0;
-        return static_cast<int>(node->m_edge_list.size());
+        return node->m_edge_list.size();
     }
 
     /**
@@ -482,7 +467,7 @@ public:
      * @param node An iterator of the node
      * @return The number of edges
      */
-    int countEdges(NodeItrConst node) const { return static_cast<int>(node->m_edge_list.size()); }
+    size_t countEdges(NodeItrConst node) const { return node->m_edge_list.size(); }
 
     /**
      * Get an iterator of the first node in this graph (time complexity: O(1))
