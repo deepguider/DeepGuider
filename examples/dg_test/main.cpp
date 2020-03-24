@@ -31,6 +31,12 @@ protected:
     dg::SimpleLocalizer m_localizer;
     dg::MapManager m_map_manager;
     dg::Guidance m_guider;
+
+    // enable/disable submodules
+    bool enable_roadtheta = false;
+    bool enable_vps = false;
+    bool enable_poi = false;
+    bool recording = false;
 };
 
 
@@ -61,20 +67,20 @@ bool DeepGuiderSimple::initialize()
     printf("\tLocalizer initialized!\n");
 
     // initialize guidance
-    //if (!m_guidance.initialize()) return false;
+    //if (!m_guider.initialize()) return false;
     printf("\tGuidance initialized!\n");
 
     // initialize roadTheta
-    if (!m_roadTheta.initialize()) return false;
-    printf("\tRoadTheta initialized!\n");
-
-    // initialize POI
-    //if (!m_poi.initialize()) return false;
-    printf("\tPOI initialized!\n");
+    if (enable_roadtheta && !m_roadTheta.initialize()) return false;
+    if (enable_roadtheta) printf("\tRoadTheta initialized!\n");
 
     // initialize VPS
-    if (!m_vps.initialize()) return false;
-    printf("\tVPS initialized!\n");
+    if (enable_vps && !m_vps.initialize()) return false;
+    if (enable_vps) printf("\tVPS initialized!\n");
+
+    // initialize POI
+    if (enable_poi && !m_poi.initialize()) return false;
+    if (enable_poi) printf("\tPOI initialized!\n");
 
     return true;
 }
@@ -99,8 +105,6 @@ std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_fil
 
 int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.csv"*/, const char* video_file /*= "data/191115_ETRI.avi"*/, const char* background_file /*= "data/NaverMap_ETRI(Satellite)_191127.png"*/)
 {
-    bool recording = false;
-
     cx::VideoWriter video;
     if (recording)
     {
@@ -227,10 +231,6 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
     dg::LatLon pose_gps = m_localizer.getPoseGPS();
     double pose_confidence = m_localizer.getPoseConfidence();
 
-    // enable/disable submodules
-    bool enable_vps = true;
-    bool enable_poi = false;
-
     // run iteration
     int maxItr = (int)gps_data.size();
     //maxItr = 10;
@@ -256,7 +256,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         }
 
         // RoadTheta
-        if (!video_image.empty() && m_roadTheta.apply(video_image, video_time))
+        if (enable_roadtheta && !video_image.empty() && m_roadTheta.apply(video_image, video_time))
         {
             double angle, confidence;
             m_roadTheta.get(angle, confidence);
@@ -285,26 +285,25 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         }
 
         // POI
-        /*
         if(enable_poi && !video_image.empty() && m_poi.apply(video_image, video_time))
         {
-        std::vector<dg::ID> ids;
-        std::vector<Polar2> obs;
-        std::vector<double> confs;
-        std::vector<POIResult> pois;
-        m_poi.get(pois);
-        printf("[POI]\n");
-        for (int k = 0; k < (int)pois.size(); k++)
-        {
-        dg::ID poi_id = m_map_manager.get_poi(pois[k].label);
-        ids.push_back(poi_id);
-        obs.push_back(rel_pose_defualt);
-        confs.push_back(pois[k].confidence);
-        printf("\tpoi%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, ts=%lf\n", k, pois[k].xmin, pois[k].ymin, pois[k].xmax, pois[k].ymax, pois[k].label.c_str(), pois[k].confidence, video_time);
+            std::vector<dg::ID> ids;
+            std::vector<Polar2> obs;
+            std::vector<double> confs;
+            std::vector<POIResult> pois;
+            m_poi.get(pois);
+            printf("[POI]\n");
+            for (int k = 0; k < (int)pois.size(); k++)
+            {
+                //dg::ID poi_id = m_map_manager.get_poi(pois[k].label);
+                dg::ID poi_id = 0;
+                ids.push_back(poi_id);
+                obs.push_back(rel_pose_defualt);
+                confs.push_back(pois[k].confidence);
+                printf("\tpoi%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, ts=%lf\n", k, pois[k].xmin, pois[k].ymin, pois[k].xmax, pois[k].ymax, pois[k].label.c_str(), pois[k].confidence, video_time);
+            }
+            VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, video_time, confs));
         }
-        VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, video_time, confs));
-        }
-        */
 
         // get updated pose & localization confidence
         pose_topo = m_localizer.getPoseTopometric();
@@ -338,7 +337,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         //------------------------------ GUI display ---------------------------------------------------------
         // draw gps history on the map
         dg::Point2 gps_pt = m_localizer.toMetric(gps_datum);
-        VVS_CHECK_TRUE(painter.drawNode(map_image, map_info, dg::Point2ID(0, gps_pt), 1, 0, cv::Vec3b(0, 255, 0)));
+        painter.drawNode(map_image, map_info, dg::Point2ID(0, gps_pt), 1, 0, cv::Vec3b(0, 255, 0));
 
         // draw video image as subwindow on the map
         cv::Mat image = map_image.clone();
