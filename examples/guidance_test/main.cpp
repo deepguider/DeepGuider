@@ -2,54 +2,131 @@
 #include "dg_localizer.hpp"
 #include "dg_map_manager.hpp"
 #include "guidance/guidance.hpp"
-#include "../unit_test/vvs.h"
 
-#define USE_JSH_PATHFILE 0
+#define USE_EXAMPLE_PATHFILE 0
+
+using namespace dg;
+
+Path getPath(const char* filename, Map& map)
+{
+	std::vector<PathElement> pathvec;
+
+	auto is = std::ifstream(filename, std::ofstream::in);
+	assert(is.is_open());
+	std::string line;
+	char data[1024];
+	char* token;
+
+	PathElement pathtemp;
+	int count = 0;
+	while (std::getline(is, line))
+	{
+		strcpy(data, line.c_str());
+		token = strtok(data, ",");
+		ID id = (ID)atoll(token);
+
+		if (count%2 == 0)	// node
+		{
+			Node* node = map.findNode(id);
+			pathtemp.node = node;
+		}
+		else // edge
+		{
+			Edge* edge = map.findEdge(id);
+			pathtemp.edge = edge;
+			pathvec.push_back(pathtemp);
+		}
+		count++;
+
+	}
+
+	pathtemp.edge = nullptr;
+	pathvec.push_back(pathtemp);
+	
+	Path path;
+	path.pts = pathvec;
+
+	return path;
+
+}
+
+bool loadLocFiles(const char* filename, std::vector<TopometricPose>& destination)
+{
+	destination.clear();
+
+	auto is = std::ifstream(filename, std::ofstream::in);
+	assert(is.is_open());
+	std::string line;
+	char data[1024];
+	char* token;
+	while (std::getline(is, line))
+	{
+		strcpy(data, line.c_str());
+		token = strtok(data, "(,)");
+		ID nodeid = (ID)atoll(token);
+		if ((token = strtok(NULL, ",")) == NULL) goto GUIDANCE_LOADPATH_FAIL;
+		int edgeidx = (int)atoll(token);
+		if ((token = strtok(NULL, ",")) == NULL) goto GUIDANCE_LOADPATH_FAIL;
+		double dist = strtod(token, NULL);
+
+		TopometricPose pose = TopometricPose(nodeid, edgeidx, dist);
+		destination.push_back(pose);
+	}
+
+	is.close();
+	return true;
+
+GUIDANCE_LOADPATH_FAIL:
+	destination.clear();
+	is.close();
+	return false;
+
+}
 
 int main()
 {
 	   	 
-	dg::MapManager m_map_manager;
-
-	// generate path to the destination
-
-	// load pre-defined path for the test
-	dg::Path path = m_map_manager.getPath("Path1.json");
-	dg::ID start_node = path.m_points.front();
-	dg::ID dest_node = path.m_points.back();
-	printf("\tSample Path generated! start=%llu, dest=%llu\n", start_node, dest_node);
-
-	// load map along the path
-	if (!m_map_manager.load(36.384063, 127.374733, 650.0))
-	{
-		printf("\tFailed to load sample map!\n");
-	}
-	printf("\tSample Map loaded!\n");
+	MapManager map_manager;
 
 	// set map to localizer
-	dg::Map& map = m_map_manager.getMap();		
+	Map& map = map_manager.getMap(36.382967999999998, 127.37138150000001, 700);
+		
+	Path path = map_manager.getPath(36.381873, 127.36803, 36.384063, 127.374733);
+
+	printf("Paths\n");
+	for (size_t i = 0; i < path.pts.size()-1; i++)
+	{
+		printf("[%zd]: Node-%zu, Edge-%zu\n", i, path.pts[i].node->id, path.pts[i].edge->id);
+	}
+	printf("[%zd]: Node-%zu\n", path.pts.size() - 1, path.pts[path.pts.size() - 1].node->id);
+
+	// generate path to the destination
+	// load pre-defined path for the test
+	PathElement start_node = path.pts.front();
+	PathElement dest_node = path.pts.back();
+	printf("\tSample Path generated! start=%zu, dest=%zu\n", start_node.node->id, dest_node.node->id);
+
 	   
-#if USE_JSH_PATHFILE
+#if USE_EXAMPLE_PATHFILE
 	//Load example
-	guider.loadPathFiles("Path_ETRIFrontgateToParisBaguette.txt", guider.m_path);
-	std::vector<dg::TopometricPose> Loc;
-	guider.loadLocFiles("Loc_ETRIFrontgateToParisBaguette.txt", Loc);
+	guider.loadPathFiles("Path1.txt", guider.m_path);
+	std::vector<TopometricPose> Loc;
+	guider.loadLocFiles("Loc_Path1Test.txt", Loc);
 
 #else
 
-	dg::Guidance guider;
+	GuidanceManager guider;
 	guider.setPathNMap(path, map);
 	guider.initializeGuides();
 
-	std::vector<dg::TopometricPose> Loc;
-	guider.loadLocFiles("Loc_Path1Test.txt", Loc);
+	std::vector<TopometricPose> Loc;
+	loadLocFiles("Loc_Path1Test.txt", Loc);
 
 	//Initial move
-	std::vector<dg::Guidance::RobotGuide> curGuide;
-	curGuide = guider.getInitGuide();
+	GuidanceManager::Guidance curGuide;
+	TopometricPose curPose;
+	GuidanceManager::MoveStatus curStatus;
 
-	dg::TopometricPose curPose;
-	dg::Guidance::MoveStatus curStatus;
 	//current locClue && current path
 	for (size_t i = 0; i < Loc.size(); i++)
 	{
@@ -57,7 +134,7 @@ int main()
 
 		//print current TopometricPose
 		curPose = Loc[i];
-		fprintf(stdout, "[Pose] Node: %llu, Dist: %.1f\n", curPose.node_id, curPose.dist);
+		fprintf(stdout, "[Pose] Node: %zu, Dist: %.1f\n", curPose.node_id, curPose.dist);
 
 		curStatus = guider.applyPose(curPose);
 
@@ -65,13 +142,13 @@ int main()
 		std::string str_status;
 		switch (curStatus)
 		{
-		case dg::Guidance::MoveStatus::ON_EDGE:
+		case GuidanceManager::MoveStatus::ON_EDGE:
 			str_status = "ON_EDGE";
 			break;
-		case dg::Guidance::MoveStatus::APPROACHING_NODE:
+		case GuidanceManager::MoveStatus::APPROACHING_NODE:
 			str_status = "APPROACHING_NODE";
 			break;
-		case dg::Guidance::MoveStatus::ARRIVED_NODE:
+		case GuidanceManager::MoveStatus::ON_NODE:
 			str_status = "ARRIVED_NODE";
 			break;
 		default:
@@ -79,13 +156,12 @@ int main()
 		}
 		fprintf(stdout, "[Status] %s\n", str_status.c_str());
 
-		curGuide = guider.getNormalGuide(curStatus);
+		curGuide = guider.getGuidance(curStatus);
 
-		//print robot guide
-		guider.printRobotGuide(curGuide);
-		fprintf(stdout, "\n");
+		//print guidance message
+		fprintf(stdout, "%s\n", curGuide.msg.c_str());
 	}
-	fprintf(stdout, "Arrived!\n");
+	fprintf(stdout, "Arrived!\n Press any key to finish.\n");
 
 #endif
 	

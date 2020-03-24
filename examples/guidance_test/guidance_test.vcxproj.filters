@@ -24,9 +24,21 @@
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\localizer\utm_converter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\guidance\guidance.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\localizer\utm_converter.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\EXTERNAL\qgroundcontrol\UTM.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

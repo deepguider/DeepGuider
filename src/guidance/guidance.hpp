@@ -4,94 +4,109 @@
 namespace dg
 {
 
-class Guidance
+class GuidanceManager
 {
 public:
 
-	Guidance()	{ }
-	
-	/** Robot's moving status*/
+	GuidanceManager()	{ }
+
+	/** DeepGuider status*/
+	enum class GuideStatus
+	{
+		//from localizer info
+		GUIDE_NORMAL,
+		GUIDE_ARRIVED,		//finally arrived 
+		GUIDE_LOST,		//out of path
+
+		//from lost control module
+		GUIDE_EXPLORATION, 	//from exploration module
+		GUIDE_RECOVERY_MODE,	//from recovery module
+		GUIDE_OPTIMAL_VIEW,	//from optimal view
+
+		//from robot
+		GUIDE_LOW_BATTERY,	//Low battery
+		GUIDE_PATH_BLOCKED, 	//Path exist, but temporary blocked
+		GUIDE_NO_PATH,		//Path not exist as map
+		GUIDE_BAD_GROUND,	//Uneven ground
+		GUIDE_ROBOT_FAIL, 	//Robot failure
+		GUIDE_FAIL_UNKNOWN,	//Unknown failure
+	};
+
+	/** Moving status based on localization info*/
 	enum class MoveStatus
 	{
-		ON_EDGE = 0,	//The robot is 0~90% of the edge distance
+		ON_NODE = 0,		//The robot has arrived at the node
+		ON_EDGE,	//The robot is 0~90% of the edge distance
 		APPROACHING_NODE,	//The robot is 90~99% of the edge distance
-		ARRIVED_NODE		//The robot has arrived at the node
-	};
-
-	/** Robot status*/
-	enum class RobotStatus
-	{
-		OK = 0,
-		NOK_RB,	//No way. Road blocked
-		NOK_UK	//Unknown failure
-	};
-
-	/** DG status*/
-	enum class DGStatus
-	{
-		OK = 0,	//normal condition
-		LOST,	//The localizer normal condition
-		NOK	//failure for any reason
+		//STOP_WAIT	//not moving
 	};
 
 	/**A motion of robot for guidance*/
 	enum class Motion
 	{
+		//on sidewalk
 		GO_FORWARD = 0,
-		STOP,
-		TURN
+		TURN_LEFT,
+		TURN_RIGHT,
+		TURN_BACK,	//in case of lost
+		STOP,	//in front of crosswalk
+
+		//on crosswalk
+		CROSS_FORWARD,
+		CROSS_LEFT,
+		CROSS_RIGHT,
+
+		//building
+		ENTER_FRONT,
+		ENTER_LEFT,
+		ENTER_RIGHT,
+		EXIT_FRONT,
+		EXIT_LEFT,
+		EXIT_RIGHT,
+
+		UNKNOWN
 	};
-	   	  
-	/**@brief Initial guide derived from path
-	*
+
+	// motion mode	
+	enum class Mode
+	{
+		MOVE_NORMAL,
+		MOVE_CAUTION,
+		MOVE_CAUTION_CHILDREN,
+		MOVE_CAUTION_CAR,
+	};
+
+	/**A realtime action of robot including motion and direction */
+	struct Action
+	{
+		Motion cmd;	// action command
+		int edge_type;	//
+		int degree = 0;	// additional action direction of current cmd
+		Mode mode = Mode::MOVE_NORMAL;	// addition motion info
+	};
+
+	/**@brief Detailed guide for each status while robot is moving
 	* Guide component: "until where" "in which direction" "with mode"
 	* Each of guide component is related to "NodeType" "Direction" "EdgeType"
 	*/
-	struct GuideStruct
+	struct Guidance
 	{
-		/** ID of NODE which the robot is heading ahead*/
-		ID node_id;
-
-		/**The type of heading node*/
-		int node_type;
-
-		/**The robot moving mode depends on street(edge) type*/
-		int edge_type;
-
-		/**Turning direction of robot on the node  based on robot's heading*/
-		int degree;
-
+		GuideStatus guide_status;	// current guidance status
+		MoveStatus moving_status;	// current moving status
+		Action action_current;	// action command to next branch node
+		Action action_next;		// action command after passing branch node
+		Node heading_node;	 // heading node
+		double distance_to_remain; // distance to heading node (unit: meter)
+		std::string msg;		// string guidance message
 	};
-
-
-	/**A realtime action of robot including motion and direction */
-	struct ActionStruct
-	{
-		Motion move;
-		double distance;
-		int degree;
-	};
-
-
-	/**@brief Detailed guide for each status while robot is moving
-	*/
-	struct RobotGuide
-	{
-		/** A segment of generated guide sequence	*/
-		GuideStruct guide;
-
-		/** Detail action of each guided node*/
-		ActionStruct action;
-	};
-
-
+	
 private:		
 
 	/**@brief A segment of guided path
 	*/
-	class GuidedPathElement
+	struct GuidedPathElement
 	{
-	public:
+		GuidedPathElement() {};
 		/** A constructor with path's segment
 		* @param _component An option whether the path segment is NODE or EDGE
 		* @param _id The given ID
@@ -121,22 +136,38 @@ private:
 	dg::Path m_path;
 	dg::Map m_map;
 	std::vector <GuidedPathElement> m_guides;
-
-	std::list<ID> m_path_nodes;
-	std::list<ID> m_path_edges;
-	//int m_curPathNodeIdx = 0;
-	int m_guide_idx = 0;
+	int m_guide_idx = -1;
 	double m_edge_progress = 0;
-	std::vector<RobotGuide> m_prev_rguide;
+
+	Mode getMode(int etype)
+	{
+		Mode mode;
+		switch (etype)
+		{
+		case dg::Edge::EDGE_ROAD:
+			mode = Mode::MOVE_CAUTION_CAR;
+			break;
+		case dg::Edge::EDGE_CROSSWALK:
+			mode = Mode::MOVE_CAUTION;
+			break;
+		default:
+			mode = Mode::MOVE_NORMAL;
+			break;
+		}
+		return mode;
+	}
+
 	MoveStatus  m_mvstatus = MoveStatus::ON_EDGE;
-	DGStatus  m_dgstatus = DGStatus::OK;
+	GuideStatus  m_dgstatus = GuideStatus::GUIDE_NORMAL;
+	Guidance m_prev_guidance;
 
+	Motion getMotion(int ntype, int etype, int degree);
 	int getDegree(dg::Node* node1, dg::Node* node2, dg::Node* node3);
+	GuidedPathElement getCurGuidedPath(int idx) { return m_guides[idx]; }
 
-	void printSingleRGuide(RobotGuide rGuide);
 	
 public:
-	bool setPathNMap(dg::Path path, dg::Map map)
+	bool setPathNMap(dg::Path path, dg::Map& map)
 	{
 		if (path.pts.size() < 1)
 		{
@@ -148,56 +179,13 @@ public:
 		return true;
 	}
 
-	GuideStruct setGuide(ID _nodeid, int _nodetype, int _edgetype, int _degree)
-	{
-		GuideStruct guide;
-		guide.node_id = _nodeid;
-		guide.node_type = _nodetype;
-		guide.edge_type = _edgetype;
-		guide.degree = _degree;
-		return guide;
-	}
-
-	ActionStruct setAction(Motion _do, int _degree)
-	{
-		ActionStruct action;
-		action.move = _do;
-		action.degree = _degree;
-		return action;
-	}
-
-	RobotGuide setRobotGuide(GuideStruct _guide, ActionStruct _action)
-	{
-		RobotGuide guide;
-		guide.guide = _guide;
-		guide.action = _action;
-		return guide;
-	}
-
-	GuidedPathElement getHeadGuidedPath() { return m_guides[0]; }
-
-	std::vector<RobotGuide> getInitGuide()
-	{
-		std::vector<RobotGuide> curGuide;
-		GuidedPathElement initGP = getHeadGuidedPath();
-		GuideStruct initG = setGuide(initGP.to_node->id, initGP.to_node->type, initGP.edge->type, initGP.degree );
-		ActionStruct initA = setAction(Motion::GO_FORWARD, 0);
-		RobotGuide initRG = setRobotGuide(initG, initA);
-		curGuide.push_back(initRG);
-		m_prev_rguide = curGuide;
-		return curGuide;
-	}
-
 	bool initializeGuides();
 	MoveStatus applyPose(dg::TopometricPose pose);
-	DGStatus getRobotStatus(RobotStatus rs, MoveStatus ms);
-	std::vector<RobotGuide> getNormalGuide(MoveStatus status);
-	std::vector<RobotGuide> getActiveExplorGuide();
-	std::vector<RobotGuide> getOptimalExplorGuide();
-	void printRobotGuide(std::vector<RobotGuide> rGuides);
+	GuideStatus getGuidanceStatus(GuideStatus rs, MoveStatus ms);
+	//GuideStatus getStatus(GuideStatus rs, MoveStatus ms);
+	Guidance getGuidance(MoveStatus status);
 
-	//for temporary use
-	bool loadLocFiles(const char* filename, std::vector<dg::TopometricPose>& destination);
+	std::string getGuidanceString(Guidance guidance);
 
 };
 
