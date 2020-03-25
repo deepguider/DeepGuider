@@ -56,13 +56,15 @@ class ImgServer:
         try:
             if PythonOnly: # Code runs in "Python only" Environment
                 import requests
-                timeout=(3, 3) # timeout of (connect, read) sec.
+                timeout=(2, 2) # timeout of (connect, read) sec.
                 response = requests.get(req_str,timeout=timeout) # may cause seg.fault in (C+Python Environ.)
                 response.raise_for_status() # will raise error if return code is not 200 (meaning OK)
                 elapsed_time = response.elapsed.total_seconds()
                 self.json_outputs = response.json()
             else:  # Code runs in "C++ + Python" environment
-                cmd_str = "curl --silent " + req_str # curl --silent http://localhost:21501/wgs/36.381448000000006/127.378867/30 
+                # set timeout 2 sec.
+                # bash command : curl --silent --connect-timeout 3 http://localhost:21501/wgs/36.381448000000006/127.378867/30 
+                cmd_str = "curl --silent --connect-timeout 2 " + req_str
                 ret = self.SystemCall(cmd_str)
                 ret_json = json.loads(ret)
                 self.json_outputs = ret_json
@@ -118,8 +120,9 @@ class ImgServer:
                     r = requests.get(request_cmd,allow_redirects=True)
                     open(fname, 'wb').write(r.content)
                 else:  # Code runs in "C++ + Python" environment
+                    # set timeout 2 sec.
                     # curl http://ip.address.to.image.server:port/29300503300 --output test.jpg
-                    curl_cmd ="curl --silent " + request_cmd + " --output " + fname
+                    curl_cmd ="curl --silent --connect-timeout 2 " + request_cmd + " --output " + fname
                     os.system(curl_cmd)
                     #self.SystemCall(curl_cmd)
             except:

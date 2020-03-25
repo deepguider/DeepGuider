@@ -659,12 +659,14 @@ class vps:
         self.vps_IDandConf = [vps_imgID, vps_imgConf]
         return 0
 
-    def apply(self, image=None, K = 3, gps_lat=37.0, gps_long=127.0, gps_accuracy=0.9, timestamp=0.0):
+    def apply(self, image=None, K = 3, gps_lat=37.0, gps_long=127.0, gps_accuracy=0.9, timestamp=0.0, ipaddr=None):
         ## Init.
         self.gps_lat = float(gps_lat)
         self.gps_long = float(gps_long)
         self.gps_accuracy = min(max(gps_accuracy,0.0),1.0)
         self.timestamp = float(timestamp)
+        if ipaddr != None:
+            self.ipaddr = ipaddr
         self.K = int(K);
         self.init_vps_IDandConf(self.K)
         opt = self.parser.parse_args()
@@ -734,7 +736,7 @@ class vps:
         #return 0 # Segmentation fault Free using os.system call instead of requests.get()
         if ret == -1:
             #raise Exception('Image server is not available.')
-            print('Image server is not available.')
+            print('Image server({}) for VPS is not available.'.format(ipaddr))
             return -1
         numImgs = isv.GetNumImgs()
         if numImgs >0: 
@@ -828,7 +830,7 @@ if __name__ == "__main__":
 
     qFlist = etri_dbloader.Generate_Flist('/home/ccsmm/Naverlabs/query_etri_cart/images_2019_11_15_12_45_11',".jpg")
     mod_vps = vps()
-    mod_vps.initialize()
+    mod_vps.initialize("localhost")
     #qimage = np.uint8(256*np.random.rand(1024,1024,3))
     #(image=None, K=3, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
     for fname in qFlist:

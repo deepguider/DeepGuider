@@ -33,12 +33,14 @@ void test_image_run(VPS& vps, bool recording = false, const char* image_file = "
 	double gps_lat_d = 0.00001;
     double gps_lon = 127.378867;
     double gps_accuracy = 1.0;    //(0~1), 
+	//const char* ipaddr = "129.254.87.96";
+	const char* ipaddr = "localhost";
 
     for (int i = 1; i <= nItr; i++)
     {
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
         gps_lat += gps_lat_d;
-        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1));
+        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, ipaddr));
 
         std::vector<VPSResult> streetviews;
         vps.get(streetviews);
@@ -90,6 +92,8 @@ void test_video_run(VPS& vps, bool recording = false, const char* video_file = "
 	double gps_lat_d = 0.00001;
     double gps_lon = 127.378867;
     double gps_accuracy = 1.0;    //(0~1), 
+	//const char* ipaddr = "129.254.87.96";
+	const char* ipaddr = "localhost";
  
     int i = 1;
     while (1)
@@ -103,7 +107,7 @@ void test_video_run(VPS& vps, bool recording = false, const char* video_file = "
 
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
         gps_lat += gps_lat_d;
-        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1));
+        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, ipaddr));
 
         std::vector<VPSResult> streetviews;
         vps.get(streetviews);
@@ -140,6 +144,8 @@ void test_query_run(VPS& vps, bool recording = false, const char* qlist = "./dat
     double gps_accuracy; //(0~1), 
 	int frame;
 	Timestamp t, t2;
+	//const char* ipaddr = "129.254.87.96";
+	const char* ipaddr = "localhost";
 
     int N = 3;  // top-3
 
@@ -174,7 +180,7 @@ void test_query_run(VPS& vps, bool recording = false, const char* qlist = "./dat
     // Run the Python module
 	    t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 		gps_lat += gps_lat_d;
-        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t));
+        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t, ipaddr));
 
         vps.get(streetviews);
         t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;

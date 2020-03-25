@@ -42,11 +42,11 @@ namespace dg
          * @param N number of matched images to be returned (top-N)
          * @return true if successful (false if failed)
          */
-        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp t)
+        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp t, const char* ipaddr)
         {
             // Set function arguments
             int arg_idx = 0;
-            PyObject* pArgs = PyTuple_New(6);
+            PyObject* pArgs = PyTuple_New(7);
 
             // Image
             import_array();
@@ -72,6 +72,10 @@ namespace dg
 
             // Timestamp
             pValue = PyFloat_FromDouble(t);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+
+            // Image server's ip address
+            pValue = PyUnicode_FromString(ipaddr);
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // Call the method
