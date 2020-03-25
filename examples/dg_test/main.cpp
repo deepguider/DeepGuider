@@ -30,13 +30,16 @@ protected:
     dg::VPS m_vps;
     dg::SimpleLocalizer m_localizer;
     dg::MapManager m_map_manager;
-    dg::Guidance m_guider;
+    dg::GuidanceManager m_guider;
 
     // enable/disable submodules
     bool enable_roadtheta = false;
     bool enable_vps = false;
     bool enable_poi = false;
+
+    // configuable parameters
     bool recording = false;
+    std::string map_server_ip = "129.254.87.96";    // default: 127.0.0.1 (localhost)
 };
 
 
@@ -105,6 +108,9 @@ std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_fil
 
 int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.csv"*/, const char* video_file /*= "data/191115_ETRI.avi"*/, const char* background_file /*= "data/NaverMap_ETRI(Satellite)_191127.png"*/)
 {
+    std::string url = "http://129.254.87.96:20005/37.503884/127.047569/37.5087/127.0621/2";
+    m_map_manager.query2server(url);
+
     cx::VideoWriter video;
     if (recording)
     {
@@ -140,7 +146,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
     printf("\tgps_dest: lat=%lf, lon=%lf\n", gps_dest.lat, gps_dest.lon);
 
     // generate path to the destination
-    dg::Path path = m_map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon);
+    dg::Path path = m_map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon, map_server_ip);
     dg::ID nid_start = path.pts.front().node->id;
     dg::ID nid_dest = path.pts.back().node->id;
     printf("\tPath generated! start=%zu, dest=%zu\n", nid_start, nid_dest);
@@ -210,15 +216,6 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
     printf("\tGUI map initialized!\n");
     cv::namedWindow("deep_guider");
 
-    // guidance: load files for guidance test (ask JSH)
-    VVS_CHECK_TRUE(m_guider.setPathNMap(path, map));
-    VVS_CHECK_TRUE(m_guider.initializeGuides());
-
-    // guidance: Initial move (ask JSH)
-    dg::Guidance::MoveStatus cur_status;
-    std::vector<dg::Guidance::RobotGuide> cur_guide;
-    cur_guide = m_guider.getInitGuide();
-
     // localizer: set initial pose of localizer
     dg::ID id_invalid = 0;
     Polar2 rel_pose_defualt(-1, CV_PI);     // default relative pose (invalid)
@@ -231,9 +228,16 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
     dg::LatLon pose_gps = m_localizer.getPoseGPS();
     double pose_confidence = m_localizer.getPoseConfidence();
 
+    // guidance: init map and path for guidance
+    VVS_CHECK_TRUE(m_guider.setPathNMap(path, map));
+    VVS_CHECK_TRUE(m_guider.initializeGuides());
+
+    dg::GuidanceManager::MoveStatus cur_status;
+    dg::GuidanceManager::Guidance cur_guide;
+    cur_status = m_guider.applyPose(pose_topo);
+
     // run iteration
     int maxItr = (int)gps_data.size();
-    //maxItr = 10;
     int itr = 0;
     bool is_arrived = false;
     while (!is_arrived && itr<maxItr)
@@ -315,21 +319,10 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         printf("\tmetr: x=%lf, y=%lf, theta=%lf, ts=%lf\n", pose_metric.x, pose_metric.y, pose_metric.theta, gps_time);
         printf("\tconfidence: %lf\n", pose_confidence);
 
-        // generate navigation guidance
-        if (pose_confidence > 0.5)
-        {
-            // invoke normal guidance module
-            cur_status = m_guider.applyPose(pose_topo);
-            cur_guide = m_guider.getNormalGuide(cur_status);
-        }
-        else
-        {
-            // invoke exploration module
-            std::vector<dg::Guidance::RobotGuide> getActiveExplorGuide();
-        }
-
-        // generate guidance (ask JSH)
-        m_guider.printRobotGuide(cur_guide);
+        // Guidance: generate navigation guidance
+        cur_status = m_guider.applyPose(pose_topo);
+        cur_guide = m_guider.getGuidance(cur_status);
+        printf("%s\n", cur_guide.msg.c_str());
 
         // check arrival
         // TODO

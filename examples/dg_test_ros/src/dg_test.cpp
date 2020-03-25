@@ -90,7 +90,7 @@ protected:
     bool path_initialized = false;
 
     // GUI support
-    bool recording = true;
+    bool recording = false;
     cx::VideoWriter video;
     dg::SimpleRoadPainter painter;
     cv::Mat map_image;
