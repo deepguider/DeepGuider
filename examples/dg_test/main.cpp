@@ -298,7 +298,8 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         int N = 3;  // top-3
         double gps_accuracy = 1;   // 0: search radius = 230m ~ 1: search radius = 30m
         std::vector<VPSResult> streetviews;
-        if (enable_vps && !video_image.empty() && m_vps.apply(video_image, N, pose_gps.lat, pose_gps.lon, gps_accuracy, video_time))
+        //if (enable_vps && !video_image.empty() && m_vps.apply(video_image, N, pose_gps.lat, pose_gps.lon, gps_accuracy, video_time))
+        if (enable_vps && !video_image.empty() && m_vps.apply(video_image, N, pose_gps.lat, pose_gps.lon, gps_accuracy, video_time, map_server_ip.c_str()))
         {
             std::vector<dg::ID> ids;
             std::vector<dg::Polar2> obs;
