@@ -508,7 +508,7 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	if (!ok) return false;
 
 	Path path = m_path;
-	getMap(path);
+	getMap(path, ip);
 
 	m_path.pts.clear();
 	for (size_t i = 0; i < path.pts.size(); i++)
