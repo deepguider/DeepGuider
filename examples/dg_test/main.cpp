@@ -32,12 +32,11 @@ protected:
     dg::MapManager m_map_manager;
     dg::GuidanceManager m_guider;
 
-    // enable/disable submodules
-    bool enable_roadtheta = false;
-    bool enable_vps = false;
-    bool enable_poi = false;
-
     // configuable parameters
+    bool enable_roadtheta = false;
+    bool enable_vps = true;
+    bool enable_poi = false;
+    
     bool recording = false;
     std::string map_server_ip = "129.254.87.96";    // default: 127.0.0.1 (localhost)
 };
@@ -62,6 +61,7 @@ bool DeepGuiderSimple::initialize()
     printf("\tPython environment initialized!\n");
 
     // initialize map manager
+    m_map_manager.setIP(map_server_ip);
     if (!m_map_manager.initialize()) return false;
     printf("\tMapManager initialized!\n");
 
@@ -105,6 +105,36 @@ std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_fil
     return data;
 }
 
+size_t write_data(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+    vector<uchar> *stream = (vector<uchar>*)userdata;
+    size_t count = size * nmemb;
+    stream->insert(stream->end(), ptr, ptr + count);
+    return count;
+}
+
+cv::Mat getStreeViewImage(dg::ID id, int timeout=10)
+{
+    std::string img_url = cv::format("http://129.254.87.96:10000/%zu/f", id);
+
+    std::vector<uchar> stream;
+    CURL *curl = curl_easy_init();
+    curl_easy_setopt(curl, CURLOPT_URL, img_url.c_str()); //the img url
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data); // pass the writefunction
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &stream); // pass the stream ptr to the writefunction
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout); // timeout if curl_easy hangs,
+    CURLcode res = curl_easy_perform(curl); // start curl
+    curl_easy_cleanup(curl); // cleanup
+
+    if(res == CURLE_OK && !stream.empty())
+    {
+        return cv::imdecode(stream, -1); // 'keep-as-is'        
+    }
+    else
+    {
+        return cv::Mat();
+    }
+}
 
 int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.csv"*/, const char* video_file /*= "data/191115_ETRI.avi"*/, const char* background_file /*= "data/NaverMap_ETRI(Satellite)_191127.png"*/)
 {
@@ -143,7 +173,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
     printf("\tgps_dest: lat=%lf, lon=%lf\n", gps_dest.lat, gps_dest.lon);
 
     // generate path to the destination
-    dg::Path path = m_map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon, map_server_ip);
+    dg::Path path = m_map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon);
     dg::ID nid_start = path.pts.front().node->id;
     dg::ID nid_dest = path.pts.back().node->id;
     printf("\tPath generated! start=%zu, dest=%zu\n", nid_start, nid_dest);
@@ -267,12 +297,12 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         // VPS
         int N = 3;  // top-3
         double gps_accuracy = 1;   // 0: search radius = 230m ~ 1: search radius = 30m
+        std::vector<VPSResult> streetviews;
         if (enable_vps && !video_image.empty() && m_vps.apply(video_image, N, pose_gps.lat, pose_gps.lon, gps_accuracy, video_time))
         {
             std::vector<dg::ID> ids;
             std::vector<dg::Polar2> obs;
             std::vector<double> confs;
-            std::vector<VPSResult> streetviews;
             m_vps.get(streetviews);
             printf("[VPS]\n");
             for (int k = 0; k < (int)streetviews.size(); k++)
@@ -331,11 +361,31 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
 
         // draw video image as subwindow on the map
         cv::Mat image = map_image.clone();
+        cv::Rect video_rect;
         if (!video_image.empty())
         {
             cv::resize(video_image, video_image, cv::Size(), video_resize_scale, video_resize_scale);
-            cv::Rect rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
-            if (rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = video_image * 1;
+            video_rect = cv::Rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
+            if (video_rect.br().x < image.cols && video_rect.br().y < image.rows) image(video_rect) = video_image * 1;
+        }
+
+        // draw vps result
+        if(enable_vps && streetviews.size()>0)
+        {
+            // draw top-1 matching image
+            cv::Mat streetview_image = getStreeViewImage(streetviews[0].id);
+            if(!streetview_image.empty())
+            {
+                double fy = (double)video_rect.height / streetview_image.rows;
+                cv::resize(streetview_image, streetview_image, cv::Size(), fy, fy);
+                cv::Point streetview_offset = video_offset;
+                streetview_offset.x = video_rect.x + video_rect.width + 20;
+                cv::Rect rect(streetview_offset, streetview_offset + cv::Point(streetview_image.cols, streetview_image.rows));
+                if (rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = streetview_image * 1;
+            }
+
+            // show gps position of top-1 matched image
+            // To be implemented...
         }
 
         // draw robot on the map
