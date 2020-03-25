@@ -130,7 +130,7 @@ class vps:
         #self.parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
 
         #self.parser.add_argument('--ipaddr', type=str, default='127.0.0.1', help='ip address of streetview server')
-        self.parser.add_argument('--ipaddr', type=str, default='localhost', help='ip address of streetview server')
+        self.parser.add_argument('--ipaddr', type=str, default='129.254.87.96', help='ip address of streetview server')
         ######(end) Following defaults are combination of 9run_vps_ccsmm.sh
 
         return 1
