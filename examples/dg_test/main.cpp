@@ -108,9 +108,6 @@ std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_fil
 
 int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.csv"*/, const char* video_file /*= "data/191115_ETRI.avi"*/, const char* background_file /*= "data/NaverMap_ETRI(Satellite)_191127.png"*/)
 {
-    std::string url = "http://129.254.87.96:20005/37.503884/127.047569/37.5087/127.0621/2";
-    m_map_manager.query2server(url);
-
     cx::VideoWriter video;
     if (recording)
     {
