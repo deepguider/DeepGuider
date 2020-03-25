@@ -3,6 +3,16 @@
 namespace dg
 {
 
+void MapManager::setIP(const std::string ip)
+{
+	m_ip = ip;
+}
+
+std::string MapManager::getIP()
+{
+	return m_ip;
+}
+
 int MapManager::lat2tiley(double lat, int z)
 {
 	double latrad = lat * M_PI / 180.0;
@@ -174,26 +184,26 @@ bool MapManager::utf8to16(const char* utf8, std::wstring& utf16)
 	return true;
 }
 
-bool MapManager::downloadMap(double lat, double lon, double radius, const std::string ip)
+bool MapManager::downloadMap(double lat, double lon, double radius)
 {
 	const std::string url_middle = ":21500/wgs/";
-	std::string url = "http://" + ip + url_middle + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 	
 	return query2server(url);
 }
 
-bool MapManager::downloadMap(ID node_id, double radius, const std::string ip)
+bool MapManager::downloadMap(ID node_id, double radius)
 {
 	const std::string url_middle = ":21500/node/";
-	std::string url = "http://" + ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
 }
 
-bool MapManager::downloadMap(cv::Point2i tile, const std::string ip)
+bool MapManager::downloadMap(cv::Point2i tile)
 {
 	const std::string url_middle = ":21500/tile/";
-	std::string url = "http://" + ip + url_middle + std::to_string(tile.x) + "/" + std::to_string(tile.y);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(tile.x) + "/" + std::to_string(tile.y);
 
 	return query2server(url);
 }
@@ -309,7 +319,7 @@ bool MapManager::parseMap(const char* json)
 	return true;
 }
 
-bool MapManager::loadMap(double lat, double lon, double radius, const std::string ip)
+bool MapManager::loadMap(double lat, double lon, double radius)
 {
 	if (m_isMap)
 	{
@@ -324,7 +334,7 @@ bool MapManager::loadMap(double lat, double lon, double radius, const std::strin
 	m_json = "";
 
 	// by communication
-	downloadMap(lat, lon, radius, ip); // 1000.0);
+	downloadMap(lat, lon, radius); // 1000.0);
 	//decodeUni();
 	const char* json = m_json.c_str();
 //#ifdef _DEBUG
@@ -334,14 +344,14 @@ bool MapManager::loadMap(double lat, double lon, double radius, const std::strin
 	return parseMap(json);
 }
 
-Map& MapManager::getMap(double lat, double lon, double radius, const std::string ip)
+Map& MapManager::getMap(double lat, double lon, double radius)
 {
-	loadMap(lat, lon, radius, ip);
+	loadMap(lat, lon, radius);
 
 	return getMap();
 }
 
-Map& MapManager::getMap(Path path, const std::string ip)
+Map& MapManager::getMap(Path path)
 {
 	/*double lat = 36.38;
 	double lon = 127.373;
@@ -384,7 +394,7 @@ Map& MapManager::getMap(Path path, const std::string ip)
 	double center_lat = (min_lat + max_lat) / 2;
 	double center_lon = (min_lon + max_lon) / 2;
 
-	loadMap(center_lat, center_lon, (dist_metric / 2) + alpha, ip);
+	loadMap(center_lat, center_lon, (dist_metric / 2) + alpha);
 
 	return getMap();
 }
@@ -394,10 +404,10 @@ Map& MapManager::getMap()
 	return *m_map;
 }
 
-bool MapManager::downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, const std::string ip, int num_paths)
+bool MapManager::downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
 {
 	const std::string url_middle = ":20005/"; // routing server (paths)
-	std::string url = "http://" + ip + url_middle + std::to_string(start_lat) + "/" + std::to_string(start_lon) + "/" + std::to_string(dest_lat) + "/" + std::to_string(dest_lon) + "/" + std::to_string(num_paths);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(start_lat) + "/" + std::to_string(start_lon) + "/" + std::to_string(dest_lat) + "/" + std::to_string(dest_lon) + "/" + std::to_string(num_paths);
 
 	return query2server(url);
 }
@@ -478,7 +488,7 @@ bool MapManager::parsePath(const char* json)
 	return true;
 }
 
-bool MapManager::generatePath(double start_lat, double start_lon, double dest_lat, double dest_lon, const std::string ip, int num_paths)
+bool MapManager::generatePath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
 {
 	/*UTMConverter utm_conv;
 	Point2 start_metric = utm_conv.toMetric(LatLon(start_lat, start_lon));
@@ -495,7 +505,7 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	m_json = "";
 
 	// by communication
-	bool ok = downloadPath(start_lat, start_lon, dest_lat, dest_lon, ip, num_paths);
+	bool ok = downloadPath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
 	if (!ok) return false;
 	//decodeUni();
 	const char* json = m_json.c_str();
@@ -508,7 +518,7 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	if (!ok) return false;
 
 	Path path = m_path;
-	getMap(path, ip);
+	getMap(path);
 
 	m_path.pts.clear();
 	for (size_t i = 0; i < path.pts.size(); i++)
@@ -530,9 +540,9 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	return true;
 }
 
-Path MapManager::getPath(double start_lat, double start_lon, double dest_lat, double dest_lon, const std::string ip, int num_paths)
+Path MapManager::getPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
 {
-	generatePath(start_lat, start_lon, dest_lat, dest_lon, ip, num_paths);
+	generatePath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
 
 	return getPath();
 }
@@ -564,26 +574,26 @@ Path MapManager::getPath()
 	return m_path;
 }
 
-bool MapManager::downloadPOI(double lat, double lon, double radius, const std::string ip)
+bool MapManager::downloadPOI(double lat, double lon, double radius)
 {
 	const std::string url_middle = ":21502/wgs/";
-	std::string url = "http://" + ip + url_middle + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 
 	return query2server(url);
 }
 
-bool MapManager::downloadPOI(ID node_id, double radius, const std::string ip)
+bool MapManager::downloadPOI(ID node_id, double radius)
 {
 	const std::string url_middle = ":21502/node/";
-	std::string url = "http://" + ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
 }
 
-bool MapManager::downloadPOI(cv::Point2i tile, const std::string ip)
+bool MapManager::downloadPOI(cv::Point2i tile)
 {
 	const std::string url_middle = ":21502/tile/";
-	std::string url = "http://" + ip + url_middle + std::to_string(tile.x) + "/" + std::to_string(tile.y);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(tile.x) + "/" + std::to_string(tile.y);
 
 	return query2server(url);
 }
@@ -618,13 +628,13 @@ bool MapManager::parsePOI(const char* json)
 	return true;
 }
 
-std::list<POI>& MapManager::getPOI(double lat, double lon, double radius, const std::string ip)
+std::list<POI>& MapManager::getPOI(double lat, double lon, double radius)
 {
 	m_map->pois.clear();
 	m_json = "";
 
 	// by communication
-	downloadPOI(lat, lon, radius, ip);
+	downloadPOI(lat, lon, radius);
 	//decodeUni();
 	const char* json = m_json.c_str();
 //#ifdef _DEBUG
@@ -636,13 +646,13 @@ std::list<POI>& MapManager::getPOI(double lat, double lon, double radius, const 
 	return getPOI();
 }
 
-std::list<POI>& MapManager::getPOI(ID node_id, double radius, const std::string ip)
+std::list<POI>& MapManager::getPOI(ID node_id, double radius)
 {
 	m_map->pois.clear();
 	m_json = "";
 
 	// by communication
-	downloadPOI(node_id, radius, ip);
+	downloadPOI(node_id, radius);
 	//decodeUni();
 	const char* json = m_json.c_str();
 //#ifdef _DEBUG
@@ -709,37 +719,37 @@ bool MapManager::parseStreetView(const char* json)
 	return true;
 }
 
-bool MapManager::downloadStreetView(double lat, double lon, double radius, const std::string ip)
+bool MapManager::downloadStreetView(double lat, double lon, double radius)
 {
 	const std::string url_middle = ":21501/wgs/";
-	std::string url = "http://" + ip + url_middle + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
 
 	return query2server(url);
 }
 
-bool MapManager::downloadStreetView(ID node_id, double radius, const std::string ip)
+bool MapManager::downloadStreetView(ID node_id, double radius)
 {
 	const std::string url_middle = ":21501/node/";
-	std::string url = "http://" + ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
 }
 
-bool MapManager::downloadStreetView(cv::Point2i tile, const std::string ip)
+bool MapManager::downloadStreetView(cv::Point2i tile)
 {
 	const std::string url_middle = ":21501/tile/";
-	std::string url = "http://" + ip + url_middle + std::to_string(tile.x) + "/" + std::to_string(tile.y);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(tile.x) + "/" + std::to_string(tile.y);
 
 	return query2server(url);
 }
 
-std::list<StreetView>& MapManager::getStreetView(double lat, double lon, double radius, const std::string ip)
+std::list<StreetView>& MapManager::getStreetView(double lat, double lon, double radius)
 {
 	m_map->views.clear();
 	m_json = "";
 
 	// by communication
-	downloadStreetView(lat, lon, radius, ip);
+	downloadStreetView(lat, lon, radius);
 	//decodeUni();
 	const char* json = m_json.c_str();
 //#ifdef _DEBUG
@@ -751,13 +761,13 @@ std::list<StreetView>& MapManager::getStreetView(double lat, double lon, double 
 	return getStreetView();
 }
 
-std::list<StreetView>& MapManager::getStreetView(ID node_id, double radius, const std::string ip)
+std::list<StreetView>& MapManager::getStreetView(ID node_id, double radius)
 {
 	m_map->views.clear();
 	m_json = "";
 
 	// by communication
-	downloadStreetView(node_id, radius, ip);
+	downloadStreetView(node_id, radius);
 	//decodeUni();
 	const char* json = m_json.c_str();
 //#ifdef _DEBUG
