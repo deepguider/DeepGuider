@@ -102,6 +102,7 @@ public:
 	std::list<POI>& getPOI(double lat, double lon, double radius);
 	std::list<POI>& getPOI(ID node_id, double radius);
 	std::list<POI>& getPOI();
+	POI getPOI(ID poi_id);
 	//std::vector<cv::Point2d> getPOIloc(const char* poiname = "UST");
 
 	bool parseStreetView(const char* json);
@@ -111,6 +112,7 @@ public:
 	std::list<StreetView>& getStreetView(double lat, double lon, double radius);
 	std::list<StreetView>& getStreetView(ID node_id, double radius);
 	std::list<StreetView>& getStreetView();
+	StreetView getStreetView(ID sv_id);
 
 protected:
 	Map* m_map;

@@ -669,6 +669,20 @@ std::list<POI>& MapManager::getPOI()
 	return m_map->pois;
 }
 
+POI MapManager::getPOI(ID poi_id)
+{
+	if(m_map->pois.size() == 0) 
+		return POI();
+
+	for (std::list<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
+	{
+		if (it->id == poi_id)
+			return *it;
+	}
+
+	return POI();
+}
+
 //std::vector<cv::Point2d> MapManager::getPOIloc(const char* poiname)
 //{
 //	std::vector<cv::Point2d> points;
@@ -704,7 +718,8 @@ bool MapManager::parseStreetView(const char* json)
 		const Value& properties = feature["properties"];
 		if (!properties.IsObject()) return false;
 		StreetView sv;
-		sv.id = (ID)properties["id"].GetString();
+		std::string id_str = properties["id"].GetString();
+		sv.id = std::strtoull(id_str.c_str(), nullptr, 0);
 		std::string name = properties["name"].GetString();
 		if (!(name == "streetview" || name == "StreetView")) return false;
 		sv.floor = properties["floor"].GetInt();
@@ -782,6 +797,20 @@ std::list<StreetView>& MapManager::getStreetView(ID node_id, double radius)
 std::list<StreetView>& MapManager::getStreetView()
 {
 	return m_map->views;
+}
+
+StreetView MapManager::getStreetView(ID sv_id)
+{
+	if (m_map->views.size() == 0)
+		return StreetView();
+
+	for (std::list<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
+	{
+		if (it->id == sv_id)
+			return *it;
+	}
+
+	return StreetView();
 }
 
 } // End of 'dg'

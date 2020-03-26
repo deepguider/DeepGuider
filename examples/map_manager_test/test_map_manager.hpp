@@ -38,11 +38,13 @@ int testSimpleMapManager()
 	// Get the POI
 	VVS_CHECK_EQUL(manager.getPOI(36.384063, 127.374733, 650.0).size(), 613);	// 36.382057170000003, 127.36764620000000, 10000.0, ip).size(), 8815);
 	VVS_CHECK_EQUL(manager.getPOI(559542564800095, 500.0).size(), 212);
+	dg::POI poi = manager.getPOI(16099168);
 	//std::vector<cv::Point2d> poiloc = manager.getPOIloc("UST");
 	
 	// Get the StreetView
 	VVS_CHECK_EQUL(manager.getStreetView(36.384063, 127.374733, 650.0).size(), 2144);	// 36.382057170000003, 127.36764620000000, 10000.0, ip).size(), 36607);
 	VVS_CHECK_EQUL(manager.getStreetView(559542564800095, 500.0).size(), 662);
+	dg::StreetView sv = manager.getStreetView(32364501511);
 
     return 0;
 }
