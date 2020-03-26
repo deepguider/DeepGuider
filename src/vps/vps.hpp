@@ -37,6 +37,29 @@ namespace dg
             _clear();
         }
 
+		/**
+		 * for thread of CPP
+		 */
+        bool thread_apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp t, const char* ipaddr)
+		{
+			PyGILState_STATE state;
+			bool ret;
+
+			if (!m_gil_init){
+				m_gil_init = 1;
+				PyEval_InitThreads();
+				PyEval_SaveThread();
+			}
+			state = PyGILState_Ensure();
+
+			/* Call Python/C API functions here */
+        	ret = apply(image, N, gps_lat, gps_lon, gps_accuracy, t, ipaddr);
+
+			PyGILState_Release(state);
+
+			return ret;
+		}
+
         /**
          * Run once the module for a given input
          * @param N number of matched images to be returned (top-N)
@@ -154,6 +177,7 @@ namespace dg
     protected:
         std::vector<VPSResult> m_streetviews;
         Timestamp m_timestamp = -1;
+		int m_gil_init = 0;
     };
 
 } // End of 'dg'

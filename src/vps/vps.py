@@ -367,6 +367,17 @@ class vps:
         # TODO what if features dont fit in memory? 
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
+
+        if (eval_set_db == None) or (eval_set_q == None):
+            return -1
+        else:
+            if len(eval_set_db.images) < self.K:
+                return -1
+            if len(eval_set_db.images) < 1:
+                return -1
+            if len(eval_set_q.images) < 1:
+                return -1
+
         if opt.save_dbFeat:
             # extracted for db, now split in own sets
             dbFeat = self.test_sub(eval_set_db,epoch=epoch)
@@ -719,8 +730,8 @@ class vps:
         return self.vps_IDandConf
 
     def setRadius(self,gps_accuracy):
-        self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters, ori
-        #self.roi_radius = int(10 + 200*(1-gps_accuracy)) # meters, faster for debugging 
+        #self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters, ori
+        self.roi_radius = int(20 + 200*(1-gps_accuracy)) # meters, faster for debugging 
         return 0
 
     def getStreetView(self,outdir='./'):

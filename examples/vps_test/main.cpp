@@ -13,6 +13,9 @@ using namespace dg;
 using namespace std;
 using namespace std::experimental::filesystem;
 
+//std::string map_server_ip = "129.254.87.96"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
+std::string map_server_ip = "localhost"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
+
 void drawVPSResult(cv::Mat image, const std::vector<VPSResult>& streetviews)
 {
     for(size_t i=0; i<streetviews.size(); i++)
@@ -33,14 +36,12 @@ void test_image_run(VPS& vps, bool recording = false, const char* image_file = "
 	double gps_lat_d = 0.00001;
     double gps_lon = 127.378867;
     double gps_accuracy = 1.0;    //(0~1), 
-	//const char* ipaddr = "129.254.87.96";
-	const char* ipaddr = "localhost";
 
     for (int i = 1; i <= nItr; i++)
     {
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
         gps_lat += gps_lat_d;
-        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, ipaddr));
+        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
 
         std::vector<VPSResult> streetviews;
         vps.get(streetviews);
@@ -92,8 +93,6 @@ void test_video_run(VPS& vps, bool recording = false, const char* video_file = "
 	double gps_lat_d = 0.00001;
     double gps_lon = 127.378867;
     double gps_accuracy = 1.0;    //(0~1), 
-	//const char* ipaddr = "129.254.87.96";
-	const char* ipaddr = "localhost";
  
     int i = 1;
     while (1)
@@ -106,8 +105,13 @@ void test_video_run(VPS& vps, bool recording = false, const char* video_file = "
         if(save_latest_frame) cv::imwrite("vps_latest_input.png", image);
 
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+		if (int(i/300)*300 == i)
+		{
+			gps_lat_d *= -1.0;
+		}
         gps_lat += gps_lat_d;
-        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, ipaddr));
+        //VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
+        VVS_CHECK_TRUE(vps.thread_apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
 
         std::vector<VPSResult> streetviews;
         vps.get(streetviews);
@@ -144,8 +148,6 @@ void test_query_run(VPS& vps, bool recording = false, const char* qlist = "./dat
     double gps_accuracy; //(0~1), 
 	int frame;
 	Timestamp t, t2;
-	//const char* ipaddr = "129.254.87.96";
-	const char* ipaddr = "localhost";
 
     int N = 3;  // top-3
 
@@ -180,7 +182,7 @@ void test_query_run(VPS& vps, bool recording = false, const char* qlist = "./dat
     // Run the Python module
 	    t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 		gps_lat += gps_lat_d;
-        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t, ipaddr));
+        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t, map_server_ip.c_str()));
 
         vps.get(streetviews);
         t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
@@ -208,10 +210,10 @@ void threadfunc_vps(VPS* vps, bool* is_running)
 
 int main()
 {
-    bool test_image = false;
-    bool test_video = false;
-    bool test_query = false;
-    bool test_thread_run = true;
+    bool test_image = false; // OK
+    bool test_video = false; // OK
+    bool test_query = false; // OK
+    bool test_thread_run = true; // OK after make thread_apply()
     bool enable_recording = false;
 
     // Initialize the Python interpreter
