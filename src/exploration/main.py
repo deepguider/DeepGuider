@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-from active_navigation import ActiveNavigationModule
+from src.exploration.active_navigation import ActiveNavigationModule
 
-# anm = ActiveNavigationModule(map_manager)
+anm = ActiveNavigationModule(map_manager)
 
 # anm.encodeVisualMemory(img, guidance, topometric_pose)
 
@@ -16,5 +16,6 @@ from active_navigation import ActiveNavigationModule
     
 # anm.calcNeedForOptimalViewpointGuidance(topometric_pose_conf, poi_conf, entrance, entrance_conf, poi_successes)
 
-# if anm.isOptimalViewpointGuidanceEnabled():
-#   return anm.getOptimalViewpointGuidance()
+if anm.isOptimalViewpointGuidanceEnabled():
+    guidance = anm.getOptimalViewpointGuidance()
+    print(guidance)

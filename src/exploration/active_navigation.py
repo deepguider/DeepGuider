@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import numpy as np 
-import tensorflow as tf 
+# import tensorflow as tf
 import matplotlib.pyplot as plt 
 import sys
 if '/opt/ros/kinetic/lib/python2.7/dist-packages' in sys.path:
@@ -61,10 +61,10 @@ class ActiveNavigationModule():
         """
 
         # flush when reaching new node
-        if (self.map.getNode(topometric_pose.node_id).edges[topometric_pose.edge_idx].length - topometric_pose.dist) < 0.1 # topometric_pose.dist < 0.1:
+        if (self.map.getNode(topometric_pose.node_id).edges[topometric_pose.edge_idx].length - topometric_pose.dist) < 0.1: # topometric_pose.dist < 0.1:
             self.list2encode = []
 
-        if enable_recovery is False and enable_exploration is False and enable_ove is False:
+        if self.enable_recovery is False and self.enable_exploration is False and self.enable_ove is False:
             action = guidance[-1]
             self.list2encode.append([img,action])
 
@@ -193,7 +193,7 @@ class ActiveNavigationModule():
 
         if self.enable_ove:
             try:
-                viewpoint_scores = self.get_viewpoint_scores(img)
+                viewpoints_scores = self.get_viewpoint_scores(img)
                 displacement_x, displacement_y, heading = self.viewpoint_optimizer(viewpoints_scores)
                 self.optimal_viewpoint_guidance = [displacement_x, displacement_y, heading]
             except:
