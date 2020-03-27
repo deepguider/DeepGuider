@@ -813,5 +813,87 @@ StreetView MapManager::getStreetView(ID sv_id)
 	return StreetView();
 }
 
+size_t MapManager::writeImage_callback(char* ptr, size_t size, size_t nmemb, void* userdata)
+{
+	std::vector<uchar>* stream = (std::vector<uchar>*)userdata;
+	size_t count = size * nmemb;
+	stream->insert(stream->end(), ptr, ptr + count);
+	return count;
+}
+
+cv::Mat MapManager::queryImage2server(std::string url, int timeout)
+{
+#ifdef _WIN32
+	SetConsoleOutputCP(65001);
+#endif
+
+	std::vector<uchar> stream;
+	curl_global_init(CURL_GLOBAL_ALL);
+	CURL* curl = curl_easy_init();
+	CURLcode res;
+
+	if (curl)
+	{
+		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeImage_callback);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &stream);
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+
+		// Perform the request, res will get the return code.
+		res = curl_easy_perform(curl);
+
+		// Always cleanup.
+		curl_easy_cleanup(curl);
+		curl_global_cleanup();
+
+		// Check for errors.
+		if (res == CURLE_OK && !stream.empty())
+		{
+			unsigned char* novalid = reinterpret_cast<unsigned char*>("No valid");
+			unsigned char part[8] = { stream[0], stream[1], stream[2], stream[3], stream[4], stream[5], stream[6], stream[7] };
+			if (*part == *novalid)
+				m_portErr = true;
+
+			return cv::imdecode(stream, -1);      
+		}
+		else
+		{
+			return cv::Mat();
+		}
+	}
+}
+
+cv::Mat MapManager::downloadStreetViewImage(ID sv_id, const std::string cubic, int timeout, const std::string url_middle)
+{
+	//const std::string url_middle = ":10000/";
+	if (cubic == "")
+	{
+		std::string url = "http://" + m_ip + url_middle + std::to_string(sv_id);
+		return queryImage2server(url, timeout);
+	}
+	else
+	{
+		std::string url = "http://" + m_ip + url_middle + std::to_string(sv_id) + "/" + cubic;
+		return queryImage2server(url, timeout);
+	}
+}
+
+cv::Mat MapManager::getStreetViewImage(ID sv_id, std::string cubic, int timeout)
+{
+	if (!(cubic == "f" || cubic == "b" || cubic == "l" || cubic == "r" || cubic == "u" || cubic == "d"))
+		cubic = "";
+
+	cv::Mat sv_image = downloadStreetViewImage(sv_id, cubic, timeout);
+
+	if (m_portErr == true)
+	{
+		const std::string url_middle = ":10001/";
+		sv_image = downloadStreetViewImage(sv_id, cubic, timeout, url_middle);
+		m_portErr = false;
+	}
+
+	return sv_image;
+}
+
 } // End of 'dg'
 
