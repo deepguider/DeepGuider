@@ -858,7 +858,7 @@ cv::Mat MapManager::queryImage2server(std::string url, int timeout)
 		// Check for errors.
 		if (res == CURLE_OK && !stream.empty())
 		{
-			unsigned char* novalid = reinterpret_cast<unsigned char*>("No valid");
+			const unsigned char* novalid = reinterpret_cast<const unsigned char*>("No valid");
 			unsigned char part[8] = { stream[0], stream[1], stream[2], stream[3], stream[4], stream[5], stream[6], stream[7] };
 			if (*part == *novalid)
 				m_portErr = true;

@@ -17,7 +17,6 @@ fi
 
 echo "####### Run     ..... #######"
 cd ${topdir}/bin
-source ~/.bash_profile
 ./map_manager_test
 #cd ${topdir}/examples/python_test
 #source ~/.virtualenvs/dg_venv3.6/bin/activate
