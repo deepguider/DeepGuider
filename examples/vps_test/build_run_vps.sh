@@ -18,8 +18,8 @@ fi
 echo "####### Run  ..... #######"
 cd "$topdir/bin"
 ln -sf ../src/vps/data_vps
-hostname |grep ccsmm && ln -sf ~/Naverlabs/query_etri_cart/191115_ETRI.avi data/
-hostname |grep ccsmm && source ~/.virtualenvs/dg_venv3.6/bin/activate || echo "You need to enter VirtualEnv"
+hostname |grep ccsmm 1>/dev/null && ln -sf ~/Naverlabs/query_etri_cart/191115_ETRI.avi data/
+hostname |grep ccsmm 1>/dev/null && source ~/.virtualenvs/dg_venv3.6/bin/activate || echo "You need to enter VirtualEnv"
 
 #source ~/.virtualenvs/5env3.5/bin/activate
 #gdb ./vps_test
