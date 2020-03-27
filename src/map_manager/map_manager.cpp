@@ -278,8 +278,19 @@ bool MapManager::parseMap(const char* json)
 			case 4: node.type = Node::NODE_ESCALATOR; break;
 			}
 			node.floor = properties["floor"].GetInt();
-			node.lat = properties["latitude"].GetDouble();
-			node.lon = properties["longitude"].GetDouble();
+
+			// swapped lat and lon
+			if ((properties["latitude"].GetDouble()) > (properties["longitude"].GetDouble()))
+			{
+				node.lon = properties["latitude"].GetDouble();
+				node.lat = properties["longitude"].GetDouble();
+			}
+			else
+			{
+				node.lat = properties["latitude"].GetDouble();
+				node.lon = properties["longitude"].GetDouble();
+			}
+
 			const Value& edge_ids = properties["edge_ids"];
 
 			for (Value::ConstValueIterator edge_id = edge_ids.Begin(); edge_id != edge_ids.End(); ++edge_id)
@@ -374,11 +385,9 @@ Map& MapManager::getMap(Path path)
 			lons.push_back(it->node->lat);
 			continue;
 		}
+
 		lats.push_back(it->node->lat);
 		lons.push_back(it->node->lon);
-
-		/*lats.push_back(it->node->lat);
-		lons.push_back(it->node->lon);*/
 	}
 
 	double min_lat = *min_element(lats.begin(), lats.end());
