@@ -42,9 +42,13 @@ protected:
 
     // graphic icons
     cv::Mat icon_forward;
+    cv::Mat mask_forward;
     cv::Mat icon_turn_left;
+    cv::Mat mask_turn_left;
     cv::Mat icon_turn_right;
+    cv::Mat mask_turn_right;
     cv::Mat icon_turn_back;
+    cv::Mat mask_turn_back;
     void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
 };
 
@@ -97,6 +101,10 @@ bool DeepGuiderSimple::initialize()
     icon_turn_left = cv::imread("data/turn_left.png");
     icon_turn_right = cv::imread("data/turn_right.png");
     icon_turn_back = cv::imread("data/turn_back.png");
+    cv::threshold(icon_forward, mask_forward, 250, 1, cv::THRESH_BINARY_INV);
+    cv::threshold(icon_turn_left, mask_turn_left, 250, 1, cv::THRESH_BINARY_INV);
+    cv::threshold(icon_turn_right, mask_turn_right, 250, 1, cv::THRESH_BINARY_INV);
+    cv::threshold(icon_turn_back, mask_turn_back, 250, 1, cv::THRESH_BINARY_INV);
 
     return true;
 }
@@ -105,7 +113,7 @@ bool DeepGuiderSimple::initialize()
 void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect)
 {
     int guide_cx = rect.x + rect.width/2;
-    int guide_cy = rect.y + icon_forward.rows/2 + 35;
+    int guide_cy = rect.y + icon_forward.rows/2 + 40;
     cv::Point center_pos(guide_cx, guide_cy);
 
     std::string dir_msg;
@@ -113,37 +121,41 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
     if(cmd == dg::GuidanceManager::Motion::GO_FORWARD)
     {
         cv::Mat& icon = icon_forward;
+        cv::Mat& mask = mask_forward;
         int x1 = center_pos.x - icon.cols/2;
         int y1 = center_pos.y - icon.rows/2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
-        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = icon * 1;
+        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] GO_FORWARD";
     }
     if(cmd == dg::GuidanceManager::Motion::TURN_LEFT)
     {
         cv::Mat& icon = icon_turn_left;
+        cv::Mat& mask = mask_turn_left;
         int x1 = center_pos.x - icon.cols + icon.cols/6;
         int y1 = center_pos.y - icon.rows/2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
-        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = icon * 1;
+        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] TURN_LEFT";
     }
     if(cmd == dg::GuidanceManager::Motion::TURN_RIGHT)
     {
         cv::Mat& icon = icon_turn_right;
+        cv::Mat& mask = mask_turn_right;
         int x1 = center_pos.x - icon.cols/6;
         int y1 = center_pos.y - icon.rows/2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
-        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = icon * 1;
+        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] TURN_RIGHT";
     }
     if(cmd == dg::GuidanceManager::Motion::TURN_BACK)
     {
         cv::Mat& icon = icon_turn_back;
+        cv::Mat& mask = mask_turn_back;
         int x1 = center_pos.x - icon.cols/2;
         int y1 = center_pos.y - icon.rows/2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
-        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = icon * 1;
+        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] TURN_BACK";
     }
 
@@ -153,7 +165,7 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
     cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
 
     // show distance message
-    msg_offset = center_pos + cv::Point(50, 5);
+    msg_offset = center_pos + cv::Point(50, 10);
     std::string distance = cv::format("D=%.2lfm", guide.distance_to_remain);
     cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
     cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
@@ -484,7 +496,6 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
             {
                 dg::Point2 sv_pos = m_localizer.toMetric(dg::LatLon(sv.lat, sv.lon));
                 painter.drawNode(image, map_info, dg::Point2ID(0, sv_pos.x, sv_pos.y), 6, 0, cv::Vec3b(255, 255, 0));
-                printf("streeview found = %zu\n", sv.id);
             }
         }
 
