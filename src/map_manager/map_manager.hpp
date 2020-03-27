@@ -43,6 +43,7 @@ public:
 	{
 		m_isMap = false;
 		m_ip = "localhost";
+		m_portErr = false;
 	}
 
 	~MapManager()
@@ -114,6 +115,11 @@ public:
 	std::list<StreetView>& getStreetView();
 	StreetView getStreetView(ID sv_id);
 
+	static size_t writeImage_callback(char* ptr, size_t size, size_t nmemb, void* userdata);
+	cv::Mat queryImage2server(std::string url, int timeout = 10);
+	cv::Mat downloadStreetViewImage(ID sv_id, const std::string cubic = "", int timeout = 10, const std::string url_middle = ":10000/");
+	cv::Mat getStreetViewImage(ID sv_id, std::string cubic = "", int timeout = 10);
+
 protected:
 	Map* m_map;
 	Path m_path;
@@ -122,6 +128,7 @@ protected:
 private:
 	bool m_isMap;
 	std::string m_ip;
+	bool m_portErr;
 };
 
 class EdgeTemp : public Edge

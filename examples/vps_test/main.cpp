@@ -89,10 +89,16 @@ void test_video_run(VPS& vps, bool recording = false, const char* video_file = "
     cv::namedWindow(video_file);
 
     int N = 3;  // top-3
+#if 0	// Daejeon
 	double gps_lat = 36.381438;
-	double gps_lat_d = 0.00001;
     double gps_lon = 127.378867;
+#else // Seoul
+	double gps_lat = 37.514852;
+    double gps_lon = 127.0551879;
+#endif
+	double gps_lat_d = 0.00001;
     double gps_accuracy = 1.0;    //(0~1), 
+
  
     int i = 1;
     while (1)
