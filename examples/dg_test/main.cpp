@@ -39,6 +39,13 @@ protected:
     
     bool recording = false;
     std::string map_server_ip = "129.254.87.96";    // default: 127.0.0.1 (localhost)
+
+    // graphic icons
+    cv::Mat icon_forward;
+    cv::Mat icon_turn_left;
+    cv::Mat icon_turn_right;
+    cv::Mat icon_turn_back;
+    void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
 };
 
 
@@ -85,7 +92,76 @@ bool DeepGuiderSimple::initialize()
     if (enable_poi && !m_poi.initialize()) return false;
     if (enable_poi) printf("\tPOI initialized!\n");
 
+    // load icon images
+    icon_forward = cv::imread("data/forward.png");
+    icon_turn_left = cv::imread("data/turn_left.png");
+    icon_turn_right = cv::imread("data/turn_right.png");
+    icon_turn_back = cv::imread("data/turn_back.png");
+
     return true;
+}
+
+
+void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect)
+{
+    int guide_cx = rect.x + rect.width/2;
+    int guide_cy = rect.y + icon_forward.rows/2 + 35;
+    cv::Point center_pos(guide_cx, guide_cy);
+
+    std::string dir_msg;
+    dg::GuidanceManager::Motion cmd = guide.action_current.cmd;
+    if(cmd == dg::GuidanceManager::Motion::GO_FORWARD)
+    {
+        cv::Mat& icon = icon_forward;
+        int x1 = center_pos.x - icon.cols/2;
+        int y1 = center_pos.y - icon.rows/2;
+        cv::Rect rect(x1, y1, icon.cols, icon.rows);
+        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = icon * 1;
+        dir_msg = "[Guide] GO_FORWARD";
+    }
+    if(cmd == dg::GuidanceManager::Motion::TURN_LEFT)
+    {
+        cv::Mat& icon = icon_turn_left;
+        int x1 = center_pos.x - icon.cols + icon.cols/6;
+        int y1 = center_pos.y - icon.rows/2;
+        cv::Rect rect(x1, y1, icon.cols, icon.rows);
+        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = icon * 1;
+        dir_msg = "[Guide] TURN_LEFT";
+    }
+    if(cmd == dg::GuidanceManager::Motion::TURN_RIGHT)
+    {
+        cv::Mat& icon = icon_turn_right;
+        int x1 = center_pos.x - icon.cols/6;
+        int y1 = center_pos.y - icon.rows/2;
+        cv::Rect rect(x1, y1, icon.cols, icon.rows);
+        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = icon * 1;
+        dir_msg = "[Guide] TURN_RIGHT";
+    }
+    if(cmd == dg::GuidanceManager::Motion::TURN_BACK)
+    {
+        cv::Mat& icon = icon_turn_back;
+        int x1 = center_pos.x - icon.cols/2;
+        int y1 = center_pos.y - icon.rows/2;
+        cv::Rect rect(x1, y1, icon.cols, icon.rows);
+        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = icon * 1;
+        dir_msg = "[Guide] TURN_BACK";
+    }
+
+    // show direction message
+    cv::Point msg_offset = rect.tl() + cv::Point(10, 30);
+    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
+    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+
+    // show distance message
+    msg_offset = center_pos + cv::Point(50, 5);
+    std::string distance = cv::format("D=%.2lfm", guide.distance_to_remain);
+    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
+    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+
+    // show guidance message
+    msg_offset = rect.tl() + cv::Point(0, rect.height + 25);
+    cv::putText(image, guide.msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 255), 4);
+    cv::putText(image, guide.msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 0), 2);
 }
 
 
@@ -204,6 +280,13 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         }
     }
 
+    // download streetview map
+    double lat_center = (path.pts.front().node->lat + path.pts.back().node->lat)/2;
+    double lon_center = (path.pts.front().node->lon + path.pts.back().node->lon)/2;
+    double radius = 1000;
+    m_map_manager.getStreetView(lat_center, lon_center, radius);
+    printf("\tStreetView images are downloaded! nviews = %d\n", (int)map.views.size());
+
     // set map to localizer
     dg::LatLon ref_node(36.383837659737, 127.367880828442);
     VVS_CHECK_TRUE(m_localizer.setReference(ref_node));
@@ -296,7 +379,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
 
         // VPS
         int N = 3;  // top-3
-        double gps_accuracy = 1;   // 0: search radius = 230m ~ 1: search radius = 30m
+        double gps_accuracy = 1.0;   // 0: search radius = 230m ~ 1: search radius = 30m
         std::vector<VPSResult> streetviews;
         //if (enable_vps && !video_image.empty() && m_vps.apply(video_image, N, pose_gps.lat, pose_gps.lon, gps_accuracy, video_time))
         if (enable_vps && !video_image.empty() && m_vps.apply(video_image, N, pose_gps.lat, pose_gps.lon, gps_accuracy, video_time, map_server_ip.c_str()))
@@ -382,11 +465,27 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
                 cv::Point streetview_offset = video_offset;
                 streetview_offset.x = video_rect.x + video_rect.width + 20;
                 cv::Rect rect(streetview_offset, streetview_offset + cv::Point(streetview_image.cols, streetview_image.rows));
-                if (rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = streetview_image * 1;
+                if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = streetview_image * 1;
+
+                cv::Point msg_offset = streetview_offset + cv::Point(10, 30);
+                double font_scale = 0.8;
+                std::string str_confidence = cv::format("Confidence: %.2lf", streetviews[0].confidence);
+                cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
+                cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
+                std::string str_id = cv::format("ID: %zu", streetviews[0].id);
+                msg_offset.y += 30;
+                cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
+                cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
             }
 
-            // show gps position of top-1 matched image
-            // To be implemented...
+            // show gps position of top-1 matched image on the map
+            dg::StreetView sv = m_map_manager.getStreetView(streetviews[0].id);
+            if(sv.id == streetviews[0].id)
+            {
+                dg::Point2 sv_pos = m_localizer.toMetric(dg::LatLon(sv.lat, sv.lon));
+                painter.drawNode(image, map_info, dg::Point2ID(0, sv_pos.x, sv_pos.y), 6, 0, cv::Vec3b(255, 255, 0));
+                printf("streeview found = %zu\n", sv.id);
+            }
         }
 
         // draw robot on the map
@@ -394,9 +493,20 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 10, 0, cx::COLOR_YELLOW);
         painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 8, 0, cx::COLOR_BLUE);
 
+        // draw guidance output on the video image
+        if(!video_image.empty())
+        {
+            drawGuidance(image, cur_guide, video_rect);
+        }
+        drawGuidance(image, cur_guide, video_rect);
+
         // draw status message (localization)
         cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3f (Lat: %.6f, Lon: %.6f)", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist, pose_gps.lat, pose_gps.lon);
-        cv::putText(image, info_topo, cv::Point(5, 30), cv::FONT_HERSHEY_PLAIN, 1.9, cv::Scalar(0, 200, 0), 2);
+        cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
+        cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+        std::string info_confidence = cv::format("Confidence: %.2lf", pose_confidence);
+        cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
+        cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
 
         // recording
         if (recording) video << image;
@@ -412,6 +522,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         // update iteration
         itr++;
     }
+    if(recording) video.release();
 
     printf("End deepguider system...\n");
 
