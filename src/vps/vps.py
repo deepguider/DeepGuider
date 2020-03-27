@@ -761,6 +761,8 @@ class vps:
                 #raise Exception('Image server is not available.')
                 print('Image server is not available.')
                 return -1
+        else:
+            os.system("rm -rf " + os.path.join(outdir,'*.jpg')) # You have to pay attention to code 'rm -rf' command
         return 0
 
     def getPosVPS(self):
