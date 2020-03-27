@@ -15,13 +15,12 @@ if [ $? -ne 0 ];then # If it met error in previous step
 	exit 0
 fi
 
-echo "####### Run vps_test ..... #######"
+echo "####### Run  ..... #######"
 cd "$topdir/bin"
 ln -sf ../src/vps/data_vps
-#ln -fs ../../src/vps/netvlad/ccsmmutils/img_utils.py
-#ln -fs ../../src/vps/netvlad
-#ln -fs ../../src/vps/netvlad_etri_datasets
-source ~/.virtualenvs/dg_venv3.6/bin/activate
+hostname |grep ccsmm && ln -sf ~/Naverlabs/query_etri_cart/191115_ETRI.avi data/
+hostname |grep ccsmm && source ~/.virtualenvs/dg_venv3.6/bin/activate || echo "You need to enter VirtualEnv"
+
 #source ~/.virtualenvs/5env3.5/bin/activate
 #gdb ./vps_test
 #kdbg ./vps_test
