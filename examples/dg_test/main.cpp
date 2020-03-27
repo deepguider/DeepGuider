@@ -40,7 +40,7 @@ protected:
     bool recording = false;
     std::string map_server_ip = "129.254.87.96";    // default: 127.0.0.1 (localhost)
 
-    // graphic icons
+    // guidance icons
     cv::Mat icon_forward;
     cv::Mat mask_forward;
     cv::Mat icon_turn_left;
@@ -469,7 +469,8 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         if(enable_vps && streetviews.size()>0)
         {
             // draw top-1 matching image
-            cv::Mat streetview_image = getStreeViewImage(streetviews[0].id);
+            //cv::Mat streetview_image = getStreeViewImage(streetviews[0].id);
+            cv::Mat streetview_image = m_map_manager.getStreetViewImage(streetviews[0].id, "f");
             if(!streetview_image.empty())
             {
                 double fy = (double)video_rect.height / streetview_image.rows;
