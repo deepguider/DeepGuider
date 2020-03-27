@@ -17,7 +17,7 @@ function build_script(){
 	found_script=`ls *build*.sh 2> /dev/null|grep -v 'run'`
 	if [ ! -z "$found_script" ];then
 		echo "[...] Run $D/$found_script"
-		./$found_script
+		bash ./$found_script
 		eval "$2=$found_script" # return value via second args
 	else
 		echo "[...] Run default build script because there is no build_script in $D"
@@ -34,7 +34,7 @@ function setup_script(){
 	if [ ! -z "$found_script" ];then
 		if [ ! -f "./$setup_switch" ];then
 			echo "[...] Run $D/$found_script"
-			./$found_script
+			bash ./$found_script
 			if [ $? -ne 0 ];then # If it met error in previous step
 			    echo $?
 			    exit 0
@@ -45,6 +45,7 @@ function setup_script(){
 	cd ..
 }
 
+## Current directory is examples
 counter=0
 for D in $(find . -mindepth 1 -maxdepth 1 -type d)
 do
