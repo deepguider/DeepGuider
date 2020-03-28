@@ -278,8 +278,19 @@ bool MapManager::parseMap(const char* json)
 			case 4: node.type = Node::NODE_ESCALATOR; break;
 			}
 			node.floor = properties["floor"].GetInt();
-			node.lat = properties["latitude"].GetDouble();
-			node.lon = properties["longitude"].GetDouble();
+
+			// swapped lat and lon
+			if ((properties["latitude"].GetDouble()) > (properties["longitude"].GetDouble()))
+			{
+				node.lon = properties["latitude"].GetDouble();
+				node.lat = properties["longitude"].GetDouble();
+			}
+			else
+			{
+				node.lat = properties["latitude"].GetDouble();
+				node.lon = properties["longitude"].GetDouble();
+			}
+
 			const Value& edge_ids = properties["edge_ids"];
 
 			for (Value::ConstValueIterator edge_id = edge_ids.Begin(); edge_id != edge_ids.End(); ++edge_id)
@@ -374,11 +385,9 @@ Map& MapManager::getMap(Path path)
 			lons.push_back(it->node->lat);
 			continue;
 		}
+
 		lats.push_back(it->node->lat);
 		lons.push_back(it->node->lon);
-
-		/*lats.push_back(it->node->lat);
-		lons.push_back(it->node->lon);*/
 	}
 
 	double min_lat = *min_element(lats.begin(), lats.end());
@@ -849,7 +858,7 @@ cv::Mat MapManager::queryImage2server(std::string url, int timeout)
 		// Check for errors.
 		if (res == CURLE_OK && !stream.empty())
 		{
-			unsigned char* novalid = reinterpret_cast<unsigned char*>("No valid");
+			const unsigned char* novalid = reinterpret_cast<const unsigned char*>("No valid");
 			unsigned char part[8] = { stream[0], stream[1], stream[2], stream[3], stream[4], stream[5], stream[6], stream[7] };
 			if (*part == *novalid)
 				m_portErr = true;
