@@ -21,8 +21,14 @@ anm = ActiveNavigationModule(args, NV)
 
 # anm.calcExplorationGuidance(state, img)
 
-# if anm.isRecoveryGuidanceEnabled():
-#   return anm.getRecoveryGuidance()
+anm.enable_recovery = True
+if anm.isRecoveryGuidanceEnabled():
+    anm.calcRecoveryGuidance(state='lost')
+    recovery_guidance = anm.recovery_guidance
+    print('Recovery guidance from the last inserted visual memory : ', recovery_guidance)
+
+
+# return anm.getRecoveryGuidance()
 
 # if anm.isExplorationGuidanceEnabled():
 #   return anm.getExplorationGuidance()

@@ -71,7 +71,6 @@ class ActiveNavigationModule():
         if self.enable_recovery is False and self.enable_exploration is False and self.enable_ove is False:
             action = guidance[-1]
             self.list2encode.append([img,action])
-
             try:
                 vis_mem = self.vis_mem_encoder(self.list2encode)
             except:
@@ -101,16 +100,21 @@ class ActiveNavigationModule():
         if self.enable_recovery is True:
             try:
                 # calculate the actions to return to the starting point of visual memory # doesn't need pose
-                if img == None:
+                if img == None and len(self.list2encode) > 0:
                     img = self.list2encode[-1][0]
+                else :
+                    print('Nothing to encode or calculate because there was no input at all')
+                    raise Exception
+                # encode the input image
+                img_feature = self.vis_mem_encoder(img)
                 # done: is back home, info: whether visual memory matching succeeded or not
-                actions, done, info = self.recovery_policy(self.vis_mem, img) 
+                actions, done, info = self.recovery_policy(self.vis_mem, img_feature)
             except:
                 # TODO: if recovery_policy fails to calculate the recovery actions,
                 #       just reverse the actions in the visual memory (using self.list2encode)
                 #       - can't implement now due to the ambiguity of the action space
                 # print("NotImplementedError")
-                actions, done, info = ['b','b','b','b','b'], False, False
+                actions, done, info = ['backward']*3, False, False
 
             self.recovery_guidance = actions
 
