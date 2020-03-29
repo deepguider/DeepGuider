@@ -89,7 +89,7 @@ void test_video_run(VPS& vps, bool recording = false, const char* video_file = "
     cv::namedWindow(video_file);
 
     int N = 3;  // top-3
-#if 0	// Daejeon
+#if 1	// Daejeon
 	double gps_lat = 36.381438;
     double gps_lon = 127.378867;
 #else // Seoul
