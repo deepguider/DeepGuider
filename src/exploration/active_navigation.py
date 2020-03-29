@@ -86,7 +86,6 @@ class ActiveNavigationModule():
 
         Input:
         - state: state from StateDeterminant Module
-        ---(topometric_pose_conf: confidence of topometric pose)
         - img: curreunt image input (doesn't need if visual memory contains the current input image)
         Output:
         - action(s) guides to reach previous POI
@@ -106,7 +105,7 @@ class ActiveNavigationModule():
                 # TODO: if recovery_policy fails to calculate the recovery actions,
                 #       just reverse the actions in the visual memory (using self.list2encode)
                 #       - can't implement now due to the ambiguity of the action space
-                print("NotImplementedError")
+                # print("NotImplementedError")
                 actions, done, info = ['b','b','b','b','b'], False, False
 
             self.recovery_guidance = actions
