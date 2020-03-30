@@ -306,9 +306,12 @@ class vps:
 
         elif opt.dataset.lower() == 'deepguider':
             from netvlad import etri_dbloader as dataset
+            import os
             self.dataset_root_dir = dataset.root_dir
-            self.dataset_struct_dir = dataset.struct_dir
-            self.dataset_queries_dir = dataset.queries_dir
+            self.dataset_struct_dir = os.path.join(dataset.struct_dir,'StreetView')
+            self.dataset_queries_dir = os.path.join(dataset.queries_dir,'999_newquery')
+            self.makedir(self.dataset_struct_dir)
+            self.makedir(self.dataset_queries_dir)
             return 1 # Non-zero means success return 
     
 
@@ -460,7 +463,6 @@ class vps:
                 vps_imgConf = [np.float(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
                 self.vps_IDandConf = [vps_imgID, vps_imgConf]
                 #if self.checking_return_value() < 0:
-                #    bp()
  
             if self.verbose:
                 dbImage_predicted = dbImage[pred_idx[i,0]] #Use best [0] image for display
@@ -670,6 +672,11 @@ class vps:
         self.vps_IDandConf = [vps_imgID, vps_imgConf]
         return 0
 
+    def makedir(self,fdir):
+        import os
+        if not os.path.exists(fdir):
+            os.makedirs(fdir)
+
     def apply(self, image=None, K = 3, gps_lat=37.0, gps_long=127.0, gps_accuracy=0.9, timestamp=0.0, ipaddr=None):
         ## Init.
         self.gps_lat = float(gps_lat)
@@ -683,12 +690,6 @@ class vps:
         opt = self.parser.parse_args()
         self.setRadius(self.gps_accuracy)
 
-        ## Get DB images from streetview image server
-        dbdir = os.path.join(self.dataset_struct_dir,'StreetView')
-        ret = self.getStreetView(dbdir)
-        if ret < 0:
-            print("Local DBs(DeepGuider/bin/data_vps/netvlad_etri_datasets/dbImg/StreetView) will be used")
-
         if self.verbose:
             print('===> Loading dataset(s)')
         epoch = 1
@@ -701,8 +702,13 @@ class vps:
             recalls = self.test(whole_test_set, epoch, write_tboard=False)
         elif opt.dataset.lower() == 'deepguider':
             from netvlad import etri_dbloader as dataset
+            ## Get DB images from streetview image server
+            ret = self.getStreetView(self.dataset_struct_dir)
+            if ret < 0:
+                print("Local DBs will be used : ",self.dataset_struct_dir)
+
             if image is not None:
-                fname = os.path.join(self.dataset_queries_dir,'999_newquery/newquery.jpg')
+                fname = os.path.join(self.dataset_queries_dir,'newquery.jpg')
                 try:
                     h, w, c = image.shape
                 except: # invalid query image
@@ -730,8 +736,8 @@ class vps:
         return self.vps_IDandConf
 
     def setRadius(self,gps_accuracy):
-        #self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters, ori
-        self.roi_radius = int(20 + 200*(1-gps_accuracy)) # meters, faster for debugging 
+        self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters, ori
+        #self.roi_radius = int(10 + 200*(1-gps_accuracy)) # meters, faster for debugging 
         return 0
 
     def getStreetView(self,outdir='./'):

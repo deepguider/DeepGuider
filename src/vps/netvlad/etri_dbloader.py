@@ -151,7 +151,11 @@ def get_dg_test_set_using_matfile(dbDir='dbImg',qDir='qImg'):
 #    return WholeDatasetFromStruct_forDG(dbMat_fname,qMat_fname,
 #                             input_transform=input_transform())
 
-
+def makedir(fdir):
+    import os
+    if not os.path.exists(fdir):
+        os.makedirs(fdir)
+                        
 def get_dg_test_set(dbDir='dbImg',qDir='qImg'):
     datasetDir = root_dir
     db_dir = os.path.join(datasetDir, dbDir)
