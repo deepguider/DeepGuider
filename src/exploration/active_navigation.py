@@ -2,9 +2,12 @@
 import numpy as np 
 # import tensorflow as tf
 import matplotlib.pyplot as plt
-from src.exploration.ov_utils.myutils import make_mask, template_matching_si, get_surfacenormal, get_bbox, get_depth, get_img
+# from src.exploration.ov_utils.myutils import make_mask, template_matching_si, get_surfacenormal, get_bbox, get_depth, get_img
 from src.exploration.ov_utils.config import normal_vector
 import src.exploration.ov_utils.file_utils as file_utils
+import src.exploration.eVM_utils.utils as eVM_utils
+from src.exploration.eVM_utils.eVM_model import encodeVisualMemory
+import torch
 from random import sample
 import sys
 if '/opt/ros/kinetic/lib/python2.7/dist-packages' in sys.path:
@@ -21,7 +24,7 @@ Initiation and termination conditions of (1) and (2) are checked by state from S
 
 Author
 ------
-Yunho Choi, Obin Kwon, Nuri Kim
+Yunho Choi, Obin Kwon, Nuri Kim, Hwiyeon Yoo
 """
 
 
@@ -33,7 +36,13 @@ class ActiveNavigationModule():
         self.args = args
         self.list2encode = []
         self.vis_mem = None
-        self.vis_mem_encoder = None
+        self.vis_mem_encoder = encodeVisualMemory()
+        self.vis_mem_encoder_model = None
+        try:
+            self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
+        except:
+            print("Cannot load pretrained encodeVisualMemory model")
+            pass
 
         self.enable_recovery = False
         self.recovery_policy = None
@@ -43,10 +52,13 @@ class ActiveNavigationModule():
         self.exploration_policy = None  
         self.exploration_guidance = None
 
-        self.enable_ove = args.enable_ove
+        try:
+            self.enable_ove = args.enable_ove
+        except:
+            self.enable_ove = None
         self.NV = NV
         
-    def encodeVisualMemory(self, img, guidance, topometric_pose):
+    def encodeVisualMemory(self, img, guidance, topometric_pose, test_mode=False):
         """
         Visual Memory Encoder Submodule:
         A module running consistently which encodes visual trajectory information from the previous node to the current location.
@@ -64,20 +76,34 @@ class ActiveNavigationModule():
         - Localizer
         """
 
-        # flush when reaching new node
-        if (self.map.getNode(topometric_pose.node_id).edges[topometric_pose.edge_idx].length - topometric_pose.dist) < 0.1: # topometric_pose.dist < 0.1:
-            self.list2encode = []
-
-        if self.enable_recovery is False and self.enable_exploration is False and self.enable_ove is False:
-            action = guidance[-1]
-            self.list2encode.append([img,action])
-            try:
-                vis_mem = self.vis_mem_encoder(self.list2encode)
-            except:
-                print("NotImplementedError")
-                vis_mem = None
-
+        if test_mode:
+            test_act = np.random.randint(0, 3)
+            onehot_test_act = np.zeros(3)
+            onehot_test_act[test_act] = 1
+            tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
+            tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
+            vis_mem = self.vis_mem_encoder(tensor_img, tensor_action)
+            self.list2encode.append(vis_mem)
             self.vis_mem = vis_mem
+
+        else:
+            # flush when reaching new node
+            if (self.map.getNode(topometric_pose.node_id).edges[topometric_pose.edge_idx].length - topometric_pose.dist) < 0.1: # topometric_pose.dist < 0.1:
+                self.list2encode = []
+
+            if self.enable_recovery is False and self.enable_exploration is False and self.enable_ove is False:
+                action = guidance[-1]
+                # self.list2encode.append([img,action])
+                try:
+                    tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
+                    tensor_action = torch.tensor(action).unsqueeze(0)
+                    vis_mem = self.vis_mem_encoder(tensor_img, tensor_action)
+                    self.list2encode.append(vis_mem)
+                except:
+                    print("NotImplementedError")
+                    vis_mem = None
+
+                self.vis_mem = vis_mem
 
 
     def calcRecoveryGuidance(self, state, img=None):
