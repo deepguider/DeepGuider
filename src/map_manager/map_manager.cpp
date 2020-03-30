@@ -3,6 +3,13 @@
 namespace dg
 {
 
+
+bool MapManager::initialize()
+{
+
+	return true;
+}
+
 void MapManager::setIP(const std::string ip)
 {
 	m_ip = ip;
@@ -13,38 +20,32 @@ std::string MapManager::getIP()
 	return m_ip;
 }
 
-int MapManager::lat2tiley(double lat, int z)
-{
-	double latrad = lat * M_PI / 180.0;
-	return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
-}
-
-int MapManager::lon2tilex(double lon, int z)
-{
-	return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
-}
-
-double MapManager::tiley2lat(int y, int z)
-{
-	double n = M_PI - 2.0 * M_PI * y / (double)(1 << z);
-	return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
-}
-
-double MapManager::tilex2lon(int x, int z)
-{
-	return x / (double)(1 << z) * 360.0 - 180;
-}
-
-cv::Point2i MapManager::latlon2xy(double lat, double lon, int z)
-{
-	return cv::Point2i(lon2tilex(lon, z), lat2tiley(lat, z));
-}
-
-bool MapManager::initialize()
-{
-
-	return true;
-}
+//int MapManager::lat2tiley(double lat, int z)
+//{
+//	double latrad = lat * M_PI / 180.0;
+//	return (int)(floor((1.0 - asinh(tan(latrad)) / M_PI) / 2.0 * (1 << z)));
+//}
+//
+//int MapManager::lon2tilex(double lon, int z)
+//{
+//	return (int)(floor((lon + 180.0) / 360.0 * (1 << z)));
+//}
+//
+//double MapManager::tiley2lat(int y, int z)
+//{
+//	double n = M_PI - 2.0 * M_PI * y / (double)(1 << z);
+//	return 180.0 / M_PI * atan(0.5 * (exp(n) - exp(-n)));
+//}
+//
+//double MapManager::tilex2lon(int x, int z)
+//{
+//	return x / (double)(1 << z) * 360.0 - 180;
+//}
+//
+//cv::Point2i MapManager::latlon2xy(double lat, double lon, int z)
+//{
+//	return cv::Point2i(lon2tilex(lon, z), lat2tiley(lat, z));
+//}
 
 size_t MapManager::write_callback(void* ptr, size_t size, size_t count, void* stream)
 {
@@ -345,7 +346,8 @@ bool MapManager::loadMap(double lat, double lon, double radius)
 	m_json = "";
 
 	// by communication
-	downloadMap(lat, lon, radius); // 1000.0);
+	bool ok = downloadMap(lat, lon, radius); // 1000.0);
+	if (!ok) return false;
 	//decodeUni();
 	const char* json = m_json.c_str();
 //#ifdef _DEBUG
@@ -355,14 +357,21 @@ bool MapManager::loadMap(double lat, double lon, double radius)
 	return parseMap(json);
 }
 
-Map& MapManager::getMap(double lat, double lon, double radius)
+Map& MapManager::getMap()
 {
-	loadMap(lat, lon, radius);
-
-	return getMap();
+	return *m_map;
 }
 
-Map& MapManager::getMap(Path path)
+bool MapManager::getMap(double lat, double lon, double radius, Map& map)
+{
+	bool ok = loadMap(lat, lon, radius);
+	if (!ok) return false;
+	map = getMap();
+
+	return true;
+}
+
+bool MapManager::getMap(Path path, Map& map)
 {
 	/*double lat = 36.38;
 	double lon = 127.373;
@@ -375,7 +384,7 @@ Map& MapManager::getMap(Path path)
 
 	std::vector<double> lats, lons;
 
-	if(path.pts.size() == 0) return getMap();
+	if(path.pts.size() == 0) return false;
 	for (std::vector<PathElement>::iterator it = path.pts.begin(); it < path.pts.end(); it++)
 	{
 		// swapped lat and lon
@@ -403,14 +412,12 @@ Map& MapManager::getMap(Path path)
 	double center_lat = (min_lat + max_lat) / 2;
 	double center_lon = (min_lon + max_lon) / 2;
 
-	loadMap(center_lat, center_lon, (dist_metric / 2) + alpha);
+	bool ok = loadMap(center_lat, center_lon, (dist_metric / 2) + alpha);
+	if (!ok) return false;
 
-	return getMap();
-}
+	map = getMap();
 
-Map& MapManager::getMap()
-{
-	return *m_map;
+	return true;
 }
 
 bool MapManager::downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
@@ -527,7 +534,8 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	if (!ok) return false;
 
 	Path path = m_path;
-	getMap(path);
+	ok = getMap(path, Map());
+	if (!ok) return false;
 
 	m_path.pts.clear();
 	for (size_t i = 0; i < path.pts.size(); i++)
@@ -549,14 +557,22 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	return true;
 }
 
-Path MapManager::getPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
+Path MapManager::getPath()
 {
-	generatePath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
-
-	return getPath();
+	return m_path;
 }
 
-Path MapManager::getPath(const char* filename)
+bool MapManager::getPath(double start_lat, double start_lon, double dest_lat, double dest_lon, Path& path, int num_paths)
+{
+	bool ok = generatePath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
+	if (!ok) return false;
+
+	path = getPath();
+
+	return true;
+}
+
+bool MapManager::getPath(const char* filename, Path& path)
 {
 	m_path.pts.clear();
 	m_json = "";
@@ -573,14 +589,16 @@ Path MapManager::getPath(const char* filename)
 	is.close();
 
 	bool ok = parsePath(json);
-	if (!ok) m_path.pts.clear();
+	if (!ok)
+	{
+		m_path.pts.clear();
+	
+		return false;
+	}
 
-	return getPath();
-}
+	path = getPath();
 
-Path MapManager::getPath()
-{
-	return m_path;
+	return true;
 }
 
 bool MapManager::downloadPOI(double lat, double lon, double radius)
@@ -637,7 +655,12 @@ bool MapManager::parsePOI(const char* json)
 	return true;
 }
 
-std::list<POI>& MapManager::getPOI(double lat, double lon, double radius)
+std::list<POI>& MapManager::getPOI()
+{
+	return m_map->pois;
+}
+
+bool MapManager::getPOI(double lat, double lon, double radius, std::list<POI>& poi_list)
 {
 	m_map->pois.clear();
 	m_json = "";
@@ -650,12 +673,19 @@ std::list<POI>& MapManager::getPOI(double lat, double lon, double radius)
 //	fprintf(stdout, "%s\n", json);
 //#endif
 	bool ok = parsePOI(json);
-	if (!ok) m_map->pois.clear();
+	if (!ok)
+	{
+		m_map->pois.clear();
 
-	return getPOI();
+		return false;
+	}
+
+	poi_list = getPOI();
+
+	return true;
 }
 
-std::list<POI>& MapManager::getPOI(ID node_id, double radius)
+ bool MapManager::getPOI(ID node_id, double radius, std::list<POI>& poi_list)
 {
 	m_map->pois.clear();
 	m_json = "";
@@ -668,28 +698,34 @@ std::list<POI>& MapManager::getPOI(ID node_id, double radius)
 //	fprintf(stdout, "%s\n", json);
 //#endif
 	bool ok = parsePOI(json);
-	if (!ok) m_map->pois.clear();
+	if (!ok)
+	{
+		m_map->pois.clear();
 
-	return getPOI();
+		return false;
+	}
+
+	poi_list = getPOI();
+
+	return true;
 }
 
-std::list<POI>& MapManager::getPOI()
-{
-	return m_map->pois;
-}
-
-POI MapManager::getPOI(ID poi_id)
+bool MapManager::getPOI(ID poi_id, POI& poi)
 {
 	if(m_map->pois.size() == 0) 
-		return POI();
+		return false;
 
 	for (std::list<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
 	{
 		if (it->id == poi_id)
-			return *it;
+		{
+			poi = *it;
+
+			return true;
+		}
 	}
 
-	return POI();
+	return false;
 }
 
 //std::vector<cv::Point2d> MapManager::getPOIloc(const char* poiname)
@@ -709,6 +745,30 @@ POI MapManager::getPOI(ID poi_id)
 //	}
 //	return points;
 //}
+
+bool MapManager::downloadStreetView(double lat, double lon, double radius)
+{
+	const std::string url_middle = ":21501/wgs/";
+	std::string url = "http://" + m_ip + url_middle + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
+
+	return query2server(url);
+}
+
+bool MapManager::downloadStreetView(ID node_id, double radius)
+{
+	const std::string url_middle = ":21501/node/";
+	std::string url = "http://" + m_ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
+
+	return query2server(url);
+}
+
+bool MapManager::downloadStreetView(cv::Point2i tile)
+{
+	const std::string url_middle = ":21501/tile/";
+	std::string url = "http://" + m_ip + url_middle + std::to_string(tile.x) + "/" + std::to_string(tile.y);
+
+	return query2server(url);
+}
 
 bool MapManager::parseStreetView(const char* json)
 {
@@ -743,31 +803,12 @@ bool MapManager::parseStreetView(const char* json)
 	return true;
 }
 
-bool MapManager::downloadStreetView(double lat, double lon, double radius)
+std::list<StreetView>& MapManager::getStreetView()
 {
-	const std::string url_middle = ":21501/wgs/";
-	std::string url = "http://" + m_ip + url_middle + std::to_string(lat) + "/" + std::to_string(lon) + "/" + std::to_string(radius);
-
-	return query2server(url);
+	return m_map->views;
 }
 
-bool MapManager::downloadStreetView(ID node_id, double radius)
-{
-	const std::string url_middle = ":21501/node/";
-	std::string url = "http://" + m_ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
-
-	return query2server(url);
-}
-
-bool MapManager::downloadStreetView(cv::Point2i tile)
-{
-	const std::string url_middle = ":21501/tile/";
-	std::string url = "http://" + m_ip + url_middle + std::to_string(tile.x) + "/" + std::to_string(tile.y);
-
-	return query2server(url);
-}
-
-std::list<StreetView>& MapManager::getStreetView(double lat, double lon, double radius)
+bool MapManager::getStreetView(double lat, double lon, double radius, std::list<StreetView>& sv_list)
 {
 	m_map->views.clear();
 	m_json = "";
@@ -780,12 +821,19 @@ std::list<StreetView>& MapManager::getStreetView(double lat, double lon, double 
 //	fprintf(stdout, "%s\n", json);
 //#endif
 	bool ok = parseStreetView(json);
-	if (!ok) m_map->views.clear();
+	if (!ok)
+	{
+		m_map->views.clear();
 
-	return getStreetView();
+		return false;
+	}
+
+	sv_list = getStreetView();
+
+	return true;
 }
 
-std::list<StreetView>& MapManager::getStreetView(ID node_id, double radius)
+bool MapManager::getStreetView(ID node_id, double radius, std::list<StreetView>& sv_list)
 {
 	m_map->views.clear();
 	m_json = "";
@@ -798,28 +846,34 @@ std::list<StreetView>& MapManager::getStreetView(ID node_id, double radius)
 //	fprintf(stdout, "%s\n", json);
 //#endif
 	bool ok = parseStreetView(json);
-	if (!ok) m_map->views.clear();
+	if (!ok)
+	{
+		m_map->views.clear();
 
-	return getStreetView();
+		return false;
+	}
+
+	sv_list = getStreetView();
+
+	return true;
 }
 
-std::list<StreetView>& MapManager::getStreetView()
-{
-	return m_map->views;
-}
-
-StreetView MapManager::getStreetView(ID sv_id)
+bool MapManager::getStreetView(ID sv_id, StreetView& sv)
 {
 	if (m_map->views.size() == 0)
-		return StreetView();
+		return false;
 
 	for (std::list<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
 	{
 		if (it->id == sv_id)
-			return *it;
+		{
+			sv = *it;
+
+			return true;
+		}
 	}
 
-	return StreetView();
+	return false;
 }
 
 size_t MapManager::writeImage_callback(char* ptr, size_t size, size_t nmemb, void* userdata)
@@ -887,12 +941,12 @@ cv::Mat MapManager::downloadStreetViewImage(ID sv_id, const std::string cubic, i
 	}
 }
 
-cv::Mat MapManager::getStreetViewImage(ID sv_id, std::string cubic, int timeout)
+bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic, int timeout)
 {
 	if (!(cubic == "f" || cubic == "b" || cubic == "l" || cubic == "r" || cubic == "u" || cubic == "d"))
 		cubic = "";
 
-	cv::Mat sv_image = downloadStreetViewImage(sv_id, cubic, timeout);
+	sv_image = downloadStreetViewImage(sv_id, cubic, timeout);
 
 	if (m_portErr == true)
 	{
@@ -901,7 +955,9 @@ cv::Mat MapManager::getStreetViewImage(ID sv_id, std::string cubic, int timeout)
 		m_portErr = false;
 	}
 
-	return sv_image;
+	if (sv_image.empty())	return false;
+
+	return true;
 }
 
 } // End of 'dg'
