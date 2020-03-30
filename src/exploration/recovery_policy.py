@@ -82,6 +82,7 @@ class Recovery(nn.Module):
         # done: is back home, info: whether visual memory matching succeeded or not
         return return_action, done, info
 
+
 if __name__=='__main__':
     policy = Recovery()
     L = 15

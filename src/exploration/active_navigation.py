@@ -4,9 +4,9 @@ import numpy as np
 from ov_utils.myutils import make_mask, template_matching, get_surfacenormal, get_bbox, get_depth, get_img
 from ov_utils.config import normal_vector
 import ov_utils.file_utils as file_utils
-import eVM_utils.utils as eVM_utils
-from eVM_utils.eVM_model import encodeVisualMemory
-from recovery_policy import Recovery
+# import eVM_utils.utils as eVM_utils
+# from eVM_utils.eVM_model import encodeVisualMemory
+# from recovery_policy import Recovery
 import torch
 import sys
 if '/opt/ros/kinetic/lib/python2.7/dist-packages' in sys.path:
@@ -35,7 +35,7 @@ class ActiveNavigationModule():
         self.args = args
         self.list2encode = []
         self.vis_mem = []
-        self.vis_mem_encoder = encodeVisualMemory()
+        # self.vis_mem_encoder = encodeVisualMemory()
         self.vis_mem_encoder_model = None
         try:
             self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
@@ -44,17 +44,19 @@ class ActiveNavigationModule():
             pass
 
         self.enable_recovery = False
-        self.recovery_policy = Recovery()
+        # self.recovery_policy = Recovery()
         self.recovery_guidance = None
         
         self.enable_exploration = False
         self.exploration_policy = None  
         self.exploration_guidance = None
+        self.optimal_viewpoint_guidance = [0, 0, 0]
+        self.central_flag = False
 
         try:
             self.enable_ove = args.enable_ove
         except:
-            self.enable_ove = None
+            self.enable_ove = False
         self.NV = NV
         
     def encodeVisualMemory(self, img, guidance, topometric_pose=None, random_action=False):
@@ -102,7 +104,6 @@ class ActiveNavigationModule():
                 except:
                     print("NotImplementedError")
                     self.vis_mem = None
-
 
     def calcRecoveryGuidance(self, img=None):
         """
@@ -229,30 +230,18 @@ class ActiveNavigationModule():
         - Action(s) guides to find an optimal viewpoint
         """
 
-        self.central_viewpoint_guidance = [0, 0, 0]
-        self.optimal_viewpoint_guidance = [0, 0, 0]
-        self.central_viewpoint = None
-        self.optimal_viewpoint = None
         if self.enable_ove:
-            # try:
-            if self.args.central_guidance:
-                c_heading, central_view = self.viewpoint_to_central(img_path, target_poi)
-                if c_heading != None:
-                    self.central_viewpoint_guidance = [0, 0, c_heading]
-                    self.central_viewpoint = central_view
-                    if self.args.optimal_guidance:
-                        disp_x, disp_y, heading, optimal_view = self.viewpoint_optimizer(target_poi)
-                        self.optimal_viewpoint_guidance = [disp_x, disp_y, heading]
-                        self.optimal_viewpoint = optimal_view
-            # except:
-            #     pass
+            if not self.central_flag:
+                self.ov_guidance = self.viewpoint_to_centview(img_path, target_poi)
+            else:
+                self.ov_guidance = self.central_to_optview(img_path, target_poi)
 
-    def viewpoint_to_central(self, file_name, target_poi):
-        heading = None
+    def viewpoint_to_centview(self, img_path, target_poi):
+        heading = 0
         templates, main_template, _ = file_utils.get_templates(self.args.data_folder, targetPOI=target_poi)
-        img = get_img(self.args, file_name)
-        sf = get_surfacenormal(self.args, file_name)
-        bbox = get_bbox(self.args, file_name)
+        img = get_img(self.args, img_path)
+        sf = get_surfacenormal(self.args, img_path)
+        bbox = get_bbox(self.args, img_path)
         h, w, _ = img.shape
         if len(bbox) > 0:
             # Read all boxes from the detection results
@@ -276,7 +265,7 @@ class ActiveNavigationModule():
                 sf_norm = sf_norm * 2 - 1
                 sf_norm = sf_norm / np.linalg.norm(sf_norm, 2)
 
-                self.NV.POI_imgloc = ("left", "right")[(bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 > w / 2]
+                POI_imgloc = ("left", "right")[(bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 > w / 2]
                 # TODO: Deal with the various situations (there may exist sky in the center of the image)
                 # Rotate the agent until the POI is locate on the center
                 center_sf_norm = np.mean(sf[110:140, 235:265], (0, 1))
@@ -285,26 +274,18 @@ class ActiveNavigationModule():
 
                 # Check that the bounding box is on the left or right buildings (not street or sky)
                 if abs(sf_norm[1]) < 0.8:
-                    self.NV.center_poi_theta = np.arccos(np.dot(sf_norm, center_sf_norm))
+                    center_poi_theta = np.arccos(np.dot(sf_norm, center_sf_norm))
 
-                    # Decide the POI is on the left or the right
-                    self.NV.POI_surf = ("left", "right")[sf_norm[0] < 0]
-
-                    # Align the POI and the camera center.
-                    self.NV.rotated = False
-                    if round((180 / np.pi * self.NV.center_poi_theta) / 30) > 0 or ((bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 - w / 2) > w / 4:
-                        heading = self.NV.turn(30 / 180 * np.pi, self.NV.POI_imgloc, verbose=self.args.verbose)
-                        self.NV.rotated = True
+                    # Align the POI and the camera center
+                    if round((180 / np.pi * center_poi_theta) / 30) > 0 or ((bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 - w / 2) > w / 4:
+                        heading = self.NV.turn(30 / 180 * np.pi, POI_imgloc, verbose=self.args.verbose)
                     else:
                         heading = 0
-        central_view = self.NV.curpos2file()
-        return heading, central_view
+        return [0, 0, heading]
 
-    def viewpoint_optimizer(self, target_poi):
-        optim_view = None
+    def central_to_optview(self, file_path, target_poi):
         disp_x = disp_y = heading = 0
         templates, main_template, opt_ratio = file_utils.get_templates(self.args.data_folder, targetPOI=target_poi)
-        file_path = self.NV.curpos2file()
         img = get_img(self.args, file_path)
         depth_ = get_depth(self.args, file_path)
         bbox = get_bbox(self.args, file_path)
@@ -349,6 +330,8 @@ class ActiveNavigationModule():
                 sf_norm = sf_norm * 2 - 1
                 sf_norm = sf_norm / np.linalg.norm(sf_norm, 2)
 
+                POI_surf = ("left", "right")[sf_norm[0] < 0]
+
                 theta = np.arccos(np.dot(sf_norm, normal_vector))
                 thetad = np.arctan(((D - D0) * np.sin(theta)) / (D - (D - D0) * np.cos(theta)))
                 if thetad == 0:
@@ -357,14 +340,13 @@ class ActiveNavigationModule():
                     D1 = (D - D0) * np.sin(theta) / (np.sin(thetad))
                 thetadd = theta + thetad
 
-                ROT = ("left", "right")[self.NV.POI_surf == "left"]
+                ROT = ("left", "right")[POI_surf == "left"]
                 # Turn and go straight
                 disp_x, disp_y = self.NV.turn_straight(D1, thetad, ROT, verbose=self.args.verbose)
 
                 # Rotate to see the POI
-                heading = self.NV.turn(thetadd, self.NV.POI_surf, verbose=self.args.verbose)
-                optim_view = self.NV.curpos2file()
-        return disp_x, disp_y, heading, optim_view
+                heading = self.NV.turn(thetadd, POI_surf, verbose=self.args.verbose)
+        return [disp_x, disp_y, heading]
 
     def getVisualMemory(self):
         return self.vis_mem
@@ -390,27 +372,9 @@ class ActiveNavigationModule():
     def isOptimalViewpointGuidanceEnabled(self):
         return self.enable_ove
 
-    def getCentralViewpointGuidance(self):
-        if self.enable_ove:
-            return self.central_viewpoint_guidance
-        else:
-            return None
-
     def getOptimalViewpointGuidance(self):
         if self.enable_ove:
-            return self.optimal_viewpoint_guidance    
-        else:
-            return None
-
-    def getOptimalViewpointPath(self):
-        if self.enable_ove:
-            return self.optimal_viewpoint
-        else:
-            return None
-
-    def getCentralViewpointPath(self):
-        if self.enable_ove:
-            return self.central_viewpoint
+            return self.ov_guidance
         else:
             return None
 

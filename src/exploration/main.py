@@ -4,13 +4,6 @@ from active_navigation import ActiveNavigationModule
 import argparse
 import ov_utils.file_utils as file_utils
 from ov_utils.navi_data import Navi
-from ov_utils.myutils import get_img
-import numpy as np
-import joblib
-import os
-from PIL import Image
-import torch
-import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(description='Optimal viewpoint estimation')
 parser.add_argument('--data_folder', default='./data_exp/optimal_viewpoint/', type=str, help='folder path to input images')
@@ -23,22 +16,22 @@ NV = Navi()
 anm = ActiveNavigationModule(args, NV)
 
 # # load img + action trajectory
-data_list = [os.path.join('./data_exp/img_trajectory', x) for x in os.listdir('./data_exp/img_trajectory')]
-data = joblib.load(np.random.choice(data_list))
-
-img_list = data['rgb']
-guidance_list = data['action']
-
-for i in range(len(img_list)):
-    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i], None, random_action=True)
-
-anm.enable_recovery = True
-anm.vis_mem = torch.cat(anm.vis_mem, 0)
-if anm.isRecoveryGuidanceEnabled():
-    curr_img = Image.fromarray(img_list[np.random.randint(len(img_list))])
-    anm.calcRecoveryGuidance(img=curr_img)
-    recovery_guidance = anm.recovery_guidance
-    print('Recovery guidance from the last inserted visual memory : ', recovery_guidance)
+# data_list = [os.path.join('./data_exp/img_trajectory', x) for x in os.listdir('./data_exp/img_trajectory')]
+# data = joblib.load(np.random.choice(data_list))
+#
+# img_list = data['rgb']
+# guidance_list = data['action']
+#
+# for i in range(len(img_list)):
+#     anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i], None, random_action=True)
+#
+# anm.enable_recovery = True
+# anm.vis_mem = torch.cat(anm.vis_mem, 0)
+# if anm.isRecoveryGuidanceEnabled():
+#     curr_img = Image.fromarray(img_list[np.random.randint(len(img_list))])
+#     anm.calcRecoveryGuidance(img=curr_img)
+#     recovery_guidance = anm.recovery_guidance
+#     print('Recovery guidance from the last inserted visual memory : ', recovery_guidance)
 
 # if anm.isExplorationGuidanceEnabled():
 #   return anm.getExplorationGuidance()
@@ -49,46 +42,17 @@ if anm.isOptimalViewpointGuidanceEnabled():
     image_list, sf_list, bbox_list, depth_list = file_utils.get_files(args.data_folder)
     im_paths, target_pois = file_utils.get_annos(args.data_folder + 'anno/')
     im_cnt = 0
-    tot_acc = []
     tot_test = len(im_paths)
     for im_path, target_poi in zip(im_paths, target_pois):
+        anm.enable_ove = True
+        if im_cnt % 2 == 0:
+            anm.central_flag = False
+        else:
+            anm.central_flag = True
         im_cnt += 1
-        file = im_path
-        init_view = file
-        NV.file2curpos(file)
-        if args.verbose:
-            print("Testing... {}/{}, Target: {}".format(im_cnt, tot_test, target_poi))
-        gt_view = file_utils.get_gt_templates(target_poi)
+        NV.file2curpos(im_path)
+        print("Testing... {}/{}, Target: {}".format(im_cnt, tot_test, target_poi))
         anm.calcOptimalViewpointGuidance(im_path, target_poi)
-
-        c_guidance = anm.getCentralViewpointGuidance()
-        central_view = anm.getCentralViewpointPath()
         guidance = anm.getOptimalViewpointGuidance()
-        final_view = anm.getOptimalViewpointPath()
-        initial_img = get_img(args, init_view)
-        central_img = get_img(args, central_view)
-        final_img = get_img(args, final_view)
-
-        fig = plt.figure(figsize=(6, 10))
-        ax = plt.subplot(311)
-        ax.imshow(np.uint8(initial_img))
-        ax.set_title("An initial image [Target: {}] \n(Guidance: Rotate {} degree)".format(target_poi, c_guidance[-1]), fontsize='medium')
-        ax.axis('off')
-
-        ax = plt.subplot(312)
-        ax.imshow(np.uint8(central_img))
-        ax.set_title("A rotated image for locating the target logo in the center \n(Guidance: Move %.2fm on WE-axis and %.2fm on NS-axis then Rotate %d degree)"% (guidance[0], guidance[1], guidance[2]), fontsize='medium')
-        ax.axis('off')
-
-        ax = plt.subplot(313)
-        ax.imshow(np.uint8(final_img))
-        ax.set_title("A final view according to the guidance", fontsize='medium')
-        ax.axis('off')
-
-        plt.gca().xaxis.set_major_locator(plt.NullLocator())
-        plt.gca().yaxis.set_major_locator(plt.NullLocator())
-        fig.savefig('./results/ov_test_{}.png'.format(im_cnt))
-        plt.close()
-        if args.verbose:
-            print("Central guidance [rot]): ", c_guidance[-1])
-            print("Optimal guidance [disp_x, disp_y, rot]: [%.2fm, %.2fm, %d]" % (guidance[0], guidance[1], guidance[2]))
+        anm.enable_ove = False
+        print("Optimal Guidance [disp_x, disp_y, rot]: [%.2fm, %.2fm, %d]" % (guidance[0], guidance[1], guidance[2]))

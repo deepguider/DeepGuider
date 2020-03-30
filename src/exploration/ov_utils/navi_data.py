@@ -29,10 +29,6 @@ class Navi(object):
         self.Robot_Head = 7
         self.Robot_Pos = np.array([3, 1])
         self.pos2theta = {'0': 317, '1': 287, '2': 257, '3': 227, '4': 197, '5': 167, '6': 137, '7': 107, '8': 77, '9': 47, '10': 17, '11': 347}
-        self.POI_surf = None
-        self.POI_imgloc = None
-        self.rotated = None
-        self.center_poi_theta = None
 
     def num2file(self, num_img):
         i = num_img // N_of_Row
@@ -89,13 +85,13 @@ class Navi(object):
         return theta
 
     def turn_straight(self, d, theta_, rotate_dir, verbose=False):
-        if not self.rotated:
-            if self.POI_imgloc == "left":
-                turn_theta = int(180 / np.pi * (theta_ - self.center_poi_theta))
-            else:
-                turn_theta = int(180 / np.pi * (theta_ + self.center_poi_theta))
-        else:
-            turn_theta = int(180 / np.pi * theta_)
+        # if not self.rotated:
+        # if self.POI_imgloc == "left":
+        #     turn_theta = int(180 / np.pi * (theta_ - self.center_poi_theta))
+        # else:
+        #     turn_theta = int(180 / np.pi * (theta_ + self.center_poi_theta))
+        # else:
+        turn_theta = int(180 / np.pi * theta_)
         turn_theta = (abs(turn_theta), -abs(turn_theta))[rotate_dir == "right"]
         cur_theta = self.pos2theta[str(self.Robot_Head)]
         self.Robot_Head -= round(turn_theta / 30)
