@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 import numpy as np 
 # import tensorflow as tf
-import matplotlib.pyplot as plt
-# from src.exploration.ov_utils.myutils import make_mask, template_matching_si, get_surfacenormal, get_bbox, get_depth, get_img
+from src.exploration.ov_utils.myutils import make_mask, template_matching, get_surfacenormal, get_bbox, get_depth, get_img
 from src.exploration.ov_utils.config import normal_vector
 import src.exploration.ov_utils.file_utils as file_utils
 import src.exploration.eVM_utils.utils as eVM_utils
 from src.exploration.eVM_utils.eVM_model import encodeVisualMemory
 from src.exploration.recovery_policy import Recovery
 import torch
-from random import sample
 import sys
 if '/opt/ros/kinetic/lib/python2.7/dist-packages' in sys.path:
     sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
@@ -37,16 +35,16 @@ class ActiveNavigationModule():
         self.args = args
         self.list2encode = []
         self.vis_mem = None
-        self.vis_mem_encoder = encodeVisualMemory()
+        # self.vis_mem_encoder = encodeVisualMemory()
         self.vis_mem_encoder_model = None
-        try:
-            self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
-        except:
-            print("Cannot load pretrained encodeVisualMemory model")
-            pass
+        # try:
+        #     self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
+        # except:
+        #     print("Cannot load pretrained encodeVisualMemory model")
+        #     pass
 
         self.enable_recovery = False
-        self.recovery_policy = Recovery()
+        # self.recovery_policy = Recovery()
         self.recovery_guidance = None
         
         self.enable_exploration = False
@@ -234,23 +232,25 @@ class ActiveNavigationModule():
 
         self.central_viewpoint_guidance = [0, 0, 0]
         self.optimal_viewpoint_guidance = [0, 0, 0]
+        self.central_viewpoint = None
         self.optimal_viewpoint = None
         if self.enable_ove:
-            try:
-                if self.args.central_guidance:
-                    c_heading = self.viewpoint_to_central(img_path, target_poi)
-                    if c_heading != None:
-                        self.central_viewpoint_guidance = [0, 0, c_heading]
-                        if self.args.optimal_guidance:
-                            disp_x, disp_y, heading, optimal_view = self.viewpoint_optimizer(target_poi)
-                            self.optimal_viewpoint_guidance = [disp_x, disp_y, heading]
-                            self.optimal_viewpoint = optimal_view
-            except:
-                pass
+            # try:
+            if self.args.central_guidance:
+                c_heading, central_view = self.viewpoint_to_central(img_path, target_poi)
+                if c_heading != None:
+                    self.central_viewpoint_guidance = [0, 0, c_heading]
+                    self.central_viewpoint = central_view
+                    if self.args.optimal_guidance:
+                        disp_x, disp_y, heading, optimal_view = self.viewpoint_optimizer(target_poi)
+                        self.optimal_viewpoint_guidance = [disp_x, disp_y, heading]
+                        self.optimal_viewpoint = optimal_view
+            # except:
+            #     pass
 
     def viewpoint_to_central(self, file_name, target_poi):
         heading = None
-        templates, main_template = file_utils.get_templates(self.args.data_folder, targetPOI=target_poi)
+        templates, main_template, _ = file_utils.get_templates(self.args.data_folder, targetPOI=target_poi)
         img = get_img(self.args, file_name)
         sf = get_surfacenormal(self.args, file_name)
         bbox = get_bbox(self.args, file_name)
@@ -264,8 +264,7 @@ class ActiveNavigationModule():
             bbox = np.reshape(bbox, [-1, 4, 2])
 
             # Template matching (Target POI and the boxes)
-            # template_matched, bbox = template_matching(img_gray, bbox, templates)
-            template_matched, bbox, _, old_score = template_matching_si(img, bbox, templates, main_template)
+            template_matched, bbox, _, old_score = template_matching(img, bbox, templates, main_template)
             bbox = np.reshape(bbox, [-1, 4, 2])
 
             # Check that there is a bounding box which is matched with template (target POI)
@@ -297,12 +296,15 @@ class ActiveNavigationModule():
                     if round((180 / np.pi * self.NV.center_poi_theta) / 30) > 0 or ((bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 - w / 2) > w / 4:
                         heading = self.NV.turn(30 / 180 * np.pi, self.NV.POI_imgloc, verbose=self.args.verbose)
                         self.NV.rotated = True
-        return heading
+                    else:
+                        heading = 0
+        central_view = self.NV.curpos2file()
+        return heading, central_view
 
     def viewpoint_optimizer(self, target_poi):
         optim_view = None
         disp_x = disp_y = heading = 0
-        templates, main_template = file_utils.get_templates(self.args.data_folder, targetPOI=target_poi)
+        templates, main_template, opt_ratio = file_utils.get_templates(self.args.data_folder, targetPOI=target_poi)
         file_path = self.NV.curpos2file()
         img = get_img(self.args, file_path)
         depth_ = get_depth(self.args, file_path)
@@ -318,7 +320,7 @@ class ActiveNavigationModule():
             bbs = bbs.astype(np.int32)
 
             # Find the bounding box for the target POI
-            template_matched, bbox, index, _ = template_matching_si(img, bbs, templates, main_template)
+            template_matched, bbox, index, _ = template_matching(img, bbs, templates, main_template)
             bbox = np.reshape(bbox, [-1, 4, 2])
             mask = make_mask(bbox, shape=[h, w])
             if np.sum(mask) > 0 and template_matched:
@@ -328,7 +330,7 @@ class ActiveNavigationModule():
                     indices.pop(index)
                     bbs = bbs[indices]
                     bbs = np.reshape(bbs, [-1, 4, 2])
-                    template_matched, bbox, _, _ = template_matching_si(img, bbs, templates, main_template)
+                    template_matched, bbox, _, _ = template_matching(img, bbs, templates, main_template)
                     bbox = np.reshape(bbox, [-1, 4, 2])
                     mask = make_mask(bbox, shape=[h, w])
                     depth = depth_[mask == 1]
@@ -339,7 +341,8 @@ class ActiveNavigationModule():
                 D = np.mean(depth) * 19.2
                 # Decide the amount of the movement using depth
                 ratio = (abs(bbox[0, 3, 1] - bbox[0, 0, 1]) + abs(bbox[0, 1, 1] - bbox[0, 2, 1])) / 2 / h
-                D0 = D * (1 - np.maximum(ratio / 0.1, 0.95))
+
+                D0 = D * (1 - np.maximum(ratio / opt_ratio, 0.95))
 
                 # Decide the moving direction
                 sf = get_surfacenormal(self.args, file_path)
@@ -362,7 +365,6 @@ class ActiveNavigationModule():
                 # Rotate to see the POI
                 heading = self.NV.turn(thetadd, self.NV.POI_surf, verbose=self.args.verbose)
                 optim_view = self.NV.curpos2file()
-
         return disp_x, disp_y, heading, optim_view
 
     def getVisualMemory(self):
@@ -404,6 +406,12 @@ class ActiveNavigationModule():
     def getOptimalViewpointPath(self):
         if self.enable_ove:
             return self.optimal_viewpoint
+        else:
+            return None
+
+    def getCentralViewpointPath(self):
+        if self.enable_ove:
+            return self.central_viewpoint
         else:
             return None
 

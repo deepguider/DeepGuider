@@ -1,7 +1,7 @@
 import numpy as np
 import math
 
-# MAP
+# MAP of SNU library street dataset
 #                       stores
 #  ------------------------------------------------
 #  |(43,6)                                   (0,6)|
@@ -28,7 +28,6 @@ class Navi(object):
     def __init__(self):
         self.Robot_Head = 7
         self.Robot_Pos = np.array([3, 1])
-        # self.pos2theta = {'0': 320, '1': 290, '2': 260, '3': 230, '4': 200, '5': 170, '6': 140, '7': 110, '8': 80, '9': 50, '10': 20, '11': 350}
         self.pos2theta = {'0': 317, '1': 287, '2': 257, '3': 227, '4': 197, '5': 167, '6': 137, '7': 107, '8': 77, '9': 47, '10': 17, '11': 347}
         self.POI_surf = None
         self.POI_imgloc = None
@@ -87,7 +86,7 @@ class Navi(object):
         self.Robot_Head %= 12
         if verbose:
             print(">> Rotate %d° on %s" % (int(round(180 / np.pi * theta_)), rotate_dir))
-        return int(round(180 / np.pi * theta_))
+        return theta
 
     def turn_straight(self, d, theta_, rotate_dir, verbose=False):
         if not self.rotated:
@@ -121,8 +120,8 @@ class Navi(object):
             self.Robot_Pos[1] = 0
         if verbose:
             print(">> Rotate %d° on %s and Go straight %.3fm" % (int(round(180 / np.pi * theta_)), rotate_dir, d))
-        disp_x = d * np.cos(theta_)
-        disp_y = d * np.sin(theta_)
+        disp_x = -d * math.cos(target_theta * math.pi / 180) / Interval_WE
+        disp_y = d * math.sin(target_theta * math.pi / 180) / Interval_NS
         return disp_x, disp_y
 
     def dist(self, p1, p2):

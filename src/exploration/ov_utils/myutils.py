@@ -1,15 +1,8 @@
 import numpy as np
 import cv2
-import argparse
-import imutils
-import glob
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from PIL import Image
 from sklearn.metrics.pairwise import cosine_similarity
 import torchvision.transforms as transforms
-import torch
-import torch.nn as nn
 from torchvision import models
 from torch.autograd import Variable
 import matplotlib.image as mpimg
@@ -21,6 +14,8 @@ scaler = transforms.Scale((224, 224))
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
 to_tensor = transforms.ToTensor()
+
+
 def make_mask(bbox, shape):
     x1, y1, x2, y2, x3, y3, x4, y4 = np.reshape(bbox, [-1])
     mask = np.ones(shape)
@@ -53,26 +48,7 @@ def make_mask(bbox, shape):
     return mask
 
 
-def template_matching(img_gray, bbox, templates):
-    template_matched = False
-    sizes = np.zeros((len(templates), len(bbox)))
-    for i in range(len(templates)):
-        for j in range(len(bbox)):
-            try:
-                res = cv2.matchTemplate(img_gray[np.maximum(int(bbox[j, 0, 1]), 0):int(bbox[j, 2, 1]),
-                                        np.maximum(int(bbox[j, 0, 0]), 0):int(bbox[j, 2, 0])].astype(np.uint8),
-                                        templates[i], cv2.TM_CCOEFF_NORMED)
-            except:
-                res = 0
-            loc = np.where(res > 0.5)[0]
-            sizes[i][j] = loc.size
-    matched_bbox = np.argmax(np.sum(sizes, 0))
-    if np.max(np.sum(sizes, 0)) > 100:
-        template_matched = True
-    return template_matched, bbox[matched_bbox]
-
-
-def template_matching_si(image, bbox, templates, main_template):
+def template_matching(image, bbox, templates, main_template):
     template_matched = False
     sizes = np.zeros((len(templates), len(bbox)))
     for i, template in enumerate(templates):
