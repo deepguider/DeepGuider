@@ -133,6 +133,7 @@ def get_templates(data_dir, targetPOI):
             data_dir + "logo/p6.jpg",
         ]
         main_template = data_dir + "logo/p1.jpg"
+        opt_ratio = 0.097
     elif targetPOI == "PASCUCCI":
         template_list = [
             data_dir + "logo/cp1.jpg",
@@ -142,6 +143,7 @@ def get_templates(data_dir, targetPOI):
             data_dir + "logo/cp5.jpg",
         ]
         main_template = data_dir + "logo/cp1.jpg"
+        opt_ratio = 0.097
     elif targetPOI == "CU":
         template_list = [
             # data_dir + "logo/cu1.jpg",
@@ -149,6 +151,7 @@ def get_templates(data_dir, targetPOI):
             data_dir + "logo/cu3.jpg",
         ]
         main_template = data_dir + "logo/cu2.jpg"
+        opt_ratio = 0.07
     elif targetPOI == "FRANGCORS_FANCY":
         template_list = [
             data_dir + "logo/ff1.jpg",
@@ -156,6 +159,7 @@ def get_templates(data_dir, targetPOI):
             data_dir + "logo/ff3.jpg",
         ]
         main_template = data_dir + "logo/ff1.jpg"
+        opt_ratio = 0.08
     elif targetPOI == "HUE_GIMBAB":
         template_list = [
             data_dir + "logo/h1.jpg",
@@ -164,6 +168,7 @@ def get_templates(data_dir, targetPOI):
             data_dir + "logo/h4.jpg",
         ]
         main_template = data_dir + "logo/h1.jpg"
+        opt_ratio = 0.08
     elif targetPOI == "LOTTERIA":
         template_list = [
             data_dir + "logo/l1.jpg",
@@ -173,6 +178,7 @@ def get_templates(data_dir, targetPOI):
             data_dir + "logo/l5.jpg",
         ]
         main_template = data_dir + "logo/l1.jpg"
+        opt_ratio = 0.08
     elif targetPOI == "LOTTE_TOUR":
         template_list = [
             data_dir + "logo/lg1.jpg",
@@ -180,6 +186,7 @@ def get_templates(data_dir, targetPOI):
             data_dir + "logo/lg3.jpg",
         ]
         main_template = data_dir + "logo/lg1.jpg"
+        opt_ratio = 0.12
     else:
         print('There is no POI named %s'%(targetPOI))
         raise IOError
@@ -190,7 +197,7 @@ def get_templates(data_dir, targetPOI):
         # template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
         templates.append(template)
     main_template = cv2.imread(main_template)
-    return templates, main_template
+    return templates, main_template, opt_ratio
 
 
 def get_gt_templates(targetPOI):

@@ -1,4 +1,4 @@
-from src.exploration.active_navigation import ActiveNavigationModule
+from active_navigation import ActiveNavigationModule
 import argparse
 import numpy as np
 import os
