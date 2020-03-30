@@ -29,24 +29,21 @@ data = joblib.load(np.random.choice(data_list))
 img_list = data['rgb']
 guidance_list = data['action']
 
-vis_mem = []
 for i in range(len(img_list)):
-    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i], None, test_mode=True)
-    vis_mem.append(anm.vis_mem)
+    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i], None, random_action=True)
 
-anm.vis_mem = torch.cat(vis_mem, 0)
 anm.enable_recovery = True
+anm.vis_mem = torch.cat(anm.vis_mem, 0)
 if anm.isRecoveryGuidanceEnabled():
     curr_img = Image.fromarray(img_list[np.random.randint(len(img_list))])
-    anm.calcRecoveryGuidance(state='lost', img=curr_img)
+    anm.calcRecoveryGuidance(img=curr_img)
     recovery_guidance = anm.recovery_guidance
     print('Recovery guidance from the last inserted visual memory : ', recovery_guidance)
-# return anm.getRecoveryGuidance()
+
 # if anm.isExplorationGuidanceEnabled():
 #   return anm.getExplorationGuidance()
     
 # anm.calcNeedForOptimalViewpointGuidance(topometric_pose_conf, poi_conf, entrance, entrance_conf, poi_successes)
-
 
 if anm.isOptimalViewpointGuidanceEnabled():
     image_list, sf_list, bbox_list, depth_list = file_utils.get_files(args.data_folder)

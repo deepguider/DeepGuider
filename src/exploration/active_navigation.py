@@ -44,7 +44,7 @@ class ActiveNavigationModule():
             pass
 
         self.enable_recovery = False
-        # self.recovery_policy = Recovery()
+        self.recovery_policy = Recovery()
         self.recovery_guidance = None
         
         self.enable_exploration = False
@@ -57,7 +57,7 @@ class ActiveNavigationModule():
             self.enable_ove = None
         self.NV = NV
         
-    def encodeVisualMemory(self, img, guidance, topometric_pose, test_mode=False):
+    def encodeVisualMemory(self, img, guidance, topometric_pose=None, random_action=False):
         """
         Visual Memory Encoder Submodule:
         A module running consistently which encodes visual trajectory information from the previous node to the current location.
@@ -75,7 +75,7 @@ class ActiveNavigationModule():
         - Localizer
         """
 
-        if test_mode:
+        if random_action:
             test_act = np.random.randint(0, 3)
             onehot_test_act = np.zeros(3)
             onehot_test_act[test_act] = 1
@@ -92,7 +92,8 @@ class ActiveNavigationModule():
             #     self.vis_mem = []
 
             if self.enable_recovery is False and self.enable_exploration is False and self.enable_ove is False:
-                action = guidance[-1]
+                action = np.zeros(3)
+                action[guidance] = 1
                 self.list2encode.append([img,action])
                 try:
                     tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
@@ -103,7 +104,7 @@ class ActiveNavigationModule():
                     self.vis_mem = None
 
 
-    def calcRecoveryGuidance(self, state, img=None):
+    def calcRecoveryGuidance(self, img=None):
         """
         Recovery Guide Provider Submodule:
         A module that guides a robot to return to the previous node, when StateDeterminant module
@@ -111,13 +112,13 @@ class ActiveNavigationModule():
         If matching the retrieved image with the visual memory fails, call Exploration Guidance Module instead.
 
         Input:
-        - state: state from StateDeterminant Module
+        # - state: state from StateDeterminant Module
         - img: curreunt image input (doesn't need if visual memory contains the current input image)
         Output:
         - action(s) guides to reach previous POI
         """
 
-        if state == 'lost' and self.enable_exploration is False:
+        if self.enable_exploration is False:
             self.enable_recovery = True
 
         if self.enable_recovery is True:
@@ -142,7 +143,7 @@ class ActiveNavigationModule():
                 # TODO: if recovery_policy fails to calculate the recovery actions,
                 #       just reverse the actions in the visual memory (using self.list2encode)
                 #       - can't implement now due to the ambiguity of the action space
-                # print("NotImplementedError")
+                print("NotImplementedError")
                 actions, done, info = ['backward']*3, False, False
 
             self.recovery_guidance = actions
@@ -150,11 +151,11 @@ class ActiveNavigationModule():
         if info is False:
             self.enable_recovery, self.enable_exploration = False, True
 
-        if done is True and state == 'normal':
+        if done is True:
             self.enable_recovery, self.enable_exploration = False, False
 
 
-    def calcExplorationGuidance(self, state, img):
+    def calcExplorationGuidance(self, img):
         """
         Exploration Guidance Provider Submodule:
         A module that guides the robot to reach nearby POI using nearby visual information and visual memory.
@@ -162,7 +163,7 @@ class ActiveNavigationModule():
         return to a node associated with the previous POI, based on the visual memory matching result.
 
         Input:
-        - state: state from StateDeterminant Module
+        # - state: state from StateDeterminant Module
         ---(topometric_pose_conf: confidence of topometric pose)
         - (tentative) POI detection result
         - img: curreunt image input
@@ -174,8 +175,8 @@ class ActiveNavigationModule():
         Dependency:
         - Localizer module
         """
-        if state == 'normal':
-            self.enable_exploration = False
+        # if state == 'normal':
+        #     self.enable_exploration = False
 
         if self.enable_exploration is True:
             try:
