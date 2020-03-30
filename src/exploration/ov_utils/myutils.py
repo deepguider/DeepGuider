@@ -6,7 +6,7 @@ import torchvision.transforms as transforms
 from torchvision import models
 from torch.autograd import Variable
 import matplotlib.image as mpimg
-import src.exploration.ov_utils.imgproc as imgproc
+import ov_utils.imgproc as imgproc
 
 model = models.resnet18(pretrained=True).cuda()
 model.eval()

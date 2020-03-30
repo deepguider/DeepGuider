@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-from src.exploration.active_navigation import ActiveNavigationModule
+from active_navigation import ActiveNavigationModule
 import argparse
-import src.exploration.ov_utils.file_utils as file_utils
-from src.exploration.ov_utils.navi_data import Navi
-from src.exploration.ov_utils.myutils import get_img
+import ov_utils.file_utils as file_utils
+from ov_utils.navi_data import Navi
+from ov_utils.myutils import get_img
 import numpy as np
 import joblib
 import os

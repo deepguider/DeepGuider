@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 import numpy as np 
 # import tensorflow as tf
-from src.exploration.ov_utils.myutils import make_mask, template_matching, get_surfacenormal, get_bbox, get_depth, get_img
-from src.exploration.ov_utils.config import normal_vector
-import src.exploration.ov_utils.file_utils as file_utils
-import src.exploration.eVM_utils.utils as eVM_utils
-from src.exploration.eVM_utils.eVM_model import encodeVisualMemory
-from src.exploration.recovery_policy import Recovery
+from ov_utils.myutils import make_mask, template_matching, get_surfacenormal, get_bbox, get_depth, get_img
+from ov_utils.config import normal_vector
+import ov_utils.file_utils as file_utils
+import eVM_utils.utils as eVM_utils
+from eVM_utils.eVM_model import encodeVisualMemory
+from recovery_policy import Recovery
 import torch
 import sys
 if '/opt/ros/kinetic/lib/python2.7/dist-packages' in sys.path:
@@ -34,14 +34,14 @@ class ActiveNavigationModule():
         # self.map = map_manager.getMap()
         self.args = args
         self.list2encode = []
-        self.vis_mem = None
-        # self.vis_mem_encoder = encodeVisualMemory()
+        self.vis_mem = []
+        self.vis_mem_encoder = encodeVisualMemory()
         self.vis_mem_encoder_model = None
-        # try:
-        #     self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
-        # except:
-        #     print("Cannot load pretrained encodeVisualMemory model")
-        #     pass
+        try:
+            self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
+        except:
+            print("Cannot load pretrained encodeVisualMemory model")
+            pass
 
         self.enable_recovery = False
         # self.recovery_policy = Recovery()
@@ -81,28 +81,26 @@ class ActiveNavigationModule():
             onehot_test_act[test_act] = 1
             tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
             tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
-            vis_mem = self.vis_mem_encoder(tensor_img, tensor_action)
-            self.list2encode.append(vis_mem)
-            self.vis_mem = vis_mem
+            self.list2encode.append([img, onehot_test_act])
+            self.vis_mem.append(self.vis_mem_encoder(tensor_img, tensor_action))
+            
 
         else:
-            # flush when reaching new node
-            if (self.map.getNode(topometric_pose.node_id).edges[topometric_pose.edge_idx].length - topometric_pose.dist) < 0.1: # topometric_pose.dist < 0.1:
-                self.list2encode = []
+            # # flush when reaching new node
+            # if (self.map.getNode(topometric_pose.node_id).edges[topometric_pose.edge_idx].length - topometric_pose.dist) < 0.1: # topometric_pose.dist < 0.1:
+            #     self.list2encode = []
+            #     self.vis_mem = []
 
             if self.enable_recovery is False and self.enable_exploration is False and self.enable_ove is False:
                 action = guidance[-1]
-                # self.list2encode.append([img,action])
+                self.list2encode.append([img,action])
                 try:
                     tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
                     tensor_action = torch.tensor(action).unsqueeze(0)
-                    vis_mem = self.vis_mem_encoder(tensor_img, tensor_action)
-                    self.list2encode.append(vis_mem)
+                    self.vis_mem.append(self.vis_mem_encoder(tensor_img, tensor_action))
                 except:
                     print("NotImplementedError")
-                    vis_mem = None
-
-                self.vis_mem = vis_mem
+                    self.vis_mem = None
 
 
     def calcRecoveryGuidance(self, state, img=None):
