@@ -7,6 +7,7 @@ from src.exploration.ov_utils.config import normal_vector
 import src.exploration.ov_utils.file_utils as file_utils
 import src.exploration.eVM_utils.utils as eVM_utils
 from src.exploration.eVM_utils.eVM_model import encodeVisualMemory
+from src.exploration.recovery_policy import Recovery
 import torch
 from random import sample
 import sys
@@ -45,7 +46,7 @@ class ActiveNavigationModule():
             pass
 
         self.enable_recovery = False
-        self.recovery_policy = None
+        self.recovery_policy = Recovery()
         self.recovery_guidance = None
         
         self.enable_exploration = False
@@ -126,16 +127,22 @@ class ActiveNavigationModule():
         if self.enable_recovery is True:
             try:
                 # calculate the actions to return to the starting point of visual memory # doesn't need pose
-                if img == None and len(self.list2encode) > 0:
+                if img is None and len(self.list2encode) > 0:
                     img = self.list2encode[-1][0]
-                else :
+                elif img is None:
                     print('Nothing to encode or calculate because there was no input at all')
                     raise Exception
                 # encode the input image
-                img_feature = self.vis_mem_encoder(img)
+                test_act = np.random.randint(0, 3)
+                onehot_test_act = np.zeros(3)
+                onehot_test_act[test_act] = 1
+                tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
+                tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
+                img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
                 # done: is back home, info: whether visual memory matching succeeded or not
                 actions, done, info = self.recovery_policy(self.vis_mem, img_feature)
             except:
+                raise
                 # TODO: if recovery_policy fails to calculate the recovery actions,
                 #       just reverse the actions in the visual memory (using self.list2encode)
                 #       - can't implement now due to the ambiguity of the action space

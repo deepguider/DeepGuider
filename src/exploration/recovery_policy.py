@@ -41,8 +41,8 @@ class MultiheadAttention(nn.Module):
 class Recovery(nn.Module):
     def __init__(self):
         super(Recovery, self).__init__()
-        self.Attention = MultiheadAttention(d_model=512, d_k=512, d_v=512)
-        self.fc = nn.Linear(512, 4)
+        self.Attention = MultiheadAttention(d_model=256, d_k=256, d_v=256)
+        self.fc = nn.Linear(256, 4)
         self.entropy_th = 1.0
 
 

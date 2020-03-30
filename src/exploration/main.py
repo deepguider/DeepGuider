@@ -5,6 +5,10 @@ import argparse
 import src.exploration.ov_utils.file_utils as file_utils
 import numpy as np
 from src.exploration.ov_utils.navi_data import Navi
+import joblib
+import os
+from PIL import Image
+import torch
 
 parser = argparse.ArgumentParser(description='Optimal viewpoint estimation')
 parser.add_argument('--data_folder', default='./data/optimal_viewpoint/', type=str, help='folder path to input images')
@@ -16,14 +20,23 @@ args = parser.parse_args()
 NV = Navi()
 anm = ActiveNavigationModule(args, NV)
 
+# load img + action trajectory
+data_list = [os.path.join('./data_exp/img_trajectory',x) for x in os.listdir('./data_exp/img_trajectory')]
+data = joblib.load(np.random.choice(data_list))
 
-# anm.encodeVisualMemory(img, guidance, topometric_pose)
+img_list = data['rgb']
+guidance_list = data['action']
 
-# anm.calcExplorationGuidance(state, img)
+vis_mem = []
+for i in range(len(img_list)):
+    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i], None, test_mode=True)
+    vis_mem.append(anm.vis_mem)
 
+anm.vis_mem = torch.cat(vis_mem, 0)
 anm.enable_recovery = True
 if anm.isRecoveryGuidanceEnabled():
-    anm.calcRecoveryGuidance(state='lost')
+    curr_img = Image.fromarray(img_list[np.random.randint(len(img_list))])
+    anm.calcRecoveryGuidance(state='lost', img=curr_img)
     recovery_guidance = anm.recovery_guidance
     print('Recovery guidance from the last inserted visual memory : ', recovery_guidance)
 
