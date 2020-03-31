@@ -28,6 +28,9 @@ int testSimpleMapManager()
 
     // Get the map
 	dg::Map map;
+	ok = manager.getMap(559542564800095, 700, map);
+	if (ok)
+		VVS_CHECK_EQUL(map.nodes.size(), 804);
 	ok = manager.getMap(36.382967999999998, 127.37138150000001, 700, map);
 	if (ok)
 		VVS_CHECK_EQUL(map.nodes.size(), 795);// 36.384063, 127.374733, 650.0));//
@@ -69,7 +72,7 @@ int testSimpleMapManager()
 	dg::StreetView sv;
 	ok = manager.getStreetView(32364501511, sv);
 	if (ok)
-		VVS_CHECK_EQUL(sv.heading, 36.378223300000002);
+		VVS_CHECK_EQUL(sv.heading, 270.360000);
 
 	// Get the StreetView image
 	cv::Mat sv_image;

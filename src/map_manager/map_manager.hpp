@@ -61,6 +61,8 @@ public:
 	std::string getIP();
 
 	bool getMap(double lat, double lon, double radius, Map& map);
+	bool getMap(ID node_id, double radius, Map& map);
+	bool getMap(cv::Point2i tile, Map& map);
 	bool getMap(Path path, Map& map);
 	Map& getMap();
 
@@ -70,12 +72,14 @@ public:
 
 	bool getPOI(double lat, double lon, double radius, std::list<POI>& poi_list);
 	bool getPOI(ID node_id, double radius, std::list<POI>& poi_list);
+	bool getPOI(cv::Point2i tile, std::list<POI>& poi_list);
 	std::list<POI>& getPOI();
 	bool getPOI(ID poi_id, POI& poi);
 	//std::vector<cv::Point2d> getPOIloc(const char* poiname = "UST");
 
 	bool getStreetView(double lat, double lon, double radius, std::list<StreetView>& sv_list);
 	bool getStreetView(ID node_id, double radius, std::list<StreetView>& sv_list);
+	bool getStreetView(cv::Point2i tile, std::list<StreetView>& sv_list);
 	std::list<StreetView>& getStreetView();
 	bool getStreetView(ID sv_id, StreetView& sv);
 	bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 10);
@@ -107,7 +111,7 @@ protected:
 	 * @param z zoom
 	 * @return Result of success (true) or failure (false)
 	 */
-	bool loadMap(double lat, double lon, double radius);
+	//bool loadMap(double lat, double lon, double radius);
 
 	bool downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths = 2);
 	bool parsePath(const char* json);

@@ -330,8 +330,39 @@ bool MapManager::parseMap(const char* json)
 
 	return true;
 }
+//
+//bool MapManager::loadMap(double lat, double lon, double radius)
+//{
+//	if (m_isMap)
+//	{
+//		delete m_map;
+//		m_isMap = false;
+//
+//		m_path.pts.clear();
+//	}
+//	m_map = new Map();
+//	m_isMap = true;
+//    //m_map->nodes.clear();
+//	m_json = "";
+//
+//	// by communication
+//	bool ok = downloadMap(lat, lon, radius); // 1000.0);
+//	if (!ok) return false;
+//	//decodeUni();
+//	const char* json = m_json.c_str();
+////#ifdef _DEBUG
+////	fprintf(stdout, "%s\n", json);
+////#endif
+//
+//	return parseMap(json);
+//}
 
-bool MapManager::loadMap(double lat, double lon, double radius)
+Map& MapManager::getMap()
+{
+	return *m_map;
+}
+
+bool MapManager::getMap(double lat, double lon, double radius, Map& map)
 {
 	if (m_isMap)
 	{
@@ -342,29 +373,79 @@ bool MapManager::loadMap(double lat, double lon, double radius)
 	}
 	m_map = new Map();
 	m_isMap = true;
-    //m_map->nodes.clear();
+	//m_map->nodes.clear();
 	m_json = "";
 
 	// by communication
-	bool ok = downloadMap(lat, lon, radius); // 1000.0);
+	bool ok = downloadMap(lat, lon, radius);
 	if (!ok) return false;
 	//decodeUni();
 	const char* json = m_json.c_str();
-//#ifdef _DEBUG
-//	fprintf(stdout, "%s\n", json);
-//#endif
+	//#ifdef _DEBUG
+	//	fprintf(stdout, "%s\n", json);
+	//#endif
 
-	return parseMap(json);
+	ok = parseMap(json);
+	if (!ok) return false;
+	map = getMap();
+
+	return true;
 }
 
-Map& MapManager::getMap()
+bool MapManager::getMap(ID node_id, double radius, Map& map)
 {
-	return *m_map;
+	if (m_isMap)
+	{
+		delete m_map;
+		m_isMap = false;
+
+		m_path.pts.clear();
+	}
+	m_map = new Map();
+	m_isMap = true;
+	//m_map->nodes.clear();
+	m_json = "";
+
+	// by communication
+	bool ok = downloadMap(node_id, radius);
+	if (!ok) return false;
+	//decodeUni();
+	const char* json = m_json.c_str();
+	//#ifdef _DEBUG
+	//	fprintf(stdout, "%s\n", json);
+	//#endif
+
+	ok = parseMap(json);
+	if (!ok) return false;
+	map = getMap();
+
+	return true;
 }
 
-bool MapManager::getMap(double lat, double lon, double radius, Map& map)
+bool MapManager::getMap(cv::Point2i tile, Map& map)
 {
-	bool ok = loadMap(lat, lon, radius);
+	if (m_isMap)
+	{
+		delete m_map;
+		m_isMap = false;
+
+		m_path.pts.clear();
+	}
+	m_map = new Map();
+	m_isMap = true;
+	//m_map->nodes.clear();
+	m_json = "";
+
+	// by communication
+	bool ok = downloadMap(tile);
+	if (!ok) return false;
+	//decodeUni();
+	const char* json = m_json.c_str();
+	//#ifdef _DEBUG
+	//	fprintf(stdout, "%s\n", json);
+	//#endif
+
+	ok = parseMap(json);
 	if (!ok) return false;
 	map = getMap();
 
@@ -412,7 +493,25 @@ bool MapManager::getMap(Path path, Map& map)
 	double center_lat = (min_lat + max_lat) / 2;
 	double center_lon = (min_lon + max_lon) / 2;
 
-	bool ok = loadMap(center_lat, center_lon, (dist_metric / 2) + alpha);
+
+	if (m_isMap)
+	{
+		delete m_map;
+		m_isMap = false;
+
+		m_path.pts.clear();
+	}
+	m_map = new Map();
+	m_isMap = true;
+	//m_map->nodes.clear();
+	m_json = "";
+
+	// by communication
+	bool ok = downloadMap(center_lat, center_lon, (dist_metric / 2) + alpha);
+	if (!ok) return false;
+
+	const char* json = m_json.c_str();
+	ok = parseMap(json);
 	if (!ok) return false;
 
 	map = getMap();
@@ -710,6 +809,31 @@ bool MapManager::getPOI(double lat, double lon, double radius, std::list<POI>& p
 	return true;
 }
 
+bool MapManager::getPOI(cv::Point2i tile, std::list<POI>& poi_list)
+{
+	m_map->pois.clear();
+	m_json = "";
+
+	// by communication
+	downloadPOI(tile);
+	//decodeUni();
+	const char* json = m_json.c_str();
+	//#ifdef _DEBUG
+	//	fprintf(stdout, "%s\n", json);
+	//#endif
+	bool ok = parsePOI(json);
+	if (!ok)
+	{
+		m_map->pois.clear();
+
+		return false;
+	}
+
+	poi_list = getPOI();
+
+	return true;
+}
+
 bool MapManager::getPOI(ID poi_id, POI& poi)
 {
 	if(m_map->pois.size() == 0) 
@@ -793,7 +917,7 @@ bool MapManager::parseStreetView(const char* json)
 		if (!(name == "streetview" || name == "StreetView")) return false;
 		sv.floor = properties["floor"].GetInt();
 		sv.date = properties["date"].GetString();
-		sv.heading = properties["latitude"].GetDouble();
+		sv.heading = properties["heading"].GetDouble();
 		sv.lat = properties["latitude"].GetDouble();
 		sv.lon = properties["longitude"].GetDouble();
 
@@ -845,6 +969,31 @@ bool MapManager::getStreetView(ID node_id, double radius, std::list<StreetView>&
 //#ifdef _DEBUG
 //	fprintf(stdout, "%s\n", json);
 //#endif
+	bool ok = parseStreetView(json);
+	if (!ok)
+	{
+		m_map->views.clear();
+
+		return false;
+	}
+
+	sv_list = getStreetView();
+
+	return true;
+}
+
+bool MapManager::getStreetView(cv::Point2i tile, std::list<StreetView>& sv_list)
+{
+	m_map->views.clear();
+	m_json = "";
+
+	// by communication
+	downloadStreetView(tile);
+	//decodeUni();
+	const char* json = m_json.c_str();
+	//#ifdef _DEBUG
+	//	fprintf(stdout, "%s\n", json);
+	//#endif
 	bool ok = parseStreetView(json);
 	if (!ok)
 	{
