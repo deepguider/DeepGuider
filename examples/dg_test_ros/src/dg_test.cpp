@@ -67,7 +67,7 @@ protected:
     dg::VPS m_vps;
     dg::SimpleLocalizer m_localizer;
     dg::MapManager m_map_manager;
-    dg::Guidance m_guider;
+    dg::GuidanceManager m_guider;
 
     cv::Mutex webcam_mutex;
     cv::Mat webcam_image;
@@ -75,12 +75,16 @@ protected:
     dg::LatLon webcam_gps;
     std::thread* vps_thread = nullptr;
     std::thread* poi_thread = nullptr;
+    std::thread* roadTheta_thread = nullptr;
     static void threadfunc_vps(DeepGuider* guider);
     static void threadfunc_poi(DeepGuider* guider);
-    bool enable_vps = false;
+    static void threadfunc_roadTheta(DeepGuider* guider);    
+    bool enable_vps = true;
     bool enable_poi = false;
+    bool enable_roadTheta = false;
     bool is_vps_running = false;
     bool is_poi_running = false;
+    bool is_roadTheta_running = false;
     void terminateThreadFunctions();
 
     // System variables
@@ -95,7 +99,23 @@ protected:
     cv::Mat map_image;
     dg::RoadMap road_map;
     dg::CanvasInfo map_info;
+
+    static std::string map_server_ip;
+
+    // guidance icons
+    cv::Mat icon_forward;
+    cv::Mat mask_forward;
+    cv::Mat icon_turn_left;
+    cv::Mat mask_turn_left;
+    cv::Mat icon_turn_right;
+    cv::Mat mask_turn_right;
+    cv::Mat icon_turn_back;
+    cv::Mat mask_turn_back;
+    void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
 };
+
+std::string DeepGuider::map_server_ip = "129.254.87.96";    // default: 127.0.0.1 (localhost)
+
 
 DeepGuider::DeepGuider(ros::NodeHandle& nh) : nh_dg(nh), m_wait_sec(0.1)
 {
@@ -116,9 +136,9 @@ DeepGuider::DeepGuider(ros::NodeHandle& nh) : nh_dg(nh), m_wait_sec(0.1)
 
 DeepGuider::~DeepGuider()
 {
-    m_roadTheta.clear();
-    m_poi.clear();
-    m_vps.clear();
+    if(enable_vps) m_vps.clear();
+    if(enable_poi) m_poi.clear();
+    if(enable_roadTheta) m_roadTheta.clear();
 
     close_python_environment();
 }
@@ -128,10 +148,12 @@ bool DeepGuider::initialize()
     printf("Initialize deepguider system...\n");
 
     // initialize python
-    if (!init_python_environment("python3", "")) return false;
+    bool threaded_run_python = true;
+    if (!init_python_environment("python3", "", threaded_run_python)) return false;
     printf("\tPython environment initialized!\n");
 
     // initialize map manager
+    m_map_manager.setIP(map_server_ip);
     if (!m_map_manager.initialize()) return false;
     printf("\tMapManager initialized!\n");
 
@@ -143,20 +165,98 @@ bool DeepGuider::initialize()
     //if (!m_guidance.initialize()) return false;
     printf("\tGuidance initialized!\n");
 
-    // initialize roadTheta
-    if (!m_roadTheta.initialize("road_direction_recognizer", "/work/deepguider/src/road_recog")) return false;
-    printf("\tRoadTheta initialized!\n");
-
-    // initialize POI
-    //if (enable_poi && !m_poi.initialize()) return false;
-    printf("\tPOI initialized!\n");
-
     // initialize VPS
     if (enable_vps && !m_vps.initialize("vps", "/work/deepguider/src/vps")) return false;
-    printf("\tVPS initialized!\n");
+    if (enable_vps) printf("\tVPS initialized!\n");
+
+    // initialize POI
+    if (enable_poi && !m_poi.initialize("poi_recognizer", "/work/deepguider/src/poi_recog")) return false;
+    if (enable_poi) printf("\tPOI initialized!\n");
+
+    // initialize roadTheta
+    if (enable_roadTheta && !m_roadTheta.initialize("road_direction_recognizer", "/work/deepguider/src/road_recog")) return false;
+    if (enable_roadTheta) printf("\tRoadTheta initialized!\n");
+
+    // load icon images
+    icon_forward = cv::imread("data/forward.png");
+    icon_turn_left = cv::imread("data/turn_left.png");
+    icon_turn_right = cv::imread("data/turn_right.png");
+    icon_turn_back = cv::imread("data/turn_back.png");
+    cv::threshold(icon_forward, mask_forward, 250, 1, cv::THRESH_BINARY_INV);
+    cv::threshold(icon_turn_left, mask_turn_left, 250, 1, cv::THRESH_BINARY_INV);
+    cv::threshold(icon_turn_right, mask_turn_right, 250, 1, cv::THRESH_BINARY_INV);
+    cv::threshold(icon_turn_back, mask_turn_back, 250, 1, cv::THRESH_BINARY_INV);
 
     return true;
 }
+
+
+void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect)
+{
+    int guide_cx = rect.x + rect.width / 2;
+    int guide_cy = rect.y + icon_forward.rows / 2 + 40;
+    cv::Point center_pos(guide_cx, guide_cy);
+
+    std::string dir_msg;
+    dg::GuidanceManager::Motion cmd = guide.action_current.cmd;
+    if (cmd == dg::GuidanceManager::Motion::GO_FORWARD)
+    {
+        cv::Mat& icon = icon_forward;
+        cv::Mat& mask = mask_forward;
+        int x1 = center_pos.x - icon.cols / 2;
+        int y1 = center_pos.y - icon.rows / 2;
+        cv::Rect rect(x1, y1, icon.cols, icon.rows);
+        if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
+        dir_msg = "[Guide] GO_FORWARD";
+    }
+    if (cmd == dg::GuidanceManager::Motion::TURN_LEFT)
+    {
+        cv::Mat& icon = icon_turn_left;
+        cv::Mat& mask = mask_turn_left;
+        int x1 = center_pos.x - icon.cols + icon.cols / 6;
+        int y1 = center_pos.y - icon.rows / 2;
+        cv::Rect rect(x1, y1, icon.cols, icon.rows);
+        if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
+        dir_msg = "[Guide] TURN_LEFT";
+    }
+    if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT)
+    {
+        cv::Mat& icon = icon_turn_right;
+        cv::Mat& mask = mask_turn_right;
+        int x1 = center_pos.x - icon.cols / 6;
+        int y1 = center_pos.y - icon.rows / 2;
+        cv::Rect rect(x1, y1, icon.cols, icon.rows);
+        if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
+        dir_msg = "[Guide] TURN_RIGHT";
+    }
+    if (cmd == dg::GuidanceManager::Motion::TURN_BACK)
+    {
+        cv::Mat& icon = icon_turn_back;
+        cv::Mat& mask = mask_turn_back;
+        int x1 = center_pos.x - icon.cols / 2;
+        int y1 = center_pos.y - icon.rows / 2;
+        cv::Rect rect(x1, y1, icon.cols, icon.rows);
+        if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
+        dir_msg = "[Guide] TURN_BACK";
+    }
+
+    // show direction message
+    cv::Point msg_offset = rect.tl() + cv::Point(10, 30);
+    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
+    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+
+    // show distance message
+    msg_offset = center_pos + cv::Point(50, 10);
+    std::string distance = cv::format("D=%.2lfm", guide.distance_to_remain);
+    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
+    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+
+    // show guidance message
+    msg_offset = rect.tl() + cv::Point(0, rect.height + 25);
+    cv::putText(image, guide.msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 255), 4);
+    cv::putText(image, guide.msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 0), 2);
+}
+
 
 int DeepGuider::run()
 {
@@ -181,7 +281,8 @@ int DeepGuider::run()
     printf("\tgps_dest: lat=%lf, lon=%lf\n", gps_dest.lat, gps_dest.lon);
 
     // generate path to the destination
-    dg::Path path = m_map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon);
+    dg::Path path;
+    VVS_CHECK_TRUE(m_map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon, path));
     dg::ID nid_start = path.pts.front().node->id;
     dg::ID nid_dest = path.pts.back().node->id;
     printf("\tPath generated! start=%zu, dest=%zu\n", nid_start, nid_dest);
@@ -230,7 +331,7 @@ int DeepGuider::run()
     VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 200, 100, 100 }));
     //VVS_CHECK_TRUE(painter.setParamValue("edge_thickness", 2));
 
-    const char* background_file = "/work/deepguider/bin/data/NaverMap_ETRI(Satellite)_191127.png";
+    const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png";
     map_image = cv::imread(background_file);
     VVS_CHECK_TRUE(!map_image.empty());
     road_map = m_localizer.getMap();
@@ -252,15 +353,6 @@ int DeepGuider::run()
     printf("\tGUI map initialized!\n");
     cv::namedWindow("deep_guider");
 
-    // guidance: load files for guidance test (ask JSH)
-    VVS_CHECK_TRUE(m_guider.setPathNMap(path, map));
-    VVS_CHECK_TRUE(m_guider.initializeGuides());
-
-    // guidance: Initial move (ask JSH)
-    dg::Guidance::MoveStatus cur_status;
-    std::vector<dg::Guidance::RobotGuide> cur_guide;
-    cur_guide = m_guider.getInitGuide();
-
     // localizer: set initial pose of localizer
     dg::ID id_invalid = 0;
     Polar2 rel_pose_defualt(-1, CV_PI);     // default relative pose (invalid)
@@ -274,9 +366,18 @@ int DeepGuider::run()
     dg::LatLon pose_gps = m_localizer.getPoseGPS();
     double pose_confidence = m_localizer.getPoseConfidence();
 
+    // guidance: init map and path for guidance
+    VVS_CHECK_TRUE(m_guider.setPathNMap(path, map));
+    VVS_CHECK_TRUE(m_guider.initializeGuides());
+
+    dg::GuidanceManager::MoveStatus cur_status;
+    dg::GuidanceManager::Guidance cur_guide;
+    cur_status = m_guider.applyPose(pose_topo);
+
     // run recognizer threads
     if (enable_vps) vps_thread = new std::thread(threadfunc_vps, this);
     if (enable_poi) poi_thread = new std::thread(threadfunc_poi, this);
+    if (enable_roadTheta) roadTheta_thread = new std::thread(threadfunc_roadTheta, this);
 
     ros::Rate loop(1 / m_wait_sec);
     while (ros::ok())
@@ -287,7 +388,6 @@ int DeepGuider::run()
         loop.sleep();
     }
 
-    // terminate recoginizer threads
     terminateThreadFunctions();
 
     printf("End deepguider system...\n");
@@ -353,7 +453,7 @@ void DeepGuider::threadfunc_vps(DeepGuider* guider)
         int N = 3;  // top-3
         double gps_accuracy = 1;   // 0: search radius = 230m ~ 1: search radius = 30m
         dg::Polar2 rel_pose_defualt(-1, CV_PI);     // default relative pose (invalid)
-        if (!webcam_image.empty() && guider->m_vps.apply(webcam_image, N, webcam_gps.lat, webcam_gps.lon, gps_accuracy, webcam_time))
+        if (!webcam_image.empty() && guider->m_vps.apply(webcam_image, N, webcam_gps.lat, webcam_gps.lon, gps_accuracy, webcam_time, map_server_ip.c_str()))
         {
             std::vector<dg::ID> ids;
             std::vector<dg::Polar2> obs;
@@ -363,12 +463,13 @@ void DeepGuider::threadfunc_vps(DeepGuider* guider)
             printf("[VPS]\n");
             for (int k = 0; k < (int)streetviews.size(); k++)
             {
+                if (streetviews[k].id <= 0 || streetviews[k].confidence <= 0) continue;        // invalid data
                 ids.push_back(streetviews[k].id);
                 obs.push_back(rel_pose_defualt);
                 confs.push_back(streetviews[k].confidence);
                 printf("\ttop%d: id=%zu, confidence=%lf, ts=%lf\n", k, streetviews[k].id, streetviews[k].confidence, webcam_time);
             }
-            VVS_CHECK_TRUE(guider->m_localizer.applyLocClue(ids, obs, webcam_time, confs));
+            if (ids.size() > 0) VVS_CHECK_TRUE(guider->m_localizer.applyLocClue(ids, obs, webcam_time, confs));
         }
     }
     guider->is_vps_running = false;
@@ -383,7 +484,6 @@ void DeepGuider::threadfunc_poi(DeepGuider* guider)
         guider->webcam_mutex.lock();
         cv::Mat webcam_image = guider->webcam_image.clone();
         dg::Timestamp webcam_time = guider->webcam_time;
-        dg::LatLon webcam_gps = guider->webcam_gps;
         guider->webcam_mutex.unlock();
 
         if (!webcam_image.empty() && guider->m_poi.apply(webcam_image, webcam_time))
@@ -394,28 +494,52 @@ void DeepGuider::threadfunc_poi(DeepGuider* guider)
     guider->is_poi_running = false;
 }
 
+// Thread fnuction for RoadTheta
+void DeepGuider::threadfunc_roadTheta(DeepGuider* guider)
+{
+    guider->is_roadTheta_running = true;
+    while (guider->enable_roadTheta)
+    {
+        guider->webcam_mutex.lock();
+        cv::Mat webcam_image = guider->webcam_image.clone();
+        dg::Timestamp webcam_time = guider->webcam_time;
+        dg::LatLon webcam_gps = guider->webcam_gps;
+        guider->webcam_mutex.unlock();
+
+        if (!webcam_image.empty() && guider->m_roadTheta.apply(webcam_image, webcam_time))
+        {
+            //TODO
+        }
+    }
+    guider->is_roadTheta_running = false;
+}
+
+
 void DeepGuider::terminateThreadFunctions()
 {
-    if (vps_thread == nullptr && poi_thread == nullptr) return;
+    if (vps_thread == nullptr && poi_thread == nullptr && roadTheta_thread == nullptr) return;
 
     // disable all thread running
     enable_vps = false;
     enable_poi = false;
+    enable_roadTheta = false;
 
     // wait up to 4000 ms at maximum
     for (int i = 0; i<40; i++)
     {
-        if (!is_vps_running && !is_poi_running) break;
+        if (!is_vps_running && !is_poi_running && !is_roadTheta_running) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     // wait child thread to terminate
     if (is_vps_running) vps_thread->join();
     if (is_poi_running) poi_thread->join();
+    if (is_roadTheta_running) roadTheta_thread->join();
 
     // clear threads
     if (vps_thread) delete vps_thread;
     if (poi_thread) delete poi_thread;
+    if (roadTheta_thread) delete roadTheta_thread;
 }
 
 // A callback function for subscribing a RGB image

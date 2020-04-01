@@ -25,14 +25,14 @@ namespace dg
         * Initialize the module
         * @return true if successful (false if failed)
         */
-        bool initialize()
+        bool initialize(const char* module_name = "poi_recognizer", const char* module_path = "./../src/poi_recog", const char* class_name = "POIRecognizer", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
         {
             PyGILState_STATE state;
             bool ret;
 
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            ret = _initialize("poi_recognizer", "./../src/poi_recog", "POIRecognizer");
+            ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
 
