@@ -4,9 +4,9 @@ import numpy as np
 from ov_utils.myutils import make_mask, template_matching, get_surfacenormal, get_bbox, get_depth, get_img
 from ov_utils.config import normal_vector
 import ov_utils.file_utils as file_utils
-# import eVM_utils.utils as eVM_utils
-# from eVM_utils.eVM_model import encodeVisualMemory
-# from recovery_policy import Recovery
+import eVM_utils.utils as eVM_utils
+from eVM_utils.eVM_model import encodeVisualMemory
+from recovery_policy import Recovery
 import torch
 import sys
 if '/opt/ros/kinetic/lib/python2.7/dist-packages' in sys.path:
@@ -35,7 +35,7 @@ class ActiveNavigationModule():
         self.args = args
         self.list2encode = []
         self.vis_mem = []
-        # self.vis_mem_encoder = encodeVisualMemory()
+        self.vis_mem_encoder = encodeVisualMemory()
         self.vis_mem_encoder_model = None
         try:
             self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
@@ -44,7 +44,7 @@ class ActiveNavigationModule():
             pass
 
         self.enable_recovery = False
-        # self.recovery_policy = Recovery()
+        self.recovery_policy = Recovery()
         self.recovery_guidance = None
         
         self.enable_exploration = False
