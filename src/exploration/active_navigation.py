@@ -233,8 +233,12 @@ class ActiveNavigationModule():
         if self.enable_ove:
             if not self.central_flag:
                 self.ov_guidance = self.viewpoint_to_centview(img_path, target_poi)
-            else:
+                if np.abs(self.ov_guidance[2]) < 15:
+                    self.central_flag = True
+
+            if self.central_flag:
                 self.ov_guidance = self.central_to_optview(img_path, target_poi)
+                self.central_flag = False
 
     def viewpoint_to_centview(self, img_path, target_poi):
         heading = 0
@@ -378,5 +382,3 @@ class ActiveNavigationModule():
 
 # if __name__ == "__main__":
 #   anm = ActiveNavigationModule()
-
-
