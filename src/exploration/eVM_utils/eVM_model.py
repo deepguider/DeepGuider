@@ -64,9 +64,9 @@ class encodeVisualMemory(nn.Module):
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
 
         self.fc1 = nn.Linear(512 * self.out_size * self.out_size, 512 * 2, bias=True)
-        self.fc2 = nn.Linear(512 * 2, 512, bias=True)
+        self.fc2 = nn.Linear(512 * 2, 256, bias=True)
 
-        self.visual_memory_fc = FCN_2layer((512 + self.action_dim), 512, 256, activation='relu')
+        self.visual_memory_fc = FCN_2layer((256 + self.action_dim), 512, 256, activation='relu')
 
     def forward(self, x, act):
         x = self.conv1(x)
@@ -88,4 +88,4 @@ class encodeVisualMemory(nn.Module):
         mem = torch.cat([x, act], -1)
         mem = self.visual_memory_fc(mem)
 
-        return mem
+        return mem, x 

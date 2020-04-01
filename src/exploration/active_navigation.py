@@ -84,7 +84,8 @@ class ActiveNavigationModule():
             tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
             tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
             self.list2encode.append([img, onehot_test_act])
-            self.vis_mem.append(self.vis_mem_encoder(tensor_img, tensor_action))
+            vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action)
+            self.vis_mem.append(vis_mem_seg)
             
 
         else:
@@ -100,7 +101,8 @@ class ActiveNavigationModule():
                 try:
                     tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
                     tensor_action = torch.tensor(action).unsqueeze(0)
-                    self.vis_mem.append(self.vis_mem_encoder(tensor_img, tensor_action))
+                    vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action)
+                    self.vis_mem.append(vis_mem_seg)
                 except:
                     print("NotImplementedError")
                     self.vis_mem = None
@@ -136,7 +138,7 @@ class ActiveNavigationModule():
                 onehot_test_act[test_act] = 1
                 tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
                 tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
-                img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
+                _, img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
                 # done: is back home, info: whether visual memory matching succeeded or not
                 actions, done, info = self.recovery_policy(self.vis_mem, img_feature)
             except:
