@@ -1,7 +1,7 @@
 #ifndef __GRAPH_PAINTER__
 #define __GRAPH_PAINTER__
 
-#include "opencx.hpp"
+#include "utils/opencx.hpp"
 #include "localizer/directed_graph.hpp"
 
 namespace dg

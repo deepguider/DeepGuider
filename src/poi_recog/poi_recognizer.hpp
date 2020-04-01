@@ -2,7 +2,7 @@
 #define __POI_RECOGNIZER__
 
 #include "dg_core.hpp"
-#include "python_embedding.hpp"
+#include "utils/python_embedding.hpp"
 
 using namespace std;
 
