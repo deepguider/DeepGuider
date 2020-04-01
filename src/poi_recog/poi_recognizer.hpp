@@ -16,33 +16,67 @@ namespace dg
     };
 
     /**
-     * @brief C++ Wrapper of Python module - POIRecognizer
-     */
+    * @brief C++ Wrapper of Python module - POIRecognizer
+    */
     class POIRecognizer : public PythonModuleWrapper
     {
     public:
         /**
-         * Initialize the module
-         * @return true if successful (false if failed)
-         */
+        * Initialize the module
+        * @return true if successful (false if failed)
+        */
         bool initialize()
         {
-            return _initialize("poi_recognizer", "./../src/poi_recog", "POIRecognizer");
+            PyGILState_STATE state;
+            bool ret;
+
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
+
+            ret = _initialize("poi_recognizer", "./../src/poi_recog", "POIRecognizer");
+
+            if (isThreadingEnabled()) PyGILState_Release(state);
+
+            return ret;
         }
 
         /**
-         * Reset variables and clear the memory
-         */
+        * Reset variables and clear the memory
+        */
         void clear()
         {
+            PyGILState_STATE state;
+
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
+
             _clear();
+
+            if (isThreadingEnabled()) PyGILState_Release(state);
         }
 
         /**
-         * Run once the module for a given input
-         * @return true if successful (false if failed)
-         */
+        * Run once the module for a given input (support thread run)
+        * @return true if successful (false if failed)
+        */
         bool apply(cv::Mat image, dg::Timestamp t)
+        {
+            PyGILState_STATE state;
+            bool ret;
+
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
+
+            /* Call Python/C API functions here */
+            ret = _apply(image, t);
+
+            if (isThreadingEnabled()) PyGILState_Release(state);
+
+            return ret;
+        }
+
+        /**
+        * Run once the module for a given input
+        * @return true if successful (false if failed)
+        */
+        bool _apply(cv::Mat image, dg::Timestamp t)
         {
             // Set function arguments
             int arg_idx = 0;
