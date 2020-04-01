@@ -9,6 +9,8 @@
 #include <sensor_msgs/Imu.h>
 #include <cv_bridge/cv_bridge.h>
 
+#define VVS_NO_ASSERT
+
 #include "dg_core.hpp"
 #include "dg_map_manager.hpp"
 #include "dg_localizer.hpp"
@@ -16,11 +18,8 @@
 #include "dg_poi_recog.hpp"
 #include "dg_vps.hpp"
 #include "dg_guidance.hpp"
-#include "python_embedding.hpp"
+#include "dg_utils.hpp"
 #include <chrono>
-
-#define VVS_NO_ASSERT
-#include "vvs.h"
 
 using namespace dg;
 using namespace std;

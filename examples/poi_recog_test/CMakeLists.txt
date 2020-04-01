@@ -15,7 +15,7 @@ find_package( OpenCV 4.0 REQUIRED )
 
 INCLUDE_DIRECTORIES ( ${SRCDIR} ${PYTHON_INCLUDE_DIRS} )
 
-file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/poi_recog/*.cpp *.cpp)
+file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/poi_recog/*.cpp ${SRCDIR}/utils/*.cpp *.cpp)
  
 add_executable( ${PROJECT_NAME} ${SOURCES} )
 target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} )

@@ -1,3 +1,5 @@
+#define VVS_NO_ASSERT
+
 #include "dg_core.hpp"
 #include "dg_map_manager.hpp"
 #include "dg_localizer.hpp"
@@ -5,11 +7,8 @@
 #include "dg_poi_recog.hpp"
 #include "dg_vps.hpp"
 #include "dg_guidance.hpp"
-#include "python_embedding.hpp"
+#include "dg_utils.hpp"
 #include <chrono>
-
-#define VVS_NO_ASSERT
-#include "vvs.h"
 
 using namespace dg;
 using namespace std;
@@ -36,7 +35,7 @@ protected:
     bool enable_roadtheta = false;
     bool enable_vps = true;
     bool enable_poi = false;
-    
+
     bool recording = false;
     std::string map_server_ip = "129.254.87.96";    // default: 127.0.0.1 (localhost)
 
@@ -112,50 +111,50 @@ bool DeepGuiderSimple::initialize()
 
 void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect)
 {
-    int guide_cx = rect.x + rect.width/2;
-    int guide_cy = rect.y + icon_forward.rows/2 + 40;
+    int guide_cx = rect.x + rect.width / 2;
+    int guide_cy = rect.y + icon_forward.rows / 2 + 40;
     cv::Point center_pos(guide_cx, guide_cy);
 
     std::string dir_msg;
     dg::GuidanceManager::Motion cmd = guide.action_current.cmd;
-    if(cmd == dg::GuidanceManager::Motion::GO_FORWARD)
+    if (cmd == dg::GuidanceManager::Motion::GO_FORWARD)
     {
         cv::Mat& icon = icon_forward;
         cv::Mat& mask = mask_forward;
-        int x1 = center_pos.x - icon.cols/2;
-        int y1 = center_pos.y - icon.rows/2;
+        int x1 = center_pos.x - icon.cols / 2;
+        int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
-        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
+        if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] GO_FORWARD";
     }
-    if(cmd == dg::GuidanceManager::Motion::TURN_LEFT)
+    if (cmd == dg::GuidanceManager::Motion::TURN_LEFT)
     {
         cv::Mat& icon = icon_turn_left;
         cv::Mat& mask = mask_turn_left;
-        int x1 = center_pos.x - icon.cols + icon.cols/6;
-        int y1 = center_pos.y - icon.rows/2;
+        int x1 = center_pos.x - icon.cols + icon.cols / 6;
+        int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
-        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
+        if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] TURN_LEFT";
     }
-    if(cmd == dg::GuidanceManager::Motion::TURN_RIGHT)
+    if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT)
     {
         cv::Mat& icon = icon_turn_right;
         cv::Mat& mask = mask_turn_right;
-        int x1 = center_pos.x - icon.cols/6;
-        int y1 = center_pos.y - icon.rows/2;
+        int x1 = center_pos.x - icon.cols / 6;
+        int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
-        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
+        if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] TURN_RIGHT";
     }
-    if(cmd == dg::GuidanceManager::Motion::TURN_BACK)
+    if (cmd == dg::GuidanceManager::Motion::TURN_BACK)
     {
         cv::Mat& icon = icon_turn_back;
         cv::Mat& mask = mask_turn_back;
-        int x1 = center_pos.x - icon.cols/2;
-        int y1 = center_pos.y - icon.rows/2;
+        int x1 = center_pos.x - icon.cols / 2;
+        int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
-        if(rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
+        if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] TURN_BACK";
     }
 
@@ -193,36 +192,6 @@ std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_fil
     return data;
 }
 
-size_t write_data(char *ptr, size_t size, size_t nmemb, void *userdata)
-{
-    vector<uchar> *stream = (vector<uchar>*)userdata;
-    size_t count = size * nmemb;
-    stream->insert(stream->end(), ptr, ptr + count);
-    return count;
-}
-
-cv::Mat getStreeViewImage(dg::ID id, int timeout=10)
-{
-    std::string img_url = cv::format("http://129.254.87.96:10000/%zu/f", id);
-
-    std::vector<uchar> stream;
-    CURL *curl = curl_easy_init();
-    curl_easy_setopt(curl, CURLOPT_URL, img_url.c_str()); //the img url
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data); // pass the writefunction
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &stream); // pass the stream ptr to the writefunction
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout); // timeout if curl_easy hangs,
-    CURLcode res = curl_easy_perform(curl); // start curl
-    curl_easy_cleanup(curl); // cleanup
-
-    if(res == CURLE_OK && !stream.empty())
-    {
-        return cv::imdecode(stream, -1); // 'keep-as-is'        
-    }
-    else
-    {
-        return cv::Mat();
-    }
-}
 
 int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.csv"*/, const char* video_file /*= "data/191115_ETRI.avi"*/, const char* background_file /*= "data/NaverMap_ETRI(Satellite)_191127.png"*/)
 {
@@ -261,7 +230,8 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
     printf("\tgps_dest: lat=%lf, lon=%lf\n", gps_dest.lat, gps_dest.lon);
 
     // generate path to the destination
-    dg::Path path = m_map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon);
+    dg::Path path;
+    VVS_CHECK_TRUE(m_map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon, path));
     dg::ID nid_start = path.pts.front().node->id;
     dg::ID nid_dest = path.pts.back().node->id;
     printf("\tPath generated! start=%zu, dest=%zu\n", nid_start, nid_dest);
@@ -293,10 +263,11 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
     }
 
     // download streetview map
-    double lat_center = (path.pts.front().node->lat + path.pts.back().node->lat)/2;
-    double lon_center = (path.pts.front().node->lon + path.pts.back().node->lon)/2;
+    double lat_center = (path.pts.front().node->lat + path.pts.back().node->lat) / 2;
+    double lon_center = (path.pts.front().node->lon + path.pts.back().node->lon) / 2;
     double radius = 1000;
-    m_map_manager.getStreetView(lat_center, lon_center, radius);
+    std::list<StreetView> sv_list;
+    m_map_manager.getStreetView(lat_center, lon_center, radius, sv_list);
     printf("\tStreetView images are downloaded! nviews = %d\n", (int)map.views.size());
 
     // set map to localizer
@@ -362,7 +333,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
     int maxItr = (int)gps_data.size();
     int itr = 0;
     bool is_arrived = false;
-    while (!is_arrived && itr<maxItr)
+    while (!is_arrived && itr < maxItr)
     {
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
@@ -393,7 +364,6 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         int N = 3;  // top-3
         double gps_accuracy = 1.0;   // 0: search radius = 230m ~ 1: search radius = 30m
         std::vector<VPSResult> streetviews;
-        //if (enable_vps && !video_image.empty() && m_vps.apply(video_image, N, pose_gps.lat, pose_gps.lon, gps_accuracy, video_time))
         if (enable_vps && !video_image.empty() && m_vps.apply(video_image, N, pose_gps.lat, pose_gps.lon, gps_accuracy, video_time, map_server_ip.c_str()))
         {
             std::vector<dg::ID> ids;
@@ -403,16 +373,17 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
             printf("[VPS]\n");
             for (int k = 0; k < (int)streetviews.size(); k++)
             {
+                if (streetviews[k].id <= 0 || streetviews[k].confidence <= 0) continue;        // invalid data
                 ids.push_back(streetviews[k].id);
                 obs.push_back(rel_pose_defualt);
                 confs.push_back(streetviews[k].confidence);
                 printf("\ttop%d: id=%zu, confidence=%lf, ts=%lf\n", k, streetviews[k].id, streetviews[k].confidence, video_time);
             }
-            VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, video_time, confs));
+            if (ids.size() > 0) VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, video_time, confs));
         }
 
         // POI
-        if(enable_poi && !video_image.empty() && m_poi.apply(video_image, video_time))
+        if (enable_poi && !video_image.empty() && m_poi.apply(video_image, video_time))
         {
             std::vector<dg::ID> ids;
             std::vector<Polar2> obs;
@@ -466,21 +437,21 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         }
 
         // draw vps result
-        if(enable_vps && streetviews.size()>0)
+        if (enable_vps && streetviews.size() > 0)
         {
             // draw top-1 matching image
-            //cv::Mat streetview_image = getStreeViewImage(streetviews[0].id);
-            cv::Mat streetview_image = m_map_manager.getStreetViewImage(streetviews[0].id, "f");
-            if(!streetview_image.empty())
+            cv::Mat sv_image;
+            m_map_manager.getStreetViewImage(streetviews[0].id, sv_image, "f");
+            if (!sv_image.empty())
             {
-                double fy = (double)video_rect.height / streetview_image.rows;
-                cv::resize(streetview_image, streetview_image, cv::Size(), fy, fy);
-                cv::Point streetview_offset = video_offset;
-                streetview_offset.x = video_rect.x + video_rect.width + 20;
-                cv::Rect rect(streetview_offset, streetview_offset + cv::Point(streetview_image.cols, streetview_image.rows));
-                if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = streetview_image * 1;
+                double fy = (double)video_rect.height / sv_image.rows;
+                cv::resize(sv_image, sv_image, cv::Size(), fy, fy);
+                cv::Point sv_offset = video_offset;
+                sv_offset.x = video_rect.x + video_rect.width + 20;
+                cv::Rect rect(sv_offset, sv_offset + cv::Point(sv_image.cols, sv_image.rows));
+                if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = sv_image * 1;
 
-                cv::Point msg_offset = streetview_offset + cv::Point(10, 30);
+                cv::Point msg_offset = sv_offset + cv::Point(10, 30);
                 double font_scale = 0.8;
                 std::string str_confidence = cv::format("Confidence: %.2lf", streetviews[0].confidence);
                 cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
@@ -492,8 +463,8 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
             }
 
             // show gps position of top-1 matched image on the map
-            dg::StreetView sv = m_map_manager.getStreetView(streetviews[0].id);
-            if(sv.id == streetviews[0].id)
+            dg::StreetView sv;
+            if (m_map_manager.getStreetView(streetviews[0].id, sv))
             {
                 dg::Point2 sv_pos = m_localizer.toMetric(dg::LatLon(sv.lat, sv.lon));
                 painter.drawNode(image, map_info, dg::Point2ID(0, sv_pos.x, sv_pos.y), 6, 0, cv::Vec3b(255, 255, 0));
@@ -506,7 +477,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 8, 0, cx::COLOR_BLUE);
 
         // draw guidance output on the video image
-        if(!video_image.empty())
+        if (!video_image.empty())
         {
             drawGuidance(image, cur_guide, video_rect);
         }
@@ -534,7 +505,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         // update iteration
         itr++;
     }
-    if(recording) video.release();
+    if (recording) video.release();
 
     printf("End deepguider system...\n");
 
@@ -545,7 +516,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
 int main()
 {
     DeepGuiderSimple deepguider;
-    deepguider.initialize();
+    if (!deepguider.initialize()) return -1;
     deepguider.run();
 
     return 0;

@@ -1,13 +1,11 @@
 #include "dg_core.hpp"
 #include "dg_vps.hpp"
-#include "python_embedding.hpp"
+#include "dg_utils.hpp"
 #include <chrono>
 #include <iostream>
 #include <experimental/filesystem>
 #include <string>
 #include <thread>
-#include "vvs.h"
-#include "opencx.hpp"
 
 using namespace dg;
 using namespace std;
