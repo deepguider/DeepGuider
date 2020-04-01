@@ -633,7 +633,8 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	if (!ok) return false;
 
 	Path path = m_path;
-	ok = getMap(path, Map());
+	Map map;
+	ok = getMap(path, map);
 	if (!ok) return false;
 
 	m_path.pts.clear();
