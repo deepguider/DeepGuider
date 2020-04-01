@@ -277,10 +277,8 @@ class ActiveNavigationModule():
                     center_poi_theta = np.arccos(np.dot(sf_norm, center_sf_norm))
 
                     # Align the POI and the camera center
-                    if round((180 / np.pi * center_poi_theta) / 30) > 0 or ((bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 - w / 2) > w / 4:
-                        heading = self.NV.turn(30 / 180 * np.pi, POI_imgloc, verbose=self.args.verbose)
-                    else:
-                        heading = 0
+                    heading = 180 / np.pi * center_poi_theta
+                    heading = (abs(heading), -abs(heading))[POI_imgloc == "right"]
         return [0, 0, heading]
 
     def central_to_optview(self, file_path, target_poi):

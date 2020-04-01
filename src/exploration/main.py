@@ -55,4 +55,4 @@ if anm.isOptimalViewpointGuidanceEnabled():
         anm.calcOptimalViewpointGuidance(im_path, target_poi)
         guidance = anm.getOptimalViewpointGuidance()
         anm.enable_ove = False
-        print("Optimal Guidance [disp_x, disp_y, rot]: [%.2fm, %.2fm, %d]" % (guidance[0], guidance[1], guidance[2]))
+        print("Optimal Guidance [disp_x, disp_y, rot]: [%.2fm, %.2fm, %.2f degree]" % (guidance[0], guidance[1], guidance[2]))
