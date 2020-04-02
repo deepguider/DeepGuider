@@ -67,8 +67,7 @@ bool DeepGuiderSimple::initialize()
     printf("Initialize deepguider system...\n");
 
     // initialize python
-	bool threaded_run_python = true;
-    if (!init_python_environment("python3", "", threaded_run_python)) return false;
+    if (!init_python_environment("python3", "")) return false;
     printf("\tPython environment initialized!\n");
 
     // initialize map manager
@@ -118,7 +117,7 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
 
     std::string dir_msg;
     dg::GuidanceManager::Motion cmd = guide.action_current.cmd;
-    if (cmd == dg::GuidanceManager::Motion::GO_FORWARD)
+    if (cmd == dg::GuidanceManager::Motion::GO_FORWARD || cmd == dg::GuidanceManager::Motion::CROSS_FORWARD || cmd == dg::GuidanceManager::Motion::ENTER_FRONT || cmd == dg::GuidanceManager::Motion::EXIT_FRONT)
     {
         cv::Mat& icon = icon_forward;
         cv::Mat& mask = mask_forward;
@@ -126,9 +125,12 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
         int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
-        dir_msg = "[Guide] GO_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) dir_msg = "[Guide] GO_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD) dir_msg = "[Guide] CROSS_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::ENTER_FRONT) dir_msg = "[Guide] ENTER_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::EXIT_FRONT) dir_msg = "[Guide] EXIT_FORWARD";
     }
-    if (cmd == dg::GuidanceManager::Motion::TURN_LEFT)
+    if (cmd == dg::GuidanceManager::Motion::TURN_LEFT || cmd == dg::GuidanceManager::Motion::CROSS_LEFT || cmd == dg::GuidanceManager::Motion::ENTER_LEFT || cmd == dg::GuidanceManager::Motion::EXIT_LEFT)
     {
         cv::Mat& icon = icon_turn_left;
         cv::Mat& mask = mask_turn_left;
@@ -136,9 +138,12 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
         int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
-        dir_msg = "[Guide] TURN_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::TURN_LEFT) dir_msg = "[Guide] TURN_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::CROSS_LEFT) dir_msg = "[Guide] CROSS_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::ENTER_LEFT) dir_msg = "[Guide] ENTER_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::EXIT_LEFT) dir_msg = "[Guide] EXIT_LEFT";
     }
-    if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT)
+    if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT || cmd == dg::GuidanceManager::Motion::CROSS_RIGHT || cmd == dg::GuidanceManager::Motion::ENTER_RIGHT || cmd == dg::GuidanceManager::Motion::EXIT_RIGHT)
     {
         cv::Mat& icon = icon_turn_right;
         cv::Mat& mask = mask_turn_right;
@@ -146,7 +151,10 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
         int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
-        dir_msg = "[Guide] TURN_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT) dir_msg = "[Guide] TURN_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::CROSS_RIGHT) dir_msg = "[Guide] CROSS_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) dir_msg = "[Guide] ENTER_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) dir_msg = "[Guide] EXIT_RIGHT";
     }
     if (cmd == dg::GuidanceManager::Motion::TURN_BACK)
     {
@@ -158,7 +166,11 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] TURN_BACK";
     }
-
+    if (cmd == dg::GuidanceManager::Motion::UNKNOWN)
+    {
+        dir_msg = "[Guide] UNKNOWN";
+    }
+    
     // show direction message
     cv::Point msg_offset = rect.tl() + cv::Point(10, 30);
     cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
@@ -482,7 +494,6 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         {
             drawGuidance(image, cur_guide, video_rect);
         }
-        drawGuidance(image, cur_guide, video_rect);
 
         // draw status message (localization)
         cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3f (Lat: %.6f, Lon: %.6f)", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist, pose_gps.lat, pose_gps.lon);

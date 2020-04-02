@@ -73,6 +73,14 @@ protected:
     cv::Mat webcam_image;
     dg::Timestamp webcam_time;
     dg::LatLon webcam_gps;
+
+    cv::Mutex vps_mutex;
+    cv::Mat vps_sv_image;
+    dg::ID vps_sv_id;
+    double vps_sv_confidence;
+
+    cv::Mutex localizer_mutex;
+
     std::thread* vps_thread = nullptr;
     std::thread* poi_thread = nullptr;
     std::thread* roadTheta_thread = nullptr;
@@ -93,7 +101,7 @@ protected:
     bool path_initialized = false;
 
     // GUI support
-    bool recording = false;
+    bool recording = true;
     cx::VideoWriter video;
     dg::SimpleRoadPainter painter;
     cv::Mat map_image;
@@ -199,7 +207,7 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
 
     std::string dir_msg;
     dg::GuidanceManager::Motion cmd = guide.action_current.cmd;
-    if (cmd == dg::GuidanceManager::Motion::GO_FORWARD)
+    if (cmd == dg::GuidanceManager::Motion::GO_FORWARD || cmd == dg::GuidanceManager::Motion::CROSS_FORWARD || cmd == dg::GuidanceManager::Motion::ENTER_FRONT || cmd == dg::GuidanceManager::Motion::EXIT_FRONT)
     {
         cv::Mat& icon = icon_forward;
         cv::Mat& mask = mask_forward;
@@ -207,9 +215,12 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
-        dir_msg = "[Guide] GO_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) dir_msg = "[Guide] GO_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD) dir_msg = "[Guide] CROSS_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::ENTER_FRONT) dir_msg = "[Guide] ENTER_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::EXIT_FRONT) dir_msg = "[Guide] EXIT_FORWARD";
     }
-    if (cmd == dg::GuidanceManager::Motion::TURN_LEFT)
+    if (cmd == dg::GuidanceManager::Motion::TURN_LEFT || cmd == dg::GuidanceManager::Motion::CROSS_LEFT || cmd == dg::GuidanceManager::Motion::ENTER_LEFT || cmd == dg::GuidanceManager::Motion::EXIT_LEFT)
     {
         cv::Mat& icon = icon_turn_left;
         cv::Mat& mask = mask_turn_left;
@@ -217,9 +228,12 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
-        dir_msg = "[Guide] TURN_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::TURN_LEFT) dir_msg = "[Guide] TURN_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::CROSS_LEFT) dir_msg = "[Guide] CROSS_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::ENTER_LEFT) dir_msg = "[Guide] ENTER_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::EXIT_LEFT) dir_msg = "[Guide] EXIT_LEFT";
     }
-    if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT)
+    if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT || cmd == dg::GuidanceManager::Motion::CROSS_RIGHT || cmd == dg::GuidanceManager::Motion::ENTER_RIGHT || cmd == dg::GuidanceManager::Motion::EXIT_RIGHT)
     {
         cv::Mat& icon = icon_turn_right;
         cv::Mat& mask = mask_turn_right;
@@ -227,7 +241,10 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
-        dir_msg = "[Guide] TURN_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT) dir_msg = "[Guide] TURN_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::CROSS_RIGHT) dir_msg = "[Guide] CROSS_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) dir_msg = "[Guide] ENTER_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) dir_msg = "[Guide] EXIT_RIGHT";
     }
     if (cmd == dg::GuidanceManager::Motion::TURN_BACK)
     {
@@ -239,6 +256,10 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] TURN_BACK";
     }
+    if (cmd == dg::GuidanceManager::Motion::UNKNOWN)
+    {
+        dir_msg = "[Guide] UNKNOWN";
+    }    
 
     // show direction message
     cv::Point msg_offset = rect.tl() + cv::Point(10, 30);
@@ -269,7 +290,7 @@ int DeepGuider::run()
         time(&start_t);
         tm _tm = *localtime(&start_t);
         char szfilename[255];
-        strftime(szfilename, 255, "dg_test_%y%m%d_%H%M%S.avi", &_tm);
+        strftime(szfilename, 255, "dg_ros_%y%m%d_%H%M%S.avi", &_tm);
         std::string filename = szfilename;
         video.open(filename, 30);
     }
@@ -312,6 +333,14 @@ int DeepGuider::run()
             printf("\tpath[%d]: edge_id=%zu, id=%zu, length=%lf, type=%d\n", idx, edge->id, edge_id, edge->length, edge->type);
         }
     }
+
+    // download streetview map
+    double lat_center = (path.pts.front().node->lat + path.pts.back().node->lat) / 2;
+    double lon_center = (path.pts.front().node->lon + path.pts.back().node->lon) / 2;
+    double radius = 1000;
+    std::list<StreetView> sv_list;
+    m_map_manager.getStreetView(lat_center, lon_center, radius, sv_list);
+    printf("\tStreetView images are downloaded! nviews = %d\n", (int)map.views.size());
 
     // set map to localizer
     dg::LatLon ref_node(36.383837659737, 127.367880828442);
@@ -387,6 +416,7 @@ int DeepGuider::run()
         ros::spinOnce();
         loop.sleep();
     }
+    if(recording) video.release();
 
     terminateThreadFunctions();
 
@@ -402,29 +432,96 @@ bool DeepGuider::runOnce(double timestamp)
     // draw video image as subwindow on the map
     cv::Mat image = map_image.clone();
     cv::Mat video_image;
+    cv::Rect video_rect;
+    double video_resize_scale = 0.4;
+    cv::Point video_offset(32, 542);
     if (!webcam_image.empty())
     {
-        double video_resize_scale = 0.4;
-        cv::Point video_offset(32, 542);
         cv::resize(webcam_image, video_image, cv::Size(), video_resize_scale, video_resize_scale);
-        cv::Rect rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
-        if (rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = video_image * 1;
+        video_rect = cv::Rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
+        if (video_rect.br().x < image.cols && video_rect.br().y < image.rows) image(video_rect) = video_image * 1;
     }
 
-    // draw localization info
+    // draw vps result
+    if (enable_vps)
+    {
+        // draw top-1 matching image
+        double fy = (double)video_rect.height / vps_sv_image.rows;
+        cv::Mat sv_image;
+        dg::ID sv_id = 0;
+        double sv_confidence = 0;
+        vps_mutex.lock();
+        if(!vps_sv_image.empty())
+        {
+            cv::resize(vps_sv_image, sv_image, cv::Size(), fy, fy);
+            sv_id = vps_sv_id;
+            sv_confidence = vps_sv_confidence;
+        }
+        vps_mutex.unlock();
+
+        if (!sv_image.empty())
+        {
+            double fy = (double)video_rect.height / sv_image.rows;
+            cv::resize(sv_image, sv_image, cv::Size(), fy, fy);
+            cv::Point sv_offset = video_offset;
+            sv_offset.x = video_rect.x + video_rect.width + 20;
+            cv::Rect rect(sv_offset, sv_offset + cv::Point(sv_image.cols, sv_image.rows));
+            if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = sv_image * 1;
+
+            cv::Point msg_offset = sv_offset + cv::Point(10, 30);
+            double font_scale = 0.8;
+            std::string str_confidence = cv::format("Confidence: %.2lf", sv_confidence);
+            cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
+            cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
+            std::string str_id = cv::format("ID: %zu", sv_id);
+            msg_offset.y += 30;
+            cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
+            cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
+        }
+
+        // show gps position of top-1 matched image on the map
+        dg::StreetView sv;
+        if (sv_id > 0 && m_map_manager.getStreetView(sv_id, sv))
+        {
+            dg::Point2 sv_pos = m_localizer.toMetric(dg::LatLon(sv.lat, sv.lon));
+            painter.drawNode(image, map_info, dg::Point2ID(0, sv_pos.x, sv_pos.y), 6, 0, cv::Vec3b(255, 255, 0));
+        }
+    }
+
+    // draw localization & guidance info
     if (pose_initialized)
     {
-        // draw robot on the map        
+        // draw robot on the map
+        localizer_mutex.lock();
         dg::TopometricPose pose_topo = m_localizer.getPoseTopometric();
         dg::LatLon pose_gps = m_localizer.getPoseGPS();
         dg::Pose2 pose_m = m_localizer.toTopmetric2Metric(pose_topo);
+        double pose_confidence = m_localizer.getPoseConfidence();
+        localizer_mutex.unlock();
 
         painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 10, 0, cx::COLOR_YELLOW);
         painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 8, 0, cx::COLOR_BLUE);
 
         // draw status message (localization)
         cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3f (Lat: %.6f, Lon: %.6f)", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist, pose_gps.lat, pose_gps.lon);
-        cv::putText(image, info_topo, cv::Point(5, 30), cv::FONT_HERSHEY_PLAIN, 1.9, cv::Scalar(0, 200, 0), 2);
+        cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
+        cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+        std::string info_confidence = cv::format("Confidence: %.2lf", pose_confidence);
+        cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
+        cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+
+        // Guidance: generate navigation guidance
+        dg::GuidanceManager::MoveStatus cur_status;
+        dg::GuidanceManager::Guidance cur_guide;
+        cur_status = m_guider.applyPose(pose_topo);
+        cur_guide = m_guider.getGuidance(cur_status);
+        printf("%s\n", cur_guide.msg.c_str());
+
+        // draw guidance output on the video image
+        if (!video_image.empty())
+        {
+            drawGuidance(image, cur_guide, video_rect);
+        }
     }
 
     // recording
@@ -469,7 +566,39 @@ void DeepGuider::threadfunc_vps(DeepGuider* guider)
                 confs.push_back(streetviews[k].confidence);
                 printf("\ttop%d: id=%zu, confidence=%lf, ts=%lf\n", k, streetviews[k].id, streetviews[k].confidence, webcam_time);
             }
-            if (ids.size() > 0) VVS_CHECK_TRUE(guider->m_localizer.applyLocClue(ids, obs, webcam_time, confs));
+
+            if(ids.size() > 0)
+            {
+                guider->localizer_mutex.lock();
+                VVS_CHECK_TRUE(guider->m_localizer.applyLocClue(ids, obs, webcam_time, confs));
+                guider->localizer_mutex.unlock();
+
+                cv::Mat sv_image;
+                if(guider->m_map_manager.getStreetViewImage(ids[0], sv_image, "f") && !sv_image.empty())
+                {
+                    guider->vps_mutex.lock();
+                    guider->vps_sv_image = sv_image;
+                    guider->vps_sv_id = ids[0];
+                    guider->vps_sv_confidence = confs[0];
+                    guider->vps_mutex.unlock();
+                }
+                else
+                {
+                    guider->vps_mutex.lock();
+                    guider->vps_sv_image = cv::Mat();
+                    guider->vps_sv_id = ids[0];
+                    guider->vps_sv_confidence = confs[0];
+                    guider->vps_mutex.unlock();
+                }
+            }
+            else
+            {
+                guider->vps_mutex.lock();
+                guider->vps_sv_image = cv::Mat();
+                guider->vps_sv_id = 0;
+                guider->vps_sv_confidence = 0;
+                guider->vps_mutex.unlock();
+            }
         }
     }
     guider->is_vps_running = false;
@@ -540,6 +669,9 @@ void DeepGuider::terminateThreadFunctions()
     if (vps_thread) delete vps_thread;
     if (poi_thread) delete poi_thread;
     if (roadTheta_thread) delete roadTheta_thread;
+    vps_thread = nullptr;
+    poi_thread = nullptr;
+    roadTheta_thread = nullptr;
 }
 
 // A callback function for subscribing a RGB image
