@@ -114,8 +114,7 @@ void test_video_run(VPS& vps, bool recording = false, const char* video_file = "
 			gps_lat_d *= -1.0;
 		}
         gps_lat += gps_lat_d;
-        //VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
-        VVS_CHECK_TRUE(vps.thread_apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
+        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
 
         std::vector<VPSResult> streetviews;
         vps.get(streetviews);
