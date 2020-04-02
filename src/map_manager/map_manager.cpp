@@ -10,9 +10,14 @@ bool MapManager::initialize()
 	return true;
 }
 
-void MapManager::setIP(const std::string ip)
+bool MapManager::setIP(const std::string ip)
 {
 	m_ip = ip;
+
+	if (m_ip == ip)
+		return true;
+	else
+		return false;
 }
 
 std::string MapManager::getIP()
