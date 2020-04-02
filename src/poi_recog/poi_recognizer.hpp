@@ -2,7 +2,7 @@
 #define __POI_RECOGNIZER__
 
 #include "dg_core.hpp"
-#include "python_embedding.hpp"
+#include "utils/python_embedding.hpp"
 
 using namespace std;
 
@@ -16,33 +16,67 @@ namespace dg
     };
 
     /**
-     * @brief C++ Wrapper of Python module - POIRecognizer
-     */
+    * @brief C++ Wrapper of Python module - POIRecognizer
+    */
     class POIRecognizer : public PythonModuleWrapper
     {
     public:
         /**
-         * Initialize the module
-         * @return true if successful (false if failed)
-         */
-        bool initialize()
+        * Initialize the module
+        * @return true if successful (false if failed)
+        */
+        bool initialize(const char* module_name = "poi_recognizer", const char* module_path = "./../src/poi_recog", const char* class_name = "POIRecognizer", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
         {
-            return _initialize("poi_recognizer", "./../src/poi_recog", "POIRecognizer");
+            PyGILState_STATE state;
+            bool ret;
+
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
+
+            ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
+
+            if (isThreadingEnabled()) PyGILState_Release(state);
+
+            return ret;
         }
 
         /**
-         * Reset variables and clear the memory
-         */
+        * Reset variables and clear the memory
+        */
         void clear()
         {
+            PyGILState_STATE state;
+
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
+
             _clear();
+
+            if (isThreadingEnabled()) PyGILState_Release(state);
         }
 
         /**
-         * Run once the module for a given input
-         * @return true if successful (false if failed)
-         */
+        * Run once the module for a given input (support thread run)
+        * @return true if successful (false if failed)
+        */
         bool apply(cv::Mat image, dg::Timestamp t)
+        {
+            PyGILState_STATE state;
+            bool ret;
+
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
+
+            /* Call Python/C API functions here */
+            ret = _apply(image, t);
+
+            if (isThreadingEnabled()) PyGILState_Release(state);
+
+            return ret;
+        }
+
+        /**
+        * Run once the module for a given input
+        * @return true if successful (false if failed)
+        */
+        bool _apply(cv::Mat image, dg::Timestamp t)
         {
             // Set function arguments
             int arg_idx = 0;

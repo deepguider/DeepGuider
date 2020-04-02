@@ -4,9 +4,9 @@ import numpy as np
 from ov_utils.myutils import make_mask, template_matching, get_surfacenormal, get_bbox, get_depth, get_img
 from ov_utils.config import normal_vector
 import ov_utils.file_utils as file_utils
-# import eVM_utils.utils as eVM_utils
-# from eVM_utils.eVM_model import encodeVisualMemory
-# from recovery_policy import Recovery
+import eVM_utils.utils as eVM_utils
+from eVM_utils.eVM_model import encodeVisualMemory
+from recovery_policy import Recovery
 import torch
 import sys
 if '/opt/ros/kinetic/lib/python2.7/dist-packages' in sys.path:
@@ -35,7 +35,7 @@ class ActiveNavigationModule():
         self.args = args
         self.list2encode = []
         self.vis_mem = []
-        # self.vis_mem_encoder = encodeVisualMemory()
+        self.vis_mem_encoder = encodeVisualMemory()
         self.vis_mem_encoder_model = None
         try:
             self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
@@ -44,7 +44,7 @@ class ActiveNavigationModule():
             pass
 
         self.enable_recovery = False
-        # self.recovery_policy = Recovery()
+        self.recovery_policy = Recovery()
         self.recovery_guidance = None
         
         self.enable_exploration = False
@@ -84,7 +84,8 @@ class ActiveNavigationModule():
             tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
             tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
             self.list2encode.append([img, onehot_test_act])
-            self.vis_mem.append(self.vis_mem_encoder(tensor_img, tensor_action))
+            vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action)
+            self.vis_mem.append(vis_mem_seg)
             
 
         else:
@@ -100,7 +101,8 @@ class ActiveNavigationModule():
                 try:
                     tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
                     tensor_action = torch.tensor(action).unsqueeze(0)
-                    self.vis_mem.append(self.vis_mem_encoder(tensor_img, tensor_action))
+                    vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action)
+                    self.vis_mem.append(vis_mem_seg)
                 except:
                     print("NotImplementedError")
                     self.vis_mem = None
@@ -136,7 +138,7 @@ class ActiveNavigationModule():
                 onehot_test_act[test_act] = 1
                 tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
                 tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
-                img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
+                _, img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
                 # done: is back home, info: whether visual memory matching succeeded or not
                 actions, done, info = self.recovery_policy(self.vis_mem, img_feature)
             except:
@@ -231,60 +233,10 @@ class ActiveNavigationModule():
         """
 
         if self.enable_ove:
-            if not self.central_flag:
-                self.ov_guidance = self.viewpoint_to_centview(img_path, target_poi)
-            else:
-                self.ov_guidance = self.central_to_optview(img_path, target_poi)
+            self.ov_guidance = self.optimal_viewpoint(img_path, target_poi)
 
-    def viewpoint_to_centview(self, img_path, target_poi):
-        heading = 0
-        templates, main_template, _ = file_utils.get_templates(self.args.data_folder, targetPOI=target_poi)
-        img = get_img(self.args, img_path)
-        sf = get_surfacenormal(self.args, img_path)
-        bbox = get_bbox(self.args, img_path)
-        h, w, _ = img.shape
-        if len(bbox) > 0:
-            # Read all boxes from the detection results
-            bbs = []
-            for bb in bbox:
-                bbs.append(bb.rstrip().split(','))
-            bbox = np.stack([np.float32(bbs[i]) for i in range(len(bbs))])
-            bbox = np.reshape(bbox, [-1, 4, 2])
-
-            # Template matching (Target POI and the boxes)
-            template_matched, bbox, _, old_score = template_matching(img, bbox, templates, main_template)
-            bbox = np.reshape(bbox, [-1, 4, 2])
-
-            # Check that there is a bounding box which is matched with template (target POI)
-            if len(bbox) > 0 and template_matched:
-                bbox = bbox.astype(np.int32)
-                # Take surface normal to decide the amount of rotation
-                mask = make_mask(bbox, shape=[h, w])
-                sf_abs = sf[mask == 1]
-                sf_norm = np.mean(sf_abs, 0)
-                sf_norm = sf_norm * 2 - 1
-                sf_norm = sf_norm / np.linalg.norm(sf_norm, 2)
-
-                POI_imgloc = ("left", "right")[(bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 > w / 2]
-                # TODO: Deal with the various situations (there may exist sky in the center of the image)
-                # Rotate the agent until the POI is locate on the center
-                center_sf_norm = np.mean(sf[110:140, 235:265], (0, 1))
-                center_sf_norm = center_sf_norm * 2 - 1
-                center_sf_norm = center_sf_norm / np.linalg.norm(center_sf_norm, 2)
-
-                # Check that the bounding box is on the left or right buildings (not street or sky)
-                if abs(sf_norm[1]) < 0.8:
-                    center_poi_theta = np.arccos(np.dot(sf_norm, center_sf_norm))
-
-                    # Align the POI and the camera center
-                    if round((180 / np.pi * center_poi_theta) / 30) > 0 or ((bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 - w / 2) > w / 4:
-                        heading = self.NV.turn(30 / 180 * np.pi, POI_imgloc, verbose=self.args.verbose)
-                    else:
-                        heading = 0
-        return [0, 0, heading]
-
-    def central_to_optview(self, file_path, target_poi):
-        disp_x = disp_y = heading = 0
+    def optimal_viewpoint(self, file_path, target_poi):
+        disp_right = disp_front = heading = center_poi_theta = 0
         templates, main_template, opt_ratio = file_utils.get_templates(self.args.data_folder, targetPOI=target_poi)
         img = get_img(self.args, file_path)
         depth_ = get_depth(self.args, file_path)
@@ -305,6 +257,7 @@ class ActiveNavigationModule():
             mask = make_mask(bbox, shape=[h, w])
             if np.sum(mask) > 0 and template_matched:
                 depth = depth_[mask == 1]
+
                 if np.mean(depth) <= 0.01 and len(bbs) > 1:
                     indices = list(np.arange(len(bbs)))
                     indices.pop(index)
@@ -314,6 +267,7 @@ class ActiveNavigationModule():
                     bbox = np.reshape(bbox, [-1, 4, 2])
                     mask = make_mask(bbox, shape=[h, w])
                     depth = depth_[mask == 1]
+
                 if np.mean(depth) <= 0.01:
                     depth = depth + 0.01
 
@@ -330,23 +284,40 @@ class ActiveNavigationModule():
                 sf_norm = sf_norm * 2 - 1
                 sf_norm = sf_norm / np.linalg.norm(sf_norm, 2)
 
-                POI_surf = ("left", "right")[sf_norm[0] < 0]
+                POI_centloc = ("left", "right")[(bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 > w / 2] #Left: Logos on the left from center, Right: Logos on the right from center
+                POI_loc = ("left", "right")[sf_norm[0] < 0] #Left: Logos on the left surface, Right: Logos on the right surface
+
+                # Rotate the agent until the POI is locate on the center
+                center_sf_norm = np.mean(sf[110:140, 235:265], (0, 1))
+                center_sf_norm = center_sf_norm * 2 - 1
+                center_sf_norm = center_sf_norm / np.linalg.norm(center_sf_norm, 2)
+
+                # Check that the bounding box is on the left or right buildings (not street or sky)
+                if abs(sf_norm[1]) < 0.8:
+                    center_poi_theta = np.arccos(np.dot(sf_norm, center_sf_norm))
+
+                    # Align the POI and the camera center
+                    heading = 180 / np.pi * center_poi_theta
+                    if POI_centloc == "left":
+                        heading = -heading
+
+                    if abs(heading) > 15:
+                        return [0, 0, heading]
 
                 theta = np.arccos(np.dot(sf_norm, normal_vector))
                 thetad = np.arctan(((D - D0) * np.sin(theta)) / (D - (D - D0) * np.cos(theta)))
-                if thetad == 0:
-                    D1 = D0
-                else:
-                    D1 = (D - D0) * np.sin(theta) / (np.sin(thetad))
-                thetadd = theta + thetad
+                theta_ = np.arccos(np.dot(center_sf_norm, normal_vector))
+                thetad_ = np.arctan(((D - D0) * np.sin(theta_)) / (D - (D - D0) * np.cos(theta_)))
 
-                ROT = ("left", "right")[POI_surf == "left"]
-                # Turn and go straight
-                disp_x, disp_y = self.NV.turn_straight(D1, thetad, ROT, verbose=self.args.verbose)
+                D1 = ((D - D0) * np.sin(theta) / (np.sin(thetad)), D - D0)[thetad == 0]
+                disp_right = (D1 * np.cos(thetad_), -D1 * np.cos(thetad_))[POI_loc == "right"]
+                disp_front = D1 * np.sin(thetad_)
 
                 # Rotate to see the POI
-                heading = self.NV.turn(thetadd, POI_surf, verbose=self.args.verbose)
-        return [disp_x, disp_y, heading]
+                heading = 180 / np.pi * (theta + thetad)
+                heading = (-abs(heading), abs(heading))[POI_loc == "right"]
+
+        return [disp_right, disp_front, heading]
 
     def getVisualMemory(self):
         return self.vis_mem
@@ -380,5 +351,3 @@ class ActiveNavigationModule():
 
 # if __name__ == "__main__":
 #   anm = ActiveNavigationModule()
-
-

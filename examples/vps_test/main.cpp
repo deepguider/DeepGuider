@@ -1,13 +1,11 @@
 #include "dg_core.hpp"
 #include "dg_vps.hpp"
-#include "python_embedding.hpp"
+#include "dg_utils.hpp"
 #include <chrono>
 #include <iostream>
 #include <experimental/filesystem>
 #include <string>
 #include <thread>
-#include "vvs.h"
-#include "opencx.hpp"
 
 using namespace dg;
 using namespace std;
@@ -116,8 +114,7 @@ void test_video_run(VPS& vps, bool recording = false, const char* video_file = "
 			gps_lat_d *= -1.0;
 		}
         gps_lat += gps_lat_d;
-        //VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
-        VVS_CHECK_TRUE(vps.thread_apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
+        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
 
         std::vector<VPSResult> streetviews;
         vps.get(streetviews);
@@ -219,11 +216,12 @@ int main()
     bool test_image = false; // OK
     bool test_video = false; // OK
     bool test_query = false; // OK
-    bool test_thread_run = true; // OK after make thread_apply()
+    bool test_thread_run = true; // OK
     bool enable_recording = false;
 
     // Initialize the Python interpreter
-    init_python_environment("python3", "");
+	bool threaded_run_python = true;
+    init_python_environment("python3", "", threaded_run_python);
 
     // Initialize Python module
     VPS vps;

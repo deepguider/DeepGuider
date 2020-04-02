@@ -1,31 +1,10 @@
-#ifndef __DG_PYTHON_EMBEDDING__
-#define __DG_PYTHON_EMBEDDING__
-
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
-#include "numpy/arrayobject.h"
+#include "utils/python_embedding.hpp"
+#include <string>
 
 namespace dg
 {
 
-bool init_python_environment(const char* name = "python3", const char* import_path = nullptr);
-
-
-bool close_python_environment();
-
-
-class PythonModuleWrapper
-{
-protected:
-    bool _initialize(const char* module_name, const char* module_path, const char* class_name, const char* func_name_init = "initialize", const char* func_name_apply = "apply");
-    void _clear();
-
-    PyObject* m_pInstance = nullptr;
-    PyObject* m_pFuncApply = nullptr;
-    PyObject* m_pFuncInitialize = nullptr;
-};
-
+PyThreadState* global_python_thread_state = nullptr;
 
 bool PythonModuleWrapper::_initialize(const char* module_name, const char* module_path, const char* class_name, const char* func_name_init /*= "initialize"*/, const char* func_name_apply /*= "apply"*/)
 {
@@ -129,7 +108,7 @@ int setenv(const char* name, const char* value, int overwrite)
 #endif
 
 
-bool init_python_environment(const char* name /*= "python3"*/, const char* import_path /*= nullptr*/)
+bool init_python_environment(const char* name /*= "python3"*/, const char* import_path /*= nullptr*/, bool support_thread_run /*= false*/)
 {
     close_python_environment();
 
@@ -157,12 +136,25 @@ bool init_python_environment(const char* name /*= "python3"*/, const char* impor
     // Add current path to system path
     PyRun_SimpleString("import sys\nsys.path.append(\".\")");
 
+    // Enable thread run
+    if (support_thread_run)
+    {
+        PyEval_InitThreads();
+        global_python_thread_state = PyEval_SaveThread();
+    }
+
     return true;
 }
 
 
 bool close_python_environment()
 {
+    if (global_python_thread_state)
+    {
+        PyEval_RestoreThread(global_python_thread_state);
+        global_python_thread_state = nullptr;
+    }
+
     if (Py_FinalizeEx() < 0) {
         return false;
     }
@@ -171,6 +163,3 @@ bool close_python_environment()
 
 
 } // End of 'dg'
-
-
-#endif // End of '__DG_PYTHON_EMBEDDING__'

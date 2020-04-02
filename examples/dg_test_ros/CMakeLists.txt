@@ -34,7 +34,7 @@ set(PYTHON_LIBRARIES "/usr/lib/x86_64-linux-gnu/libpython3.6m.so")
 
 include_directories( ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${SRCDIR} ${RAPIDJSON_INC} ${PYTHON_INCLUDE_DIRS} )
 
-file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/exploration/*.cpp ${SRCDIR}/guidance/*.cpp ${SRCDIR}/localizer/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/poi_recog/*.cpp ${SRCDIR}/road_recog/*.cpp ${SRCDIR}/vps/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp *.cpp)
+file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/exploration/*.cpp ${SRCDIR}/guidance/*.cpp ${SRCDIR}/localizer/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/poi_recog/*.cpp ${SRCDIR}/road_recog/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp *.cpp)
 
 add_executable(${PROJECT_NAME}_node src/dg_test.cpp ${SOURCES})
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

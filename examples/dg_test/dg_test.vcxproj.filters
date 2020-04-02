@@ -33,5 +33,8 @@
     <ClCompile Include="..\..\src\guidance\guidance.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\utils\python_embedding.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

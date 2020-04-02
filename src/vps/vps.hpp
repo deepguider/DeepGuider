@@ -2,7 +2,7 @@
 #define __VPS__
 
 #include "dg_core.hpp"
-#include "python_embedding.hpp"
+#include "utils/python_embedding.hpp"
 
 using namespace std;
 
@@ -15,57 +15,69 @@ namespace dg
     };
 
     /**
-     * @brief C++ Wrapper of Python module - VPS
-     */
+    * @brief C++ Wrapper of Python module - VPS
+    */
     class VPS : public PythonModuleWrapper
     {
     public:
         /**
-         * Initialize the module
-         * @return true if successful (false if failed)
-         */
-        bool initialize()
+        * Initialize the module
+        * @return true if successful (false if failed)
+        */
+        bool initialize(const char* module_name = "vps", const char* module_path = "./../src/vps", const char* class_name = "vps", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
         {
-            return _initialize("vps", "./../src/vps", "vps");
+            PyGILState_STATE state;
+            bool ret;
+
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
+
+            ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
+
+            if (isThreadingEnabled()) PyGILState_Release(state);
+
+            return ret;
         }
 
         /**
-         * Reset variables and clear the memory
-         */
+        * Reset variables and clear the memory
+        */
         void clear()
         {
+            PyGILState_STATE state;
+
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
+
             _clear();
+
+            if (isThreadingEnabled()) PyGILState_Release(state);
         }
 
-		/**
-		 * for thread of CPP
-		 */
-        bool thread_apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp t, const char* ipaddr)
-		{
-			PyGILState_STATE state;
-			bool ret;
+        /**
+        * Run once the module for a given input (support threading run)
+        * @param N number of matched images to be returned (top-N)
+        * @return true if successful (false if failed)
+        */
+        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp t, const char* ipaddr)
+        {
+            PyGILState_STATE state;
+            bool ret;
 
-			if (!m_gil_init){
-				m_gil_init = 1;
-				PyEval_InitThreads();
-				PyEval_SaveThread();
-			}
-			state = PyGILState_Ensure();
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-			/* Call Python/C API functions here */
-        	ret = apply(image, N, gps_lat, gps_lon, gps_accuracy, t, ipaddr);
+            /* Call Python/C API functions here */
+            ret = _apply(image, N, gps_lat, gps_lon, gps_accuracy, t, ipaddr);
 
-			PyGILState_Release(state);
+            if (isThreadingEnabled()) PyGILState_Release(state);
 
-			return ret;
-		}
+            return ret;
+        }
 
         /**
-         * Run once the module for a given input
-         * @param N number of matched images to be returned (top-N)
-         * @return true if successful (false if failed)
-         */
-        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp t, const char* ipaddr)
+        * Run once the module for a given input
+        * @param N number of matched images to be returned (top-N)
+        * @return true if successful (false if failed)
+        */
+        bool _apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp t, const char* ipaddr)
         {
             // Set function arguments
             int arg_idx = 0;
@@ -112,11 +124,11 @@ namespace dg
                 }
 
                 // [[id1,...idN],[conf1,...,confN]] : matched top-N streetview ID's and Confidences
-                
+
                 // ID list
                 std::vector<dg::ID> ids;
                 PyObject* pList0 = PyList_GetItem(pRet, 0);
-                if(pList0)
+                if (pList0)
                 {
                     Py_ssize_t cnt0 = PyList_Size(pList0);
                     for (int i = 0; i < cnt0; i++)
@@ -130,7 +142,7 @@ namespace dg
                 // Confidence list
                 std::vector<double> confs;
                 PyObject* pList1 = PyList_GetItem(pRet, 1);
-                if(pList1)
+                if (pList1)
                 {
                     Py_ssize_t cnt1 = PyList_Size(pList1);
                     for (int i = 0; i < cnt1; i++)
@@ -177,7 +189,7 @@ namespace dg
     protected:
         std::vector<VPSResult> m_streetviews;
         Timestamp m_timestamp = -1;
-		int m_gil_init = 0;
+        int m_gil_init = 0;
     };
 
 } // End of 'dg'
