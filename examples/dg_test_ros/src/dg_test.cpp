@@ -101,7 +101,7 @@ protected:
     bool path_initialized = false;
 
     // GUI support
-    bool recording = true;
+    bool recording = false;
     cx::VideoWriter video;
     dg::SimpleRoadPainter painter;
     cv::Mat map_image;
@@ -495,20 +495,26 @@ bool DeepGuider::runOnce(double timestamp)
         localizer_mutex.lock();
         dg::TopometricPose pose_topo = m_localizer.getPoseTopometric();
         dg::LatLon pose_gps = m_localizer.getPoseGPS();
-        dg::Pose2 pose_m = m_localizer.toTopmetric2Metric(pose_topo);
+        dg::Pose2 pose_metric = m_localizer.toTopmetric2Metric(pose_topo);
         double pose_confidence = m_localizer.getPoseConfidence();
         localizer_mutex.unlock();
 
-        painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 10, 0, cx::COLOR_YELLOW);
-        painter.drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 8, 0, cx::COLOR_BLUE);
+        painter.drawNode(image, map_info, dg::Point2ID(0, pose_metric.x, pose_metric.y), 10, 0, cx::COLOR_YELLOW);
+        painter.drawNode(image, map_info, dg::Point2ID(0, pose_metric.x, pose_metric.y), 8, 0, cx::COLOR_BLUE);
 
         // draw status message (localization)
-        cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3f (Lat: %.6f, Lon: %.6f)", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist, pose_gps.lat, pose_gps.lon);
+        cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
         cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
         cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
         std::string info_confidence = cv::format("Confidence: %.2lf", pose_confidence);
         cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
         cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+
+        printf("[Localizer]\n");
+        printf("\ttopo: node=%zu, edge=%d, dist=%lf\n", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
+        printf("\tmetr: x=%lf, y=%lf, theta=%lf\n", pose_metric.x, pose_metric.y, pose_metric.theta);
+        printf("\tgps : lat=%lf, lon=%lf\n", pose_gps.lat, pose_gps.lon);
+        printf("\tconfidence: %lf\n", pose_confidence);
 
         // Guidance: generate navigation guidance
         dg::GuidanceManager::MoveStatus cur_status;

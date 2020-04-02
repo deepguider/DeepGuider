@@ -170,7 +170,7 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
     {
         dir_msg = "[Guide] UNKNOWN";
     }
-    
+
     // show direction message
     cv::Point msg_offset = rect.tl() + cv::Point(10, 30);
     cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
@@ -424,6 +424,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         printf("[Localizer]\n");
         printf("\ttopo: node=%zu, edge=%d, dist=%lf, ts=%lf\n", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist, gps_time);
         printf("\tmetr: x=%lf, y=%lf, theta=%lf, ts=%lf\n", pose_metric.x, pose_metric.y, pose_metric.theta, gps_time);
+        printf("\tgps : lat=%lf, lon=%lf, ts=%lf\n", pose_gps.lat, pose_gps.lon, gps_time);
         printf("\tconfidence: %lf\n", pose_confidence);
 
         // Guidance: generate navigation guidance
@@ -496,7 +497,7 @@ int DeepGuiderSimple::run(const char* gps_file /*= "data/191115_ETRI_asen_fix.cs
         }
 
         // draw status message (localization)
-        cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3f (Lat: %.6f, Lon: %.6f)", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist, pose_gps.lat, pose_gps.lon);
+        cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
         cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
         cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
         std::string info_confidence = cv::format("Confidence: %.2lf", pose_confidence);
