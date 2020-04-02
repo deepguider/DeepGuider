@@ -84,18 +84,24 @@ GUIDANCE_LOADPATH_FAIL:
 }
 
 int main()
-{
-	   	 
+{	   	 
 	MapManager map_manager;
-
-	// set map to localizer
-	Map& map = map_manager.getMap(36.382967999999998, 127.37138150000001, 700);
-		
-	Path path = map_manager.getPath(36.381873, 127.36803, 36.384063, 127.374733);
-
+	map_manager.setIP("localhost");
+	
+	// Get the path & map
+	bool ok;
+	dg::Map map;
+	dg::Path path;
+	ok = map_manager.getMap(559542564800095, 700, map);
+	//ok = map_manager.getMap(36.382967999999998, 127.37138150000001, 700, map);
+	ok = map_manager.getPath(36.381873, 127.36803, 36.384063, 127.374733, path);
+	
 	printf("Paths\n");
 	for (size_t i = 0; i < path.pts.size()-1; i++)
 	{
+		//Node* curnode = map.findNode(path.pts[i].node->id);
+		//Edge* curedge = map.findEdge(path.pts[i].edge->id);
+		//printf("[%zd]: Node-%zu, Edge-%zu\n", i, curnode->id, curedge->id);
 		printf("[%zd]: Node-%zu, Edge-%zu\n", i, path.pts[i].node->id, path.pts[i].edge->id);
 	}
 	printf("[%zd]: Node-%zu\n", path.pts.size() - 1, path.pts[path.pts.size() - 1].node->id);
@@ -149,7 +155,7 @@ int main()
 			str_status = "APPROACHING_NODE";
 			break;
 		case GuidanceManager::MoveStatus::ON_NODE:
-			str_status = "ARRIVED_NODE";
+			str_status = "ON_NODE";
 			break;
 		default:
 			break;
@@ -157,11 +163,12 @@ int main()
 		fprintf(stdout, "[Status] %s\n", str_status.c_str());
 
 		curGuide = guider.getGuidance(curStatus);
+		//curGuide = guider.getGuidance(curPose);
 
 		//print guidance message
 		fprintf(stdout, "%s\n", curGuide.msg.c_str());
 	}
-	fprintf(stdout, "Arrived!\n Press any key to finish.\n");
+	fprintf(stdout, "\n Press any key to finish.\n");
 
 #endif
 	
