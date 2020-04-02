@@ -3,7 +3,6 @@
 from active_navigation import ActiveNavigationModule
 import argparse
 import ov_utils.file_utils as file_utils
-from ov_utils.navi_data import Navi
 import numpy as np
 import joblib
 import os
@@ -18,8 +17,7 @@ parser.add_argument('--optimal_guidance', default=True, type=bool, help='A guida
 parser.add_argument('--enable_ove', default=True, type=bool, help='enable optimal viewpoint estimator')
 parser.add_argument('--verbose', default=False, type=bool, help='verbose')
 args = parser.parse_args()
-NV = Navi()
-anm = ActiveNavigationModule(args, NV)
+anm = ActiveNavigationModule(args)
 
 # Test recovery module
 # load img + action trajectory
@@ -54,7 +52,6 @@ if anm.isOptimalViewpointGuidanceEnabled():
     tot_test = len(im_paths)
     for im_path, target_poi in zip(im_paths, target_pois):
         im_cnt += 1
-        anm.NV.file2curpos(im_path)
         print("Testing... {}/{}, Target: {}".format(im_cnt, tot_test, target_poi))
         anm.calcOptimalViewpointGuidance(im_path, target_poi)
         guidance = anm.getOptimalViewpointGuidance()
