@@ -67,7 +67,8 @@ bool DeepGuiderSimple::initialize()
     printf("Initialize deepguider system...\n");
 
     // initialize python
-    if (!init_python_environment("python3", "")) return false;
+	bool threaded_run_python = true;
+    if (!init_python_environment("python3", "", threaded_run_python)) return false;
     printf("\tPython environment initialized!\n");
 
     // initialize map manager

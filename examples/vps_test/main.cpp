@@ -216,11 +216,12 @@ int main()
     bool test_image = false; // OK
     bool test_video = false; // OK
     bool test_query = false; // OK
-    bool test_thread_run = true; // OK after make thread_apply()
+    bool test_thread_run = true; // OK
     bool enable_recording = false;
 
     // Initialize the Python interpreter
-    init_python_environment("python3", "");
+	bool threaded_run_python = true;
+    init_python_environment("python3", "", threaded_run_python);
 
     // Initialize Python module
     VPS vps;
