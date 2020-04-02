@@ -1,5 +1,6 @@
 ## DeepGuider
-_DeepGuider Project_ is ...
+_DeepGuider Project_ is a research project funded by national government. The DeepGuider Project aims to develop a navigation guidance system that enables robots to navigate in urban environment
+without the need of pre-mapping of the environment. The project was started in April 2019 and is currently under development.
 
 ### DeepGuider Modules
 * `core`: Common and basic data structures and interfaces such as pose, path, map, and algorithms
