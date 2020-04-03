@@ -8,12 +8,12 @@ Refere to each sub-module's README.md
 
 ### How to Build and Run Codes
 
-1. Modify CMakeLists.txt (set variable `DGDIR` to be root directory of deepguider at `set(DGDIR   "/work/deepguider")`)
+1. Modify CMakeLists.txt (set variable `DGDIR` to be root directory of DeepGuider at `set(DGDIR   "/work/deepguider")`)
 2. Modify setup_rosrun.sh (set variable `rosdir` to be ROS workspace directory)
 3. Run the following shell script:
 ```
 $ ./setup_rosrun.sh
-$ cd rosdir # change working directory to ros workspace
+$ cd rosdir # change working directory to ROS workspace
 $ catkin_make
 $ roscore
 $ ./dg_run.sh
