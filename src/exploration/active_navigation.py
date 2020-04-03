@@ -186,38 +186,37 @@ class ActiveNavigationModule():
                 actions = self.exploration_policy(img, self.vis_mem)
             except:
                 print("NotImplementedError")
-                actions = ['f','f','f','f','f']
+                actions = ['forward','forward','forward']
 
             self.exploration_guidance = actions
         else:
             self.exploration_guidance = None
-        # return actions
 
-    def calcNeedForOptimalViewpointGuidance(self, topometric_pose, poi_conf, entrance, entrance_conf, poi_successes):
-        """
-        A module calculates the need for optimal viewpoint guidance.
-        It considers the results of POI detection and current location (destination, door).
+    # def calcNeedForOptimalViewpointGuidance(self, topometric_pose, poi_conf, entrance, entrance_conf, poi_successes):
+    #     """
+    #     A module calculates the need for optimal viewpoint guidance.
+    #     It considers the results of POI detection and current location (destination, door).
 
-        Input:
-        - topometric_pose: node_id, edge-idx, dist
-        - poi_conf: detection results of POI (confidence score)
-        - (tentative) entrance: If there is an building entrance near current location, True, else False (Boolean) , tentative due to the API ambiguity.
-        - entrance_conf: detection results of building entrances 
-        - poi_successes: A sequence of POI detection result (confidence score)
+    #     Input:
+    #     - topometric_pose: node_id, edge-idx, dist
+    #     - poi_conf: detection results of POI (confidence score)
+    #     - (tentative) entrance: If there is an building entrance near current location, True, else False (Boolean) , tentative due to the API ambiguity.
+    #     - entrance_conf: detection results of building entrances 
+    #     - poi_successes: A sequence of POI detection result (confidence score)
 
-        Output:
-        - require the optimal viewpoint guidance optimization (Boolean)
-        """
+    #     Output:
+    #     - require the optimal viewpoint guidance optimization (Boolean)
+    #     """
 
-        # Cases
-        case1 = np.mean(poi_successes) < 0.5
-        case2 = ((self.map.getNode(topometric_pose.node_id).edges[topometric_pose.edge_idx].length - topometric_pose.dist) < 0.2) and (poi_conf < 0.5)
-        case3 = entrance and (entrance_conf < 0.5)
+    #     # Cases
+    #     case1 = np.mean(poi_successes) < 0.5
+    #     case2 = ((self.map.getNode(topometric_pose.node_id).edges[topometric_pose.edge_idx].length - topometric_pose.dist) < 0.2) and (poi_conf < 0.5)
+    #     case3 = entrance and (entrance_conf < 0.5)
 
-        if case1 or case2 or case3:
-            self.enable_ove = True
-        else:
-            self.enable_ove = False
+    #     if case1 or case2 or case3:
+    #         self.enable_ove = True
+    #     else:
+    #         self.enable_ove = False
 
     def calcOptimalViewpointGuidance(self, img_path, target_poi):
         """
@@ -257,6 +256,7 @@ class ActiveNavigationModule():
             mask = make_mask(bbox, shape=[h, w])
             if np.sum(mask) > 0 and template_matched:
                 depth = depth_[mask == 1]
+                center_depth = np.mean(depth_[110:140, 235:265], (0,1))
 
                 if np.mean(depth) <= 0.01 and len(bbs) > 1:
                     indices = list(np.arange(len(bbs)))
@@ -271,12 +271,15 @@ class ActiveNavigationModule():
                 if np.mean(depth) <= 0.01:
                     depth = depth + 0.01
 
+                if np.mean(center_depth) <= 0.01:
+                    center_depth += 0.01
+
                 # TODO: Estimate the exact distance
-                D = np.mean(depth) * 19.2
+                D = np.mean(depth) * 19.2  # d1
+                center_D = np.mean(center_depth) * 19.2  # d2
+
                 # Decide the amount of the movement using depth
                 ratio = (abs(bbox[0, 3, 1] - bbox[0, 0, 1]) + abs(bbox[0, 1, 1] - bbox[0, 2, 1])) / 2 / h
-
-                D0 = D * (1 - np.maximum(ratio / opt_ratio, 0.95))
 
                 # Decide the moving direction
                 sf = get_surfacenormal(self.args, file_path)
@@ -304,20 +307,36 @@ class ActiveNavigationModule():
                     if abs(heading) > 15:
                         return [0, 0, heading]
 
-                theta = np.arccos(np.dot(sf_norm, normal_vector))
+                theta_ = np.arccos(np.dot(center_sf_norm, normal_vector)) # center point
+                # thetad_ = np.arctan(((D - D0) * np.sin(theta_)) / (D - (D - D0) * np.cos(theta_))) # needless
+                # theta = np.arccos(np.dot(sf_norm, normal_vector)) # signage, it's suspected to be computed wrongly.
+                theta_tilde = np.arctan(D*np.tan(theta_)/np.abs(center_D-D))
+                cond = (center_D > D)
+                theta = (theta_ + theta_tilde - np.pi/2) if cond else (theta_ + np.pi/2 - theta_tilde)
+                D = D / np.sin(theta_tilde) # distance between the robot and signage, not depth of the signage
+                D0 = D * (1 - np.maximum(ratio / opt_ratio, 0.95))
                 thetad = np.arctan(((D - D0) * np.sin(theta)) / (D - (D - D0) * np.cos(theta)))
-                theta_ = np.arccos(np.dot(center_sf_norm, normal_vector))
-                thetad_ = np.arctan(((D - D0) * np.sin(theta_)) / (D - (D - D0) * np.cos(theta_)))
+                # print('theta_, theta, cond: ', theta_*180/np.pi, theta*180/np.pi, cond)
+                # print('thetad: ', thetad*180/np.pi)
 
-                D1 = ((D - D0) * np.sin(theta) / (np.sin(thetad)), D - D0)[thetad == 0]
-                disp_right = (D1 * np.cos(thetad_), -D1 * np.cos(thetad_))[POI_loc == "right"]
-                disp_front = D1 * np.sin(thetad_)
+                #Rotate before going straight
+                if cond:
+                    heading1 = 180 / np.pi * (thetad - (np.pi/2 - theta_tilde)) 
+                    heading1 = (heading1, -heading1)[POI_loc == "right"]
+                else:
+                    heading1 = 180 / np.pi * (thetad + (np.pi/2 - theta_tilde))
+                    heading1 = (-heading1, heading1)[POI_loc == "right"]
+                D1 = ( (D - D0)*np.sin(theta)/(np.sin(thetad)) , D - D0)[thetad == 0] # Sine Law
 
                 # Rotate to see the POI
-                heading = 180 / np.pi * (theta + thetad)
-                heading = (-abs(heading), abs(heading))[POI_loc == "right"]
+                if cond:
+                    heading2 = 180 / np.pi * (theta + thetad)
+                    heading2 = (-abs(heading2), abs(heading2))[POI_loc == "right"]
+                else:
+                    heading2 = 180 / np.pi * (theta + thetad)
+                    heading2 = (abs(heading2), -abs(heading2))[POI_loc == "right"]
 
-        return [disp_right, disp_front, heading]
+        return [heading1, D1, heading2]
 
     def getVisualMemory(self):
         return self.vis_mem
