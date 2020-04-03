@@ -322,19 +322,19 @@ class ActiveNavigationModule():
                 #Rotate before going straight
                 if cond:
                     heading1 = 180 / np.pi * (thetad - (np.pi/2 - theta_tilde)) 
-                    heading1 = (heading1, -heading1)[POI_loc == "right"]
+                    heading1 = (heading1, -heading1)[POI_centloc == "right"]
                 else:
                     heading1 = 180 / np.pi * (thetad + (np.pi/2 - theta_tilde))
-                    heading1 = (-heading1, heading1)[POI_loc == "right"]
+                    heading1 = (-heading1, heading1)[POI_centloc == "right"]
                 D1 = ( (D - D0)*np.sin(theta)/(np.sin(thetad)) , D - D0)[thetad == 0] # Sine Law
 
                 # Rotate to see the POI
                 if cond:
                     heading2 = 180 / np.pi * (theta + thetad)
-                    heading2 = (-abs(heading2), abs(heading2))[POI_loc == "right"]
+                    heading2 = (-abs(heading2), abs(heading2))[POI_centloc == "right"]
                 else:
                     heading2 = 180 / np.pi * (theta + thetad)
-                    heading2 = (abs(heading2), -abs(heading2))[POI_loc == "right"]
+                    heading2 = (abs(heading2), -abs(heading2))[POI_centloc == "right"]
 
         return [heading1, D1, heading2]
 
