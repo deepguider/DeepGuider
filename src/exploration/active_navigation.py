@@ -235,7 +235,7 @@ class ActiveNavigationModule():
             self.ov_guidance = self.optimal_viewpoint(img_path, target_poi)
 
     def optimal_viewpoint(self, file_path, target_poi):
-        disp_right = disp_front = heading = center_poi_theta = 0
+        heading1 = D1 = heading2 = 0
         templates, main_template, opt_ratio = file_utils.get_templates(self.args.data_folder, targetPOI=target_poi)
         img = get_img(self.args, file_path)
         depth_ = get_depth(self.args, file_path)
@@ -288,7 +288,6 @@ class ActiveNavigationModule():
                 sf_norm = sf_norm / np.linalg.norm(sf_norm, 2)
 
                 POI_centloc = ("left", "right")[(bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 > w / 2] #Left: Logos on the left from center, Right: Logos on the right from center
-                POI_loc = ("left", "right")[sf_norm[0] < 0] #Left: Logos on the left surface, Right: Logos on the right surface
 
                 # Rotate the agent until the POI is locate on the center
                 center_sf_norm = np.mean(sf[110:140, 235:265], (0, 1))
@@ -308,16 +307,12 @@ class ActiveNavigationModule():
                         return [0, 0, heading]
 
                 theta_ = np.arccos(np.dot(center_sf_norm, normal_vector)) # center point
-                # thetad_ = np.arctan(((D - D0) * np.sin(theta_)) / (D - (D - D0) * np.cos(theta_))) # needless
-                # theta = np.arccos(np.dot(sf_norm, normal_vector)) # signage, it's suspected to be computed wrongly.
                 theta_tilde = np.arctan(D*np.tan(theta_)/np.abs(center_D-D))
                 cond = (center_D > D)
                 theta = (theta_ + theta_tilde - np.pi/2) if cond else (theta_ + np.pi/2 - theta_tilde)
                 D = D / np.sin(theta_tilde) # distance between the robot and signage, not depth of the signage
                 D0 = D * (1 - np.maximum(ratio / opt_ratio, 0.95))
                 thetad = np.arctan(((D - D0) * np.sin(theta)) / (D - (D - D0) * np.cos(theta)))
-                # print('theta_, theta, cond: ', theta_*180/np.pi, theta*180/np.pi, cond)
-                # print('thetad: ', thetad*180/np.pi)
 
                 #Rotate before going straight
                 if cond:
@@ -326,7 +321,7 @@ class ActiveNavigationModule():
                 else:
                     heading1 = 180 / np.pi * (thetad + (np.pi/2 - theta_tilde))
                     heading1 = (-heading1, heading1)[POI_centloc == "right"]
-                D1 = ( (D - D0)*np.sin(theta)/(np.sin(thetad)) , D - D0)[thetad == 0] # Sine Law
+                D1 = ((D - D0)*np.sin(theta)/(np.sin(thetad)), D - D0)[thetad == 0] # Sine Law
 
                 # Rotate to see the POI
                 if cond:
