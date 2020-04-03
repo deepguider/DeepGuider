@@ -116,8 +116,8 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
     cv::Point center_pos(guide_cx, guide_cy);
 
     std::string dir_msg;
-    dg::GuidanceManager::Motion cmd = guide.action_current.cmd;
-    if (cmd == dg::GuidanceManager::Motion::GO_FORWARD || cmd == dg::GuidanceManager::Motion::CROSS_FORWARD || cmd == dg::GuidanceManager::Motion::ENTER_FRONT || cmd == dg::GuidanceManager::Motion::EXIT_FRONT)
+    dg::GuidanceManager::Motion cmd = guide.actions[0].cmd;
+    if (cmd == dg::GuidanceManager::Motion::GO_FORWARD || cmd == dg::GuidanceManager::Motion::CROSS_FORWARD || cmd == dg::GuidanceManager::Motion::ENTER_FORWARD || cmd == dg::GuidanceManager::Motion::EXIT_FORWARD)
     {
         cv::Mat& icon = icon_forward;
         cv::Mat& mask = mask_forward;
@@ -127,8 +127,8 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) dir_msg = "[Guide] GO_FORWARD";
         if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD) dir_msg = "[Guide] CROSS_FORWARD";
-        if (cmd == dg::GuidanceManager::Motion::ENTER_FRONT) dir_msg = "[Guide] ENTER_FORWARD";
-        if (cmd == dg::GuidanceManager::Motion::EXIT_FRONT) dir_msg = "[Guide] EXIT_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::ENTER_FORWARD) dir_msg = "[Guide] ENTER_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::EXIT_FORWARD) dir_msg = "[Guide] EXIT_FORWARD";
     }
     if (cmd == dg::GuidanceManager::Motion::TURN_LEFT || cmd == dg::GuidanceManager::Motion::CROSS_LEFT || cmd == dg::GuidanceManager::Motion::ENTER_LEFT || cmd == dg::GuidanceManager::Motion::EXIT_LEFT)
     {
@@ -165,10 +165,6 @@ void DeepGuiderSimple::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] TURN_BACK";
-    }
-    if (cmd == dg::GuidanceManager::Motion::UNKNOWN)
-    {
-        dir_msg = "[Guide] UNKNOWN";
     }
 
     // show direction message
