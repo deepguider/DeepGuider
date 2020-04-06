@@ -11,6 +11,8 @@ import torch
 import sys
 if '/opt/ros/kinetic/lib/python2.7/dist-packages' in sys.path:
     sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
+import os
+import joblib
 import cv2
 
 # import MapManager
@@ -26,23 +28,17 @@ Author
 Yunho Choi, Obin Kwon, Nuri Kim, Hwiyeon Yoo
 """
 
-
 class ActiveNavigationModule():
     """Active Navigation Module"""
-    def __init__(self, args, NV=None, map_manager=None):
+    def __init__(self):
         # map_manager = MapManager()
         # self.map = map_manager.getMap()
-        self.args = args
+        # self.args = args
         self.list2encode = []
         self.vis_mem = []
         self.vis_mem_encoder = encodeVisualMemory()
         self.vis_mem_encoder_model = None
-        try:
-            self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
-        except:
-            print("Cannot load pretrained encodeVisualMemory model")
-            pass
-
+        
         self.enable_recovery = False
         self.recovery_policy = Recovery()
         self.recovery_guidance = None
@@ -50,15 +46,32 @@ class ActiveNavigationModule():
         self.enable_exploration = False
         self.exploration_policy = None  
         self.exploration_guidance = None
-        self.optimal_viewpoint_guidance = [0, 0, 0]
-        self.central_flag = False
 
-        try:
-            self.enable_ove = args.enable_ove
-        except:
-            self.enable_ove = False
-        self.NV = NV
+        self.enable_ove = False
+        self.optimal_viewpoint_guidance = [0, 0, 0]
+
+        data_list = [os.path.join('./data_exp/img_trajectory', x) for x in os.listdir('./data_exp/img_trajectory')]
+        data = joblib.load(np.random.choice(data_list))
+        self.img_list = data['rgb']
+        self.guidance_list = data['action']
+
+        self.ove_data_folder = './data_exp/optimal_viewpoint/'
+        image_list, sf_list, bbox_list, depth_list = file_utils.get_files(self.ove_data_folder)
+        self.im_paths, self.target_pois = file_utils.get_annos(self.ove_data_folder + 'anno/')
+
+    def initialize(self):
         
+        try:
+            self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
+        except:
+            print("Cannot load pretrained encodeVisualMemory model")
+            pass
+
+        self.enable_recovery = True
+        self.enable_ove = True
+
+        
+
     def encodeVisualMemory(self, img, guidance, topometric_pose=None, random_action=False):
         """
         Visual Memory Encoder Submodule:
@@ -234,12 +247,14 @@ class ActiveNavigationModule():
         if self.enable_ove:
             self.ov_guidance = self.optimal_viewpoint(img_path, target_poi)
 
-    def optimal_viewpoint(self, file_path, target_poi):
+    def optimal_viewpoint(self, file_path=None, target_poi=None):
+        if file_path and target_poi is None:
+            file_path, target_poi = self.im_paths[0], self.target_pois[0]
         heading1 = D1 = heading2 = 0
-        templates, main_template, opt_ratio = file_utils.get_templates(self.args.data_folder, targetPOI=target_poi)
-        img = get_img(self.args, file_path)
-        depth_ = get_depth(self.args, file_path)
-        bbox = get_bbox(self.args, file_path)
+        templates, main_template, opt_ratio = file_utils.get_templates(self.ove_data_folder, targetPOI=target_poi)
+        img = get_img(self.ove_data_folder, file_path)
+        depth_ = get_depth(self.ove_data_folder, file_path)
+        bbox = get_bbox(self.ove_data_folder, file_path)
         h, w, _ = img.shape
 
         if len(bbox) > 0:
@@ -282,7 +297,7 @@ class ActiveNavigationModule():
                 ratio = (abs(bbox[0, 3, 1] - bbox[0, 0, 1]) + abs(bbox[0, 1, 1] - bbox[0, 2, 1])) / 2 / h
 
                 # Decide the moving direction
-                sf = get_surfacenormal(self.args, file_path)
+                sf = get_surfacenormal(self.ove_data_folder, file_path)
                 sf_norm = np.mean(sf[mask == 1], 0)
                 sf_norm = sf_norm * 2 - 1
                 sf_norm = sf_norm / np.linalg.norm(sf_norm, 2)

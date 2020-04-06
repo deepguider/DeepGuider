@@ -92,24 +92,24 @@ def template_matching(image, bbox, templates, main_template):
     return template_matched, bbox[matched_bbox], matched_bbox, np.max(sizes)
 
 
-def get_img(args, img_path):
-    img = mpimg.imread(args.data_folder + 'image/' + img_path + '.jpg')
+def get_img(data_dir, img_path):
+    img = mpimg.imread(data_dir + 'image/' + img_path + '.jpg')
     return img
 
 
-def get_surfacenormal(args, img_path):
-    sf = imgproc.loadImage(args.data_folder + 'surface_normal/' + img_path + '_sf.jpg')
+def get_surfacenormal(data_dir, img_path):
+    sf = imgproc.loadImage(data_dir + 'surface_normal/' + img_path + '_sf.jpg')
     sf = sf/255.
     return sf
 
 
-def get_bbox(args, img_path):
-    with open(args.data_folder + 'det/' + img_path + '.txt', "r") as det_file:
+def get_bbox(data_dir, img_path):
+    with open(data_dir + 'det/' + img_path + '.txt', "r") as det_file:
         bbox = det_file.readlines()
     return bbox
 
 
-def get_depth(args, img_path):
-    depth = imgproc.loadImage(args.data_folder + 'depth/' + img_path + '_depth.jpg')
+def get_depth(data_dir, img_path):
+    depth = imgproc.loadImage(data_dir + 'depth/' + img_path + '_depth.jpg')
     depth = depth / 255.
     return depth

@@ -1,141 +1,174 @@
-#ifndef __ROAD_DIRECTION_RECOGNIZER__
-#define __ROAD_DIRECTION_RECOGNIZER__
+#ifndef __EXPLORATION__
+#define __EXPLORATION__
 
 #include "dg_core.hpp"
-
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
-#include "numpy/arrayobject.h"
+#include "utils/python_embedding.hpp"
 
 using namespace std;
 
 namespace dg
 {
+    struct ActiveNavigationGuidance
+    {
+        std::vector<std::string> actions;
+    };
 
-/**
- * @brief Road direction recognizer
- */
-class RoadDirectionRecognizer
-{
-	double angle = -1;
-	double prob = -1;
+    struct OptimalViewpointGuidance
+    {
+        double theta1, d, theta2
+    };
 
-public:
-	RoadDirectionRecognizer()
-	{
-	}
+    /**
+     * @brief C++ Wrapper of python module - Active Navigation Module
+     */
 
-	int apply(cv::Mat image, Timestamp t)
-	{
-		std::string src_name = "road_direction_recognizer";
-		std::string class_name = "RoadDirectionRecognizer";
-		std::string func_name = "apply";
+class ActiveNavigation : public PythonModuleWrapper
+    {
+    public:
+        /**
+        * Initialize the module
+        * @return true if successful (false if failed)
+        */
+        bool initialize(const char* module_name = "active_navigation", const char* module_path = "./../src/exploration", const char* class_name = "ActiveNavigationModule", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
+        {
+            PyGILState_STATE state;
+            bool ret;
 
-		PyObject* pName, * pModule, * pDict, * pClass, * pFunc;
-		PyObject* pArgs, * pValue;
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-		wchar_t* program = Py_DecodeLocale("road_recog_test", NULL);
-		if (program == NULL) {
-			fprintf(stderr, "Fatal error: cannot decode road_recog_test\n");
-			exit(-1);
-		}
-		Py_SetProgramName(program);
-		Py_Initialize();
+            ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
 
-		// Add module path to system path
-		PyRun_SimpleString("import sys\nsys.path.append(\"./../src/road_recog\")");
+            if (isThreadingEnabled()) PyGILState_Release(state);
 
-		// Build the name object (python srcname)
-		pName = PyUnicode_FromString(src_name.c_str());
+            return ret;
+        }
 
-		// Load the module object (import python src)
-		pModule = PyImport_Import(pName);
-		if (pModule == nullptr) {
-			PyErr_Print();
-			fprintf(stderr, "Fails to import the module \"%s\"\n", src_name.c_str());
-			return -1;
-		}
-		Py_DECREF(pName);
+        /**
+        * Reset variables and clear the memory
+        */
+        void clear()
+        {
+            PyGILState_STATE state;
 
-		// Get the class reference
-		pClass = PyObject_GetAttrString(pModule, class_name.c_str());
-		if (pClass == nullptr) {
-			PyErr_Print();
-			fprintf(stderr, "Cannot find class \"%s\"\n", class_name.c_str());
-			return -1;
-		}
-		Py_DECREF(pModule);
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-		// Get the method reference of the class
-		pFunc = PyObject_GetAttrString(pClass, func_name.c_str());
-		if (pClass == nullptr) {
-			PyErr_Print();
-			fprintf(stderr, "Cannot find function \"%s\"\n", func_name.c_str());
-			return -1;
-		}
-		Py_DECREF(pClass);
+            _clear();
 
-		// Set function arguments
-		pArgs = PyTuple_New(3);
-		PyTuple_SetItem(pArgs, 0, pFunc);
+            if (isThreadingEnabled()) PyGILState_Release(state);
+        }
 
-		// Image
-		import_array();
-		npy_intp dimensions[3] = { image.rows, image.cols, image.channels() };
-		pValue = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)& dimensions, NPY_UINT8, image.data);
-		PyTuple_SetItem(pArgs, 1, pValue);
+        /**
+        * Run once the module for a given input (support thread run)
+        * @return true if successful (false if failed)
+        */
+        bool apply(cv::Mat image, dg::Timestamp t)
+        {
+            PyGILState_STATE state;
+            bool ret;
 
-		// Timestamp
-		pValue = PyFloat_FromDouble(t);
-		if (!pValue) {
-			Py_DECREF(pArgs);
-			Py_DECREF(pFunc);
-			fprintf(stderr, "Cannot convert argument\n");
-			return -1;
-		}
-		PyTuple_SetItem(pArgs, 2, pValue);
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-		// Call the python function
-		pValue = PyObject_CallObject(pFunc, pArgs);
-		Py_DECREF(pArgs);
-		if (pValue != NULL) {
-			int n_ret = PyTuple_Size(pValue);
-			if (n_ret != 2)
-			{
-				Py_DECREF(pFunc);
-				fprintf(stderr, "Wrong number of returns\n");
-				return -1;
-			}					   
-			PyObject* pValue0 = PyTuple_GetItem(pValue, 0);
-			if(pValue0 != NULL) angle = PyLong_AsLong(pValue0);
-			PyObject* pValue1 = PyTuple_GetItem(pValue, 1);
-			if (pValue1 != NULL) prob = PyLong_AsLong(pValue1);
-			Py_DECREF(pValue0);
-			Py_DECREF(pValue1);
-			Py_DECREF(pValue);
-		}
-		else {
-			Py_DECREF(pFunc);
-			PyErr_Print();
-			fprintf(stderr, "Call failed\n");
-			return -1;
-		}
-		Py_DECREF(pFunc);
+            /* Call Python/C API functions here */
+            ret = _apply(image, t);
 
-		// Finish the Python Interpreter
-		if (Py_FinalizeEx() < 0) {
-			return -1;
-		}
-		return 0;
-	}
+            if (isThreadingEnabled()) PyGILState_Release(state);
 
-	void get(double& _angle, double& _prob)
-	{
-		_angle = angle;
-		_prob = prob;
-	}
-};
+            return ret;
+        }
+
+        /**
+        * Run once the module for a given input
+        * @return true if successful (false if failed)
+        */
+        bool _apply(cv::Mat image, dg::Timestamp t)
+        {
+            // Set function arguments
+            int arg_idx = 0;
+            PyObject* pArgs = PyTuple_New(2);
+
+            // Image
+            import_array();
+            npy_intp dimensions[3] = { image.rows, image.cols, image.channels() };
+            PyObject* pValue = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)&dimensions, NPY_UINT8, image.data);
+            if (!pValue) {
+                fprintf(stderr, "POIRecognizer::apply() - Cannot convert argument1\n");
+                return false;
+            }
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+
+            // Timestamp
+            pValue = PyFloat_FromDouble(t);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+
+            // Call the method
+            PyObject* pRet = PyObject_CallObject(m_pFuncApply, pArgs);
+            if (pRet != NULL) {
+                Py_ssize_t n_ret = PyTuple_Size(pRet);
+                if (n_ret != 2)
+                {
+                    fprintf(stderr, "POIRecognizer::apply() - Wrong number of returns\n");
+                    return false;
+                }
+
+                // list of list
+                m_pois.clear();
+                PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
+                if (pValue0 != NULL)
+                {
+                    Py_ssize_t cnt = PyList_Size(pValue0);
+                    for (int i = 0; i < cnt; i++)
+                    {
+                        PyObject* pList = PyList_GetItem(pValue0, i);
+
+                        POIResult poi;
+                        int idx = 0;
+                        pValue = PyList_GetItem(pList, idx++);
+                        poi.xmin = PyLong_AsLong(pValue);
+                        pValue = PyList_GetItem(pList, idx++);
+                        poi.ymin = PyLong_AsLong(pValue);
+                        pValue = PyList_GetItem(pList, idx++);
+                        poi.xmax = PyLong_AsLong(pValue);
+                        pValue = PyList_GetItem(pList, idx++);
+                        poi.ymax = PyLong_AsLong(pValue);
+                        pValue = PyList_GetItem(pList, idx++);
+                        poi.label = PyUnicode_AsUTF8(pValue);
+                        pValue = PyList_GetItem(pList, idx++);
+                        poi.confidence = PyFloat_AsDouble(pValue);
+
+                        m_pois.push_back(poi);
+                        Py_DECREF(pList);
+                    }
+                }
+                Py_DECREF(pValue0);
+            }
+            else {
+                PyErr_Print();
+                fprintf(stderr, "POIRecognizer::apply() - Call failed\n");
+                return false;
+            }
+
+            // Update Timestamp
+            m_timestamp = t;
+
+            return true;
+        }
+
+        void get(std::vector<POIResult>& pois)
+        {
+            pois = m_pois;
+        }
+
+        void get(std::vector<POIResult>& pois, Timestamp& t)
+        {
+            pois = m_pois;
+            t = m_timestamp;
+        }
+
+    protected:
+        std::vector<POIResult> m_pois;
+        Timestamp m_timestamp = -1;
+    };
 
 } // End of 'dg'
 
-#endif // End of '__ROAD_DIRECTION_RECOGNIZER__'
+#endif // End of '__ACTIVE_NAVIGATION__'

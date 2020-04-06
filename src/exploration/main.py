@@ -10,14 +10,8 @@ from PIL import Image
 import torch
 import matplotlib.pyplot as plt
 
-parser = argparse.ArgumentParser(description='Optimal viewpoint estimation')
-parser.add_argument('--data_folder', default='./data_exp/optimal_viewpoint/', type=str, help='folder path to input images')
-parser.add_argument('--central_guidance', default=True, type=bool, help='A guidance to make a robot to rotate for making PoI on the center of the view')
-parser.add_argument('--optimal_guidance', default=True, type=bool, help='A guidance for optimal viewpoint')
-parser.add_argument('--enable_ove', default=True, type=bool, help='enable optimal viewpoint estimator')
-parser.add_argument('--verbose', default=False, type=bool, help='verbose')
-args = parser.parse_args()
-anm = ActiveNavigationModule(args)
+
+anm = ActiveNavigationModule()
 
 # Test recovery module
 # load img + action trajectory
@@ -44,10 +38,11 @@ if anm.isRecoveryGuidanceEnabled():
 # # anm.calcNeedForOptimalViewpointGuidance(topometric_pose_conf, poi_conf, entrance, entrance_conf, poi_successes)
 
 # Test ove module
+ove_data_folder = './data_exp/optimal_viewpoint/'
 anm.enable_ove = True
 if anm.isOptimalViewpointGuidanceEnabled():
-    image_list, sf_list, bbox_list, depth_list = file_utils.get_files(args.data_folder)
-    im_paths, target_pois = file_utils.get_annos(args.data_folder + 'anno/')
+    image_list, sf_list, bbox_list, depth_list = file_utils.get_files(ove_data_folder)
+    im_paths, target_pois = file_utils.get_annos(ove_data_folder + 'anno/')
     im_cnt = 0
     tot_test = len(im_paths)
     for im_path, target_poi in zip(im_paths, target_pois):
