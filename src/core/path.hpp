@@ -13,19 +13,19 @@ struct PathElement
 {
     /**
      * A constructor with member initialization
-     * @param _node A pointer to a node
-     * @param _edge A pointer to an edge
+     * @param _node_id ID of a node
+     * @param _edge_id ID of an edge
      */
-    PathElement(Node* _node = nullptr, Edge* _edge = nullptr) : node(_node), edge(_edge) { }
+    PathElement(ID _node_id = 0, ID _edge_id = 0) : node_id(_node_id), edge_id(_edge_id) { }
 
-    /** A pointer to a node */
-    Node* node;
+    /** Node ID */
+    ID node_id;
 
     /**
-     * A pointer to an edge<br>
-     * The last element has 'nullptr'.
+     * Edge ID<br>
+     * The last element has zero ID.
      */
-    Edge* edge;
+    ID edge_id;
 };
 
 /**
