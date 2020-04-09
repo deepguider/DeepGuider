@@ -23,13 +23,14 @@ python convert.py yolov3-tiny.cfg yolov3-tiny.weights model_data/yolo_tiny_weigh
 cd ../..
 ```
 
-Additionally, download the pre-trained model from [google drive]() and place the downloaded file in `./model`.
+Additionally, download the pre-trained model from [google drive](https://drive.google.com/drive/folders/1LqsGfV-KBnP1tjH94LselZer_K4tx6in?usp=sharing) and place the downloaded file in `./model`.
 
 ```
 cd model
 tar -xvzf model.tar.gz
-mv trained_brands.pkl ../data/preprocessed/
-mv logs keras_yolo3/
+mv trained_brands.pkl ../data/preprocessed
+mv kr_brands.pkl ../data/preprocessed
+mv logs keras_yolo3
 cd ..
 ```
 
@@ -44,4 +45,9 @@ Put input images into `./data/input`.
 python test.py --mode detect # for only detecting
 python test.py --mode recog  # for detecting and recognizing
 python test.py --mode DB     # for constructing the database of features
+```
+If you want a quick test environment, use the following command.
+Please note that this is a tiny checkpoint and has nothing to do with performance.
+```
+python test.py --mode recog --classes_path ./data/preprocessed/kr_brands.pkl
 ```
