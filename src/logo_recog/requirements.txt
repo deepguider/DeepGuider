@@ -1,0 +1,9 @@
+requests
+tqdm
+sklearn
+keras==2.2.4
+scikit-learn
+pillow==6.2.2
+tensorflow-gpu
+opencv-python-contrib==3.4.2.17
+tensorboardX
