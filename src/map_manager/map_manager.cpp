@@ -375,6 +375,7 @@ bool MapManager::getMap(double lat, double lon, double radius, Map& map)
 		m_isMap = false;
 
 		m_path.pts.clear();
+		lookup_LatLons.clear();
 	}
 	m_map = new Map();
 	m_isMap = true;
@@ -405,6 +406,7 @@ bool MapManager::getMap(ID node_id, double radius, Map& map)
 		m_isMap = false;
 
 		m_path.pts.clear();
+		lookup_LatLons.clear();
 	}
 	m_map = new Map();
 	m_isMap = true;
@@ -435,6 +437,7 @@ bool MapManager::getMap(cv::Point2i tile, Map& map)
 		m_isMap = false;
 
 		m_path.pts.clear();
+		lookup_LatLons.clear();
 	}
 	m_map = new Map();
 	m_isMap = true;
@@ -471,18 +474,22 @@ bool MapManager::getMap(Path path, Map& map)
 	std::vector<double> lats, lons;
 
 	if(path.pts.size() == 0) return false;
+
 	for (std::vector<PathElement>::iterator it = path.pts.begin(); it < path.pts.end(); it++)
 	{
+		auto found = lookup_LatLons.find(it->node_id);
+		if (found == lookup_LatLons.end()) return false;
+		
 		// swapped lat and lon
-		if ((it->node->lat) > (it->node->lon))
+		if ((found->second.lat) > (found->second.lon))
 		{
-			lats.push_back(it->node->lon);
-			lons.push_back(it->node->lat);
+			lats.push_back(found->second.lon);
+			lons.push_back(found->second.lat);
 			continue;
 		}
 
-		lats.push_back(it->node->lat);
-		lons.push_back(it->node->lon);
+		lats.push_back(found->second.lat);
+		lons.push_back(found->second.lon);
 	}
 
 	double min_lat = *min_element(lats.begin(), lats.end());
@@ -494,7 +501,7 @@ bool MapManager::getMap(Path path, Map& map)
 	Point2 min_metric = utm_conv.toMetric(LatLon(min_lat, min_lon));
 	Point2 max_metric = utm_conv.toMetric(LatLon(max_lat, max_lon));
 	double dist_metric = sqrt(pow((max_metric.x - min_metric.x), 2) + pow((max_metric.y - min_metric.y), 2));
-	double alpha = 20;
+	double alpha = 50;
 	double center_lat = (min_lat + max_lat) / 2;
 	double center_lon = (min_lon + max_lon) / 2;
 
@@ -505,6 +512,7 @@ bool MapManager::getMap(Path path, Map& map)
 		m_isMap = false;
 
 		m_path.pts.clear();
+		lookup_LatLons.clear();
 	}
 	m_map = new Map();
 	m_isMap = true;
@@ -541,8 +549,8 @@ bool MapManager::parsePath(const char* json)
 	const Value& features = document[0]["features"];
 	if(!features.IsArray()) return false;
 
-	Node* node = nullptr;
-	Edge* edge = nullptr;
+	Node node;
+	Edge edge;
 	for (SizeType i = 0; i < features.Size(); i++)
 	{
 		const Value& feature = features[i];
@@ -554,54 +562,73 @@ bool MapManager::parsePath(const char* json)
 		if (i % 2 == 0)	// node
 		{
 			if (!(name == "Node" || name == "node")) return false;
-			node = new Node();
-			node->id = properties["id"].GetUint64();
+			//node = new Node();
+			node.id = properties["id"].GetUint64();
 			//switch (properties["type"].GetInt())
 			//{
 			///** Basic node */
-			//case 0: node->type = Node::NODE_BASIC; break;
+			//case 0: node.type = Node::NODE_BASIC; break;
 			///** Junction node (e.g. intersecting point, corner point, and end point of the road) */
-			//case 1: node->type = Node::NODE_JUNCTION; break;
+			//case 1: node.type = Node::NODE_JUNCTION; break;
 			///** Door node (e.g. exit and entrance) */
-			//case 2: node->type = Node::NODE_DOOR; break;
+			//case 2: node.type = Node::NODE_DOOR; break;
 			///** Elevator node */
-			//case 3: node->type = Node::NODE_ELEVATOR; break;
+			//case 3: node.type = Node::NODE_ELEVATOR; break;
 			///** Escalator node */
-			//case 4: node->type = Node::NODE_ESCALATOR; break;
+			//case 4: node.type = Node::NODE_ESCALATOR; break;
 			//}
-			//node->floor = properties["floor"].GetInt();
-			node->lat = properties["latitude"].GetDouble();
-			node->lon = properties["longitude"].GetDouble();
-		
+			//node.floor = properties["floor"].GetInt();
+
+			// swapped lat and lon
+			if ((properties["latitude"].GetDouble()) > (properties["longitude"].GetDouble()))
+			{
+				node.lon = properties["latitude"].GetDouble();
+				node.lat = properties["longitude"].GetDouble();
+			}
+			else
+			{
+				node.lat = properties["latitude"].GetDouble();
+				node.lon = properties["longitude"].GetDouble();
+			}
+
+			const Value& edge_ids = properties["edge_ids"];
+
+			/*for (Value::ConstValueIterator edge_id = edge_ids.Begin(); edge_id != edge_ids.End(); ++edge_id)
+			{
+				node.edge_ids.push_back(edge_id->GetUint64());
+			}*/
+
 			if (!((i + 1) < features.Size()))
 			{
-				edge = nullptr;
-				m_path.pts.push_back(PathElement(node, edge));
+				edge.id = 0;
+				m_path.pts.push_back(PathElement(node.id, edge.id));
+				lookup_LatLons.insert(std::make_pair(node.id, LatLon(node.lat, node.lon)));
 			}
 		}
 		else			// edge
 		{
 			if(!(name == "Edge" || name == "edge")) return false;
-			edge = new Edge();
-			edge->id = properties["id"].GetUint64();
+			//edge = new Edge();
+			edge.id = properties["id"].GetUint64();
 			//switch (properties["type"].GetInt())
 			//{
 			///** Sidewalk */
-			//case 0: edge->type = Edge::EDGE_SIDEWALK; break;
+			//case 0: edge.type = Edge::EDGE_SIDEWALK; break;
 			///** General road (e.g. roads shared by pedestrians and cars, street, alley, corridor, ...) */
-			//case 1: edge->type = Edge::EDGE_ROAD; break;
+			//case 1: edge.type = Edge::EDGE_ROAD; break;
 			///** Crosswalk */
-			//case 2: edge->type = Edge::EDGE_CROSSWALK; break;
+			//case 2: edge.type = Edge::EDGE_CROSSWALK; break;
 			///** Elevator section */
-			//case 3: edge->type = Edge::EDGE_ELEVATOR; break;
+			//case 3: edge.type = Edge::EDGE_ELEVATOR; break;
 			///** Escalator section */
-			//case 4: edge->type = Edge::EDGE_ESCALATOR; break;
+			//case 4: edge.type = Edge::EDGE_ESCALATOR; break;
 			///** Stair section */
-			//case 5: edge->type = Edge::EDGE_STAIR; break;
+			//case 5: edge.type = Edge::EDGE_STAIR; break;
 			//}
-			//edge->length = properties["length"].GetDouble();
+			//edge.length = properties["length"].GetDouble();
 
-			m_path.pts.push_back(PathElement(node, edge));
+			m_path.pts.push_back(PathElement(node.id, edge.id));
+			lookup_LatLons.insert(std::make_pair(node.id, LatLon(node.lat, node.lon)));
 		}
 	}
 
@@ -622,6 +649,7 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	//if (!ok) return false;
 
 	m_path.pts.clear();
+	lookup_LatLons.clear();
 	m_json = "";
 
 	// by communication
@@ -642,7 +670,7 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	ok = getMap(path, map);
 	if (!ok) return false;
 
-	m_path.pts.clear();
+	/*m_path.pts.clear();
 	for (size_t i = 0; i < path.pts.size(); i++)
 	{
 		PathElement p;
@@ -657,7 +685,7 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 
 		delete path.pts[i].node;
 		delete path.pts[i].edge;
-	}
+	}*/
 
 	return true;
 }
@@ -680,6 +708,7 @@ bool MapManager::getPath(double start_lat, double start_lon, double dest_lat, do
 bool MapManager::getPath(const char* filename, Path& path)
 {
 	m_path.pts.clear();
+	lookup_LatLons.clear();
 	m_json = "";
 
 	// Convert JSON document to string
@@ -697,6 +726,7 @@ bool MapManager::getPath(const char* filename, Path& path)
 	if (!ok)
 	{
 		m_path.pts.clear();
+		lookup_LatLons.clear();
 	
 		return false;
 	}
@@ -760,12 +790,12 @@ bool MapManager::parsePOI(const char* json)
 	return true;
 }
 
-std::list<POI>& MapManager::getPOI()
+std::vector<POI>& MapManager::getPOI()
 {
 	return m_map->pois;
 }
 
-bool MapManager::getPOI(double lat, double lon, double radius, std::list<POI>& poi_list)
+bool MapManager::getPOI(double lat, double lon, double radius, std::vector<POI>& poi_list)
 {
 	m_map->pois.clear();
 	m_json = "";
@@ -790,7 +820,7 @@ bool MapManager::getPOI(double lat, double lon, double radius, std::list<POI>& p
 	return true;
 }
 
- bool MapManager::getPOI(ID node_id, double radius, std::list<POI>& poi_list)
+ bool MapManager::getPOI(ID node_id, double radius, std::vector<POI>& poi_list)
 {
 	m_map->pois.clear();
 	m_json = "";
@@ -815,7 +845,7 @@ bool MapManager::getPOI(double lat, double lon, double radius, std::list<POI>& p
 	return true;
 }
 
-bool MapManager::getPOI(cv::Point2i tile, std::list<POI>& poi_list)
+bool MapManager::getPOI(cv::Point2i tile, std::vector<POI>& poi_list)
 {
 	m_map->pois.clear();
 	m_json = "";
@@ -845,7 +875,7 @@ bool MapManager::getPOI(ID poi_id, POI& poi)
 	if(m_map->pois.size() == 0) 
 		return false;
 
-	for (std::list<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
+	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
 	{
 		if (it->id == poi_id)
 		{
@@ -933,12 +963,12 @@ bool MapManager::parseStreetView(const char* json)
 	return true;
 }
 
-std::list<StreetView>& MapManager::getStreetView()
+std::vector<StreetView>& MapManager::getStreetView()
 {
 	return m_map->views;
 }
 
-bool MapManager::getStreetView(double lat, double lon, double radius, std::list<StreetView>& sv_list)
+bool MapManager::getStreetView(double lat, double lon, double radius, std::vector<StreetView>& sv_list)
 {
 	m_map->views.clear();
 	m_json = "";
@@ -963,7 +993,7 @@ bool MapManager::getStreetView(double lat, double lon, double radius, std::list<
 	return true;
 }
 
-bool MapManager::getStreetView(ID node_id, double radius, std::list<StreetView>& sv_list)
+bool MapManager::getStreetView(ID node_id, double radius, std::vector<StreetView>& sv_list)
 {
 	m_map->views.clear();
 	m_json = "";
@@ -988,7 +1018,7 @@ bool MapManager::getStreetView(ID node_id, double radius, std::list<StreetView>&
 	return true;
 }
 
-bool MapManager::getStreetView(cv::Point2i tile, std::list<StreetView>& sv_list)
+bool MapManager::getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_list)
 {
 	m_map->views.clear();
 	m_json = "";
@@ -1018,7 +1048,7 @@ bool MapManager::getStreetView(ID sv_id, StreetView& sv)
 	if (m_map->views.size() == 0)
 		return false;
 
-	for (std::list<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
+	for (std::vector<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
 	{
 		if (it->id == sv_id)
 		{

@@ -160,7 +160,7 @@ public:
 	 * @param poi_list A reference to gotten POIs list
 	 * @return True if successful (false if failed)
 	 */
-	bool getPOI(double lat, double lon, double radius, std::list<POI>& poi_list);
+	bool getPOI(double lat, double lon, double radius, std::vector<POI>& poi_list);
 	
 	/**
 	 * Get the POIs within a certain radius based on node
@@ -169,7 +169,7 @@ public:
 	 * @param poi_list A reference to gotten POIs list
 	 * @return True if successful (false if failed)
 	 */
-	bool getPOI(ID node_id, double radius, std::list<POI>& poi_list);
+	bool getPOI(ID node_id, double radius, std::vector<POI>& poi_list);
 	
 	/**
 	 * Get the POIs within a certain map tile
@@ -177,13 +177,13 @@ public:
 	 * @param poi_list A reference to gotten POIs list
 	 * @return True if successful (false if failed)
 	 */
-	bool getPOI(cv::Point2i tile, std::list<POI>& poi_list);
+	bool getPOI(cv::Point2i tile, std::vector<POI>& poi_list);
 	
 	/**
 	 * Get the current POIs list
 	 * @return A reference to gotten POIs list
 	 */
-	std::list<POI>& getPOI();
+	std::vector<POI>& getPOI();
 	
 	/**
 	 * Get the POI corresponding to a certain POI ID
@@ -202,7 +202,7 @@ public:
 	 * @param sv_list A reference to gotten StreetViews list
 	 * @return True if successful (false if failed)
 	 */
-	bool getStreetView(double lat, double lon, double radius, std::list<StreetView>& sv_list);
+	bool getStreetView(double lat, double lon, double radius, std::vector<StreetView>& sv_list);
 
 	/**
 	 * Get the StreetViews within a certain radius based on node
@@ -211,7 +211,7 @@ public:
 	 * @param sv_list A reference to gotten StreetViews list
 	 * @return True if successful (false if failed)
 	 */
-	bool getStreetView(ID node_id, double radius, std::list<StreetView>& sv_list);
+	bool getStreetView(ID node_id, double radius, std::vector<StreetView>& sv_list);
 
 	/**
 	 * Get the StreetViews within a certain map tile
@@ -219,13 +219,13 @@ public:
 	 * @param sv_list A reference to gotten StreetViews list
 	 * @return True if successful (false if failed)
 	 */
-	bool getStreetView(cv::Point2i tile, std::list<StreetView>& sv_list);
+	bool getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_list);
 
 	/**
 	 * Get the current StreetViews list
 	 * @return A reference to gotten StreetViews list
 	 */
-	std::list<StreetView>& getStreetView();
+	std::vector<StreetView>& getStreetView();
 
 	/**
 	 * Get the StreetView corresponding to a certain StreetView ID
@@ -249,6 +249,8 @@ protected:
 	Map* m_map;
 	Path m_path;
 	std::string m_json;
+	/** A hash table for finding LatLons */
+	std::map<ID, LatLon> lookup_LatLons;
 
 	/*int lat2tiley(double lat, int z);
 	int lon2tilex(double lon, int z);

@@ -67,7 +67,7 @@ public:
         lon    = rhs.lon;
         type   = rhs.type;
         floor  = rhs.floor;
-        edge_list = rhs.edge_list;
+        edge_ids = rhs.edge_ids;
         return *this;
     }
 
@@ -100,8 +100,8 @@ public:
      */
     int floor;
 
-    /** A list of edges */
-    std::vector<Edge*> edge_list;
+    /** A vector of edgeIDs */
+    std::vector<ID> edge_ids;
 };
 
 /**
@@ -141,10 +141,10 @@ public:
      * @param _length The given length of edge (Unit: [m])
      * @param _type The given type of edge
      * @param _directed The given flag whether the edge is undirected (false) or directed (true)
-     * @param _node1 The given pointer to the first node
-     * @param _node2 The given pointer to the second node
+     * @param _node_id1 The given identifier of the first node
+     * @param _node_id2 The given identifier of the second node
      */
-    Edge(ID _id = 0, double _length = 1, int _type = 0, bool _directed = false, Node* _node1 = nullptr, Node* _node2 = nullptr) : id(_id), length(_length), type(_type), directed(_directed), node1(_node1), node2(_node2) { }
+    Edge(ID _id = 0, double _length = 1, int _type = 0, bool _directed = false, ID _node_id1 = 0, ID _node_id2 = 0) : id(_id), length(_length), type(_type), directed(_directed), node_id1(_node_id1), node_id2(_node_id2) { }
 
     /**
      * Overriding the assignment operator
@@ -156,8 +156,8 @@ public:
         id     = rhs.id;
         length = rhs.length;
         type   = rhs.type;
-        node1  = rhs.node1;
-        node2  = rhs.node2;
+		node_id1 = rhs.node_id1;
+		node_id2 = rhs.node_id2;
         return *this;
     }
 
@@ -190,11 +190,11 @@ public:
     /** A flag whether this edge is undirected (false) or directed (true) */
     bool directed;
 
-    /** A pointer to the first node */
-    Node* node1;
+    /** A identifier of the first node */
+    ID node_id1;
 
-    /** A pointer to the second node */
-    Node* node2;
+    /** A identifier of the second node */
+    ID node_id2;
 };
 
 /**
@@ -253,12 +253,12 @@ public:
      * @param data Data to add
      * @return A pointer to the added node
      */
-    Node* addNode(const Node& node)
+    int addNode(const Node& node)
     {
         nodes.push_back(node);
-        Node* node_ptr = &(nodes.back());
-        lookup_nodes.insert(std::make_pair(node.id, node_ptr));
-        return node_ptr;
+		int node_idx = nodes.size() - 1;
+		lookup_nodes.insert(std::make_pair(node.id, node_idx));
+		return node_idx;
     }
 
     /**
@@ -269,21 +269,21 @@ public:
      *  Edge::node1 and Edge::node2 are not necessary to be assigned.
      * @return A pointer to the added edge (`nullptr` if any node is not exist)
      */
-    Edge* addEdge(ID node1, ID node2, const Edge& info = Edge())
+    int addEdge(ID node1, ID node2, const Edge& info = Edge())
     {
         Node* node1_ptr = findNode(node1);
         Node* node2_ptr = findNode(node2);
-        if (node1_ptr == nullptr || node2_ptr == nullptr) return nullptr;
+        if (node1_ptr == nullptr || node2_ptr == nullptr) return -1;
 
         Edge edge = info;
-        edge.node1 = node1_ptr;
-        edge.node2 = node2_ptr;
+        edge.node_id1 = node1_ptr->id;
+        edge.node_id2 = node2_ptr->id;
         edges.push_back(edge);
-        Edge* edge_ptr = &(edges.back());
-        node1_ptr->edge_list.push_back(edge_ptr);
-        if (!edge.directed) node2_ptr->edge_list.push_back(edge_ptr);
-        lookup_edges.insert(std::make_pair(edge.id, edge_ptr));
-        return edge_ptr;
+        int edge_idx = edges.size()-1;
+        node1_ptr->edge_ids.push_back(edges[edge_idx].id);
+        if (!edge.directed) node2_ptr->edge_ids.push_back(edges[edge_idx].id);
+        lookup_edges.insert(std::make_pair(edge.id, edge_idx));
+        return edge_idx;
     }
 
     /**
@@ -296,7 +296,7 @@ public:
         assert(nodes.size() == lookup_nodes.size() && lookup_nodes.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_nodes.find(id);
         if (found == lookup_nodes.end()) return nullptr;
-        return found->second;
+        return &nodes[found->second];
     }
 
     /**
@@ -309,7 +309,7 @@ public:
         assert(edges.size() == lookup_edges.size() && lookup_edges.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_edges.find(id);
         if (found == lookup_edges.end()) return nullptr;
-        return found->second;
+        return &edges[found->second];
     }
 
     /**
@@ -322,32 +322,33 @@ public:
     {
         Node* from_ptr = findNode(from);
         if (from_ptr == nullptr) return nullptr;
-        for (auto edge = from_ptr->edge_list.begin(); edge != from_ptr->edge_list.end(); edge++)
+        for (auto edge = from_ptr->edge_ids.begin(); edge != from_ptr->edge_ids.end(); edge++)
         {
-            assert((*edge)->node1 != nullptr && (*edge)->node2 != nullptr); // Verify connection (comment this line if you want speed-up in DEBUG mode)
-            if ((*edge)->node1->id == to || (*edge)->node2->id == to) return *edge;
+			auto edge_ptr = findEdge(*edge);
+            assert(edge_ptr->node_id1 != 0 && edge_ptr->node_id2 != 0); // Verify connection (comment this line if you want speed-up in DEBUG mode)
+            if (edge_ptr->node_id1 == to || edge_ptr->node_id2 == to) return edge_ptr;
         }
         return nullptr;
     }
 
-    /** A list of nodes */
-    std::list<Node> nodes;
+    /** A vector of nodes */
+    std::vector<Node> nodes;
 
-    /** A list of edges */
-    std::list<Edge> edges;
+    /** A vector of edges */
+    std::vector<Edge> edges;
 
-    /** A list of POIs */
-    std::list<POI> pois;
+    /** A vector of POIs */
+    std::vector<POI> pois;
 
-    /** A list of Street-views */
-    std::list<StreetView> views;
+    /** A vector of Street-views */
+    std::vector<StreetView> views;
 
 protected:
     /** A hash table for finding nodes */
-    std::map<ID, Node*> lookup_nodes;
+    std::map<ID, int> lookup_nodes;
 
     /** A hash table for finding nodes */
-    std::map<ID, Edge*> lookup_edges;
+    std::map<ID, int> lookup_edges;
 };
 
 } // End of 'dg'

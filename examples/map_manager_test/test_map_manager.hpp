@@ -23,7 +23,7 @@ int testSimpleMapManager()
 	if (ok)
 	{
 		VVS_CHECK_EQUL(manager.getPath().pts.size(), 37);
-		VVS_CHECK_EQUL(manager.getMap().nodes.size(), 201);
+		VVS_CHECK_EQUL(manager.getMap().nodes.size(), 236);
 	}
 
     // Get the map
@@ -48,7 +48,7 @@ int testSimpleMapManager()
 	VVS_CHECK_EQUL((manager.getMap().findEdge(findEdge->id))->length, 31.267266147580031);// 13.370689140764002);
 
 	// Get the POI
-	std::list<dg::POI> poi_list;
+	std::vector<dg::POI> poi_list;
 	ok = manager.getPOI(36.384063, 127.374733, 650.0, poi_list);
 	if (ok)
 		VVS_CHECK_EQUL(poi_list.size(), 613);	// 36.382057170000003, 127.36764620000000, 10000.0, ip).size(), 8815);
@@ -62,7 +62,7 @@ int testSimpleMapManager()
 	//std::vector<cv::Point2d> poiloc = manager.getPOIloc("UST");
 	
 	// Get the StreetView
-	std::list<dg::StreetView> sv_list;
+	std::vector<dg::StreetView> sv_list;
 	ok = manager.getStreetView(36.384063, 127.374733, 650.0, sv_list);
 	if (ok)
 		VVS_CHECK_EQUL(sv_list.size(), 2144);	// 36.382057170000003, 127.36764620000000, 10000.0, ip).size(), 36607);
