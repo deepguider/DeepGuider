@@ -9,6 +9,7 @@
 int testSimpleMapManager()
 {
 	dg::MapManager manager;
+	manager.initialize();
 	bool ok;
 
 	// Change the server IP address
@@ -48,27 +49,31 @@ int testSimpleMapManager()
 	VVS_CHECK_EQUL((manager.getMap().findEdge(findEdge->id))->length, 31.267266147580031);// 13.370689140764002);
 
 	// Get the POI
-	std::vector<dg::POI> poi_list;
-	ok = manager.getPOI(36.384063, 127.374733, 650.0, poi_list);
+	std::vector<dg::POI> poi_vec;
+	ok = manager.getPOI(36.384063, 127.374733, 650.0, poi_vec);
 	if (ok)
-		VVS_CHECK_EQUL(poi_list.size(), 613);	// 36.382057170000003, 127.36764620000000, 10000.0, ip).size(), 8815);
-	ok = manager.getPOI(559542565000236, 500.0, poi_list);
+		VVS_CHECK_EQUL(poi_vec.size(), 613);	// 36.382057170000003, 127.36764620000000, 10000.0, ip).size(), 8815);
+	ok = manager.getPOI(559542565000236, 500.0, poi_vec);
 	if (ok)
-		VVS_CHECK_EQUL(poi_list.size(), 86);
+		VVS_CHECK_EQUL(poi_vec.size(), 86);
 	dg::POI poi;
 	ok = manager.getPOI(16099168, poi);
 	if (ok)
 		VVS_CHECK_EQUL(poi.lat, 36.378127999999997);
+	std::vector<dg::POI> pois = manager.getPOI("루이까스텔유성점");
+	VVS_CHECK_EQUL(pois[0].id, 31131139);
+	pois = manager.getPOI("우성이비에스", dg::LatLon(36.361303, 127.33648), 100.0);
+	VVS_CHECK_EQUL(pois[0].id, 11633426);
 	//std::vector<cv::Point2d> poiloc = manager.getPOIloc("UST");
 	
 	// Get the StreetView
-	std::vector<dg::StreetView> sv_list;
-	ok = manager.getStreetView(36.384063, 127.374733, 650.0, sv_list);
+	std::vector<dg::StreetView> sv_vec;
+	ok = manager.getStreetView(36.384063, 127.374733, 650.0, sv_vec);
 	if (ok)
-		VVS_CHECK_EQUL(sv_list.size(), 2144);	// 36.382057170000003, 127.36764620000000, 10000.0, ip).size(), 36607);
-	ok = manager.getStreetView(559542565000236, 500.0, sv_list);
+		VVS_CHECK_EQUL(sv_vec.size(), 2144);	// 36.382057170000003, 127.36764620000000, 10000.0, ip).size(), 36607);
+	ok = manager.getStreetView(559542565000236, 500.0, sv_vec);
 	if (ok)
-		VVS_CHECK_EQUL(sv_list.size(), 630);
+		VVS_CHECK_EQUL(sv_vec.size(), 630);
 	dg::StreetView sv;
 	ok = manager.getStreetView(32364501511, sv);
 	if (ok)

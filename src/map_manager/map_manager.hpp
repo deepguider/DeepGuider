@@ -157,31 +157,31 @@ public:
 	 * @param lat The given latitude of these POIs (Unit: [deg])
 	 * @param lon The given longitude of these POIs (Unit: [deg])
 	 * @param radius The given radius of these POIs (Unit: [m])
-	 * @param poi_list A reference to gotten POIs list
+	 * @param poi_vec A reference to gotten POIs vector
 	 * @return True if successful (false if failed)
 	 */
-	bool getPOI(double lat, double lon, double radius, std::vector<POI>& poi_list);
+	bool getPOI(double lat, double lon, double radius, std::vector<POI>& poi_vec);
 	
 	/**
 	 * Get the POIs within a certain radius based on node
 	 * @param node_id The given node ID of these POIs
 	 * @param radius The given radius of these POIs (Unit: [m])
-	 * @param poi_list A reference to gotten POIs list
+	 * @param poi_vec A reference to gotten POIs vector
 	 * @return True if successful (false if failed)
 	 */
-	bool getPOI(ID node_id, double radius, std::vector<POI>& poi_list);
+	bool getPOI(ID node_id, double radius, std::vector<POI>& poi_vec);
 	
 	/**
 	 * Get the POIs within a certain map tile
 	 * @param tile The given map tile of these POIs
-	 * @param poi_list A reference to gotten POIs list
+	 * @param poi_vec A reference to gotten POIs vector
 	 * @return True if successful (false if failed)
 	 */
-	bool getPOI(cv::Point2i tile, std::vector<POI>& poi_list);
+	bool getPOI(cv::Point2i tile, std::vector<POI>& poi_vec);
 	
 	/**
-	 * Get the current POIs list
-	 * @return A reference to gotten POIs list
+	 * Get the current POIs vector
+	 * @return A reference to gotten POIs vector
 	 */
 	std::vector<POI>& getPOI();
 	
@@ -192,6 +192,23 @@ public:
 	 * @return True if successful (false if failed)
 	 */
 	bool getPOI(ID poi_id, POI& poi);
+	
+	/**
+	 * Get the POIs corresponding to a certain POI name
+	 * @param poi_name The given POI name of this POI
+	 * @param latlon The given latitude and longitude of this POI (Unit: [deg])
+	 * @param radius The given radius of this POI (Unit: [m])
+	 * @return A vector of gotten POIs
+	 */
+	std::vector<POI> getPOI(const std::string poi_name, LatLon latlon, double radius);
+
+	/**
+	 * Get the POIs corresponding to a certain POI name
+	 * @param poi_name The given POI name of this POI
+	 * @return A vector of gotten POIs
+	 */
+	std::vector<POI> getPOI(const std::string poi_name);
+
 	//std::vector<cv::Point2d> getPOIloc(const char* poiname = "UST");
 
 	/**
@@ -199,31 +216,31 @@ public:
 	 * @param lat The given latitude of these StreetViews (Unit: [deg])
 	 * @param lon The given longitude of these StreetViews (Unit: [deg])
 	 * @param radius The given radius of these StreetViews (Unit: [m])
-	 * @param sv_list A reference to gotten StreetViews list
+	 * @param sv_vec A reference to gotten StreetViews vector
 	 * @return True if successful (false if failed)
 	 */
-	bool getStreetView(double lat, double lon, double radius, std::vector<StreetView>& sv_list);
+	bool getStreetView(double lat, double lon, double radius, std::vector<StreetView>& sv_vec);
 
 	/**
 	 * Get the StreetViews within a certain radius based on node
 	 * @param node_id The given node ID of these StreetViews
 	 * @param radius The given radius of these StreetViews (Unit: [m])
-	 * @param sv_list A reference to gotten StreetViews list
+	 * @param sv_vec A reference to gotten StreetViews vector
 	 * @return True if successful (false if failed)
 	 */
-	bool getStreetView(ID node_id, double radius, std::vector<StreetView>& sv_list);
+	bool getStreetView(ID node_id, double radius, std::vector<StreetView>& sv_vec);
 
 	/**
 	 * Get the StreetViews within a certain map tile
 	 * @param tile The given map tile of these StreetViews
-	 * @param sv_list A reference to gotten StreetViews list
+	 * @param sv_vec A reference to gotten StreetViews vector
 	 * @return True if successful (false if failed)
 	 */
-	bool getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_list);
+	bool getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_vec);
 
 	/**
-	 * Get the current StreetViews list
-	 * @return A reference to gotten StreetViews list
+	 * Get the current StreetViews vector
+	 * @return A reference to gotten StreetViews vector
 	 */
 	std::vector<StreetView>& getStreetView();
 
@@ -251,6 +268,10 @@ protected:
 	std::string m_json;
 	/** A hash table for finding LatLons */
 	std::map<ID, LatLon> lookup_LatLons;
+	/** A hash table for finding POIs */
+	std::map<std::wstring, LatLon> lookup_pois;
+	/** A hash table for finding StreetViews */
+	std::map<ID, LatLon> lookup_svs;
 
 	/*int lat2tiley(double lat, int z);
 	int lon2tilex(double lon, int z);

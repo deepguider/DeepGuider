@@ -6,6 +6,15 @@ namespace dg
 
 bool MapManager::initialize()
 {
+	m_map = new Map();
+	m_isMap = true;
+	std::vector<POI> poi_vec;
+	getPOI(36.384063, 127.374733, 40000.0, poi_vec);
+	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
+	{
+		lookup_pois.insert(std::make_pair(it->name, LatLon(it->lat, it->lon)));
+	}
+	m_map->pois.clear();
 
 	return true;
 }
@@ -374,7 +383,7 @@ bool MapManager::getMap(double lat, double lon, double radius, Map& map)
 		delete m_map;
 		m_isMap = false;
 
-		m_path.pts.clear();
+		//m_path.pts.clear();
 		lookup_LatLons.clear();
 	}
 	m_map = new Map();
@@ -405,7 +414,7 @@ bool MapManager::getMap(ID node_id, double radius, Map& map)
 		delete m_map;
 		m_isMap = false;
 
-		m_path.pts.clear();
+		//m_path.pts.clear();
 		lookup_LatLons.clear();
 	}
 	m_map = new Map();
@@ -436,7 +445,7 @@ bool MapManager::getMap(cv::Point2i tile, Map& map)
 		delete m_map;
 		m_isMap = false;
 
-		m_path.pts.clear();
+		//m_path.pts.clear();
 		lookup_LatLons.clear();
 	}
 	m_map = new Map();
@@ -511,7 +520,7 @@ bool MapManager::getMap(Path path, Map& map)
 		delete m_map;
 		m_isMap = false;
 
-		m_path.pts.clear();
+		//m_path.pts.clear();
 		lookup_LatLons.clear();
 	}
 	m_map = new Map();
@@ -795,7 +804,7 @@ std::vector<POI>& MapManager::getPOI()
 	return m_map->pois;
 }
 
-bool MapManager::getPOI(double lat, double lon, double radius, std::vector<POI>& poi_list)
+bool MapManager::getPOI(double lat, double lon, double radius, std::vector<POI>& poi_vec)
 {
 	m_map->pois.clear();
 	m_json = "";
@@ -815,12 +824,12 @@ bool MapManager::getPOI(double lat, double lon, double radius, std::vector<POI>&
 		return false;
 	}
 
-	poi_list = getPOI();
+	poi_vec = getPOI();
 
 	return true;
 }
 
- bool MapManager::getPOI(ID node_id, double radius, std::vector<POI>& poi_list)
+ bool MapManager::getPOI(ID node_id, double radius, std::vector<POI>& poi_vec)
 {
 	m_map->pois.clear();
 	m_json = "";
@@ -840,12 +849,12 @@ bool MapManager::getPOI(double lat, double lon, double radius, std::vector<POI>&
 		return false;
 	}
 
-	poi_list = getPOI();
+	poi_vec = getPOI();
 
 	return true;
 }
 
-bool MapManager::getPOI(cv::Point2i tile, std::vector<POI>& poi_list)
+bool MapManager::getPOI(cv::Point2i tile, std::vector<POI>& poi_vec)
 {
 	m_map->pois.clear();
 	m_json = "";
@@ -865,7 +874,7 @@ bool MapManager::getPOI(cv::Point2i tile, std::vector<POI>& poi_list)
 		return false;
 	}
 
-	poi_list = getPOI();
+	poi_vec = getPOI();
 
 	return true;
 }
@@ -886,6 +895,35 @@ bool MapManager::getPOI(ID poi_id, POI& poi)
 	}
 
 	return false;
+}
+
+std::vector<POI> MapManager::getPOI(const std::string poi_name, LatLon latlon, double radius)
+{	
+	std::vector<POI> poi_vec;
+	bool ok = getPOI(latlon.lat, latlon.lon, radius, poi_vec);
+	if (!ok)
+		return getPOI();
+	poi_vec.clear();
+	std::wstring name;
+	utf8to16(poi_name.c_str(), name);
+	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
+	{		
+		if (it->name == name)
+			poi_vec.push_back(*it);
+	}	
+
+	return poi_vec;
+}
+
+std::vector<POI> MapManager::getPOI(const std::string poi_name)
+{
+	std::wstring name;
+	utf8to16(poi_name.c_str(), name);
+	auto found = lookup_pois.find(name);
+	if (found == lookup_pois.end()) 
+		return std::vector<POI>();
+
+	return getPOI(poi_name, found->second, 10.0);
 }
 
 //std::vector<cv::Point2d> MapManager::getPOIloc(const char* poiname)
@@ -968,7 +1006,7 @@ std::vector<StreetView>& MapManager::getStreetView()
 	return m_map->views;
 }
 
-bool MapManager::getStreetView(double lat, double lon, double radius, std::vector<StreetView>& sv_list)
+bool MapManager::getStreetView(double lat, double lon, double radius, std::vector<StreetView>& sv_vec)
 {
 	m_map->views.clear();
 	m_json = "";
@@ -988,12 +1026,12 @@ bool MapManager::getStreetView(double lat, double lon, double radius, std::vecto
 		return false;
 	}
 
-	sv_list = getStreetView();
+	sv_vec = getStreetView();
 
 	return true;
 }
 
-bool MapManager::getStreetView(ID node_id, double radius, std::vector<StreetView>& sv_list)
+bool MapManager::getStreetView(ID node_id, double radius, std::vector<StreetView>& sv_vec)
 {
 	m_map->views.clear();
 	m_json = "";
@@ -1013,12 +1051,12 @@ bool MapManager::getStreetView(ID node_id, double radius, std::vector<StreetView
 		return false;
 	}
 
-	sv_list = getStreetView();
+	sv_vec = getStreetView();
 
 	return true;
 }
 
-bool MapManager::getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_list)
+bool MapManager::getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_vec)
 {
 	m_map->views.clear();
 	m_json = "";
@@ -1038,7 +1076,7 @@ bool MapManager::getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_lis
 		return false;
 	}
 
-	sv_list = getStreetView();
+	sv_vec = getStreetView();
 
 	return true;
 }
