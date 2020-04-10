@@ -61,9 +61,7 @@ int testSimpleMapManager()
 	if (ok)
 		VVS_CHECK_EQUL(poi.lat, 36.378127999999997);
 	std::vector<dg::POI> pois = manager.getPOI("루이까스텔유성점");
-	VVS_CHECK_EQUL(pois[0].id, 31131139);
 	pois = manager.getPOI("우성이비에스", dg::LatLon(36.361303, 127.33648), 100.0);
-	VVS_CHECK_EQUL(pois[0].id, 11633426);
 	//std::vector<cv::Point2d> poiloc = manager.getPOIloc("UST");
 	
 	// Get the StreetView
