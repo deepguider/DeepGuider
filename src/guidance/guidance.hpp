@@ -38,6 +38,7 @@ public:
 		ON_NODE = 0,		//The robot has arrived at the node
 		ON_EDGE,	//The robot is 0~90% of the edge distance
 		APPROACHING_NODE,	//The robot is 90~99% of the edge distance
+		ARRIVED
 		//STOP_WAIT	//not moving
 	};
 
@@ -74,13 +75,16 @@ public:
 		MOVE_CAUTION_CAR,
 	};
 
-	/**A realtime action of robot including motion and direction */
+	/**A realtime action of robot including motion and direction
+	* Example:
+	* - Go: [GO_**] on [edge_type] with [Mode]
+	* - TURN: [TURN_**] for [degree] degree on [node_type]*/
 	struct Action
 	{
 		Motion cmd;	// action command
 		int node_type;
 		int edge_type;	//
-		int degree = 0;	// additional action direction of current cmd -180~180
+		int degree = 0;	// additional action direction of turn cmd -180~180
 		Mode mode = Mode::MOVE_NORMAL;	// addition motion info
 	};
 
@@ -93,11 +97,21 @@ public:
 		GuideStatus guide_status;	// current guidance status
 		MoveStatus moving_status;	// current moving status
 		std::vector<Action> actions;	// action command
-		Node heading_node;	 // heading node
+		ID heading_node_id;	 // heading node
 		double distance_to_remain; // distance to heading node (unit: meter)
 		std::string msg;		// string guidance message
 		bool announce = 0;
 	};
+	//struct Guidance
+	//{
+	//	GuideStatus guide_status;	// current guidance status
+	//	MoveStatus moving_status;	// current moving status
+	//	std::vector<Action> actions;	// action command
+	//	Node heading_node;	 // heading node
+	//	double distance_to_remain; // distance to heading node (unit: meter)
+	//	std::string msg;		// string guidance message
+	//	bool announce = 0;
+	//};
 	
 private:		
 
@@ -113,27 +127,58 @@ private:
 		* @param _degree An relative orientation from past node to current node
 		* @param _edge And element from EdgeType
 		*/
-		GuidedPathElement(Node* _fromnode, Edge* _curedge, Node* _tonode, 
-			Edge* _nextedge, int _degree = 0)
-			: from_node (_fromnode), cur_edge(_curedge), to_node(_tonode), 
-			next_edge(_nextedge), degree(_degree) {}
+		GuidedPathElement(ID _fromnode, ID _curedge, ID _tonode,
+			ID _nextedge, int _degree = 0)
+			: from_node_id(_fromnode), cur_edge_id(_curedge), to_node_id(_tonode),
+			next_edge_id(_nextedge), degree(_degree) {}
 
 		/** Current NODE*/
-		Node* from_node;
+		ID from_node_id;
 
 		/** Current EDGE*/
-		Edge* cur_edge;
+		ID cur_edge_id;
 
 		/** Next NODE*/
-		Node* to_node;
+		ID to_node_id;
 
 		/** Next EDGE*/
-		Edge* next_edge;
+		ID next_edge_id;
 
 		/** Rotation angle at next node. [deg] -180~180*/
 		int degree;
 
 	};
+	//struct GuidedPathElement
+	//{
+	//	GuidedPathElement() {};
+	//	/** A constructor with path's segment
+	//	* @param _component An option whether the path segment is NODE or EDGE
+	//	* @param _id The given ID
+	//	* @param _node An element from NodeType
+	//	* @param _degree An relative orientation from past node to current node
+	//	* @param _edge And element from EdgeType
+	//	*/
+	//	GuidedPathElement(Node _fromnode, Edge _curedge, Node _tonode, 
+	//		Edge _nextedge, int _degree = 0)
+	//		: from_node (_fromnode), cur_edge(_curedge), to_node(_tonode), 
+	//		next_edge(_nextedge), degree(_degree) {}
+
+	//	/** Current NODE*/
+	//	ID from_node;
+
+	//	/** Current EDGE*/
+	//	Edge cur_edge;
+
+	//	/** Next NODE*/
+	//	Node to_node;
+
+	//	/** Next EDGE*/
+	//	Edge next_edge;
+
+	//	/** Rotation angle at next node. [deg] -180~180*/
+	//	int degree;
+
+	//};
 
 	//Guidance member
 	dg::Path m_path;
@@ -173,8 +218,9 @@ private:
 		return mode;
 	}
 	
-	Action setAction(GuidedPathElement gpe, int degree = 0);
+	bool isNodeInPath(ID nodeid);
 	Action setAction(Motion ncmd, int etype, int degree, Mode mode);
+	Action setAction(ID nid, ID eid, int degree);
 	bool isForward(int degree)
 	{
 		return (degree >= -45 && degree <= 45) ? true : false;
@@ -199,11 +245,12 @@ private:
 	std::string getTurnString(Action act, int ntype);
 	int getGuideIdxFromPose(TopometricPose pose);
 	
-	Node* findNodeFromPath(ID nodeid);
-	Edge* findEdgeFromPath(ID edgeid);
+	//Node* findNodeFromPath(ID nodeid);
+	//Edge* findEdgeFromPath(ID edgeid);
 	
 	
 public:
+
 	bool setPathNMap(dg::Path path, dg::Map map)
 	{
 		if (path.pts.size() < 1)
@@ -211,15 +258,24 @@ public:
 			fprintf(stdout, "No path input!\n");
 			return false;
 		}
+		if (!validatePath(path, map))
+		{
+			fprintf(stdout, "Path id is not in map!\n");
+			return false;
+		}
 		m_path = path;
 		m_map = map;
 		return true;
 	}
 
+	bool validatePath(dg::Path path, dg::Map map);
 	bool initializeGuides();
-	MoveStatus applyPose(dg::TopometricPose pose);
+	bool regeneratePath(TopometricPose pose);
+	MoveStatus applyPose(TopometricPose pose);
+	MoveStatus applyPose(TopometricPose pose, double confidence);
 	GuideStatus getGuidanceStatus(GuideStatus rs, MoveStatus ms);
 	//GuideStatus getStatus(GuideStatus rs, MoveStatus ms);
+	void setGuideStatus(GuideStatus gs) { m_dgstatus = gs; };
 	Guidance getGuidance(MoveStatus status);
 	Guidance getGuidance(TopometricPose pose);
 

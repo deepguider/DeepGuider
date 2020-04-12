@@ -27,20 +27,20 @@ Path getPath(const char* filename, Map& map)
 
 		if (count%2 == 0)	// node
 		{
-			Node* node = map.findNode(id);
-			pathtemp.node = node;
+			//Node* node = map.findNode(id);
+			pathtemp.node_id = id;
 		}
 		else // edge
 		{
-			Edge* edge = map.findEdge(id);
-			pathtemp.edge = edge;
+			//Edge* edge = map.findEdge(id);
+			pathtemp.edge_id = id;
 			pathvec.push_back(pathtemp);
 		}
 		count++;
 
 	}
 
-	pathtemp.edge = nullptr;
+	pathtemp.edge_id = 0;
 	pathvec.push_back(pathtemp);
 	
 	Path path;
@@ -83,6 +83,23 @@ GUIDANCE_LOADPATH_FAIL:
 
 }
 
+
+std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_file = "data/191115_ETRI_asen_fix.csv")
+{
+	cx::CSVReader csv;
+	cx::CSVReader::Double2D csv_ext = csv.extDouble2D(1, { 2, 3, 7, 8 }); // Skip the header
+
+	std::vector<std::pair<double, dg::LatLon>> data;
+	for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
+	{
+		double timestamp = row->at(0) + 1e-9 * row->at(1);
+		dg::LatLon ll(row->at(2), row->at(3));
+		data.push_back(std::make_pair(timestamp, ll));
+	}
+	return data;
+}
+
+
 int main()
 {	   	 
 	MapManager map_manager;
@@ -90,27 +107,49 @@ int main()
 	
 	// Get the path & map
 	bool ok;
-	dg::Map map;
-	dg::Path path;
-	ok = map_manager.getMap(559542564800095, 700, map);
-	//ok = map_manager.getMap(36.382967999999998, 127.37138150000001, 700, map);
+	dg::Path path, newPath;
 	ok = map_manager.getPath(36.381873, 127.36803, 36.384063, 127.374733, path);
-	
-	printf("Paths\n");
-	for (size_t i = 0; i < path.pts.size()-1; i++)
+	dg::Map map = map_manager.getMap();
+	printf("Original Paths\n");
+	for (size_t i = 0; i < path.pts.size(); i++)
 	{
-		//Node* curnode = map.findNode(path.pts[i].node->id);
-		//Edge* curedge = map.findEdge(path.pts[i].edge->id);
+		printf("[%zd]: ", i);
+		Node* curnode = map.findNode(path.pts[i].node_id);
+		if (curnode != nullptr)
+			printf("Node-%zu, ", curnode->id);
+		else
+			printf("No node(%zu) is found on map!, ", path.pts[i].node_id);
+		Edge* curedge = map.findEdge(path.pts[i].edge_id);
+		if (curedge != nullptr)
+			printf(" Edge-%zu\n", curedge->id);
+		else
+			printf("No edge(%zu) is found on map!\n", path.pts[i].edge_id);
 		//printf("[%zd]: Node-%zu, Edge-%zu\n", i, curnode->id, curedge->id);
-		printf("[%zd]: Node-%zu, Edge-%zu\n", i, path.pts[i].node->id, path.pts[i].edge->id);
+		//printf("[%zd]: Node-%zu, Edge-%zu\n", i, path.pts[i].node_id, path.pts[i].edge_id);
 	}
-	printf("[%zd]: Node-%zu\n", path.pts.size() - 1, path.pts[path.pts.size() - 1].node->id);
+	// for (size_t i = 14; i < 26; i++)
+	// {
+	// 	Node* curnode = map.findNode(path.pts[i].node_id);
+	// 	Edge* curedge = map.findEdge(path.pts[i].edge_id);
+	// 	newPath.pts.push_back(PathElement(curnode->id, curedge->id));
+	// 	printf("[%zd]: Node-%zu, Edge-%zu\n", i, curnode->id, curedge->id);
+	// 	//printf("[%zd]: Node-%zu, Edge-%zu\n", i, path.pts[i].node_id, path.pts[i].edge_id);
+	// }
+	// Node* curnode = map.findNode(path.pts[26].node_id);
+	// newPath.pts.push_back(PathElement(curnode->id, 0));
+
+	// PathElement start_node = newPath.pts.front();
+	// PathElement dest_node = newPath.pts.back();
+	//printf("[%zd]: Node-%zu\n", path.pts.size() - 1, path.pts[path.pts.size() - 1].node_id);
+	
+	//auto gps_data = getExampleGPSData("data/191115_ETRI_asen_fix.csv");
+	//printf("\tSample gps data loaded!\n");
 
 	// generate path to the destination
 	// load pre-defined path for the test
 	PathElement start_node = path.pts.front();
 	PathElement dest_node = path.pts.back();
-	printf("\tSample Path generated! start=%zu, dest=%zu\n", start_node.node->id, dest_node.node->id);
+	printf("\tSample Path generated! start=%zu, dest=%zu\n", start_node.node_id, dest_node.node_id);
 
 	   
 #if USE_EXAMPLE_PATHFILE
@@ -122,7 +161,11 @@ int main()
 #else
 
 	GuidanceManager guider;
-	guider.setPathNMap(path, map);
+	if (!guider.setPathNMap(path, map))
+	{
+		getchar();
+		return 0;
+	}
 	guider.initializeGuides();
 
 	std::vector<TopometricPose> Loc;
@@ -157,6 +200,8 @@ int main()
 		case GuidanceManager::MoveStatus::ON_NODE:
 			str_status = "ON_NODE";
 			break;
+		case GuidanceManager::MoveStatus::ARRIVED:
+			str_status = "ARRIVED";
 		default:
 			break;
 		}
