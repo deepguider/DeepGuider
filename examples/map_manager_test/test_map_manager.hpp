@@ -56,10 +56,8 @@ int testSimpleMapManager()
 	ok = manager.getPOI(559542565000236, 500.0, poi_vec);
 	if (ok)
 		VVS_CHECK_EQUL(poi_vec.size(), 86);
-	dg::POI poi;
-	ok = manager.getPOI(16099168, poi);
-	if (ok)
-		VVS_CHECK_EQUL(poi.lat, 36.378127999999997);
+	dg::POI poi = manager.getPOI(16099168);
+	VVS_CHECK_EQUL(poi.lat, 36.378127999999997);
 	std::vector<dg::POI> pois = manager.getPOI("루이까스텔유성점");
 	pois = manager.getPOI("우성이비에스", dg::LatLon(36.361303, 127.33648), 100.0);
 	//std::vector<cv::Point2d> poiloc = manager.getPOIloc("UST");
@@ -72,10 +70,8 @@ int testSimpleMapManager()
 	ok = manager.getStreetView(559542565000236, 500.0, sv_vec);
 	if (ok)
 		VVS_CHECK_EQUL(sv_vec.size(), 630);
-	dg::StreetView sv;
-	ok = manager.getStreetView(32364501511, sv);
-	if (ok)
-		VVS_CHECK_EQUL(sv.heading, 270.360000);
+	dg::StreetView sv = manager.getStreetView(32364501511);
+	VVS_CHECK_EQUL(sv.heading, 270.360000);
 
 	// Get the StreetView image
 	cv::Mat sv_image;
