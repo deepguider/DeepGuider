@@ -188,10 +188,18 @@ public:
 	/**
 	 * Get the POI corresponding to a certain POI ID
 	 * @param poi_id The given POI ID of this POI
-	 * @param poi A reference to gotten POI
-	 * @return True if successful (false if failed)
+	 * @param latlon The given latitude and longitude of this POI (Unit: [deg])
+	 * @param radius The given radius of this POI (Unit: [m])
+	 * @return A value to gotten POI
 	 */
-	bool getPOI(ID poi_id, POI& poi);
+	POI getPOI(ID poi_id, LatLon latlon, double radius);
+
+	/**
+	 * Get the POI corresponding to a certain POI ID
+	 * @param poi_id The given POI ID of this POI
+	 * @return A value to gotten POI
+	 */
+	POI getPOI(ID poi_id);
 	
 	/**
 	 * Get the POIs corresponding to a certain POI name
@@ -208,8 +216,6 @@ public:
 	 * @return A vector of gotten POIs
 	 */
 	std::vector<POI> getPOI(const std::string poi_name);
-
-	//std::vector<cv::Point2d> getPOIloc(const char* poiname = "UST");
 
 	/**
 	 * Get the StreetViews within a certain radius based on latitude and longitude
@@ -247,10 +253,18 @@ public:
 	/**
 	 * Get the StreetView corresponding to a certain StreetView ID
 	 * @param sv_id The given StreetView ID of this StreetView
-	 * @param sv A reference to gotten StreetView
-	 * @return True if successful (false if failed)
+	 * @param latlon The given latitude and longitude of this StreetView (Unit: [deg])
+	 * @param radius The given radius of this StreetView (Unit: [m])
+	 * @return A value to gotten StreetView
 	 */
-	bool getStreetView(ID sv_id, StreetView& sv);
+	StreetView getStreetView(ID sv_id, LatLon latlon, double radius);
+
+	/**
+	 * Get the StreetView corresponding to a certain StreetView ID
+	 * @param sv_id The given StreetView ID of this StreetView
+	 * @return A value to gotten StreetView
+	 */
+	StreetView getStreetView(ID sv_id);
 
 	/**
 	 * Download the StreetView image corresponding to a certain StreetView ID
@@ -268,8 +282,10 @@ protected:
 	std::string m_json;
 	/** A hash table for finding LatLons */
 	std::map<ID, LatLon> lookup_LatLons;
-	/** A hash table for finding POIs */
-	std::map<std::wstring, LatLon> lookup_pois;
+	/** A hash table for finding POIs by name */
+	std::map<std::wstring, LatLon> lookup_pois_name;
+	/** A hash table for finding POIs by ID */
+	std::map<ID, LatLon> lookup_pois_id;
 	/** A hash table for finding StreetViews */
 	std::map<ID, LatLon> lookup_svs;
 

@@ -8,13 +8,37 @@ bool MapManager::initialize()
 {
 	m_map = new Map();
 	m_isMap = true;
+
 	std::vector<POI> poi_vec;
-	getPOI(36.384063, 127.374733, 40000.0, poi_vec);
+	bool ok = getPOI(36.384063, 127.374733, 40000.0, poi_vec);	// Korea
+	if (!ok)
+	{
+		delete m_map;
+		m_isMap = false;
+
+		return false;
+	}	
 	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
 	{
-		lookup_pois.insert(std::make_pair(it->name, LatLon(it->lat, it->lon)));
+		lookup_pois_name.insert(std::make_pair(it->name, LatLon(it->lat, it->lon)));
+		lookup_pois_id.insert(std::make_pair(it->id, LatLon(it->lat, it->lon)));
 	}
 	m_map->pois.clear();
+
+	std::vector<StreetView> sv_vec;
+	ok = getStreetView(36.384063, 127.374733, 40000.0, sv_vec);	// Korea
+	if (!ok)
+	{
+		delete m_map;
+		m_isMap = false;
+
+		return false;
+	}
+	for (std::vector<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
+	{
+		lookup_svs.insert(std::make_pair(it->id, LatLon(it->lat, it->lon)));
+	}
+	m_map->views.clear();
 
 	return true;
 }
@@ -879,22 +903,31 @@ bool MapManager::getPOI(cv::Point2i tile, std::vector<POI>& poi_vec)
 	return true;
 }
 
-bool MapManager::getPOI(ID poi_id, POI& poi)
+POI MapManager::getPOI(ID poi_id, LatLon latlon, double radius)
 {
-	if(m_map->pois.size() == 0) 
-		return false;
-
+	std::vector<POI> poi_vec;
+	bool ok = getPOI(latlon.lat, latlon.lon, radius, poi_vec);
+	if (!ok)
+		return POI();
 	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
 	{
 		if (it->id == poi_id)
-		{
-			poi = *it;
-
-			return true;
-		}
+			return *it;
 	}
 
-	return false;
+	return POI();
+}
+
+POI MapManager::getPOI(ID poi_id)
+{
+	if(m_map->pois.size() == 0) 
+		return POI();
+	   	
+	auto found = lookup_pois_id.find(poi_id);
+	if (found == lookup_pois_id.end())
+		return POI();
+
+	return getPOI(poi_id, found->second, 10.0);
 }
 
 std::vector<POI> MapManager::getPOI(const std::string poi_name, LatLon latlon, double radius)
@@ -919,30 +952,12 @@ std::vector<POI> MapManager::getPOI(const std::string poi_name)
 {
 	std::wstring name;
 	utf8to16(poi_name.c_str(), name);
-	auto found = lookup_pois.find(name);
-	if (found == lookup_pois.end()) 
+	auto found = lookup_pois_name.find(name);
+	if (found == lookup_pois_name.end()) 
 		return std::vector<POI>();
 
 	return getPOI(poi_name, found->second, 10.0);
 }
-
-//std::vector<cv::Point2d> MapManager::getPOIloc(const char* poiname)
-//{
-//	std::vector<cv::Point2d> points;
-//	for (dg::Map::NodeItr node_itr = m_map.getHeadNode(); node_itr != m_map.getTailNode(); ++node_itr)
-//	{
-//		for (std::vector<std::string>::iterator it = node_itr->data.pois.begin(); it != node_itr->data.pois.end(); ++it)
-//		{
-//			if (*(it) == poiname)
-//			{
-//				cv::Point2d point(node_itr->data.lat, node_itr->data.lon);
-//				points.push_back(point);
-//				break;
-//			}
-//		}
-//	}
-//	return points;
-//}
 
 bool MapManager::downloadStreetView(double lat, double lon, double radius)
 {
@@ -1081,24 +1096,32 @@ bool MapManager::getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_vec
 	return true;
 }
 
-bool MapManager::getStreetView(ID sv_id, StreetView& sv)
+StreetView MapManager::getStreetView(ID sv_id, LatLon latlon, double radius)
 {
-	if (m_map->views.size() == 0)
-		return false;
-
+	std::vector<StreetView> sv_vec;
+	bool ok = getStreetView(latlon.lat, latlon.lon, radius, sv_vec);
+	if (!ok)
+		return StreetView();
 	for (std::vector<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
 	{
 		if (it->id == sv_id)
-		{
-			sv = *it;
-
-			return true;
-		}
+			return *it;
 	}
 
-	return false;
+	return StreetView();
 }
 
+StreetView MapManager::getStreetView(ID sv_id)
+{
+	if (m_map->views.size() == 0)
+		return StreetView();
+
+	auto found = lookup_svs.find(sv_id);
+	if (found == lookup_svs.end())
+		return StreetView();
+
+	return getStreetView(sv_id, found->second, 10.0);
+}
 size_t MapManager::writeImage_callback(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
 	std::vector<uchar>* stream = (std::vector<uchar>*)userdata;
