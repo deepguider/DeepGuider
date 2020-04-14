@@ -119,7 +119,7 @@ public:
         return -1;
     }
 
-    static RoadMap cvtMap2SimpleRoadMap(const Map& map, const UTMConverter& converter, bool auto_cost = true)
+    static RoadMap cvtMap2SimpleRoadMap(Map& map, const UTMConverter& converter, bool auto_cost = true)
     {
         RoadMap road_map;
 
@@ -140,10 +140,12 @@ public:
         {
             for (auto from = map.nodes.begin(); from != map.nodes.end(); from++)
             {
-                for (auto edge = from->edge_list.begin(); edge != from->edge_list.end(); edge++)
+                for (auto edge_id = from->edge_ids.begin(); edge_id != from->edge_ids.end(); edge_id++)
                 {
-                    ID to_id = (*edge)->node2->id;
-                    if (from->id == to_id) to_id = (*edge)->node1->id;
+                    const Edge* edge = map.findEdge(*edge_id);
+                    if (edge == nullptr) continue;
+                    ID to_id = edge->node_id2;
+                    if (from->id == to_id) to_id = edge->node_id1;
                     if (road_map.addEdge(from->id, to_id, -1) == NULL)
                     {
                         // Return an empty map if failed
@@ -157,11 +159,13 @@ public:
         {
             for (auto from = map.nodes.begin(); from != map.nodes.end(); from++)
             {
-                for (auto edge = from->edge_list.begin(); edge != from->edge_list.end(); edge++)
+                for (auto edge_id = from->edge_ids.begin(); edge_id != from->edge_ids.end(); edge_id++)
                 {
-                    ID to_id = (*edge)->node2->id;
-                    if (from->id == to_id) to_id = (*edge)->node1->id;
-                    if (road_map.addEdge(from->id, to_id, (*edge)->length) == NULL)
+                    const Edge* edge = map.findEdge(*edge_id);
+                    if (edge == nullptr) continue;
+                    ID to_id = edge->node_id2;
+                    if (from->id == to_id) to_id = edge->node_id1;
+                    if (road_map.addEdge(from->id, to_id, edge->length) == NULL)
                     {
                         // Return an empty map if failed
                         road_map.removeAll();
@@ -186,19 +190,19 @@ public:
         // Copy StreetViews
         for (auto view = map.views.begin(); view != map.views.end(); view++)
         {
-            //Point2ID road_node(view->id, converter.toMetric(*view));
-            //if (road_map.addNode(road_node) == NULL)
-            //{
-            //    // Return an empty map if failed
-            //    road_map.removeAll();
-            //    return road_map;
-            //}
+            Point2ID road_node(view->id, converter.toMetric(*view));
+            if (road_map.addNode(road_node) == NULL)
+            {
+                // Return an empty map if failed
+                road_map.removeAll();
+                return road_map;
+            }
         }
 
         return road_map;
     }
 
-    virtual bool loadMap(const Map& map, bool auto_cost = false)
+    virtual bool loadMap(Map& map, bool auto_cost = false)
     {
         cv::AutoLock lock(m_mutex);
         m_map = cvtMap2SimpleRoadMap(map, *this, auto_cost);

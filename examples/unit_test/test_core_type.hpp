@@ -80,7 +80,7 @@ int testCoreNode()
     VVS_CHECK_TRUE(a.lat == 0);
     VVS_CHECK_TRUE(a.type == 0);
     VVS_CHECK_TRUE(a.floor == 0);
-    VVS_CHECK_TRUE(a.edge_list.empty());
+    VVS_CHECK_TRUE(a.edge_ids.empty());
 
     // Check initialization
     dg::Node b(3335, dg::LatLon(82, 329), dg::Node::NODE_ESCALATOR, 17);
@@ -89,7 +89,7 @@ int testCoreNode()
     VVS_CHECK_TRUE(b.lon == 329);
     VVS_CHECK_TRUE(b.type == dg::Node::NODE_ESCALATOR);
     VVS_CHECK_TRUE(b.floor == 17);
-    VVS_CHECK_TRUE(b.edge_list.empty());
+    VVS_CHECK_TRUE(b.edge_ids.empty());
 
     // Check equality and inequality
     dg::Node c(3335);
@@ -107,17 +107,17 @@ int testCoreEdge()
     VVS_CHECK_TRUE(a.length == 1);
     VVS_CHECK_TRUE(a.type == 0);
     VVS_CHECK_TRUE(a.directed == false);
-    VVS_CHECK_TRUE(a.node1 == nullptr);
-    VVS_CHECK_TRUE(a.node2 == nullptr);
+    VVS_CHECK_TRUE(a.node_id1 == 0);
+    VVS_CHECK_TRUE(a.node_id2 == 0);
 
     // Check initialization
-    dg::Edge b(3335, 3, dg::Edge::EDGE_ESCALATOR, true, (dg::Node*)(0x01), (dg::Node*)(0x02));
+    dg::Edge b(3335, 3, dg::Edge::EDGE_ESCALATOR, true, 3, 29);
     VVS_CHECK_TRUE(b.id == 3335);
     VVS_CHECK_TRUE(b.length == 3);
     VVS_CHECK_TRUE(b.type == dg::Edge::EDGE_ESCALATOR);
     VVS_CHECK_TRUE(b.directed == true);
-    VVS_CHECK_TRUE(b.node1 == (dg::Node*)(0x01));
-    VVS_CHECK_TRUE(b.node2 == (dg::Node*)(0x02));
+    VVS_CHECK_TRUE(b.node_id1 == 3);
+    VVS_CHECK_TRUE(b.node_id2 == 29);
 
     // Check equality and inequality
     dg::Edge c(3335);
@@ -137,24 +137,24 @@ int testCoreMap()
 
     // Build an example map
     dg::Map map;
-    VVS_CHECK_TRUE(map.addNode(dg::Node(1, 0, 0)) != nullptr); // Given: node ID, latitude, longitude
-    VVS_CHECK_TRUE(map.addNode(dg::Node(2, 0, 1)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(3, 1, 1)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(4, 1, 0)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(5, 2, 1)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(6, 3, 1)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(7, 2, 0)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(8, 3, 0)) != nullptr);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(1, 0, 0)) >= 0); // Given: node ID, latitude, longitude
+    VVS_CHECK_TRUE(map.addNode(dg::Node(2, 0, 1)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(3, 1, 1)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(4, 1, 0)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(5, 2, 1)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(6, 3, 1)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(7, 2, 0)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(8, 3, 0)) >= 0);
 
-    VVS_CHECK_TRUE(map.addEdge(1, 2, dg::Edge(12)) != nullptr); // Given: node1, node2, edge ID
-    VVS_CHECK_TRUE(map.addEdge(1, 4, dg::Edge(14)) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(2, 3, dg::Edge(23)) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(3, 4, dg::Edge(34)) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(3, 5, dg::Edge(35)) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(5, 6, dg::Edge(56)) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(5, 7, dg::Edge(57)) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(6, 8, dg::Edge(68)) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(7, 8, dg::Edge(78)) != nullptr);
+    VVS_CHECK_TRUE(map.addEdge(1, 2, dg::Edge(12)) >= 0); // Given: node1, node2, edge ID
+    VVS_CHECK_TRUE(map.addEdge(1, 4, dg::Edge(14)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(2, 3, dg::Edge(23)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(3, 4, dg::Edge(34)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(3, 5, dg::Edge(35)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(5, 6, dg::Edge(56)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(5, 7, dg::Edge(57)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(6, 8, dg::Edge(68)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(7, 8, dg::Edge(78)) >= 0);
 
     // Check each a data
     VVS_CHECK_TRUE(map.findNode(1)->lat == 0);
@@ -200,26 +200,26 @@ int testCorePath()
 {
     // Build an example map
     dg::Map map;
-    VVS_CHECK_TRUE(map.addNode(dg::Node(1, 0, 0)) != nullptr); // ID, latitude, longitude
-    VVS_CHECK_TRUE(map.addNode(dg::Node(2, 0, 1)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(3, 1, 1)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(4, 1, 0)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(5, 2, 1)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(6, 3, 1)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(7, 2, 0)) != nullptr);
-    VVS_CHECK_TRUE(map.addNode(dg::Node(8, 3, 0)) != nullptr);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(1, 0, 0)) >= 0); // Given: node ID, latitude, longitude
+    VVS_CHECK_TRUE(map.addNode(dg::Node(2, 0, 1)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(3, 1, 1)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(4, 1, 0)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(5, 2, 1)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(6, 3, 1)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(7, 2, 0)) >= 0);
+    VVS_CHECK_TRUE(map.addNode(dg::Node(8, 3, 0)) >= 0);
 
-    VVS_CHECK_TRUE(map.addEdge(1, 2) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(1, 4) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(2, 3) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(3, 4) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(3, 5) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(5, 6) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(5, 7) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(6, 8) != nullptr);
-    VVS_CHECK_TRUE(map.addEdge(7, 8) != nullptr);
+    VVS_CHECK_TRUE(map.addEdge(1, 2, dg::Edge(12)) >= 0); // Given: node1, node2, edge ID
+    VVS_CHECK_TRUE(map.addEdge(1, 4, dg::Edge(14)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(2, 3, dg::Edge(23)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(3, 4, dg::Edge(34)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(3, 5, dg::Edge(35)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(5, 6, dg::Edge(56)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(5, 7, dg::Edge(57)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(6, 8, dg::Edge(68)) >= 0);
+    VVS_CHECK_TRUE(map.addEdge(7, 8, dg::Edge(78)) >= 0);
 
-    // An example map
+    // An example path
     // 2 --- 3 --- 5 --- 6
     // |                 |
     // |                 |
@@ -234,9 +234,9 @@ int testCorePath()
         VVS_CHECK_TRUE(from != nullptr);
         dg::Edge* edge = map.findEdge(ids[i], ids[i + 1]);
         VVS_CHECK_TRUE(edge != nullptr);
-        path.pts.push_back(dg::PathElement(from, edge));
+        path.pts.push_back(dg::PathElement(from->id, edge->id));
     }
-    path.pts.push_back(dg::PathElement(&(map.nodes.back()), nullptr));
+    path.pts.push_back(dg::PathElement(map.nodes.back().id, 0));
     VVS_CHECK_TRUE(ids.size() == path.pts.size());
 
     return 0;

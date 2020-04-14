@@ -100,7 +100,7 @@ public:
      */
     int floor;
 
-    /** A vector of edgeIDs */
+    /** A vector of edge IDs */
     std::vector<ID> edge_ids;
 };
 
@@ -253,10 +253,10 @@ public:
      * @param data Data to add
      * @return A pointer to the added node
      */
-    int addNode(const Node& node)
+    size_t addNode(const Node& node)
     {
         nodes.push_back(node);
-		int node_idx = nodes.size() - 1;
+		size_t node_idx = nodes.size() - 1;
 		lookup_nodes.insert(std::make_pair(node.id, node_idx));
 		return node_idx;
     }
@@ -269,7 +269,7 @@ public:
      *  Edge::node1 and Edge::node2 are not necessary to be assigned.
      * @return A pointer to the added edge (`nullptr` if any node is not exist)
      */
-    int addEdge(ID node1, ID node2, const Edge& info = Edge())
+    size_t addEdge(ID node1, ID node2, const Edge& info = Edge())
     {
         Node* node1_ptr = findNode(node1);
         Node* node2_ptr = findNode(node2);
@@ -279,7 +279,7 @@ public:
         edge.node_id1 = node1_ptr->id;
         edge.node_id2 = node2_ptr->id;
         edges.push_back(edge);
-        int edge_idx = edges.size()-1;
+        size_t edge_idx = edges.size() - 1;
         node1_ptr->edge_ids.push_back(edges[edge_idx].id);
         if (!edge.directed) node2_ptr->edge_ids.push_back(edges[edge_idx].id);
         lookup_edges.insert(std::make_pair(edge.id, edge_idx));
@@ -345,10 +345,10 @@ public:
 
 protected:
     /** A hash table for finding nodes */
-    std::map<ID, int> lookup_nodes;
+    std::map<ID, size_t> lookup_nodes;
 
     /** A hash table for finding nodes */
-    std::map<ID, int> lookup_edges;
+    std::map<ID, size_t> lookup_edges;
 };
 
 } // End of 'dg'
