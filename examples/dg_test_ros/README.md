@@ -8,27 +8,14 @@ Refere to each sub-module's README.md
 
 ### How to Build and Run Codes
 
-1. Modify CMakeLists.txt (set `DGDIR` in `set(DGDIR   "/work/deepguider")` to be the path of local deepguider repository)
-2. Modify setup_rosrun.sh (set `rosdir` in `rosdir="/work/dg_ros"` to be ROS workspace directory)
-3. Modify path of python modules in the source code (src/dg_test.cpp:176-186)
-```
-    // initialize VPS
-    if (enable_vps && !m_vps.initialize("vps", "/work/deepguider/src/vps")) return false;
-    if (enable_vps) printf("\tVPS initialized!\n");
-
-    // initialize POI
-    if (enable_poi && !m_poi.initialize("poi_recognizer", "/work/deepguider/src/poi_recog")) return false;
-    if (enable_poi) printf("\tPOI initialized!\n");
-
-    // initialize roadTheta
-    if (enable_roadTheta && !m_roadTheta.initialize("road_direction_recognizer", "/work/deepguider/src/road_recog")) return false;
-    if (enable_roadTheta) printf("\tRoadTheta initialized!\n");
-
-```
-4. Run the following shell commads:
+1. Set the value of **DGDIR** and Python paths properly in CMakeLists.txt
+2. Set **DGDIR** and **ROSDIR** properly in setup_rosrun.sh
+3. Modify **m_srcdir** properly in the code src/dg_ros.cpp:176-186_.
+4. Run the following shell commands in order:
 ```
 $ ./setup_rosrun.sh
-$ cd rosdir # change working directory to ROS workspace
+$ cd $ROSDIR # change working directory to ROS workspace
+$ source /opt/ros/kinetic/setup.bash
 $ catkin_make
 $ roscore
 $ ./dg_run.sh
