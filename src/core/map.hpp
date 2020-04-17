@@ -250,8 +250,8 @@ class Map
 public:
     /**
      * Add a node (time complexity: O(1))
-     * @param data Data to add
-     * @return A pointer to the added node
+     * @param node Node to add
+     * @return A index of the added node
      */
     size_t addNode(const Node& node)
     {
@@ -267,7 +267,7 @@ public:
      * @param node2 ID of the second node
      * @param info An edge information between two nodes<br>
      *  Edge::node1 and Edge::node2 are not necessary to be assigned.
-     * @return A pointer to the added edge (`nullptr` if any node is not exist)
+     * @return A index of the added edge (`nullptr` if any node is not exist)
      */
     size_t addEdge(ID node1, ID node2, const Edge& info = Edge())
     {
@@ -331,6 +331,71 @@ public:
         return nullptr;
     }
 
+	/**
+	 * Add a POI (time complexity: O(1))
+	 * @param poi POI to add
+	 * @return A index of the added POI
+	 */
+	size_t addPOI(const POI& poi)
+	{
+		pois.push_back(poi);
+		size_t poi_idx = pois.size() - 1;
+		lookup_pois.insert(std::make_pair(poi.id, poi_idx));
+		return poi_idx;
+	}
+
+	/**
+	 * Add a Street-view (time complexity: O(1))
+	 * @param view Street-view to add
+	 * @return A index of the added Street-view
+	 */
+	size_t addView(const StreetView& view)
+	{
+		views.push_back(view);
+		size_t view_idx = views.size() - 1;
+		lookup_views.insert(std::make_pair(view.id, view_idx));
+		return view_idx;
+	}
+
+	/**
+	 * Get the union of two Map sets
+	 * @param set2 The given Map set of this union set
+	 */
+	void set_union(const Map& set2) 
+	{
+		Map set1 = *this;
+		
+		for (auto node = set2.lookup_nodes.begin(); node != set2.lookup_nodes.end(); ++node)
+		{
+			auto result = set1.lookup_nodes.insert(std::make_pair(node->first, set1.nodes.size()));
+			if( result.second )
+				set1.nodes.push_back(set2.nodes[node->second]);
+		}
+
+		for (auto edge = set2.lookup_edges.begin(); edge != set2.lookup_edges.end(); ++edge)
+		{
+			auto result = set1.lookup_edges.insert(std::make_pair(edge->first, set1.edges.size()));
+			if (result.second)
+				set1.edges.push_back(set2.edges[edge->second]);
+		}
+
+		for (auto poi = set2.lookup_pois.begin(); poi != set2.lookup_pois.end(); ++poi)
+		{
+			auto result = set1.lookup_pois.insert(std::make_pair(poi->first, set1.pois.size()));
+			if (result.second)
+				set1.pois.push_back(set2.pois[poi->second]);
+		}
+
+		for (auto view = set2.lookup_views.begin(); view != set2.lookup_views.end(); ++view)
+		{
+			auto result = set1.lookup_views.insert(std::make_pair(view->first, set1.views.size()));
+			if (result.second)
+				set1.views.push_back(set2.views[view->second]);
+		}
+
+		*this = set1;
+	}
+
     /** A vector of nodes */
     std::vector<Node> nodes;
 
@@ -347,8 +412,14 @@ protected:
     /** A hash table for finding nodes */
     std::map<ID, size_t> lookup_nodes;
 
-    /** A hash table for finding nodes */
+    /** A hash table for finding edges */
     std::map<ID, size_t> lookup_edges;
+
+	/** A hash table for finding POIs */
+	std::map<ID, size_t> lookup_pois;
+
+	/** A hash table for finding Street-views */
+	std::map<ID, size_t> lookup_views;
 };
 
 } // End of 'dg'

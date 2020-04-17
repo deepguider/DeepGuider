@@ -28,13 +28,15 @@ int testSimpleMapManager()
 	}
 
     // Get the map
-	dg::Map map;
-	ok = manager.getMap(559542565000236, 700, map);
+	dg::Map map1, map2;
+	ok = manager.getMap(path, map1);	
 	if (ok)
-		VVS_CHECK_EQUL(map.nodes.size(), 747);
-	ok = manager.getMap(36.382967999999998, 127.37138150000001, 700, map);
+		VVS_CHECK_EQUL(map1.nodes.size(), 236);
+	ok = manager.getMap(36.384102, 127.374838, 700, map2);
 	if (ok)
-		VVS_CHECK_EQUL(map.nodes.size(), 799);// 36.384063, 127.374733, 650.0));//
+		VVS_CHECK_EQUL(map2.nodes.size(), 802);
+	map1.set_union(map2);
+	VVS_CHECK_EQUL(map1.nodes.size(), 830);
 
 	// Get the path
 	ok = manager.getPath("test_simple_path.json", path);
@@ -42,11 +44,11 @@ int testSimpleMapManager()
 		VVS_CHECK_EQUL(path.pts.size(), 37);
 	
 	// Find the node & edge
-	dg::Node* findNode = manager.getMap().findNode(559542565000236);
-	VVS_CHECK_EQUL(findNode->id, 559542565000236);
-	dg::Edge* findEdge = manager.getMap().findEdge(559542565000236, 559542565000238);// 559562564900154, 559562564900155);
-	VVS_CHECK_EQUL(findEdge->length, 31.267266147580031);// 13.370689140764002);
-	VVS_CHECK_EQUL((manager.getMap().findEdge(findEdge->id))->length, 31.267266147580031);// 13.370689140764002);
+	dg::Node* findNode = manager.getMap().findNode(559562564900154);
+	VVS_CHECK_EQUL(findNode->id, 559562564900154);
+	dg::Edge* findEdge = manager.getMap().findEdge(559562564900154, 559562564900155);
+	VVS_CHECK_EQUL(findEdge->length, 13.370689140764001);
+	VVS_CHECK_EQUL((manager.getMap().findEdge(findEdge->id))->length, 13.370689140764001);
 
 	// Get the POI
 	std::vector<dg::POI> poi_vec;

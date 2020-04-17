@@ -116,9 +116,10 @@ public:
 	 * Get the minimal topological map with a path
 	 * @param path The given path of this topological map
 	 * @param map A reference to gotten topological map
+	 * @param alpha A radius margin to gotten topological map (Unit: [m])
 	 * @return True if successful (false if failed)
 	 */
-	bool getMap(Path path, Map& map);
+	bool getMap(Path path, Map& map, double alpha = 50.0);
 
 	/**
 	 * Get the current topological map
@@ -280,8 +281,8 @@ protected:
 	Map* m_map;
 	Path m_path;
 	std::string m_json;
-	/** A hash table for finding LatLons */
-	std::map<ID, LatLon> lookup_LatLons;
+	/** A hash table for finding Path points */
+	std::map<ID, LatLon> lookup_path;
 	/** A hash table for finding POIs by name */
 	std::map<std::wstring, LatLon> lookup_pois_name;
 	/** A hash table for finding POIs by ID */

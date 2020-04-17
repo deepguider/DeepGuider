@@ -408,7 +408,7 @@ bool MapManager::getMap(double lat, double lon, double radius, Map& map)
 		m_isMap = false;
 
 		//m_path.pts.clear();
-		lookup_LatLons.clear();
+		//lookup_path.clear();
 	}
 	m_map = new Map();
 	m_isMap = true;
@@ -439,7 +439,7 @@ bool MapManager::getMap(ID node_id, double radius, Map& map)
 		m_isMap = false;
 
 		//m_path.pts.clear();
-		lookup_LatLons.clear();
+		//lookup_path.clear();
 	}
 	m_map = new Map();
 	m_isMap = true;
@@ -470,7 +470,7 @@ bool MapManager::getMap(cv::Point2i tile, Map& map)
 		m_isMap = false;
 
 		//m_path.pts.clear();
-		lookup_LatLons.clear();
+		//lookup_path.clear();
 	}
 	m_map = new Map();
 	m_isMap = true;
@@ -493,7 +493,7 @@ bool MapManager::getMap(cv::Point2i tile, Map& map)
 	return true;
 }
 
-bool MapManager::getMap(Path path, Map& map)
+bool MapManager::getMap(Path path, Map& map, double alpha)
 {
 	/*double lat = 36.38;
 	double lon = 127.373;
@@ -510,8 +510,8 @@ bool MapManager::getMap(Path path, Map& map)
 
 	for (std::vector<PathElement>::iterator it = path.pts.begin(); it < path.pts.end(); it++)
 	{
-		auto found = lookup_LatLons.find(it->node_id);
-		if (found == lookup_LatLons.end()) return false;
+		auto found = lookup_path.find(it->node_id);
+		if (found == lookup_path.end()) return false;
 		
 		// swapped lat and lon
 		if ((found->second.lat) > (found->second.lon))
@@ -534,7 +534,6 @@ bool MapManager::getMap(Path path, Map& map)
 	Point2 min_metric = utm_conv.toMetric(LatLon(min_lat, min_lon));
 	Point2 max_metric = utm_conv.toMetric(LatLon(max_lat, max_lon));
 	double dist_metric = sqrt(pow((max_metric.x - min_metric.x), 2) + pow((max_metric.y - min_metric.y), 2));
-	double alpha = 50;
 	double center_lat = (min_lat + max_lat) / 2;
 	double center_lon = (min_lon + max_lon) / 2;
 
@@ -545,7 +544,7 @@ bool MapManager::getMap(Path path, Map& map)
 		m_isMap = false;
 
 		//m_path.pts.clear();
-		lookup_LatLons.clear();
+		//lookup_path.clear();
 	}
 	m_map = new Map();
 	m_isMap = true;
@@ -635,7 +634,7 @@ bool MapManager::parsePath(const char* json)
 			{
 				edge.id = 0;
 				m_path.pts.push_back(PathElement(node.id, edge.id));
-				lookup_LatLons.insert(std::make_pair(node.id, LatLon(node.lat, node.lon)));
+				lookup_path.insert(std::make_pair(node.id, LatLon(node.lat, node.lon)));
 			}
 		}
 		else			// edge
@@ -661,7 +660,7 @@ bool MapManager::parsePath(const char* json)
 			//edge.length = properties["length"].GetDouble();
 
 			m_path.pts.push_back(PathElement(node.id, edge.id));
-			lookup_LatLons.insert(std::make_pair(node.id, LatLon(node.lat, node.lon)));
+			lookup_path.insert(std::make_pair(node.id, LatLon(node.lat, node.lon)));
 		}
 	}
 
@@ -682,7 +681,7 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	//if (!ok) return false;
 
 	m_path.pts.clear();
-	lookup_LatLons.clear();
+	lookup_path.clear();
 	m_json = "";
 
 	// by communication
@@ -741,7 +740,7 @@ bool MapManager::getPath(double start_lat, double start_lon, double dest_lat, do
 bool MapManager::getPath(const char* filename, Path& path)
 {
 	m_path.pts.clear();
-	lookup_LatLons.clear();
+	lookup_path.clear();
 	m_json = "";
 
 	// Convert JSON document to string
@@ -759,7 +758,7 @@ bool MapManager::getPath(const char* filename, Path& path)
 	if (!ok)
 	{
 		m_path.pts.clear();
-		lookup_LatLons.clear();
+		lookup_path.clear();
 	
 		return false;
 	}
@@ -817,7 +816,7 @@ bool MapManager::parsePOI(const char* json)
 		poi.lat = properties["latitude"].GetDouble();
 		poi.lon = properties["longitude"].GetDouble();
 
-		m_map->pois.push_back(poi);
+		m_map->addPOI(poi);
 	}
 
 	return true;
@@ -1010,7 +1009,7 @@ bool MapManager::parseStreetView(const char* json)
 		sv.lat = properties["latitude"].GetDouble();
 		sv.lon = properties["longitude"].GetDouble();
 
-		m_map->views.push_back(sv);
+		m_map->addView(sv);
 	}
 
 	return true;
