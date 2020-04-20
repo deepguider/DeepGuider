@@ -126,7 +126,7 @@ bool init_python_environment(const char* name /*= "python3"*/, const char* impor
         const char* path_old = std::getenv("PYTHONPATH");
         setenv("PYTHONPATH", import_path, 1);
         Py_Initialize();
-        setenv("PYTHONPATH", path_old, 1);
+        if(path_old != nullptr && strlen(path_old)>0) setenv("PYTHONPATH", path_old, 1);
     }
     else
     {
