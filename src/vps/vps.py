@@ -125,8 +125,8 @@ class vps:
         
         # When you get 'ERROR: Unexpected segmentation fault encountered in worker'
         # then, set threads to 0
-        self.parser.add_argument('--threads', type=int, default=0, help='Number of threads for each data loader to use') #fixed, dg'issue #42
-        #self.parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
+        # self.parser.add_argument('--threads', type=int, default=0, help='Number of threads for each data loader to use') #fixed, dg'issue #42
+        self.parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
 
         #self.parser.add_argument('--ipaddr', type=str, default='127.0.0.1', help='ip address of streetview server')
         self.parser.add_argument('--ipaddr', type=str, default='129.254.87.96', help='ip address of streetview server')

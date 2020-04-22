@@ -11,6 +11,8 @@ After some step, we could make and release our own VPS code.
   - opencv
     - pip install opencv-contrib-python-nonfree # 4.1.1.1(latest)
   - numpy, torch,torchvision, etc.
+  - flask  # for web server(localhost:7729) used for interface c++ and python
+  - json
   - visdom  #  for display result
 - sudo apt install libopenblas-dev libgomp1 libomp-dev tk-dev python3-tk python3.6-tk
 

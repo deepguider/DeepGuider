@@ -35,6 +35,7 @@ without the need of pre-mapping of the environment. The project was started in A
     * [OpenCV](http://opencv.org/): `sudo apt install libopencv-dev python3-opencv`
     * [Python](http://python.org/): `sudo apt install python3-dev`
   * Clone (or unzip) [DeepGuider codes](https://github.com/deepguider/RoadGPS/archive/master.zip) at `your_folder`
+  * Run ./build_all.sh at `your_folder/examples/` for initial setup and build
   * Build an example at `your_folder/examples/any_example_to_run`: `cmake && make`
   * Run the executable and enjoy codes
 

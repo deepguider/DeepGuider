@@ -23,18 +23,24 @@ function python_venv() {
 function check_vps_server() {
     local topdir=$1
     local CWD=`pwd`
-    python_venv $topdir
     echo "#### Check if server_vps.py is running  ####"
     isrunning=`ps -ef | grep server_vps.py | grep -v grep | grep -v bash`
     if [ -z "$isrunning" ];then
         cd $topdir/src/vps
         gnome-terminal -x bash -c "python server_vps.py"
         isrunning=`ps -ef | grep server_vps.py | grep -v grep | grep -v bash`
-        if [ -z "$isrunning" ];then
-            echo "[XXX] Server_vps cannot start."
-        else
-            echo "[OOO] Server_vps started."
-        fi
+		if [ -z "$isrunning" ];then
+			echo "[XXX] Server_vps cannot start because of some reason."
+			echo "      Try follows and if there are problems, solve it plz."
+			echo "      $> cd $topdir/src/vps/"
+			echo "      $> python server_vps.py"
+			echo "      The problem is mainly because the virtual environment is not set,"
+			echo "      or packages such as flask and json are not installed."
+			echo "      To fix the problem, check bin/venvbin.txt and use pip install"
+			exit -1
+		else
+			echo "[OOO] Server_vps started."
+		fi
     else
         echo "[OOO] Server_vps is already running."
     fi  
