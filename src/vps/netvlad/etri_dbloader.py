@@ -14,18 +14,37 @@ import h5py
 
 from ipdb import set_trace as bp
 
+import tempfile
+
+def makedir(fdir):
+    import os
+    if not os.path.exists(fdir):
+        os.makedirs(fdir)
+
 #root_dir = './netvlad_v100_datasets/' #you need this directory in the top.
-root_dir = './data_vps/netvlad_etri_datasets/' #you need this directory in the top.
+#root_dir = './data_vps/netvlad_etri_datasets/' #you need this directory in the top.
+root_top = join('.','data_vps','netvlad_etri_datasets')
 
-if not exists(root_dir):
-    raise FileNotFoundError('root_dir is hardcoded, please adjust to point to dataset at etridbloader.py')
+if not exists(root_top):
+    msg = 'Not found [{}] for saving street view images. '.format(root_top) + \
+    'Please adjust root_top at etri_dbloader.py'
+    raise FileNotFoundError(msg)
 
-#struct_dir = join(root_dir, 'datasets/')
-#queries_dir = join(root_dir, 'queries_real')
+
+USE_TEMP_NAME = False
+if USE_TEMP_NAME:
+    while True:
+        temp_name = '.' + next(tempfile._get_candidate_names())
+        root_dir = join(root_top, temp_name)
+        if not exists(root_dir):
+            break
+else:
+    root_dir = root_top
+
+makedir(root_dir)
 
 struct_dir = join(root_dir, 'dbImg')
 queries_dir = join(root_dir, 'qImg')
-
 
 from scipy import io as sio
 import numpy as np
@@ -151,10 +170,6 @@ def get_dg_test_set_using_matfile(dbDir='dbImg',qDir='qImg'):
 #    return WholeDatasetFromStruct_forDG(dbMat_fname,qMat_fname,
 #                             input_transform=input_transform())
 
-def makedir(fdir):
-    import os
-    if not os.path.exists(fdir):
-        os.makedirs(fdir)
                         
 def get_dg_test_set(dbDir='dbImg',qDir='qImg'):
     datasetDir = root_dir
