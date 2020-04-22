@@ -124,7 +124,6 @@ namespace dg
                 }
 
                 // [[id1,...idN],[conf1,...,confN]] : matched top-N streetview ID's and Confidences
-
                 // ID list
                 std::vector<dg::ID> ids;
                 PyObject* pList0 = PyList_GetItem(pRet, 0);
@@ -133,12 +132,10 @@ namespace dg
                     Py_ssize_t cnt0 = PyList_Size(pList0);
                     for (int i = 0; i < cnt0; i++)
                     {
-                        pValue = PyList_GetItem(pList0, i);
-                        ids.push_back(PyLong_AsLong(pValue));
+                        PyObject* pValue = PyList_GetItem(pList0, i);
+                        if(pValue) ids.push_back(PyLong_AsLong(pValue));
                     }
                 }
-                Py_DECREF(pList0);
-
                 // Confidence list
                 std::vector<double> confs;
                 PyObject* pList1 = PyList_GetItem(pRet, 1);
@@ -147,13 +144,16 @@ namespace dg
                     Py_ssize_t cnt1 = PyList_Size(pList1);
                     for (int i = 0; i < cnt1; i++)
                     {
-                        pValue = PyList_GetItem(pList1, i);
-                        confs.push_back(PyFloat_AsDouble(pValue));
+                        PyObject* pValue = PyList_GetItem(pList1, i);
+                        if(pValue) confs.push_back(PyFloat_AsDouble(pValue));
                     }
                 }
-                Py_DECREF(pList1);
 
-                // save the result
+                // Clean up
+                if(pList0) Py_DECREF(pList0);
+                if(pList1) Py_DECREF(pList1);
+
+                // Save the result
                 m_streetviews.clear();
                 for (size_t i = 0; i < ids.size(); i++)
                 {
@@ -172,6 +172,10 @@ namespace dg
             // Update Timestamp
             m_timestamp = t;
 
+            // Clean up
+            if(pRet) Py_DECREF(pRet);
+            if(pArgs) Py_DECREF(pArgs);
+
             return true;
         }
 
@@ -189,7 +193,6 @@ namespace dg
     protected:
         std::vector<VPSResult> m_streetviews;
         Timestamp m_timestamp = -1;
-        int m_gil_init = 0;
     };
 
 } // End of 'dg'
