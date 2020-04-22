@@ -49,8 +49,6 @@ void test_image_run(POIRecognizer& poi_recog, bool recording = false, const char
             cv::imwrite("poi_result_image.jpg", image_result);
         }
     }
-    printf("press any key...\n");
-    cv::waitKey();
     cv::destroyWindow(image_file);
 }
 
@@ -137,6 +135,8 @@ int main()
 
     // Close the Python Interpreter
     close_python_environment();
+
+    printf("done..\n");
 
     return 0;
 }

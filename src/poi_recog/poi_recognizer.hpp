@@ -108,34 +108,39 @@ namespace dg
 
                 // list of list
                 m_pois.clear();
-                PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
-                if (pValue0 != NULL)
+                PyObject* pList0 = PyTuple_GetItem(pRet, 0);
+                if (pList0 != NULL)
                 {
-                    Py_ssize_t cnt = PyList_Size(pValue0);
+                    Py_ssize_t cnt = PyList_Size(pList0);
                     for (int i = 0; i < cnt; i++)
                     {
-                        PyObject* pList = PyList_GetItem(pValue0, i);
+                        PyObject* pList = PyList_GetItem(pList0, i);
+                        if(pList)
+                        {
+                            POIResult poi;
+                            int idx = 0;
+                            pValue = PyList_GetItem(pList, idx++);
+                            poi.xmin = PyLong_AsLong(pValue);
+                            pValue = PyList_GetItem(pList, idx++);
+                            poi.ymin = PyLong_AsLong(pValue);
+                            pValue = PyList_GetItem(pList, idx++);
+                            poi.xmax = PyLong_AsLong(pValue);
+                            pValue = PyList_GetItem(pList, idx++);
+                            poi.ymax = PyLong_AsLong(pValue);
+                            pValue = PyList_GetItem(pList, idx++);
+                            poi.label = PyUnicode_AsUTF8(pValue);
+                            pValue = PyList_GetItem(pList, idx++);
+                            poi.confidence = PyFloat_AsDouble(pValue);
+                            m_pois.push_back(poi);
+                        }
 
-                        POIResult poi;
-                        int idx = 0;
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.xmin = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.ymin = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.xmax = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.ymax = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.label = PyUnicode_AsUTF8(pValue);
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.confidence = PyFloat_AsDouble(pValue);
-
-                        m_pois.push_back(poi);
-                        Py_DECREF(pList);
+                        // clean up
+                        if(pList) Py_DECREF(pList);
                     }
                 }
-                Py_DECREF(pValue0);
+
+                // Clean up
+                if(pList0) Py_DECREF(pList0);
             }
             else {
                 PyErr_Print();
@@ -145,6 +150,10 @@ namespace dg
 
             // Update Timestamp
             m_timestamp = t;
+
+            // Clean up
+            if(pRet) Py_DECREF(pRet);
+            if(pArgs) Py_DECREF(pArgs);            
 
             return true;
         }
