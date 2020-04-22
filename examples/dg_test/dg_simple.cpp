@@ -11,6 +11,8 @@
 #include "dg_guidance.hpp"
 #include "dg_utils.hpp"
 #include <chrono>
+#include <jsoncpp/json/json.h>
+#include <curl/curl.h>
 
 using namespace dg;
 using namespace std;
@@ -30,8 +32,8 @@ protected:
     bool m_enable_roadtheta = false;
     bool m_enable_vps = true;
     bool m_enable_poi = false;
-    //std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
-    std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
+    std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
+    //std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
 
     bool m_threaded_run_python = false;
     std::string m_video_header_name = "dg_test_";
@@ -47,6 +49,10 @@ protected:
     bool procRoadTheta();
     bool procVps();
     bool procPoi();
+
+	// curl api's
+	static std::size_t curl_callback(const char* in, std::size_t size, std::size_t num, std::string* out);
+	bool curl_request(const std::string url, const char * CMD, const Json::Value * post_json, Json::Value * get_json);
 
     // shared variables for multi-threading
     cv::Mutex m_cam_mutex;
@@ -592,7 +598,201 @@ bool DeepGuider::procRoadTheta()
 }
 
 
-bool DeepGuider::procVps()
+std::size_t DeepGuider::curl_callback(const char* in, std::size_t size, std::size_t num, std::string* out)
+{
+    const std::size_t totalBytes(size * num);
+    out->append(in, totalBytes);
+    return totalBytes;
+}
+
+
+bool DeepGuider::curl_request(const std::string url, const char * CMD, const Json::Value * post_json, Json::Value * get_json)
+{
+	CURLcode res;
+	CURL *hnd;
+	struct curl_slist *slist1;
+	slist1 = NULL;
+	slist1 = curl_slist_append(slist1, "Content-Type: application/json"); //Do not edit
+	int ret = 0;
+	std::string jsonstr;
+	long httpCode(0);
+	std::unique_ptr<std::string> httpData(new std::string());
+
+	hnd = curl_easy_init();
+	// url = "http://localhost:7729/Apply/";
+	curl_easy_setopt(hnd, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(hnd, CURLOPT_NOPROGRESS, 1L);
+
+	/** Post messate to server **/
+	if(strcmp("POST", CMD) == 0)
+	{
+		// std::string jsonstr = "{\"username\":\"bob\",\"password\":\"12345\"}";
+		jsonstr = post_json->toStyledString();
+		// cout << jsonstr << endl;
+		curl_easy_setopt(hnd, CURLOPT_POSTFIELDS, jsonstr.c_str());
+		curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.38.0");
+		curl_easy_setopt(hnd, CURLOPT_HTTPHEADER, slist1);
+		curl_easy_setopt(hnd, CURLOPT_MAXREDIRS, 50L);
+		curl_easy_setopt(hnd, CURLOPT_CUSTOMREQUEST, "POST");
+		curl_easy_setopt(hnd, CURLOPT_TCP_KEEPALIVE, 1L);
+	}
+
+	/** Get response from server **/
+ 	// POST needs GET afere it, so we don't need break; here.
+	if(strcmp("POST", CMD) == 0 || strcmp("GET", CMD) == 0)
+	{
+		curl_easy_setopt(hnd, CURLOPT_WRITEFUNCTION, curl_callback);
+		curl_easy_setopt(hnd, CURLOPT_WRITEDATA, httpData.get());
+		curl_easy_setopt(hnd, CURLOPT_PROXY, "");
+		
+		res = curl_easy_perform(hnd);
+		curl_easy_getinfo(hnd, CURLINFO_RESPONSE_CODE, &httpCode);
+		curl_easy_cleanup(hnd);
+		curl_slist_free_all(slist1);
+
+		hnd = NULL;
+		slist1 = NULL;
+		
+		// Run our HTTP GET command, capture the HTTP response code, and clean up.
+		if (httpCode == 200)
+		{
+		    //Json::Value *get_json;
+		    Json::Reader jsonReader;
+		    if (jsonReader.parse(*httpData.get(), *get_json))
+		    {
+		        //std::cout << get_json->toStyledString() << std::endl;
+				ret = 0;
+		    }
+		    else
+		    {
+		        std::cout << "Could not parse HTTP data as JSON" << std::endl;
+		        std::cout << "HTTP data was:\n" << *httpData.get() << std::endl;
+		        ret = 1;
+		    }
+		}
+		else
+		{
+		    std::cout << "Couldn't GET from " << url << " - exiting" << std::endl;
+		    ret = 1;
+		}
+	}
+	return ret;
+}
+
+
+#ifdef VPSSERVER		
+bool DeepGuider::procVps() // This sends query image and parameters to server using curl_request() and it receives its results (Id,conf.)
+{
+    m_cam_mutex.lock();
+    cv::Mat cam_image = m_cam_image.clone();
+    dg::Timestamp capture_time = m_cam_capture_time;
+    dg::LatLon capture_pos = m_cam_capture_pos;
+    m_cam_mutex.unlock();
+    int N = 3;  // top-3
+    double gps_accuracy = 1;   // 0: search radius = 230m ~ 1: search radius = 30m
+
+	const std::string vps_server_addr = "http://localhost:7729";
+	const std::string streetview_server_addr = m_server_ip.c_str(); // "localhost";
+	std::string vps_url = vps_server_addr + "/Apply/";
+	Json::Value post_json;
+	Json::Value ret_json;
+	std::string post_str;
+	const char * post_data;
+	list<int> image_size;
+	std::vector<uchar> image_data; 
+
+    if (!cam_image.empty())
+	//	&& m_vps.apply(cam_image, N, capture_pos.lat, capture_pos.lon, gps_accuracy, capture_time, m_server_ip.c_str()))
+    {
+        std::vector<dg::ID> ids;
+        std::vector<dg::Polar2> obs;
+        std::vector<double> confs;
+        std::vector<VPSResult> streetviews;
+	    VPSResult IDandConf;
+
+		post_json["K"] = N;
+		post_json["gps_lat"] = capture_pos.lat;
+		post_json["gps_lon"] = capture_pos.lon;
+		post_json["gps_accuracy"] = gps_accuracy;
+		post_json["timestamp"] = capture_time;
+		post_json["streetview_server_ipaddr"] = streetview_server_addr;
+		
+		post_json["image_size"].clear();
+		post_json["image_size"].append(cam_image.rows); // h
+		post_json["image_size"].append(cam_image.cols); // w
+		post_json["image_size"].append(cam_image.channels()); // c
+	
+		post_json["image_data"].clear();
+		cam_image.reshape(cam_image.cols * cam_image.rows * cam_image.channels()); // Serialize
+		uchar * image_data = cam_image.data;
+		for(int idx = 0; idx < cam_image.rows*cam_image.cols*cam_image.channels(); idx++)
+		{
+			post_json["image_data"].append(image_data[idx]);
+		}
+	
+	 	curl_request(vps_url, "POST", &post_json, &ret_json);
+		curl_request(vps_url, "GET" , 0, &ret_json); // [Optional]
+		//cout << ret_json["vps_IDandConf"].size() << endl;
+
+		for(int idx = 0; idx < ret_json["vps_IDandConf"][0].size(); idx++) // 5 : K
+		{
+			IDandConf.id = ret_json["vps_IDandConf"][0][idx].asDouble(); 
+			IDandConf.confidence = ret_json["vps_IDandConf"][1][idx].asDouble(); 
+			streetviews.push_back(IDandConf);
+		}
+	
+        //m_vps.get(streetviews);
+
+        printf("[VPS]\n");
+        for (int k = 0; k < (int)streetviews.size(); k++)
+        {
+            if (streetviews[k].id <= 0 || streetviews[k].confidence <= 0) continue;        // invalid data
+            ids.push_back(streetviews[k].id);
+            obs.push_back(rel_pose_defualt);
+            confs.push_back(streetviews[k].confidence);
+            printf("\ttop%d: id=%zu, confidence=%lf, ts=%lf\n", k, streetviews[k].id, streetviews[k].confidence, capture_time);
+        }
+
+        if(ids.size() > 0)
+        {
+            m_localizer_mutex.lock();
+            VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, capture_time, confs));
+            m_localizer_mutex.unlock();
+
+            cv::Mat sv_image;
+            if(m_map_manager.getStreetViewImage(ids[0], sv_image, "f") && !sv_image.empty())
+            {
+                m_vps_mutex.lock();
+                m_vps_image = sv_image;
+                m_vps_id = ids[0];
+                m_vps_confidence = confs[0];
+                m_vps_mutex.unlock();
+            }
+            else
+            {
+                m_vps_mutex.lock();
+                m_vps_image = cv::Mat();
+                m_vps_id = ids[0];
+                m_vps_confidence = confs[0];
+                m_vps_mutex.unlock();
+            }
+        }
+        else
+        {
+            m_vps_mutex.lock();
+            m_vps_image = cv::Mat();
+            m_vps_id = 0;
+            m_vps_confidence = 0;
+            m_vps_mutex.unlock();
+        }
+    }
+
+    return true;
+}
+
+
+#else // VPSSERVER		
+bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++ 
 {
     m_cam_mutex.lock();
     cv::Mat cam_image = m_cam_image.clone();
@@ -655,6 +855,7 @@ bool DeepGuider::procVps()
 
     return true;
 }
+#endif // VPSSERVER
 
 
 bool DeepGuider::procPoi()

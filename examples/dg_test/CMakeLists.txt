@@ -2,11 +2,13 @@ cmake_minimum_required(VERSION 2.8)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVPSSERVER")
 set(BINDIR	"${CMAKE_SOURCE_DIR}/../../bin")
 set(SRCDIR	"${CMAKE_SOURCE_DIR}/../../src")
 set(EXTDIR	"${CMAKE_SOURCE_DIR}/../../EXTERNAL")
 set(RAPIDJSON_INC "${EXTDIR}/rapidjson/include")
-#set(CURL_LIBRARIES "-lcurl")
+set(CURL_LIBRARIES "-lcurl")
+set(JSONCPP_LIBRARIES "-ljsoncpp")
 
 get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
 string(REPLACE " " "_" ProjectId ${ProjectId})
@@ -24,6 +26,6 @@ add_definitions(-DDG_TEST_SIMPLE)
 file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/exploration/*.cpp ${SRCDIR}/guidance/*.cpp ${SRCDIR}/localizer/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/poi_recog/*.cpp ${SRCDIR}/road_recog/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp *.cpp)
  
 add_executable( ${PROJECT_NAME} ${SOURCES} )
-target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} ${CURL_LIBRARIES})
+target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} ${CURL_LIBRARIES} ${JSONCPP_LIBRARIES} )
 
 install( TARGETS ${PROJECT_NAME} DESTINATION ${BINDIR} )

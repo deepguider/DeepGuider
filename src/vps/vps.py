@@ -36,7 +36,6 @@ import copy
 
 import cv2 as cv
 
-    
 import sys; sys.path.insert(0,'data_vps/netvlad/ccsmmutils'); import img_utils as myiu
 
 from get_streetview import ImgServer
@@ -51,7 +50,7 @@ class vps:
     def __init__(self):
         self.ipaddr = 'localhost'
         self.gps_lat = 0.0 #Latitude
-        self.gps_long = 0.0 #Longitude
+        self.gps_lon = 0.0 #Longitude
         self.vps_lat = 0.0 # Latitude from VPS function
         self.vps_long = 0.0 # Longitude from VPS function
         self.angle = -1  # road direction (radian)
@@ -141,6 +140,7 @@ class vps:
         opt = self.parser.parse_args()
         self.verbose = opt.verbose
         self.ipaddr = opt.ipaddr
+        self.PythonOnly = True # This is parameter should become False when vps is used in embedded module by C++ to avoid segmentation fault.
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
                 'margin', 'seed', 'patience']
@@ -386,7 +386,8 @@ class vps:
             dbFeat = self.test_sub(eval_set_db,epoch=epoch)
             dbFeat = dbFeat.astype('float32') #[ndbImg,32768]
             dbFeat_dict={'Feat':dbFeat}
-            # sio.savemat(opt.dbFeat_fname,dbFeat_dict) #for speed up, savemat may cause segmentation fault in repeat.
+            if self.PythonOnly == True:
+                sio.savemat(opt.dbFeat_fname,dbFeat_dict) # savemat may cause segmentation fault randomly when embedded in C++.
         else:
             dbFeat = sio.loadmat(opt.dbFeat_fname)
             dbFeat = dbFeat['Feat']
@@ -396,18 +397,6 @@ class vps:
         qFeat = self.test_sub(eval_set_q,epoch=epoch)
         qFeat = qFeat.astype('float32') #[nqImg,32768]
 
-        #if opt.save_qFeat:
-        #    # extracted for query, now split in own sets
-        #    qFeat = self.test_sub(eval_set_q,epoch=epoch)
-        #    qFeat = qFeat.astype('float32') #[nqImg,32768]
-        #    qFeat_dict={'Feat':qFeat}
-        #    sio.savemat(opt.qFeat_fname,qFeat_dict)
-        #else:
-        #    qFeat = sio.loadmat(opt.qFeat_fname)
-        #    qFeat = qFeat['Feat']
-        #    qFeat = np.ascontiguousarray(qFeat)
-
-        
         test_db_data_loader = DataLoader(dataset=eval_set_db, 
                 num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
                 pin_memory=cuda)
@@ -419,9 +408,8 @@ class vps:
         if self.verbose:
             print('====> Building faiss index')
         num_db, pool_size = dbFeat.shape # NumDB,32768
-        # _ , _ = qbFeat.shape # NumQ,32768
   
-        #faiss_index = faiss.IndexFlatL2(pool_size) # uses distance as metric
+        #faiss_index = faiss.IndexFlatL2(pool_size) # ori, uses distance as metric
         faiss_index = faiss.IndexFlatIP(pool_size) # fixed, dg's issue #21. It uses similarity(confidence) as metric 
         faiss_index.add(dbFeat)
         
@@ -441,13 +429,10 @@ class vps:
         self.pred_idx = pred_idx
         self.pred_confidence = pred_confidence
 
-        #return 0 #segmentation fault free
-
         if self.verbose:
             print('QueryImage <=================> predicted dbImage')
         match_cnt = 0
         total_cnt = len(qImage)
-        #return 0 #segmentation fault free
 
         if total_cnt == 0:
             return 0
@@ -457,12 +442,9 @@ class vps:
                 flist = dbImage[pred_idx[i]]
                 vps_imgID_str = self.Fname2ID(flist) # list
                 vps_imgConf_str = [val for val in pred_confidence[i]] # list
-                #vps_imgID = [np.uint64(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
-                #vps_imgConf = [np.double(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
                 vps_imgID = [np.int(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
                 vps_imgConf = [np.float(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
                 self.vps_IDandConf = [vps_imgID, vps_imgConf]
-                #if self.checking_return_value() < 0:
  
             if self.verbose:
                 dbImage_predicted = dbImage[pred_idx[i,0]] #Use best [0] image for display
@@ -492,7 +474,6 @@ class vps:
             return -1
         ErrCnt = K
         for i in vps_imgID:
-             #if (isinstance(vps_imgID[0],np.uint64) == False):
              if (isinstance(vps_imgID[0],int) == False):
                  ErrCnt = ErrCnt - 1
         if K != ErrCnt:
@@ -500,7 +481,6 @@ class vps:
             return -1
         ErrCnt = K
         for i in vps_imgConf:
-             #if (isinstance(vps_imgConf[0],np.double) == False):
              if (isinstance(vps_imgConf[0],float) == False):
                  ErrCnt = ErrCnt - 1
         if K != ErrCnt:
@@ -532,12 +512,6 @@ class vps:
         
             for iteration, (input, indices) in enumerate(test_data_loader, 1):
                 input = input.to(device) #[24, 3, 480, 640]
-#                print(indices,input.shape)
-#                if indices < eval_set.dbStruct.numDb:
-#                    print(dbImage[indices],input.shape[-1])
-#                else:
-#                    print(qImage[indices-eval_set.dbStruct.numDb],input.shape[-1])
-#                continue
                 image_encoding = self.model.encoder(input) #[24, 512, 30, 40]
                 vlad_encoding = self.model.pool(image_encoding) #[24,32768] 
         
@@ -574,15 +548,6 @@ class vps:
         qFeat = dbqFeat[eval_set.dbStruct.numDb:].astype('float32') #[7608,32768]
         qFeat_dict={'qFeat':qFeat}
 
-        #if opt.save_qFeat:
-        #    # extracted for query, now split in own sets
-        #    qFeat = dbqFeat[eval_set.dbStruct.numDb:].astype('float32') #[7608,32768]
-        #    qFeat_dict={'qFeat':qFeat}
-        #    sio.savemat(opt.qFeat_fname,qFeat_dict)
-        #else:
-        #    qFeat = sio.loadmat(opt.qFeat_fname)
-        #    qFeat = qFeat['qFeat']
-
         print('====> Building faiss index')
         #qFeat  : [7608,32768], pool_size = 32768 as dimension of feature
         #dbFeat : [10000,32768]
@@ -592,28 +557,6 @@ class vps:
         print('====> Calculating recall @ N')
         n_values = [1,5,10,20] #n nearest neighbors
     
-        #we want to see 20 nearnest neighbors using following search command.
-#        _, predictions = faiss_index.search(qFeat, max(n_values)) #predictions : [7608,20]
-    
-#        # for each query get those within threshold distance
-#        gt = eval_set.getPositives() #Ground Truth
-#    
-#        correct_at_n = np.zeros(len(n_values))
-#        #TODO can we do this on the matrix in one go?
-#        for qIx, pred in enumerate(predictions):
-#            for i,n in enumerate(n_values):
-#                # if in top N then also in top NN, where NN > N
-#                if np.any(np.in1d(pred[:n], gt[qIx])):
-#                    correct_at_n[i:] += 1
-#                    break
-#        recall_at_n = correct_at_n / eval_set.dbStruct.numQ
-#    
-#        recalls = {} #make dict for output
-#        for i,n in enumerate(n_values):
-#            recalls[n] = recall_at_n[i]
-#            print("====> Recall@{}: {:.4f}".format(n, recall_at_n[i]))
-#            if write_tboard: writer.add_scalar('Val/Recall@' + str(n), recall_at_n[i], epoch)
-
         pred_confidence, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
 
         print('predicted ID:\n', pred_idx)
@@ -650,9 +593,6 @@ class vps:
 
         acc = match_cnt/total_cnt
         print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
-
-#        print('You can investigate the internal data of result here. If you want to exit anyway, press Ctrl-D')
-#        return recalls
         return acc
 
         
@@ -660,27 +600,29 @@ class vps:
         # get parameter
         return 0
         
+
     def set_param(self):
         # set parameter
         return 0
 
+
     def init_vps_IDandConf(self,K):
-        #vps_imgID = [np.uint64(i) for i in np.zeros(K)] # list of uint64, fixed dg'issue #36
-        #vps_imgConf = [np.double(i) for i in np.zeros(K)] # list of double(float64), fixed dg'issue #36
         vps_imgID = [int(i) for i in np.zeros(K)] # list of uint64, fixed dg'issue #36
         vps_imgConf = [float(i) for i in np.zeros(K)] # list of double(float64), fixed dg'issue #36
         self.vps_IDandConf = [vps_imgID, vps_imgConf]
         return 0
+
 
     def makedir(self,fdir):
         import os
         if not os.path.exists(fdir):
             os.makedirs(fdir)
 
-    def apply(self, image=None, K = 3, gps_lat=37.0, gps_long=127.0, gps_accuracy=0.9, timestamp=0.0, ipaddr=None):
+
+    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.9, timestamp=0.0, ipaddr=None):
         ## Init.
         self.gps_lat = float(gps_lat)
-        self.gps_long = float(gps_long)
+        self.gps_lon = float(gps_lon)
         self.gps_accuracy = min(max(gps_accuracy,0.0),1.0)
         self.timestamp = float(timestamp)
         if ipaddr != None:
@@ -746,10 +688,9 @@ class vps:
         req_type = "wgs"
         isv = ImgServer(ipaddr)
         isv.SetServerType(server_type)
-        isv.SetParamsWGS(self.gps_lat,self.gps_long,self.roi_radius) # 37,27,100
+        isv.SetParamsWGS(self.gps_lat,self.gps_lon,self.roi_radius) # 37,27,100
         isv.SetReqDict(req_type)
-        #return 0 # Segmentation Free
-        ret = isv.QuerytoServer(json_save=False, outdir=outdir, PythonOnly=False)
+        ret = isv.QuerytoServer(json_save=True, outdir=outdir, PythonOnly=self.PythonOnly)
         #return 0 # Segmentation fault Free using os.system call instead of requests.get()
         if ret == -1:
             #raise Exception('Image server is not available.')
@@ -762,7 +703,7 @@ class vps:
             #for f in files:
             #    os.remove(f) # may cause seg.fault in C+Python environment
             os.system("rm -rf " + os.path.join(outdir,'*.jpg')) # You have to pay attention to code 'rm -rf' command
-            ret = isv.SaveImages(outdir=outdir, verbose=0, PythonOnly=False)
+            ret = isv.SaveImages(outdir=outdir, verbose=0, PythonOnly=self.PythonOnly)
             if ret == -1:
                 #raise Exception('Image server is not available.')
                 print('Image server is not available.')
@@ -840,6 +781,7 @@ class vps:
 if __name__ == "__main__":
     from netvlad import etri_dbloader
     from PIL import Image
+    streetview_server_ipaddr = "localhost"
     visdom_server = True
     try:
         viz = Visdom()
@@ -849,9 +791,9 @@ if __name__ == "__main__":
 
     qFlist = etri_dbloader.Generate_Flist('/home/ccsmm/Naverlabs/query_etri_cart/images_2019_11_15_12_45_11',".jpg")
     mod_vps = vps()
-    mod_vps.initialize("localhost")
+    mod_vps.initialize()
     #qimage = np.uint8(256*np.random.rand(1024,1024,3))
-    #(image=None, K=3, gps_lat=None, gps_long=None, gps_accuracy=None, timestamp=None):
+    #(image=None, K=3, gps_lat=None, gps_lon=None, gps_accuracy=None, timestamp=None):
     for fname in qFlist:
         qimg = cv.imread(fname)
         try:
@@ -863,7 +805,7 @@ if __name__ == "__main__":
             print("Broken query image :", fname)
             continue
         qimg = cv.resize(qimg,(640,480))
-        vps_IDandConf = mod_vps.apply(qimg, 3, 36.381438, 127.378867, 0.8, 1.0) # k=5 for knn
+        vps_IDandConf = mod_vps.apply(qimg, 3, 36.381438, 127.378867, 0.8, 1.0, streetview_server_ipaddr) # k=5 for knn
         print('vps_IDandConf',vps_IDandConf)
         if visdom_server and False: # Do not display(False)
             ## Display Result

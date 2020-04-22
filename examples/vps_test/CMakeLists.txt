@@ -17,6 +17,6 @@ INCLUDE_DIRECTORIES ( ${SRCDIR} ${PYTHON_INCLUDE_DIRS} )
 file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/utils/*.cpp *.cpp)
  
 add_executable( ${PROJECT_NAME} ${SOURCES} )
-target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} )
+target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} -ljsoncpp -lcurl )
 
 install( TARGETS ${PROJECT_NAME} DESTINATION ${BINDIR} )
