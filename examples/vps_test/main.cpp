@@ -13,8 +13,8 @@ using namespace dg;
 using namespace std;
 using namespace std::experimental::filesystem;
 
-//std::string map_server_ip = "129.254.87.96"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
-std::string map_server_ip = "localhost"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
+std::string map_server_ip = "129.254.87.96"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
+//std::string map_server_ip = "localhost"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
 
 void drawVPSResult(cv::Mat image, const std::vector<VPSResult>& streetviews)
 {
@@ -445,9 +445,9 @@ int main()
 {
 	// Uses Python embedded
     bool test_image = false; // OK
-    bool test_video = false; // OK
+    bool test_video = true; // OK
     bool test_query = false; // OK
-    bool test_thread_run = true; // OK
+    bool test_thread_run = false; // OK
 
 	// Uses server call to external Python flask server
     bool test_thread_run_server = false; // OK
@@ -459,8 +459,7 @@ int main()
 	{
 
 	    // Initialize the Python interpreter
-		bool threaded_run_python = true;
-	    init_python_environment("python3", "", threaded_run_python);
+	    init_python_environment("python3", "", test_thread_run);
 	
 	    
 	    // Initialize Python module

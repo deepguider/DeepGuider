@@ -120,7 +120,7 @@ int DeepGuiderROS::run()
     printf("\tgps_start: lat=%lf, lon=%lf\n", gps_start.lat, gps_start.lon);
     printf("\tgps_dest: lat=%lf, lon=%lf\n", gps_dest.lat, gps_dest.lon);
 
-    cv::namedWindow("deep_guider");
+    cv::namedWindow("deep_guider", cv::WINDOW_AUTOSIZE);
 
     // start recognizer threads
     if (m_enable_vps) vps_thread = new std::thread(threadfunc_vps, this);
