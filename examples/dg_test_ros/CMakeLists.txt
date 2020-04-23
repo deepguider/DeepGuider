@@ -11,6 +11,8 @@ set(BINDIR	"${DGDIR}/bin")
 set(SRCDIR	"${DGDIR}/src")
 set(EXTDIR	"${DGDIR}/EXTERNAL")
 set(RAPIDJSON_INC "${EXTDIR}/rapidjson/include")
+set(CURL_LIBRARIES "-lcurl")
+set(JSONCPP_LIBRARIES "-ljsoncpp")
 
 add_compile_options(-std=c++14)
 add_compile_options(-pthread)
@@ -46,5 +48,6 @@ target_link_libraries(
   ${OpenCV_LIBS}
   ${PYTHON_LIBRARIES}
   ${CURL_LIBRARIES}
+  ${JSONCPP_LIBRARIES}
 )
 
