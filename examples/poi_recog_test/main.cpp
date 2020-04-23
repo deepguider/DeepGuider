@@ -91,7 +91,7 @@ void test_video_run(POIRecognizer& poi_recog, bool recording = false, const char
         poi_recog.get(pois);
         dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
         printf("iteration: %d (it took %lf seconds)\n", i, t2 - t1);
-        for (int k = 0; k < pois.size(); k++)
+        for (int k = 0; k < (int)pois.size(); k++)
         {
             printf("\tpoi%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, t=%lf\n", k, pois[k].xmin, pois[k].ymin, pois[k].xmax, pois[k].ymax, pois[k].label.c_str(), pois[k].confidence, t1);
         }
