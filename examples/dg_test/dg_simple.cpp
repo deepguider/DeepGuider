@@ -32,8 +32,8 @@ protected:
     bool m_enable_roadtheta = false;
     bool m_enable_vps = true;
     bool m_enable_poi = false;
-    std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
-    //std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
+    //std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
+    std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
 
     bool m_threaded_run_python = false;
     std::string m_video_header_name = "dg_test_";
@@ -291,7 +291,7 @@ int DeepGuider::run()
     printf("\tgps_dest: lat=%lf, lon=%lf\n", gps_dest.lat, gps_dest.lon);
 
     // GUI window
-    cv::namedWindow("deep_guider");
+    cv::namedWindow("deep_guider", cv::WINDOW_AUTOSIZE);
 
     // run iteration
     int maxItr = (int)gps_data.size();

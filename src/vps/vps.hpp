@@ -124,6 +124,7 @@ namespace dg
                 }
 
                 // [[id1,...idN],[conf1,...,confN]] : matched top-N streetview ID's and Confidences
+
                 // ID list
                 std::vector<dg::ID> ids;
                 PyObject* pList0 = PyList_GetItem(pRet, 0);
@@ -136,6 +137,7 @@ namespace dg
                         if(pValue) ids.push_back(PyLong_AsLong(pValue));
                     }
                 }
+                
                 // Confidence list
                 std::vector<double> confs;
                 PyObject* pList1 = PyList_GetItem(pRet, 1);
@@ -148,10 +150,6 @@ namespace dg
                         if(pValue) confs.push_back(PyFloat_AsDouble(pValue));
                     }
                 }
-
-                // Clean up
-                if(pList0) Py_DECREF(pList0);
-                if(pList1) Py_DECREF(pList1);
 
                 // Save the result
                 m_streetviews.clear();

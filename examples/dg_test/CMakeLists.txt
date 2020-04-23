@@ -2,14 +2,15 @@ cmake_minimum_required(VERSION 2.8)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDG_TEST_SIMPLE")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVPSSERVER")
 set(BINDIR	"${CMAKE_SOURCE_DIR}/../../bin")
 set(SRCDIR	"${CMAKE_SOURCE_DIR}/../../src")
 set(EXTDIR	"${CMAKE_SOURCE_DIR}/../../EXTERNAL")
 set(RAPIDJSON_INC "${EXTDIR}/rapidjson/include")
 set(CURL_LIBRARIES "-lcurl")
 set(JSONCPP_LIBRARIES "-ljsoncpp")
+
+add_definitions(-DDG_TEST_SIMPLE)
+#add_definitions(-DVPSSERVER)
 
 get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
 string(REPLACE " " "_" ProjectId ${ProjectId})

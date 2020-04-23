@@ -133,14 +133,8 @@ namespace dg
                             poi.confidence = PyFloat_AsDouble(pValue);
                             m_pois.push_back(poi);
                         }
-
-                        // clean up
-                        if(pList) Py_DECREF(pList);
                     }
                 }
-
-                // Clean up
-                if(pList0) Py_DECREF(pList0);
             }
             else {
                 PyErr_Print();
