@@ -28,3 +28,5 @@ ln -sf $DGDIR/bin/data $ROSDIR/
 ## Copy example shell scripts to ROS workspace
 cp $DGDIR/examples/dg_test_ros/dg_run.sh $ROSDIR/
 cp $DGDIR/examples/dg_test_ros/dg_databag.sh $ROSDIR/
+chmod a+x $ROSDIR/dg_run.sh
+chmod a+x $ROSDIR/dg_databag.sh
