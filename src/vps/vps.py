@@ -44,7 +44,6 @@ import get_streetview
 from netvlad import etri_dbloader as dataset
 
 from ipdb import set_trace as bp
-from dmsg import dmsg
 
 class vps:
     def __init__(self):
@@ -125,14 +124,13 @@ class vps:
         
         # When you get 'ERROR: Unexpected segmentation fault encountered in worker'
         # then, set threads to 0
-        # self.parser.add_argument('--threads', type=int, default=0, help='Number of threads for each data loader to use') #fixed, dg'issue #42
-        self.parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
+        self.parser.add_argument('--threads', type=int, default=0, help='Number of threads for each data loader to use') #fixed, dg'issue #42
+        # self.parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
 
-        #self.parser.add_argument('--ipaddr', type=str, default='127.0.0.1', help='ip address of streetview server')
-        self.parser.add_argument('--ipaddr', type=str, default='129.254.87.96', help='ip address of streetview server')
+        self.parser.add_argument('--ipaddr', type=str, default='127.0.0.1', help='ip address of streetview server')
         ######(end) Following defaults are combination of 9run_vps_ccsmm.sh
 
-        return 1
+        return 1 # It has to return positive value to C++
 
 
     def initialize(self):
@@ -469,22 +467,18 @@ class vps:
         vps_imgID = self.vps_IDandConf[0]
         vps_imgConf = self.vps_IDandConf[1]
         if (len(vps_imgID) != K) or (len(vps_imgConf) != K):
-            dsmg("Error : K result")
-            bp()
             return -1
         ErrCnt = K
         for i in vps_imgID:
              if (isinstance(vps_imgID[0],int) == False):
                  ErrCnt = ErrCnt - 1
         if K != ErrCnt:
-            bp()
             return -1
         ErrCnt = K
         for i in vps_imgConf:
              if (isinstance(vps_imgConf[0],float) == False):
                  ErrCnt = ErrCnt - 1
         if K != ErrCnt:
-            bp()
             return -1
         return 0
 
@@ -669,12 +663,12 @@ class vps:
             raise Exception('Unknown dataset')
 
         ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]
-        return self.getIDConf()
+        # return self.getIDConf()
+        return self.vps_IDandConf
 
     def getIDConf(self):
         if self.checking_return_value() < 0:
-            print("Error : vps.py's return value")
-            bp()
+            print("Broken : vps.py's return value")
         return self.vps_IDandConf
 
     def setRadius(self,gps_accuracy):

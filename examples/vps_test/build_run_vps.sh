@@ -73,7 +73,8 @@ ln -sf ../src/vps/data_vps
 hostname |grep ccsmm 1>/dev/null && ln -sf ~/Naverlabs/query_etri_cart/191115_ETRI.avi data/ || echo "You need to put 19115_ETRI.avi at $topdir/bin/data/."
 
 python_venv $topdir
-check_server $topdir
+# check_server $topdir # If you use server_vps version, un-remark this line
+
 cd $topdir/bin
 #gdb ./vps_test
 #kdbg ./vps_test

@@ -75,7 +75,8 @@ ln -sf ../../src/poi_recog/data/preprocessed
 ln -sf ../../src/poi_recog/data/litw_annotation.py
 
 python_venv $topdir
-check_vps_server $topdir
+# check_vps_server $topdir # If you use server_vps version, un-remark this line
+
 cd $topdir/bin
 #gdb ./dg_test #for debugging, you need to insert '-g' option at CXX_FLAGS in your CMakeLists.txt # in your CMakeLists.txt : set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
 #kdbg ./dg_test #for debugging in graphic mode

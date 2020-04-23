@@ -447,10 +447,10 @@ int main()
     bool test_image = false; // OK
     bool test_video = false; // OK
     bool test_query = false; // OK
-    bool test_thread_run = false; // OK
+    bool test_thread_run = true; // OK
 
 	// Uses server call to external Python flask server
-    bool test_thread_run_server = true; // OK
+    bool test_thread_run_server = false; // OK
     bool test_video_server = false; // OK
 
     bool enable_recording = false;
