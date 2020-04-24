@@ -110,7 +110,7 @@ if __name__ == '__main__':
             default='./model/keras_yolo3/model_data/yolo_anchors.txt',
             help = 'Path to Yolo anchors')
     parser.add_argument('--yolo_classes_path', type=str,
-            default='./data/preprocessed/openset_classes.txt',
+            default='./data/preprocessed/classes.txt',
             help = 'Path to Yolo class specifications')
     parser.add_argument('--classes_path', type=str,
             default='./data/preprocessed/trained_brands.pkl',
