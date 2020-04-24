@@ -9,7 +9,7 @@ from tqdm import tqdm
 from pathlib import Path
 
 
-data_path = './data/LogosInTheWild-v2'
+data_path = './logo_data/LogosInTheWild-v2'
 cat_path = list(Path(os.path.join(data_path, 'data')).iterdir())
 
 for path in tqdm(cat_path):

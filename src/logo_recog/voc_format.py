@@ -94,12 +94,12 @@ def xml_extractor(xml_file, classes):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', type=str, default='./data/LogosInTheWild-v2',
+    parser.add_argument('--data_path', type=str, default='./logo_data/LogosInTheWild-v2',
             help='Path to directory contatining images and xml annotations')
-    parser.add_argument('--result_path', type=str, default='./data/preprocessed',
+    parser.add_argument('--result_path', type=str, default='./logo_data/preprocessed',
             help='Path to save the preprocessed data')
     parser.add_argument('--cleaned_data', type=str, 
-            default='./data/LogosInTheWild-v2/cleaned_data')
+            default='./logo_data/LogosInTheWild-v2/cleaned_data')
     parser.add_argument('--split_ratio', type=float, default=0.2,
             help='Fraction of dataset split')
     args = parser.parse_args()

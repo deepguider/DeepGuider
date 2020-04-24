@@ -93,14 +93,14 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default='recog',
             help = 'Logo only detection? or proceed to recognition? or construct DB?',
             choices = ['recog', 'detect', 'DB'])
-    parser.add_argument('--input_path', type=str, default='./data/input',
+    parser.add_argument('--input_path', type=str, default='./logo_data/input',
             help = 'Path to load test images')
-    parser.add_argument('--result_path', type=str, default='./data/test',
+    parser.add_argument('--result_path', type=str, default='./logo_data/test',
             help = 'Path to save the annotated images')
     parser.add_argument('--DB_path', type=str, default='./model',
             help = 'Path to load or save the DB of features')
     parser.add_argument('--DB_list', type=str,
-            default='./data/preprocessed/DB_list.txt',
+            default='./logo_data/preprocessed/DB_list.txt',
             help = 'Path to load the list of training dataset with labels.')
     parser.add_argument('--model_path', type=str,
             default='./model/keras_yolo3/logs/0001/trained_weights_final.h5',
@@ -110,10 +110,10 @@ if __name__ == '__main__':
             default='./model/keras_yolo3/model_data/yolo_anchors.txt',
             help = 'Path to Yolo anchors')
     parser.add_argument('--yolo_classes_path', type=str,
-            default='./data/preprocessed/classes.txt',
+            default='./logo_data/preprocessed/classes.txt',
             help = 'Path to Yolo class specifications')
     parser.add_argument('--classes_path', type=str,
-            default='./data/preprocessed/trained_brands.pkl',
+            default='./logo_data/preprocessed/trained_brands.pkl',
             help = 'Path to load the brandROIs with labels')
     parser.add_argument('--recog_model', type=str, default='InceptionV3',
             help = 'Select the recognition model', choices = ['InceptionV3', 'VGG16'])

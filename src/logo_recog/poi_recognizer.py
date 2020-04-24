@@ -20,16 +20,16 @@ class POIRecognizer():
         self.output_txt = 'out.txt'
         self.model_path = './model/keras_yolo3/logs/0001/trained_weights_final.h5'
         self.anchors = './model/keras_yolo3/model_data/yolo_anchors.txt'
-        self.yolo_classes_path = './data/preprocessed/classes.txt',
+        self.yolo_classes_path = './logo_data/preprocessed/classes.txt',
         self.confidence = 0.5
         self.gpu_num = 1
         self.recog_model = 'InceptionV3'
         self.DB_path = './model'
-        self.classes_path = './data/preprocessed/kr_brands.pkl'
+        self.classes_path = './logo_data/preprocessed/kr_brands.pkl'
         self.save_image = True
-        self.input_path = './data/demo'
-        self.result_path = './data/test'
-        self.DB_list = './data/preprocessed/DB_list.txt'
+        self.input_path = './logo_data/demo'
+        self.result_path = './logo_data/test'
+        self.DB_list = './logo_data/preprocessed/DB_list.txt'
         
         self.initialize()
         
@@ -76,4 +76,4 @@ class POIRecognizer():
         return pred, timestamp
     
 #poi_recog = POIRecognizer()
-#poi_recog.apply('./data/demo/ibk.jpg', '2020-04-24')
+#poi_recog.apply('./logo_data/demo/ibk.jpg', '2020-04-24')
