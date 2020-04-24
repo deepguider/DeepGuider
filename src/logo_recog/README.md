@@ -2,12 +2,12 @@
 
 ### Getting started
 We uses the Logos-in-the-wild dataset with voc format as training dataset which can be requested via email directly from the authors of the paper, [arXiv:1710.10891](https://arxiv.org/abs/1710.10891). This dataset includes 11,054 images with 32,850 bounding boxes for a total of 871 brands.
-Download the dataset and put it in the `./data` folder.
+Download the dataset and put it in the `./logo_data` folder.
 
 And now we extract this dataset from the urls, refine it, and format it for training and testing.
 ```
 python litw_constructor.py
-cd data/LogosInTheWild-v2/scripts
+cd logo_data/LogosInTheWild-v2/scripts
 python create_clean_dataset.py --in ../data --out ../cleaned_data --roi
 cd ../../..
 python voc_format.py
@@ -28,8 +28,8 @@ Additionally, download the pre-trained model from [google drive](https://drive.g
 ```
 cd model
 tar -xvzf model.tar.gz
-mv trained_brands.pkl ../data/preprocessed
-mv kr_brands.pkl ../data/preprocessed
+mv trained_brands.pkl ../logo_data/preprocessed
+mv kr_brands.pkl ../logo_data/preprocessed
 mv logs keras_yolo3
 cd ..
 ```
@@ -40,7 +40,7 @@ python train.py
 ```
 
 ### For testing
-Put input images into `./data/input`.
+Put input images into `./logo_data/input`.
 ```
 python test.py --mode detect # for only detecting
 python test.py --mode recog  # for detecting and recognizing
@@ -49,5 +49,5 @@ python test.py --mode DB     # for constructing the database of features
 If you want a quick test environment, use the following command.
 Please note that this is a tiny checkpoint and has nothing to do with performance.
 ```
-python test.py --mode recog --classes_path ./data/preprocessed/kr_brands.pkl
+python test.py --mode recog --classes_path ./logodata/preprocessed/kr_brands.pkl
 ```
