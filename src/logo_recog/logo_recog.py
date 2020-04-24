@@ -33,17 +33,22 @@ def detect_logo_only(img_path, yolo, save_img=False, save_img_path='./data/test'
     return prediction, new_image, elapsed_t
 
 
-def detect_and_match(img_path, model_preproc, params, save_img=False, save_img_path='./data/test'):
+def detect_and_match(img_path, model_preproc, params, save_img=False, save_img_path='./data/test', is_test=False):
     '''Detect and Recognize logos from image.'''
 
     start = time.time()
-    try:
-        image = Image.open(img_path)
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
+    if not test:
+        try:
+            image = Image.open(img_path)
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            image_array = np.array(image)
+        except:
+            return 0, 0, 0
+    else:
+        image = cv2.cvtColor(img_path, cv2.COLOR_BGR2RGB)
+        image = Image.fromarray(image)
         image_array = np.array(image)
-    except:
-        return 0, 0, 0
     
     yolo, model, preprocess = model_preproc
     DB_feat, sim_cutoff, bins, cdf_list, DB_labels = params
