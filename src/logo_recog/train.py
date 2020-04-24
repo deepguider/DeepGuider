@@ -190,9 +190,9 @@ if __name__ == '__main__':
             help='Model path')
     parser.add_argument('--log_dir', type=str, default='logs/0002',
             help='Log directory path')
-    parser.add_argument('--classes_path', type=str, default='data/preprocessed/classes.txt',
+    parser.add_argument('--classes_path', type=str, default='logo_data/preprocessed/classes.txt',
             help='Path where class_list.txt is stored')
-    parser.add_argument('--annotation_path', type=str, default='data/preprocessed/yolo_train_list.txt',
+    parser.add_argument('--annotation_path', type=str, default='logo_data/preprocessed/yolo_train_list.txt',
             help='Path where annotation is stored')
     parser.add_argument('--is_tiny', type=bool, default=False,
             help='Select model size')
