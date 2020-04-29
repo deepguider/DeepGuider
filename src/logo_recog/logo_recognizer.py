@@ -14,7 +14,7 @@ from logo_recog import detect_logo_only, detect_and_match
 from utils import construct_DB, load_features, pad_image, load_extractor_model, similarity_cutoff, extract_features
 
 
-class POIRecognizer():
+class LogoRecognizer():
     def __init__(self):
         self.sim_threshold = 0.90
         self.output_txt = 'out.txt'
@@ -25,15 +25,17 @@ class POIRecognizer():
         self.gpu_num = 1
         self.recog_model = 'InceptionV3'
         self.DB_path = './model'
-        self.classes_path = './logo_data/preprocessed/kr_brands.pkl'
+        self.classes_path = './logo_data/preprocessed/trained_brands.pkl'
         self.save_image = True
         self.input_path = './logo_data/demo'
         self.result_path = './logo_data/test'
         self.DB_list = './logo_data/preprocessed/DB_list.txt'
         
-        self.initialize()
-        
-        
+    def initialize_fast(self):
+        self.classes_path = './logo_data/preprocessed/kr_brands.pkl'
+        self.initialize(self)
+        return True
+
     def initialize(self):
 
         print('Initialization in progress...!\n')        
@@ -63,7 +65,7 @@ class POIRecognizer():
         
         self.model_preproc = (yolo, model, my_preprocess)
         self.params = (input_feat, sim_cutoff, bins, cdf_list, input_labels)
-        
+        return True        
     
     def apply(self, image, timestamp):
         
