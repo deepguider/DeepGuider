@@ -25,7 +25,7 @@ namespace dg
         * Initialize the module
         * @return true if successful (false if failed)
         */
-        bool initialize(const char* module_name = "logo_recognizer", const char* module_path = "./../src/logo_recog", const char* class_name = "POIRecognizer", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
+        bool initialize(const char* module_name = "logo_recognizer", const char* module_path = "./../src/logo_recog", const char* class_name = "LogoRecognizer", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
         {
             PyGILState_STATE state;
             bool ret;
@@ -43,7 +43,7 @@ namespace dg
         * Initialize the module in fast mode (just for test purpose)
         * @return true if successful (false if failed)
         */
-        bool initialize_fast(const char* module_name = "logo_recognizer", const char* module_path = "./../src/logo_recog", const char* class_name = "POIRecognizer", const char* func_name_init = "initialize_fast", const char* func_name_apply = "apply")
+        bool initialize_fast(const char* module_name = "logo_recognizer", const char* module_path = "./../src/logo_recog", const char* class_name = "LogoRecognizer", const char* func_name_init = "initialize_fast", const char* func_name_apply = "apply")
         {
             PyGILState_STATE state;
             bool ret;

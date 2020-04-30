@@ -20,7 +20,7 @@ class LogoRecognizer():
         self.output_txt = 'out.txt'
         self.model_path = './model/keras_yolo3/logs/0001/trained_weights_final.h5'
         self.anchors = './model/keras_yolo3/model_data/yolo_anchors.txt'
-        self.yolo_classes_path = './logo_data/preprocessed/classes.txt',
+        self.yolo_classes_path = './logo_data/preprocessed/classes.txt'
         self.confidence = 0.5
         self.gpu_num = 1
         self.recog_model = 'InceptionV3'
@@ -33,7 +33,7 @@ class LogoRecognizer():
         
     def initialize_fast(self):
         self.classes_path = './logo_data/preprocessed/kr_brands.pkl'
-        self.initialize(self)
+        self.initialize()
         return True
 
     def initialize(self):
