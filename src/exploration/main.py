@@ -22,8 +22,8 @@ img_list = data['rgb']
 guidance_list = data['action']
 
 for i in range(len(img_list)):
-    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i], None, random_action=True)
-
+    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i], None, random_action=True) 
+ 
 anm.enable_recovery = True
 anm.vis_mem = torch.cat(anm.vis_mem, 0)
 if anm.isRecoveryGuidanceEnabled():
@@ -33,7 +33,6 @@ if anm.isRecoveryGuidanceEnabled():
     print('Recovery guidance from the last inserted visual memory : ', recovery_guidance)
 
 # # if anm.isExplorationGuidanceEnabled():
-# #   return anm.getExplorationGuidance()
     
 # # anm.calcNeedForOptimalViewpointGuidance(topometric_pose_conf, poi_conf, entrance, entrance_conf, poi_successes)
 
@@ -49,6 +48,6 @@ if anm.isOptimalViewpointGuidanceEnabled():
         im_cnt += 1
         print("Testing... {}/{}, Target: {}".format(im_cnt, tot_test, target_poi))
         anm.calcOptimalViewpointGuidance(im_path, target_poi)
-        guidance = anm.getOptimalViewpointGuidance()
+        guidance = anm.ov_guidance #getOptimalViewpointGuidance()
         print("Optimal Guidance [theta1, d, theta2]: [%.2f degree, %.2fm, %.2f degree]" % (guidance[0], guidance[1], guidance[2]))
 anm.enable_ove = False

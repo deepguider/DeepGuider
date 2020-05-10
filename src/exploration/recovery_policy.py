@@ -71,13 +71,13 @@ class Recovery(nn.Module):
         done = True if return_action == 0 else False
 
         if return_action == 0 : # go straight
-            return_action = ['forward'] * 3
+            return_action = [0., 0.40, 0.] # ['forward'] * 3
         elif return_action == 1 : # turn left
-            return_action = ['turn_left'] * 3
+            return_action = [-30., 0., 0.] # ['turn_left'] * 3
         elif return_action == 2 : # turn right
-            return_action = ['right'] * 3
-        elif return_action == 3:  # turn right
-            return_action = ['backward'] * 3
+            return_action = [30., 0., 0.] # ['right'] * 3
+        elif return_action == 3:  # go back
+            return_action = [0., -0.40, 0.] # ['backward'] * 3
 
         # done: is back home, info: whether visual memory matching succeeded or not
         return return_action, done, info
