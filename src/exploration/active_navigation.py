@@ -14,14 +14,13 @@ if '/opt/ros/kinetic/lib/python2.7/dist-packages' in sys.path:
 import os
 import joblib
 import cv2
-
-# import MapManager
+from PIL import Image
+import ov_utils.file_utils as file_utils
 
 """
 Active Navigation Module:
 A module that maintains visual memory and provides three kinds of active navgitation guidance;
 (1) recovery guidance, (2) exploration guidance, (3) optimal viewpoint guidance.
-Initiation and termination conditions of (1) and (2) are checked by state from StateDeterminant module.
 
 Author
 ------
@@ -68,7 +67,7 @@ class ActiveNavigationModule():
             pass
 
         self.enable_recovery = True
-        self.enable_ove = True
+        self.enable_ove = False
 
         
 
@@ -160,7 +159,7 @@ class ActiveNavigationModule():
                 #       just reverse the actions in the visual memory (using self.list2encode)
                 #       - can't implement now due to the ambiguity of the action space
                 print("NotImplementedError")
-                actions, done, info = ['backward']*3, False, False
+                actions, done, info = [0., -0.40, 0.], False, False
 
             self.recovery_guidance = actions
 
@@ -168,7 +167,7 @@ class ActiveNavigationModule():
             self.enable_recovery, self.enable_exploration = False, True
 
         if done is True:
-            self.enable_recovery, self.enable_exploration = False, False
+            self.enable_recovery, self.enable_exploration = True, False
 
 
     def calcExplorationGuidance(self, img):
@@ -196,14 +195,17 @@ class ActiveNavigationModule():
 
         if self.enable_exploration is True:
             try:
-                actions = self.exploration_policy(img, self.vis_mem)
+                actions, done, info = self.exploration_policy(img, self.vis_mem)
             except:
                 print("NotImplementedError")
-                actions = ['forward','forward','forward']
+                actions, done, info = [0., 0.40, 0.], False, False # ['forward','forward','forward']
 
             self.exploration_guidance = actions
+            if done is True:
+                self.enable_recovery, self.enable_exploration = True, False
         else:
             self.exploration_guidance = None
+ 
 
     # def calcNeedForOptimalViewpointGuidance(self, topometric_pose, poi_conf, entrance, entrance_conf, poi_successes):
     #     """
@@ -354,29 +356,50 @@ class ActiveNavigationModule():
     def isRecoveryGuidanceEnabled(self):
         return self.enable_recovery
 
-    def getRecoveryGuidance(self):
-        if self.enable_recovery:
-            return self.recovery_guidance
-        else:
-            return None
-
     def isExplorationGuidanceEnabled(self):
         return self.enable_exploration
-
-    def getExplorationGuidance(self):
-        if self.enable_exploration:
-            return self.exploration_guidance
-        else:
-            return None
 
     def isOptimalViewpointGuidanceEnabled(self):
         return self.enable_ove
 
-    def getOptimalViewpointGuidance(self):
-        if self.enable_ove:
-            return self.ov_guidance
-        else:
-            return None
+    def getExplorationGuidance(self, img, im_path=None, target_poi=None):
+        if self.isOptimalViewpointGuidanceEnabled() and target_poi is not None:
+                self.calcOptimalViewpointGuidance(im_path, target_poi)
+                guidance = self.ov_guidance
+                print("Optimal Guidance [theta1, d, theta2]: [%.2f degree, %.2fm, %.2f degree]" % (guidance[0], guidance[1], guidance[2]))
+                return guidance, 'OptimalViewpoint'
+
+        if self.isRecoveryGuidanceEnabled():
+            curr_img = Image.fromarray(img)
+            self.calcRecoveryGuidance(img=curr_img)
+            print('Recovery guidance from the last inserted visual memory : ', self.recovery_guidance)
+
+            if self.enable_exploration is False:
+                return self.recovery_guidance, 'Recovery'
+
+        if self.isExplorationGuidanceEnabled():
+            self.calcExplorationGuidance(img=curr_img)
+            print('Exploration guidance from the last inserted visual memory : ', self.exploration_guidance)
+            return self.exploration_guidance, 'Exploration'
+
+
+    # def getRecoveryGuidance(self):
+    #     if self.enable_recovery:
+    #         return self.recovery_guidance
+    #     else:
+    #         return None
+
+    # def getExplorationGuidance(self):
+    #     if self.enable_exploration:
+    #         return self.exploration_guidance
+    #     else:
+    #         return None
+
+    # def getOptimalViewpointGuidance(self):
+    #     if self.enable_ove:
+    #         return self.ov_guidance
+    #     else:
+    #         return None
 
 # if __name__ == "__main__":
 #   anm = ActiveNavigationModule()
