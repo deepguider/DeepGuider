@@ -71,7 +71,7 @@ class ActiveNavigationModule():
 
         
 
-    def encodeVisualMemory(self, img, guidance, topometric_pose=None, random_action=False):
+    def encodeVisualMemory(self, img, guidance, topometric_pose_dist=1.0, random_action=False, flush=False):
         """
         Visual Memory Encoder Submodule:
         A module running consistently which encodes visual trajectory information from the previous node to the current location.
@@ -89,7 +89,7 @@ class ActiveNavigationModule():
         - Localizer
         """
 
-        if random_action:
+        if random_action: # For test
             test_act = np.random.randint(0, 3)
             onehot_test_act = np.zeros(3)
             onehot_test_act[test_act] = 1
@@ -98,15 +98,14 @@ class ActiveNavigationModule():
             self.list2encode.append([img, onehot_test_act])
             vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action)
             self.vis_mem.append(vis_mem_seg)
-            
 
         else:
-            # # flush when reaching new node
-            # if (self.map.getNode(topometric_pose.node_id).edges[topometric_pose.edge_idx].length - topometric_pose.dist) < 0.1: # topometric_pose.dist < 0.1:
-            #     self.list2encode = []
-            #     self.vis_mem = []
+            # flush when reaching new node
+            if flush is True or topometric_pose_dist < 0.2: # topometric_pose.dist < 0.1:
+                self.list2encode = []
+                self.vis_mem = []
 
-            if self.enable_recovery is False and self.enable_exploration is False and self.enable_ove is False:
+            if self.enable_recovery is True and self.enable_exploration is False:
                 action = np.zeros(3)
                 action[guidance] = 1
                 self.list2encode.append([img,action])
