@@ -22,7 +22,7 @@ img_list = data['rgb']
 guidance_list = data['action']
 
 for i in range(len(img_list)):
-    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i], None, random_action=True) 
+    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i], 1.0, random_action=True) 
  
 anm.enable_recovery = True
 anm.vis_mem = torch.cat(anm.vis_mem, 0)
