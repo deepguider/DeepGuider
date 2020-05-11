@@ -59,7 +59,6 @@ class ActiveNavigationModule():
         self.im_paths, self.target_pois = file_utils.get_annos(self.ove_data_folder + 'anno/')
 
     def initialize(self):
-        
         try:
             self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
         except:
@@ -69,7 +68,7 @@ class ActiveNavigationModule():
         self.enable_recovery = True
         self.enable_ove = True
 
-        
+        return True        
 
     def encodeVisualMemory(self, img, guidance, random_action=False, flush=False, exp_active=False):
         """
