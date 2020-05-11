@@ -165,22 +165,8 @@ CMAKE_STRIP:FILEPATH=/usr/bin/strip
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
-//Path where debug 3rdpaty OpenCV dependencies are located
-OpenCV_3RDPARTY_LIB_DIR_DBG:PATH=
-
-//Path where release 3rdpaty OpenCV dependencies are located
-OpenCV_3RDPARTY_LIB_DIR_OPT:PATH=
-
-OpenCV_CONFIG_PATH:FILEPATH=/usr/share/OpenCV
-
 //The directory containing a CMake configuration file for OpenCV.
 OpenCV_DIR:PATH=/usr/local/lib/cmake/opencv4
-
-//Path where debug OpenCV libraries are located
-OpenCV_LIB_DIR_DBG:PATH=
-
-//Path where release OpenCV libraries are located
-OpenCV_LIB_DIR_OPT:PATH=
 
 //Path to a program.
 PYTHON_EXECUTABLE:FILEPATH=/home/cyh/anaconda2/envs/deepguider/bin/python3.6
@@ -336,16 +322,6 @@ FIND_PACKAGE_MESSAGE_DETAILS_OpenCV:INTERNAL=[/usr/local][v4.0.0(4.0)]
 FIND_PACKAGE_MESSAGE_DETAILS_PythonInterp:INTERNAL=[/home/cyh/anaconda2/envs/deepguider/bin/python3.6][v3.6.10(3.6)]
 //Details about finding PythonLibs
 FIND_PACKAGE_MESSAGE_DETAILS_PythonLibs:INTERNAL=[/home/cyh/anaconda2/envs/deepguider/lib/libpython3.6m.so][/home/cyh/anaconda2/envs/deepguider/include/python3.6m][v3.6.10(3.6)]
-//ADVANCED property for variable: OpenCV_3RDPARTY_LIB_DIR_DBG
-OpenCV_3RDPARTY_LIB_DIR_DBG-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: OpenCV_3RDPARTY_LIB_DIR_OPT
-OpenCV_3RDPARTY_LIB_DIR_OPT-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: OpenCV_CONFIG_PATH
-OpenCV_CONFIG_PATH-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: OpenCV_LIB_DIR_DBG
-OpenCV_LIB_DIR_DBG-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: OpenCV_LIB_DIR_OPT
-OpenCV_LIB_DIR_OPT-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: PYTHON_EXECUTABLE
 PYTHON_EXECUTABLE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: PYTHON_INCLUDE_DIR

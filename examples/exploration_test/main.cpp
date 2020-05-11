@@ -34,7 +34,7 @@ void test_image_run(ActiveNavigation& active_nav, GuidanceManager::Guidance guid
 int main()
 {
     // Initialize the Python interpreter
-    init_python_environment("python3", "");
+    init_python_environment("python3", nullptr, false);
 
     // Initialize Python module
     ActiveNavigation active_nav;
@@ -47,7 +47,7 @@ int main()
     printf("Initialization: it took %lf seconds\n", t2 - t1);
 
     // Run the Python module
-    // test_image_run(active_nav, guidance, false);
+    // test_image_run(active_nav, guidance);
 
     // Clear the Python module
     active_nav.clear();
