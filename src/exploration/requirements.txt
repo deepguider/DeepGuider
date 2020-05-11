@@ -8,6 +8,7 @@ kiwisolver==1.1.0
 matplotlib==3.2.1
 networkx==2.4
 numpy==1.18.2
+opencv-contrib-python-headless==4.2.0.34
 opencv-python==4.2.0.32
 Pillow==6.2.1
 pygame==1.9.6

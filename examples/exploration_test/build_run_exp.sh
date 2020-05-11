@@ -16,8 +16,8 @@ cd ../../../bin
 ln -sf ../src/exploration/data_exp
 
 
-#gdb ./poi_recog_test #for debugging, you need to insert '-g' option at CXX_FLAGS in your CMakeLists.txt # in your CMakeLists.txt : set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
-#kdbg ./poi_recog_test #for debugging in graphic mode
+# gdb ./exploration_test #for debugging, you need to insert '-g' option at CXX_FLAGS in your CMakeLists.txt # in your CMakeLists.txt : set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
+#kdbg ./exploration_test #for debugging in graphic mode
 ./exploration_test # for running without debugging
 
 cd ../examples/exploration_test   # return to initial directory

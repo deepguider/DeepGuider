@@ -15,7 +15,6 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/usr/local/lib/cmake/opencv4/OpenCVConfig.cmake"
   "/usr/local/lib/cmake/opencv4/OpenCVModules-release.cmake"
   "/usr/local/lib/cmake/opencv4/OpenCVModules.cmake"
-  "/usr/share/OpenCV/OpenCVConfig-version.cmake"
   "/usr/share/cmake-3.5/Modules/CMakeCInformation.cmake"
   "/usr/share/cmake-3.5/Modules/CMakeCXXInformation.cmake"
   "/usr/share/cmake-3.5/Modules/CMakeCommonLanguageInclude.cmake"
