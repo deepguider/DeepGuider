@@ -31,5 +31,5 @@ active_nav.get(actions, status);
 active_nav.clear();
 
 // Close the Python Interpreter
-    close_python_environment();
+close_python_environment();
 ```
