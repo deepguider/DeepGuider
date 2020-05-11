@@ -3,17 +3,14 @@
 
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
+#include "guidance/guidance.hpp"
 
 using namespace std;
 
 namespace dg
 {
-    struct ActiveNavigationGuidance
-    {
-        std::vector<std::string> actions;
-    };
 
-    struct OptimalViewpointGuidance
+    struct ExplorationGuidance
     {
         double theta1, d, theta2
     };
@@ -29,7 +26,7 @@ class ActiveNavigation : public PythonModuleWrapper
         * Initialize the module
         * @return true if successful (false if failed)
         */
-        bool initialize(const char* module_name = "active_navigation", const char* module_path = "./../src/exploration", const char* class_name = "ActiveNavigationModule", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
+        bool initialize(const char* module_name = "active_navigation", const char* module_path = "./../src/exploration", const char* class_name = "ActiveNavigationModule", const char* func_name_init = "initialize", const char* func_name_apply = "getExplorationGuidance")
         {
             PyGILState_STATE state;
             bool ret;
@@ -61,7 +58,7 @@ class ActiveNavigation : public PythonModuleWrapper
         * Run once the module for a given input (support thread run)
         * @return true if successful (false if failed)
         */
-        bool apply(cv::Mat image, dg::Timestamp t)
+        bool apply(cv::Mat image, Guidance guidance, dg::Timestamp t)
         {
             PyGILState_STATE state;
             bool ret;
@@ -69,7 +66,7 @@ class ActiveNavigation : public PythonModuleWrapper
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
             /* Call Python/C API functions here */
-            ret = _apply(image, t);
+            ret = _apply(image, guidance, t);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
 
@@ -80,25 +77,50 @@ class ActiveNavigation : public PythonModuleWrapper
         * Run once the module for a given input
         * @return true if successful (false if failed)
         */
-        bool _apply(cv::Mat image, dg::Timestamp t)
+        bool _apply(cv::Mat image, Guidance guidance, dg::Timestamp t)
         {
             // Set function arguments
             int arg_idx = 0;
-            PyObject* pArgs = PyTuple_New(2);
+            PyObject* pArgs = PyTuple_New(4);
 
             // Image
             import_array();
             npy_intp dimensions[3] = { image.rows, image.cols, image.channels() };
             PyObject* pValue = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)&dimensions, NPY_UINT8, image.data);
             if (!pValue) {
-                fprintf(stderr, "POIRecognizer::apply() - Cannot convert argument1\n");
+                fprintf(stderr, "ActiveNavigation::apply() - Cannot convert argument1\n");
                 return false;
             }
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
+            // guidance
+            if (guidance.actions.back().cmd==Motion::GO_FORWARD || guidance.actions.back().cmd==Motion::CROSS_FORWARD || guidance.actions.back().cmd==Motion::ENTER_FORWARD || guidance.actions.back().cmd==Motion::EXIT_FORWARD)    
+                pValue = PyLong_FromLong(0);
+            else if (guidance.actions.back().cmd==Motion::TURN_LEFT || guidance.actions.back().cmd==Motion::CROSS_LEFT || guidance.actions.back().cmd==Motion::ENTER_LEFT || guidance.actions.back().cmd==Motion::EXIT_LEFT)
+                pValue = PyLong_FromLong(1);
+            else if (guidance.actions.back().cmd==Motion::TURN_RIGHT || guidance.actions.back().cmd==Motion::CROSS_RIGHT || guidance.actions.back().cmd==Motion::ENTER_RIGHT || guidance.actions.back().cmd==Motion::EXIT_RIGHT)
+                pValue = PyLong_FromLong(2);
+            else
+                pValue = PyLong_FromLong(3);
+            PyTuple_SetItem(pArgs, args_idx++, pValue);
+
+            // flush
+            if (guidance.guide_status == GUIDE_ARRIVED )
+                PyObject* pValue = Py_True;
+            else
+                PyObject* pValue = Py_False;
+            PyTuple_SetItem(pArgs, args_idx++, pValue);
+
+            // exp_active
+            if (guidance.guide_status == GuideStatus::GUIDE_LOST || guidance.guide_status == GuideStatus::GUIDE_EXPLORATION || guidance.guide_status == GuideStatus::GUIDE_RECOVERY_MODE || guidance.guide_status == GuideStatus::GUIDE_OPTIMAL_VIEW)
+                PyObject* pValue = Py_True;
+            else
+                PyObject* pValue = Py_False;
+            PyTuple_SetItem(pArgs, args_idx++, pValue);
+
             // Timestamp
-            pValue = PyFloat_FromDouble(t);
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+            // pValue = PyFloat_FromDouble(t);
+            // PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // Call the method
             PyObject* pRet = PyObject_CallObject(m_pFuncApply, pArgs);
@@ -106,66 +128,79 @@ class ActiveNavigation : public PythonModuleWrapper
                 Py_ssize_t n_ret = PyTuple_Size(pRet);
                 if (n_ret != 2)
                 {
-                    fprintf(stderr, "POIRecognizer::apply() - Wrong number of returns\n");
+                    fprintf(stderr, "ActiveNavigation::apply() - Wrong number of returns\n");
                     return false;
                 }
 
                 // list of list
-                m_pois.clear();
-                PyObject* pValue0 = PyTuple_GetItem(pRet, 0);
-                if (pValue0 != NULL)
+                m_actions.clear();
+                
+                PyObject* pList1 = PyTuple_GetItem(pRet, 1);
+                pValue = PyList_GetItem(pList1, 0);
+                stat = PyUnicode_AsUTF8(pValue);
+                if (stat == "Normal")
+                    m_status = GuideStatus::GUIDE_NORMAL;
+                else if (stat == "Exploration")
+                    m_status = GuideStatus::GUIDE_EXPLORATION;
+                else if (stat == "Recovery")
+                    m_status = GuideStatus::GUIDE_RECOVERY_MODE;
+                else
+                    m_status = GuideStatus::GUIDE_OPTIMAL_VIEW;
+
+                PyObject* pList0 = PyTuple_GetItem(pRet, 0);
+                if (pList0 != NULL)
                 {
-                    Py_ssize_t cnt = PyList_Size(pValue0);
+                    Py_ssize_t cnt = PyList_Size(pList0);
                     for (int i = 0; i < cnt; i++)
                     {
-                        PyObject* pList = PyList_GetItem(pValue0, i);
-
-                        POIResult poi;
-                        int idx = 0;
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.xmin = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.ymin = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.xmax = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.ymax = PyLong_AsLong(pValue);
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.label = PyUnicode_AsUTF8(pValue);
-                        pValue = PyList_GetItem(pList, idx++);
-                        poi.confidence = PyFloat_AsDouble(pValue);
-
-                        m_pois.push_back(poi);
-                        Py_DECREF(pList);
+                        PyObject* pList = PyList_GetItem(pList0, i);
+                        if(pList)
+                        {
+                            ExplorationGuidance action;
+                            int idx = 0;
+                            pValue = PyList_GetItem(pList, idx++);
+                            action.theta1 = PyFloat_AsDouble(pValue);
+                            pValue = PyList_GetItem(pList, idx++);
+                            action.d = PyFloat_AsDouble(pValue);
+                            pValue = PyList_GetItem(pList, idx++);
+                            action.theta2 = PyFloat_AsDouble(pValue);
+                            m_actions.push_back(action);
+                        }
                     }
                 }
-                Py_DECREF(pValue0);
             }
             else {
                 PyErr_Print();
-                fprintf(stderr, "POIRecognizer::apply() - Call failed\n");
+                fprintf(stderr, "ActiveNavigation::apply() - Call failed\n");
                 return false;
             }
 
             // Update Timestamp
             m_timestamp = t;
 
+            // Clean up
+            if(pRet) Py_DECREF(pRet);
+            if(pArgs) Py_DECREF(pArgs);            
+
             return true;
         }
 
-        void get(std::vector<POIResult>& pois)
+        void get(std::vector<ExplorationGuidance>& actions, GuideStatus& status)
         {
-            pois = m_pois;
+            actions = m_actions;
+            status = m_status;
         }
 
-        void get(std::vector<POIResult>& pois, Timestamp& t)
+        void get(std::vector<ExplorationGuidance>& actions, GuideStatus& status, Timestamp& t)
         {
-            pois = m_pois;
+            actions = m_actions;
+            status = m_status;
             t = m_timestamp;
         }
 
     protected:
-        std::vector<POIResult> m_pois;
+        std::vector<ExplorationGuidance> m_actions;
+        GuideStatus m_status;
         Timestamp m_timestamp = -1;
     };
 

@@ -67,11 +67,11 @@ class ActiveNavigationModule():
             pass
 
         self.enable_recovery = True
-        self.enable_ove = False
+        self.enable_ove = True
 
         
 
-    def encodeVisualMemory(self, img, guidance, topometric_pose_dist=1.0, random_action=False, flush=False):
+    def encodeVisualMemory(self, img, guidance, random_action=False, flush=False, exp_active=False):
         """
         Visual Memory Encoder Submodule:
         A module running consistently which encodes visual trajectory information from the previous node to the current location.
@@ -101,11 +101,11 @@ class ActiveNavigationModule():
 
         else:
             # flush when reaching new node
-            if flush is True or topometric_pose_dist < 0.2: # topometric_pose.dist < 0.1:
+            if flush is True: # topometric_pose.dist < 0.1:
                 self.list2encode = []
                 self.vis_mem = []
 
-            if self.enable_recovery is True and self.enable_exploration is False:
+            elif exp_active is False:
                 action = np.zeros(3)
                 action[guidance] = 1
                 self.list2encode.append([img,action])
@@ -361,25 +361,31 @@ class ActiveNavigationModule():
     def isOptimalViewpointGuidanceEnabled(self):
         return self.enable_ove
 
-    def getExplorationGuidance(self, img, im_path=None, target_poi=None):
-        if self.isOptimalViewpointGuidanceEnabled() and target_poi is not None:
-                self.calcOptimalViewpointGuidance(im_path, target_poi)
-                guidance = self.ov_guidance
-                print("Optimal Guidance [theta1, d, theta2]: [%.2f degree, %.2fm, %.2f degree]" % (guidance[0], guidance[1], guidance[2]))
-                return guidance, 'OptimalViewpoint'
+    def getExplorationGuidance(self, img, guidance, flush, exp_active, im_path=None, target_poi=None):
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        curr_img = Image.fromarray(img)
+        self.encodeVisualMemory(curr_img, guidance, flush=flush, exp_active=exp_active)
 
-        if self.isRecoveryGuidanceEnabled():
-            curr_img = Image.fromarray(img)
-            self.calcRecoveryGuidance(img=curr_img)
-            print('Recovery guidance from the last inserted visual memory : ', self.recovery_guidance)
+        if exp_active is True:
+            if self.isOptimalViewpointGuidanceEnabled() and target_poi is not None:
+                    self.calcOptimalViewpointGuidance(im_path, target_poi)
+                    guidance = self.ov_guidance
+                    print("Optimal Guidance [theta1, d, theta2]: [%.2f degree, %.2fm, %.2f degree]" % (guidance[0], guidance[1], guidance[2]))
+                    return [guidance], 'OptimalViewpoint'
 
-            if self.enable_exploration is False:
-                return self.recovery_guidance, 'Recovery'
+            if self.isRecoveryGuidanceEnabled():
+                self.calcRecoveryGuidance(img=curr_img)
+                print('Recovery guidance from the last inserted visual memory : ', self.recovery_guidance)
 
-        if self.isExplorationGuidanceEnabled():
-            self.calcExplorationGuidance(img=curr_img)
-            print('Exploration guidance from the last inserted visual memory : ', self.exploration_guidance)
-            return self.exploration_guidance, 'Exploration'
+                if self.enable_exploration is False:
+                    return [self.recovery_guidance], 'Recovery'
+
+            if self.isExplorationGuidanceEnabled():
+                self.calcExplorationGuidance(img=curr_img)
+                print('Exploration guidance from the last inserted visual memory : ', self.exploration_guidance)
+                return [self.exploration_guidance], 'Exploration'
+        else:
+            return [[0., 0., 0.]], 'Normal'
 
 
     # def getRecoveryGuidance(self):
