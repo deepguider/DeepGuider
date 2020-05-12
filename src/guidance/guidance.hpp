@@ -1,4 +1,5 @@
 #pragma once
+#include <time.h>
 #include "dg_core.hpp"
 
 namespace dg
@@ -16,12 +17,14 @@ public:
 		//from localizer info
 		GUIDE_NORMAL,
 		GUIDE_ARRIVED,		//finally arrived 
-		GUIDE_LOST,		//out of path
+		GUIDE_OOP_DETECT,		//may be out of path. let's see
+		GUIDE_OOP,		//out of path, localization confidence is high
+		GUIDE_LOST,	//localization confidence is low
 
-		//from lost control module
-		GUIDE_EXPLORATION, 	//from exploration module
-		GUIDE_RECOVERY_MODE,	//from recovery module
-		GUIDE_OPTIMAL_VIEW,	//from optimal view
+		//from exploration control module
+		GUIDE_RECOVERY,	//return to previous known POI
+		GUIDE_EXPLORATION, 	//find near POI
+		GUIDE_OPTIMAL_VIEW,	//find optimal viewpoint to look POI
 
 		//from robot
 		GUIDE_LOW_BATTERY,	//Low battery
@@ -82,6 +85,7 @@ public:
 	struct Action
 	{
 		Motion cmd;	// action command
+		double distance; //distance for active exploration
 		int node_type;
 		int edge_type;	//
 		int degree = 0;	// additional action direction of turn cmd -180~180
@@ -183,12 +187,15 @@ private:
 	//Guidance member
 	dg::Path m_path;
 	dg::Map m_map;
+	dg::LatLon m_latlon;
 	std::vector <GuidedPathElement> m_guides;
 	int m_guide_idx = -1;	//starts with -1 because its pointing current guide.
 	double m_edge_progress = 0;
 	MoveStatus  m_mvstatus = MoveStatus::ON_EDGE;
 	GuideStatus  m_dgstatus = GuideStatus::GUIDE_NORMAL;
 	std::vector<Guidance> m_past_guides;
+	time_t oop_start = 0 , oop_end = 0;
+
 	std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
 		"ESCALATOR", "UNKNOWN" };
 	std::string m_edges[7] = { "SIDEWALK", "ROAD", "CROSSWALK", "ELEVATOR",
@@ -237,18 +244,15 @@ private:
 
 	bool setGuidance();
 	Motion getMotion(int ntype, int etype, int degree);
-	int getDegree(dg::Node* node1, dg::Node* node2, dg::Node* node3);
 	GuidedPathElement getCurGuidedPath(int idx) { return m_guides[idx]; };
 	Guidance getLastGuidance() { return m_past_guides.back(); };
-	std::string getActionString(Action action);
-	std::string getForwardString(Action act, int ntype, ID nid, double d);
-	std::string getTurnString(Action act, int ntype);
+	std::string getStringAction(Action action);
+	std::string getStringForward(Action act, int ntype, ID nid, double d);
+	std::string getStringTurn(Action act, int ntype);
+	std::string getStringGuidance(Guidance guidance, MoveStatus status);
 	int getGuideIdxFromPose(TopometricPose pose);
-	
-	//Node* findNodeFromPath(ID nodeid);
-	//Edge* findEdgeFromPath(ID edgeid);
-	
-	
+	int getDegree(dg::Node* node1, dg::Node* node2, dg::Node* node3);
+		
 public:
 
 	bool setPathNMap(dg::Path path, dg::Map map)
@@ -270,16 +274,26 @@ public:
 
 	bool validatePath(dg::Path path, dg::Map map);
 	bool initializeGuides();
-	bool regeneratePath(TopometricPose pose);
-	MoveStatus applyPose(TopometricPose pose);
-	MoveStatus applyPose(TopometricPose pose, double confidence);
-	GuideStatus getGuidanceStatus(GuideStatus rs, MoveStatus ms);
-	//GuideStatus getStatus(GuideStatus rs, MoveStatus ms);
-	void setGuideStatus(GuideStatus gs) { m_dgstatus = gs; };
-	Guidance getGuidance(MoveStatus status);
-	Guidance getGuidance(TopometricPose pose);
+	bool regeneratePath(double start_lat, double start_lon, double dest_lat, double dest_lon);
+	GuideStatus getGuidanceStatus(TopometricPose pose, double confidence);
 
-	std::string getGuidanceString(Guidance guidance, MoveStatus status);
+	MoveStatus applyPose(TopometricPose pose);
+	bool applyPoseGPS(LatLon gps)
+	{
+		if (gps.lat <= 0 || gps.lon <= 0)
+			return false;
+
+		m_latlon = gps;
+		return true;
+	};
+	LatLon getPoseGPS() { return m_latlon; };
+	Map getMap() { return m_map; };
+
+	void setGuideStatus(GuideStatus gs) { m_dgstatus = gs; };
+	Guidance getNormalGuidance(MoveStatus status);
+	Guidance getGuidance(TopometricPose pose);
+	Guidance getGuidance(TopometricPose pose, GuideStatus gStatus);
+
 
 };
 
