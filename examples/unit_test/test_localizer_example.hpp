@@ -122,35 +122,30 @@ dg::Map getExampleMap()
 /*
 #include "dg_map_manager.hpp"
 
-int saveETRIMap(const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442), double radius = 10000)
+int saveETRIMap(const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442), double radius = 2000)
 {
-    // Load GPS data
-    auto gps_data = getETRIGPSData();
-    VVS_CHECK_TRUE(!gps_data.empty());
-    auto gps_start = gps_data.front().second;
-    auto gps_dest = gps_data.back().second;
-
     // Load a map including POIs and StreetViews
     dg::MapManager map_manager;
-    dg::Path path = map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon);
-    dg::Map map = map_manager.getMap();
-    for (auto node = map.nodes.begin(); node != map.nodes.end(); node++)
-    {
-        // Fix a wrong node
-        if (node->lat > 90)
-        {
-            double temp = node->lat;
-            node->lat = node->lon;
-            node->lon = temp;
-        }
-    }
-    map_manager.getPOI(gps_start.lat, gps_start.lon, radius);
-    map_manager.getStreetView(gps_start.lat, gps_start.lon, radius);
+    if (!map_manager.setIP("129.254.87.96"))
+        return -1;
+    dg::Map map;
+    if (!map_manager.getMap(ref_gps.lat, ref_gps.lon, radius, map))
+        return -2;
+    std::vector<dg::POI> pois;
+    if (!map_manager.getPOI(ref_gps.lat, ref_gps.lon, radius, pois))
+        return -3;
+    std::vector<dg::StreetView> sviews;
+    if (!map_manager.getStreetView(ref_gps.lat, ref_gps.lon, radius, sviews))
+        return -4;
 
-    // Convert the map to 'dg::RoadMap' and save it
+    // Convert the map, POIs, and StreetViews to 'dg::RoadMap' and save it
     dg::UTMConverter converter;
     VVS_CHECK_TRUE(converter.setReference(ref_gps));
     dg::RoadMap road_map = dg::SimpleLocalizer::cvtMap2SimpleRoadMap(map, converter, false);
+    for (auto p = pois.begin(); p != pois.end(); p++)
+        road_map.addNode(dg::Point2ID(p->id, converter.toMetric(*p)));
+    for (auto sv = sviews.begin(); sv != sviews.end(); sv++)
+        road_map.addNode(dg::Point2ID(sv->id, converter.toMetric(*sv)));
     VVS_CHECK_TRUE(!road_map.isEmpty());
     VVS_CHECK_TRUE(road_map.save(map_file));
     return 0;

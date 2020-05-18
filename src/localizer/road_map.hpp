@@ -4,9 +4,70 @@
 #include "core/basic_type.hpp"
 #include "localizer/directed_graph.hpp"
 #include "localizer/graph_painter.hpp"
+#include <map>
 
 namespace dg
 {
+
+/**
+ * @brief Directed graph for Point2ID type
+ *
+ * This is an extension of DirectGraph for accessing a node (Point2ID type) in constant time complexity.
+ */
+class Point2IDGraph : public DirectedGraph<Point2ID, double>
+{
+public:
+    /**
+     * Add a node (time complexity: O(1))
+     * @param data Data to add
+     * @return A pointer to the added node
+     */
+    virtual Node* addNode(const Point2ID& data)
+    {
+        Node* ptr = DirectedGraph<Point2ID, double>::addNode(data);
+        if (ptr != nullptr) m_node_lookup.insert(std::make_pair(data.id, ptr));
+        return ptr;
+    }
+
+    /**
+     * Find a node using its data (time complexity: O(1))
+     * @param data Data to search
+     * @return A pointer to the found node (nullptr if not exist)
+     */
+    virtual Node* getNode(const Point2ID& data)
+    {
+        auto found = m_node_lookup.find(data.id);
+        if (found == m_node_lookup.end()) return nullptr;
+        return found->second;
+    }
+
+    /**
+     * Remove a node (time complexity: O(|V| |E|))<br>
+     * This removes all edges connected from the node
+     * @param node A node pointer to remove
+     * @return True if successful (false if failed)
+     */
+    virtual bool removeNode(Node* node)
+    {
+        if (node == nullptr) return false;
+        m_node_lookup.erase(node->data.id);
+        return DirectedGraph<Point2ID, double>::removeNode(node);
+    }
+
+    /**
+     * Remove all nodes and edges
+     * @return True if successful (false if failed)
+     */
+    virtual bool removeAll()
+    {
+        m_node_lookup.clear();
+        return DirectedGraph<Point2ID, double>::removeAll();
+    }
+
+protected:
+    /** A node lookup table whose key is 'ID' and value is the corresponding pointer to the node */
+    std::map<ID, Node*> m_node_lookup;
+};
 
 /**
  * @brief Simple road map
@@ -30,7 +91,7 @@ namespace dg
  * - EDGE, 3, 4, 9.09
  * - EDGE, 4, 3, 9.09
  */
-class RoadMap : public DirectedGraph<Point2ID, double>
+class RoadMap : public Point2IDGraph
 {
 public:
     /**
