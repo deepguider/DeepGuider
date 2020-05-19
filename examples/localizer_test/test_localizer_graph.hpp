@@ -1,5 +1,5 @@
-#ifndef __TEST_CORE_GRAPH__
-#define __TEST_CORE_GRAPH__
+#ifndef __TEST_LOCALIZER_GRAPH__
+#define __TEST_LOCALIZER_GRAPH__
 
 #include "vvs.h"
 #include "localizer/directed_graph.hpp"
@@ -154,4 +154,4 @@ int testDirectedGraphItr()
     return 0;
 }
 
-#endif // End of '__TEST_CORE_GRAPH__'
+#endif // End of '__TEST_LOCALIZER_GRAPH__'

@@ -3,10 +3,13 @@
 #include "test_localizer_gps2utm.hpp"
 #include "test_localizer_road.hpp"
 #include "test_localizer_simple.hpp"
+#include "test_localizer_ekf.hpp"
 #include "test_localizer_etri.hpp"
 
 int main()
 {
+    return testLocEKF();
+
     // Test 'core' module
     // 1. Test basic data structures
     VVS_RUN_TEST(testCoreLatLon());

@@ -1,5 +1,5 @@
-#ifndef __TEST_LOCALIZER_ROAD_MAP__
-#define __TEST_LOCALIZER_ROAD_MAP__
+#ifndef __TEST_LOCALIZER_ROAD__
+#define __TEST_LOCALIZER_ROAD__
 
 #include "vvs.h"
 #include "dg_localizer.hpp"
@@ -155,4 +155,4 @@ int testLocRoadPainter(int wait_msec = 1)
     return 0;
 }
 
-#endif // End of '__TEST_LOCALIZER_ROAD_MAP__'
+#endif // End of '__TEST_LOCALIZER_ROAD__'

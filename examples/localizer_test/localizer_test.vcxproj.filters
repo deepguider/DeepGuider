@@ -68,5 +68,8 @@
     <ClInclude Include="..\..\src\localizer\graph_painter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="test_localizer_ekf.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,5 +1,5 @@
-#ifndef __TEST_LOCALIZER_EXAMPLE__
-#define __TEST_LOCALIZER_EXAMPLE__
+#ifndef __TEST_LOCALIZER_ETRI__
+#define __TEST_LOCALIZER_ETRI__
 
 #include "vvs.h"
 #include "dg_core.hpp"
@@ -305,4 +305,4 @@ int testLocETRIRealMap(int wait_msec = 1, const char* map_file = "data/NaverLabs
     return runLocalizerETRIGPS(&localizer, &painter, wait_msec);
 }
 
-#endif // End of '__TEST_LOCALIZER_EXAMPLE__'
+#endif // End of '__TEST_LOCALIZER_ETRI__'
