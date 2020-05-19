@@ -157,7 +157,7 @@ public:
      * @param data Data to add
      * @return A pointer to the added node
      */
-    virtual Node* addNode(const D& data) { m_node_list.push_back(data); return &(m_node_list.back()); }
+    Node* addNode(const D& data) { m_node_list.push_back(data); return &(m_node_list.back()); }
 
     /**
      * Add an edge (time complexity: O(1))
@@ -166,7 +166,7 @@ public:
      * @param cost Cost from the start to destination nodes
      * @return A pointer to the added edge
      */
-    virtual Edge* addEdge(const D& from, const D& to, const C& cost)
+    Edge* addEdge(const D& from, const D& to, const C& cost)
     {
         Node* from_ptr = getNode(from);
         Node* to_ptr = getNode(to);
@@ -180,7 +180,7 @@ public:
      * @param cost Cost from the start to destination nodes
      * @return A pointer to the added edge
      */
-    virtual Edge* addEdge(Node* from, Node* to, const C& cost)
+    Edge* addEdge(Node* from, Node* to, const C& cost)
     {
         if ((from == nullptr) || (to == nullptr)) return nullptr;
         from->m_edge_list.push_back(Edge(to, cost));
@@ -192,7 +192,7 @@ public:
      * @param data Data to search
      * @return A pointer to the found node (nullptr if not exist)
      */
-    virtual Node* getNode(const D& data)
+    Node* getNode(const D& data)
     {
         Node* node = nullptr;
         for (NodeItr node_itr = getHeadNode(); node_itr != getTailNode(); node_itr++)
@@ -212,7 +212,7 @@ public:
      * @param to Data of the destination node
      * @return A pointer to the found edge (nullptr if not exist)
      */
-    virtual Edge* getEdge(const D& from, const D& to)
+    Edge* getEdge(const D& from, const D& to)
     {
         Node* fnode = getNode(from);
         Node* tnode = getNode(to);
@@ -226,7 +226,7 @@ public:
      * @param to A pointer to the destination node
      * @return A pointer to the found edge (nullptr if not exist)
      */
-    virtual Edge* getEdge(Node* from, Node* to)
+    Edge* getEdge(Node* from, Node* to)
     {
         if ((from == nullptr) || (to == nullptr)) return nullptr;
         Edge* edge = nullptr;
@@ -241,7 +241,7 @@ public:
      * @param to An iterator of the destination node
      * @return A pointer to the found edge (nullptr if not exist)
      */
-    virtual Edge* getEdge(NodeItr from, NodeItr to)
+    Edge* getEdge(NodeItr from, NodeItr to)
     {
         Edge* edge = nullptr;
         for (EdgeItr edge_itr = getHeadEdge(from); edge_itr != getTailEdge(from); edge_itr++)
@@ -255,7 +255,7 @@ public:
      * @param to Data of the destination node
      * @return Cost of the found edge
      */
-    virtual C getEdgeCost(const D& from, const D& to)
+    C getEdgeCost(const D& from, const D& to)
     {
         Edge* edge = getEdge(from, to);
         if (edge == nullptr) return C(-1);
@@ -268,7 +268,7 @@ public:
      * @param to A pointer to the destination node
      * @return Cost of the found edge
      */
-    virtual C getEdgeCost(Node* from, Node* to)
+    C getEdgeCost(Node* from, Node* to)
     {
         Edge* edge = getEdge(from, to);
         if (edge == nullptr) return C(-1);
@@ -281,7 +281,7 @@ public:
      * @param to A const_iterator of the destination node
      * @return Cost of the found edge
      */
-    virtual C getEdgeCost(NodeItrConst from, NodeItrConst to) const
+    C getEdgeCost(NodeItrConst from, NodeItrConst to) const
     {
         EdgeItrConst edge = getEdgeConst(from, to);
         if (edge == getTailEdgeConst(from)) return C(-1);
@@ -294,7 +294,7 @@ public:
      * @param to Data of the destination node
      * @return True if they are connected (false if not connected)
      */
-    virtual bool isConnected(const D& from, const D& to) { return (getEdgeCost(from, to) >= 0); }
+    bool isConnected(const D& from, const D& to) { return (getEdgeCost(from, to) >= 0); }
 
     /**
      * Check connectivity from a start node to a destination node (time complexity: O(|E|))
@@ -302,7 +302,7 @@ public:
      * @param to A pointer to the destination node
      * @return True if they are connected (false if not connected)
      */
-    virtual bool isConnected(Node* from, Node* to) { return (getEdgeCost(from, to) >= 0); }
+    bool isConnected(Node* from, Node* to) { return (getEdgeCost(from, to) >= 0); }
 
     /**
      * Check connectivity from a start node to a destination node (time complexity: O(|E|))
@@ -310,14 +310,14 @@ public:
      * @param to A const_iterator of the destination node
      * @return True if they are connected (false if not connected)
      */
-    virtual bool isConnected(NodeItrConst from, NodeItrConst to) const { return (getEdgeCost(from, to) >= 0); }
+    bool isConnected(NodeItrConst from, NodeItrConst to) const { return (getEdgeCost(from, to) >= 0); }
 
     /**
-     * Copy this to the other graph (time complexity: O(|N||E|))
+     * Copy this to the other graph (time complexity: O(|N|^2|E|))
      * @param dest A pointer to the other graph
      * @return True if successful (false if failed)
      */
-    virtual bool copyTo(DirectedGraph<D, C>* dest) const
+    bool copyTo(DirectedGraph<D, C>* dest) const
     {
         if (dest == nullptr) return false;
 
@@ -347,7 +347,7 @@ public:
      * @param node A node pointer to remove
      * @return True if successful (false if failed)
      */
-    virtual bool removeNode(Node* node)
+    bool removeNode(Node* node)
     {
         if (node == nullptr) return false;
         NodeItr is_found = getTailNode();
@@ -367,7 +367,7 @@ public:
      * @param node A node iterator of remove
      * @return True if successful (false if failed)
      */
-    virtual bool removeNode(NodeItr node)
+    bool removeNode(NodeItr node)
     {
         NodeItr is_found = getTailNode();
         for (NodeItr node_itr = getHeadNode(); node_itr != getTailNode(); node_itr++)
@@ -386,7 +386,7 @@ public:
      * @param to A pointer to the destination node
      * @return True if successful (false if failed)
      */
-    virtual bool removeEdge(Node* from, Node* to)
+    bool removeEdge(Node* from, Node* to)
     {
         if ((from == nullptr) || (to == nullptr)) return false;
         bool is_found = false;
@@ -410,7 +410,7 @@ public:
      * @param to An iterator of the destination node
      * @return True if successful (false if failed)
      */
-    virtual bool removeEdge(NodeItr from, NodeItr to)
+    bool removeEdge(NodeItr from, NodeItr to)
     {
         bool is_found = false;
         EdgeItr edge_itr = getHeadEdge(from);
@@ -431,7 +431,7 @@ public:
      * Remove all nodes and edges
      * @return True if successful (false if failed)
      */
-    virtual bool removeAll() { m_node_list.clear(); return true; }
+    bool removeAll() { m_node_list.clear(); return true; }
 
     /**
      * Count the number of all nodes (time complexity: O(1))

@@ -88,11 +88,6 @@ bool RoadMap::save(const char* filename)
     return true;
 }
 
-bool RoadMap::isEmpty() const
-{
-    return (countNodes() <= 0);
-}
-
 bool RoadMap::addRoad(Node* node1, Node* node2, double cost /*= -1.0*/)
 {
     if (node1 == NULL || node2 == NULL) return false;
@@ -108,20 +103,6 @@ bool RoadMap::addRoad(Node* node1, Node* node2, double cost /*= -1.0*/)
     return (edge1 != NULL) && (edge2 != NULL);
 }
 
-bool RoadMap::addRoad(const Point2ID& node1, const Point2ID& node2, double cost /*= -1.0*/)
-{
-    Node* node1_ptr = getNode(node1);
-    Node* node2_ptr = getNode(node2);
-    return addRoad(node1_ptr, node2_ptr, cost);
-}
-
-bool RoadMap::addRoad(ID node1, ID node2, double cost /*= -1.0*/)
-{
-    Node* node1_ptr = findNode(node1);
-    Node* node2_ptr = findNode(node2);
-    return addRoad(node1_ptr, node2_ptr, cost);
-}
-
 RoadMap::Edge* RoadMap::addEdge(Node* from, Node* to, double cost /*= -1.0*/)
 {
     if (from == NULL || to == NULL) return NULL;
@@ -135,18 +116,17 @@ RoadMap::Edge* RoadMap::addEdge(Node* from, Node* to, double cost /*= -1.0*/)
     return DirectedGraph<Point2ID, double>::addEdge(from, to, cost);
 }
 
-RoadMap::Edge* RoadMap::addEdge(const Point2ID& from, const Point2ID& to, double cost /*= -1.0*/)
+bool RoadMap::copyTo(RoadMap* dest) const
 {
-    Node* from_ptr = getNode(from);
-    Node* to_ptr = getNode(to);
-    return addEdge(from_ptr, to_ptr, cost);
-}
+    if (dest == nullptr) return false;
 
-RoadMap::Edge* RoadMap::addEdge(ID from, ID to, double cost /*= -1.0*/)
-{
-    Node* from_ptr = findNode(from);
-    Node* to_ptr = findNode(to);
-    return addEdge(from_ptr, to_ptr, cost);
+    dest->removeAll();
+    for (NodeItrConst node = getHeadNodeConst(); node != getTailNodeConst(); node++)
+        dest->addNode(node->data);
+    for (NodeItrConst from = getHeadNodeConst(); from != getTailNodeConst(); from++)
+        for (EdgeItrConst edge = getHeadEdgeConst(from); edge != getTailEdgeConst(from); edge++)
+            dest->addEdge(dest->getNode(from->data), dest->getNode(edge->to->data), edge->cost);
+    return true;
 }
 
 } // End of 'dg'

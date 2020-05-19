@@ -15,7 +15,7 @@ public:
         cv::AutoLock lock(m_mutex);
 
         // Find two nodes, 'from' and 'to_id'
-        RoadMap::Node* from = m_map.findNode(pose_t.node_id);
+        RoadMap::Node* from = m_map.getNode(pose_t.node_id);
         if (from == NULL) return Pose2();
         RoadMap::Node* to = NULL;
         int edge_idx = 0;

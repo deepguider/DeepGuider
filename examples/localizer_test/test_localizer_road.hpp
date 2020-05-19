@@ -29,7 +29,7 @@ int testLocRoadMap(const char* filename = "test_simple_road_map.csv")
     VVS_CHECK_TRUE(map.addNode(dg::Point2ID(8, 3, 0)) != NULL);
 
     dg::RoadMap::Node* node1_ptr = map.getNode(dg::Point2ID(1));
-    dg::RoadMap::Node* node2_ptr = map.findNode(2);
+    dg::RoadMap::Node* node2_ptr = map.getNode(2);
     VVS_CHECK_TRUE(map.addEdge(node1_ptr, node2_ptr) != NULL);              // Method #1 to add an edge (pointer)
     VVS_CHECK_TRUE(map.addEdge(dg::Point2ID(2), dg::Point2ID(3)) != NULL);  // Method #2 to add an edge (Point2ID)
     VVS_CHECK_TRUE(map.addEdge(3, 4) != NULL);                              // Method #3 to add an edge (ID)
@@ -43,6 +43,10 @@ int testLocRoadMap(const char* filename = "test_simple_road_map.csv")
     VVS_CHECK_EQUL(map.countNodes(), 8);
     VVS_CHECK_TRUE(map.save(filename));
 
+    // Copy the map
+    dg::RoadMap copy = map;
+    VVS_CHECK_EQUL(copy.countNodes(), map.countNodes());
+
     // Rest the map
     map.removeAll();
     VVS_CHECK_TRUE(map.isEmpty());
@@ -54,22 +58,22 @@ int testLocRoadMap(const char* filename = "test_simple_road_map.csv")
     VVS_CHECK_EQUL(map.countNodes(), 8);
 
     // Check each node data
-    VVS_CHECK_EQUL(map.findNode(1)->data.x, 0);
-    VVS_CHECK_EQUL(map.findNode(1)->data.y, 0);
-    VVS_CHECK_EQUL(map.findNode(2)->data.x, 0);
-    VVS_CHECK_EQUL(map.findNode(2)->data.y, 1);
-    VVS_CHECK_EQUL(map.findNode(3)->data.x, 1);
-    VVS_CHECK_EQUL(map.findNode(3)->data.y, 1);
-    VVS_CHECK_EQUL(map.findNode(4)->data.x, 1);
-    VVS_CHECK_EQUL(map.findNode(4)->data.y, 0);
-    VVS_CHECK_EQUL(map.findNode(5)->data.x, 2);
-    VVS_CHECK_EQUL(map.findNode(5)->data.y, 1);
-    VVS_CHECK_EQUL(map.findNode(6)->data.x, 3);
-    VVS_CHECK_EQUL(map.findNode(6)->data.y, 1);
-    VVS_CHECK_EQUL(map.findNode(7)->data.x, 2);
-    VVS_CHECK_EQUL(map.findNode(7)->data.y, 0);
-    VVS_CHECK_EQUL(map.findNode(8)->data.x, 3);
-    VVS_CHECK_EQUL(map.findNode(8)->data.y, 0);
+    VVS_CHECK_EQUL(map.getNode(1)->data.x, 0);
+    VVS_CHECK_EQUL(map.getNode(1)->data.y, 0);
+    VVS_CHECK_EQUL(map.getNode(2)->data.x, 0);
+    VVS_CHECK_EQUL(map.getNode(2)->data.y, 1);
+    VVS_CHECK_EQUL(map.getNode(3)->data.x, 1);
+    VVS_CHECK_EQUL(map.getNode(3)->data.y, 1);
+    VVS_CHECK_EQUL(map.getNode(4)->data.x, 1);
+    VVS_CHECK_EQUL(map.getNode(4)->data.y, 0);
+    VVS_CHECK_EQUL(map.getNode(5)->data.x, 2);
+    VVS_CHECK_EQUL(map.getNode(5)->data.y, 1);
+    VVS_CHECK_EQUL(map.getNode(6)->data.x, 3);
+    VVS_CHECK_EQUL(map.getNode(6)->data.y, 1);
+    VVS_CHECK_EQUL(map.getNode(7)->data.x, 2);
+    VVS_CHECK_EQUL(map.getNode(7)->data.y, 0);
+    VVS_CHECK_EQUL(map.getNode(8)->data.x, 3);
+    VVS_CHECK_EQUL(map.getNode(8)->data.y, 0);
 
     // Check each connectivity and cost
     VVS_CHECK_EQUL(map.getEdgeCost(dg::Point2ID(1), dg::Point2ID(2)), 1);
