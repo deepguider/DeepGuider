@@ -3,7 +3,7 @@
 #include "test_localizer_gps2utm.hpp"
 #include "test_localizer_road.hpp"
 #include "test_localizer_simple.hpp"
-#include "test_localizer_example.hpp"
+#include "test_localizer_etri.hpp"
 
 int main()
 {
@@ -38,9 +38,10 @@ int main()
     VVS_RUN_TEST(testLocRoadPainter());
 
     // 4. Test localizers
+    VVS_RUN_TEST(testLocSimpleTest());
     VVS_RUN_TEST(testLocMap2RoadMap());
-    VVS_RUN_TEST(testLocSimpleExample());
-    VVS_RUN_TEST(testLocSimpleETRI());
+    VVS_RUN_TEST(testLocETRISyntheticMap());
+    VVS_RUN_TEST(testLocETRIRealMap());
 
     return 0;
 }

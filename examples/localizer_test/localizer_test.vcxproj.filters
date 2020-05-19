@@ -53,7 +53,7 @@
     <ClInclude Include="..\..\src\localizer\localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_localizer_example.hpp">
+    <ClInclude Include="test_localizer_etri.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_core_type.hpp">

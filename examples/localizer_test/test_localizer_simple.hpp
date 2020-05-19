@@ -5,7 +5,7 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
 
-dg::RoadMap getExampleSimpleRoadMap()
+dg::RoadMap getSimpleRoadMap()
 {
     // An example road map ('+' represents direction of edges)
     // 2 --+ 3 +-+ 5 +-- 6
@@ -34,7 +34,7 @@ dg::RoadMap getExampleSimpleRoadMap()
     return map;
 }
 
-std::vector<std::pair<std::string, cv::Vec3d>> getExampleSimpleDataset()
+std::vector<std::pair<std::string, cv::Vec3d>> getSimpleDataset()
 {
     std::vector<std::pair<std::string, cv::Vec3d>> dataset =
     {
@@ -60,11 +60,11 @@ std::vector<std::pair<std::string, cv::Vec3d>> getExampleSimpleDataset()
     return dataset;
 }
 
-int testLocSimpleLocalizer(int wait_msec = 1)
+int testLocSimpleTest(int wait_msec = 1)
 {
     // Load a map
     dg::SimpleLocalizer localizer;
-    dg::RoadMap map = getExampleSimpleRoadMap();
+    dg::RoadMap map = getSimpleRoadMap();
     VVS_CHECK_TRUE(localizer.loadMap(map));
 
     // Prepare visualization
@@ -76,7 +76,7 @@ int testLocSimpleLocalizer(int wait_msec = 1)
     dg::CanvasInfo map_info = painter.getCanvasInfo(map, map_image.size());
 
     // Run localization
-    auto dataset = getExampleSimpleDataset();
+    auto dataset = getSimpleDataset();
     VVS_CHECK_TRUE(!dataset.empty());
     for (size_t t = 0; t < dataset.size(); t++)
     {

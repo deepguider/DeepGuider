@@ -72,7 +72,7 @@ int generateExampleMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID i
 }
 */
 
-dg::Map getExampleMap()
+dg::Map getETRISyntheticMap()
 {
     // An example map around ETRI
     // - Note: Geodesic data were roughly generated from 'generateExampleMap()' from manually selected nodes on Naver Map.
@@ -223,7 +223,7 @@ int runLocalizerETRIGPS(dg::SimpleLocalizer* localizer, dg::SimpleRoadPainter* p
 int testLocMap2RoadMap(int wait_msec = 1, const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
 {
     // Load a map
-    dg::Map map = getExampleMap();
+    dg::Map map = getETRISyntheticMap();
     VVS_CHECK_TRUE(!map.nodes.empty());
 
     // Convert it to 'dg::RoadMap'
@@ -256,11 +256,11 @@ int testLocMap2RoadMap(int wait_msec = 1, const char* background_file = "data/Na
     return 0;
 }
 
-int testLocSimpleExample(int wait_msec = 1)
+int testLocETRISyntheticMap(int wait_msec = 1)
 {
     // Prepare the localizer
     dg::SimpleLocalizer localizer;
-    dg::Map map = getExampleMap();
+    dg::Map map = getETRISyntheticMap();
     VVS_CHECK_TRUE(!map.nodes.empty());
     VVS_CHECK_TRUE(localizer.setReference(map.nodes.front()));
     VVS_CHECK_TRUE(localizer.loadMap(map, true));
@@ -279,7 +279,7 @@ int testLocSimpleExample(int wait_msec = 1)
     return runLocalizerETRIGPS(&localizer, &painter, wait_msec);
 }
 
-int testLocSimpleETRI(int wait_msec = 1, const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442))
+int testLocETRIRealMap(int wait_msec = 1, const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442))
 {
     // Prepare the localizer
     dg::SimpleLocalizer localizer;

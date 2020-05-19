@@ -105,7 +105,7 @@
     <ClInclude Include="..\..\src\localizer\road_map.hpp" />
     <ClInclude Include="..\..\src\localizer\simple_localizer.hpp" />
     <ClInclude Include="test_core_type.hpp" />
-    <ClInclude Include="test_localizer_example.hpp" />
+    <ClInclude Include="test_localizer_etri.hpp" />
     <ClInclude Include="test_localizer_gps2utm.hpp" />
     <ClInclude Include="test_localizer_graph.hpp" />
     <ClInclude Include="test_localizer_road.hpp" />

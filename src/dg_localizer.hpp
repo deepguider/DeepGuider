@@ -6,6 +6,6 @@
 #include "localizer/directed_graph.hpp"
 #include "localizer/graph_painter.hpp"
 #include "localizer/road_map.hpp"
-#include "localizer/simple_localizer.hpp"
+#include "localizer/localizer_simple.hpp"
 
 #endif // End of '__DG_LOCALIZER__'
