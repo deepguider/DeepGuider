@@ -22,7 +22,7 @@ std::vector<std::pair<double, dg::LatLon>> getETRIGPSData(const char* csv_file =
 }
 
 /*
-int generateExampleMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID id_offset = 100, double pixel_per_meter = 1, const dg::LatLon& first_latlon = dg::LatLon(36.383837659737225, 127.36788082844413))
+int saveETRISyntheticMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID id_offset = 100, double pixel_per_meter = 1, const dg::LatLon& first_latlon = dg::LatLon(36.383837659737225, 127.36788082844413))
 {
     // Read 'yml_file' generated from 'simple_picker'
     cv::FileStorage fs;
@@ -122,7 +122,7 @@ dg::Map getETRISyntheticMap()
 /*
 #include "dg_map_manager.hpp"
 
-int saveETRIMap(const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442), double radius = 2000)
+int saveETRINaverMap(const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442), double radius = 2000)
 {
     // Load a map including POIs and StreetViews
     dg::MapManager map_manager;
