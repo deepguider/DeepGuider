@@ -116,6 +116,16 @@ RoadMap::Edge* RoadMap::addEdge(Node* from, Node* to, double cost /*= -1.0*/)
     return DirectedGraph<Point2ID, double>::addEdge(from, to, cost);
 }
 
+RoadMap::Edge* RoadMap::getEdge(ID from, ID to)
+{
+    Node* fnode = getNode(from);
+    if (fnode == nullptr) return nullptr;
+    Edge* edge = nullptr;
+    for (EdgeItr edge_itr = getHeadEdge(fnode); edge_itr != getTailEdge(fnode); edge_itr++)
+        if (edge_itr->to->data.id == to) { edge = &(*edge_itr); break; }
+    return edge;
+}
+
 bool RoadMap::copyTo(RoadMap* dest) const
 {
     if (dest == nullptr) return false;

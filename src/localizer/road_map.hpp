@@ -81,20 +81,19 @@ public:
      * @param data Data to search
      * @return A pointer to the found node (nullptr if not exist)
      */
-    Node* getNode(const Point2ID& data)
+    Node* getNode(const Point2ID& data) { return getNode(data.id); }
+
+    /**
+     * Find a node using its ID (time complexity: O(1))
+     * @param id ID to search
+     * @return A pointer to the found node (nullptr if not exist)
+     */
+    Node* getNode(ID id)
     {
-        auto found = m_node_lookup.find(data.id);
+        auto found = m_node_lookup.find(id);
         if (found == m_node_lookup.end()) return nullptr;
         return found->second;
     }
-
-    /**
-     * Find a node using ID written in Point2ID (time complexity: O(|N|))
-     * @param id ID to search
-     * @return A pointer to the found node (NULL if not exist)
-     * @see getNode
-     */
-    Node* getNode(ID id) { return getNode(Point2ID(id)); }
 
     /**
      * Add a directed edge between two nodes (time complexity: O(1))
@@ -183,13 +182,21 @@ public:
     }
 
     /**
-     * Find an edge using ID written in Point2ID (time complexity: O(|N| + |E|))
+     * Find an edge using its connecting node data (time complexity: O(|E|))
+     * @param from Data of the start node
+     * @param to Data of the destination node
+     * @return A pointer to the found edge (nullptr if not exist)
+     */
+    Edge* getEdge(const Point2ID& from, const Point2ID& to) { return getEdge(from.id, to.id); }
+
+    /**
+     * Find an edge using its connecting node IDs (time complexity: O(|E|))
      * @param from ID of the start node
      * @param to ID of the destination node
-     * @return A pointer to the found edge (NULL if not exist)
+     * @return A pointer to the found edge (nullptr if not exist)
      * @see getEdge
      */
-    Edge* getEdge(ID from, ID to) { return DirectedGraph<Point2ID, double>::getEdge(Point2ID(from), Point2ID(to)); }
+    Edge* getEdge(ID from, ID to);
 
     /**
      * Remove a node (time complexity: O(|V| |E|))<br>

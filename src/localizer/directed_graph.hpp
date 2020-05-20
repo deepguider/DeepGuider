@@ -207,7 +207,7 @@ public:
     }
 
     /**
-     * Find an edge using its start and destination node (time complexity: O(|N| + |E|))
+     * Find an edge using its connecting node data (time complexity: O(|N| + |E|))
      * @param from Data of the start node
      * @param to Data of the destination node
      * @return A pointer to the found edge (nullptr if not exist)
@@ -221,7 +221,7 @@ public:
     }
 
     /**
-     * Find an edge using its start and destination node (time complexity: O(|E|))
+     * Find an edge using its connecting node pointers (time complexity: O(|E|))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
      * @return A pointer to the found edge (nullptr if not exist)
@@ -236,7 +236,7 @@ public:
     }
 
     /**
-     * Find an edge using its start and destination node (time complexity: O(|E|))
+     * Find an edge using its connecting node iterators (time complexity: O(|E|))
      * @param from An iterator of the start node
      * @param to An iterator of the destination node
      * @return A pointer to the found edge (nullptr if not exist)
@@ -250,7 +250,7 @@ public:
     }
 
     /**
-     * Retrieve edge cost using its start and destination node (time complexity: O(|E|))
+     * Retrieve edge cost from its start node to its destination node (time complexity: O(|N| + |E|))
      * @param from Data of the start node
      * @param to Data of the destination node
      * @return Cost of the found edge
@@ -263,7 +263,7 @@ public:
     }
 
     /**
-     * Retrieve edge cost using its start and destination node (time complexity: O(|E|))
+     * Retrieve edge cost from its start node to its destination node (time complexity: O(|E|))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
      * @return Cost of the found edge
@@ -276,7 +276,7 @@ public:
     }
 
     /**
-     * Retrieve edge cost using its start and destination node (time complexity: O(|E|))
+     * Retrieve edge cost from its start node to its destination node (time complexity: O(|E|))
      * @param from A const_iterator of the start node
      * @param to A const_iterator of the destination node
      * @return Cost of the found edge
@@ -289,7 +289,7 @@ public:
     }
 
     /**
-     * Check connectivity from a start node to a destination node (time complexity: O(|E|))
+     * Check connectivity from its start node to its destination node (time complexity: O(|E|))
      * @param from Data of the start node
      * @param to Data of the destination node
      * @return True if they are connected (false if not connected)
@@ -297,7 +297,7 @@ public:
     bool isConnected(const D& from, const D& to) { return (getEdgeCost(from, to) >= 0); }
 
     /**
-     * Check connectivity from a start node to a destination node (time complexity: O(|E|))
+     * Check connectivity from its start node to its destination node (time complexity: O(|E|))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
      * @return True if they are connected (false if not connected)
@@ -305,7 +305,7 @@ public:
     bool isConnected(Node* from, Node* to) { return (getEdgeCost(from, to) >= 0); }
 
     /**
-     * Check connectivity from a start node to a destination node (time complexity: O(|E|))
+     * Check connectivity from its start node to its destination node (time complexity: O(|E|))
      * @param from A const_iterator of the start node
      * @param to A const_iterator of the destination node
      * @return True if they are connected (false if not connected)
