@@ -139,8 +139,9 @@ class ActiveNavigation : public PythonModuleWrapper
                 // list of list
                 m_actions.clear();
                 
-                PyObject* pList1 = PyTuple_GetItem(pRet, 1);
-                pValue = PyList_GetItem(pList1, 0);
+                // PyObject* pList1 = PyTuple_GetItem(pRet, 1);
+                // pValue = PyList_GetItem(pList1, 0);
+                pValue = PyTuple_GetItem(pRet, 1);
                 string stat = PyUnicode_AsUTF8(pValue);
                 if (stat == "Normal")
                     m_status = GuidanceManager::GuideStatus::GUIDE_NORMAL;
