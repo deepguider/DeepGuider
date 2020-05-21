@@ -116,7 +116,7 @@ class ActiveNavigation : public PythonModuleWrapper
 
             // exp_active
             if (guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_LOST || guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_EXPLORATION ||
-                                     guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_RECOVERY_MODE || guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW)
+                                     guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_RECOVERY || guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW)
                 pValue = Py_True;
             else
                 pValue = Py_False;
@@ -148,7 +148,7 @@ class ActiveNavigation : public PythonModuleWrapper
                 else if (stat == "Exploration")
                     m_status = GuidanceManager::GuideStatus::GUIDE_EXPLORATION;
                 else if (stat == "Recovery")
-                    m_status = GuidanceManager::GuideStatus::GUIDE_RECOVERY_MODE;
+                    m_status = GuidanceManager::GuideStatus::GUIDE_RECOVERY;
                 else
                     m_status = GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW;
 
