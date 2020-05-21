@@ -49,6 +49,8 @@ guidance/guidance.hpp
 ../../../src/exploration/guidance/guidance.hpp
 
 ../../../src/guidance/guidance.hpp
+time.h
+-
 dg_core.hpp
 ../../../src/guidance/dg_core.hpp
 
