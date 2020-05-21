@@ -90,12 +90,12 @@ class ActiveNavigationModule():
 
         if random_action: # For test
             test_act = np.random.randint(0, 3)
-            onehot_test_act = np.zeros(3)
+            onehot_test_act = np.zeros(4)
             onehot_test_act[test_act] = 1
             tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
             tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
             self.list2encode.append([img, onehot_test_act])
-            vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action)
+            vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action.float())
             self.vis_mem.append(vis_mem_seg)
 
         else:
@@ -105,17 +105,17 @@ class ActiveNavigationModule():
                 self.vis_mem = []
 
             elif exp_active is False:
-                action = np.zeros(3)
+                action = np.zeros(4)
                 action[guidance] = 1
                 self.list2encode.append([img,action])
-                try:
-                    tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
-                    tensor_action = torch.tensor(action).unsqueeze(0)
-                    vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action)
-                    self.vis_mem.append(vis_mem_seg)
-                except:
-                    print("NotImplementedError")
-                    self.vis_mem = None
+                # try:
+                tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
+                tensor_action = torch.tensor(action).unsqueeze(0)
+                vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action.float())
+                self.vis_mem.append(vis_mem_seg)
+                # except:
+                    # print("NotImplementedError")
+                    # self.vis_mem = None
 
     def calcRecoveryGuidance(self, img=None):
         """
@@ -143,14 +143,14 @@ class ActiveNavigationModule():
                     print('Nothing to encode or calculate because there was no input at all')
                     raise Exception
                 # encode the input image
-                test_act = np.random.randint(0, 3)
-                onehot_test_act = np.zeros(3)
+                test_act = np.random.randint(0, 4)
+                onehot_test_act = np.zeros(4)
                 onehot_test_act[test_act] = 1
                 tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
                 tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
                 _, img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
                 # done: is back home, info: whether visual memory matching succeeded or not
-                actions, done, info = self.recovery_policy(self.vis_mem, img_feature)
+                actions, done, info = self.recovery_policy(torch.cat(self.vis_mem), img_feature)
             except:
                 raise
                 # TODO: if recovery_policy fails to calculate the recovery actions,
@@ -193,7 +193,7 @@ class ActiveNavigationModule():
 
         if self.enable_exploration is True:
             try:
-                actions, done, info = self.exploration_policy(img, self.vis_mem)
+                actions, done, info = self.exploration_policy(img, torch.cat(self.vis_mem))
             except:
                 print("NotImplementedError")
                 actions, done, info = [0., 0.40, 0.], False, False # ['forward','forward','forward']

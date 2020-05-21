@@ -22,10 +22,10 @@ img_list = data['rgb']
 guidance_list = data['action']
 
 for i in range(len(img_list)):
-    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i], 1.0, random_action=True) 
+    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i]) 
  
 anm.enable_recovery = True
-anm.vis_mem = torch.cat(anm.vis_mem, 0)
+# anm.vis_mem = torch.cat(anm.vis_mem, 0)
 if anm.isRecoveryGuidanceEnabled():
     curr_img = Image.fromarray(img_list[np.random.randint(len(img_list))])
     anm.calcRecoveryGuidance(img=curr_img)

@@ -51,6 +51,7 @@ class Recovery(nn.Module):
         #- img: curreunt image input (doesn't need if visual memory contains the current input image)
         #Output:
         #- action(s) guides to reach previous POI
+        
         assert(len(vis_mem.shape) >= 3, 'invalid memory shape') # L * dim
         if isinstance(vis_mem, np.ndarray): vis_mem = torch.from_numpy(vis_mem)
         elif isinstance(vis_mem, list): vis_mem = torch.cat(vis_mem)

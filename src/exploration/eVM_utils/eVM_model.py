@@ -52,7 +52,7 @@ class encodeVisualMemory(nn.Module):
 
         self.img_size = 224
         self.out_size = 7 # int(self.img_size / 2 ** 5)
-        self.action_dim = 3
+        self.action_dim = 4
 
         self.conv1 = BasicConv(3, 32, kernel_size=3, padding=1)
         self.conv2 = BasicConv(32, 64, kernel_size=3, padding=1)
