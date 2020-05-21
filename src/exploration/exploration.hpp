@@ -109,17 +109,17 @@ class ActiveNavigation : public PythonModuleWrapper
 
             // flush
             if (guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED )
-                PyObject* pValue = Py_True;
+                pValue = Py_True;
             else
-                PyObject* pValue = Py_False;
+                pValue = Py_False;
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // exp_active
             if (guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_LOST || guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_EXPLORATION ||
                                      guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_RECOVERY_MODE || guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW)
-                PyObject* pValue = Py_True;
+                pValue = Py_True;
             else
-                PyObject* pValue = Py_False;
+                pValue = Py_False;
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // Timestamp
