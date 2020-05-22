@@ -1,7 +1,10 @@
 #include "dg_core.hpp"
+#include "dg_utils.hpp"
 #include "dg_localizer.hpp"
 #include "dg_map_manager.hpp"
-#include "guidance/guidance.hpp"
+#include "dg_exploration.hpp"
+#include "dg_guidance.hpp"
+#include <chrono>
 
 using namespace dg;
 
@@ -136,9 +139,34 @@ std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_fil
 }
 
 
+void test_image_run(ActiveNavigation& active_nav, GuidanceManager::Guidance guidance, const char* image_file = "./obs_sample.png", int nItr = 5)
+{
+    printf("#### Test Image Run ####################\n");
+    cv::Mat image = cv::imread(image_file);
+    VVS_CHECK_TRUE(!image.empty());
+    for (int i = 1; i <= nItr; i++)
+    {
+        dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        VVS_CHECK_TRUE(active_nav.apply(image, guidance, t1));
+
+        std::vector<ExplorationGuidance> actions;
+        GuidanceManager::GuideStatus status;
+        active_nav.get(actions, status);
+        dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        printf("iteration: %d (it took %lf seconds)\n", i, t2 - t1);
+        for (int k = 0; k < actions.size(); k++)
+        {
+            printf("\t action %d: [%lf, %lf, %lf]\n", k, actions[k].theta1, actions[k].d, actions[k].theta2);
+        }
+
+    }
+}
+
+
+
 int main()
 {	   	 
-
+	//initialize map
 	MapManager map_manager;
 	map_manager.setIP("localhost");
 	
@@ -152,12 +180,12 @@ int main()
 	for (size_t i = 0; i < path.pts.size(); i++)
 	{
 		printf("[%zd]: ", i);
-		Node* curnode = map.findNode(path.pts[i].node_id);
+		dg::Node* curnode = map.findNode(path.pts[i].node_id);
 		if (curnode != nullptr)
 			printf("Node-%zu, ", curnode->id);
 		else
 			printf("No node(%zu) is found on map!, ", path.pts[i].node_id);
-		Edge* curedge = map.findEdge(path.pts[i].edge_id);
+		dg::Edge* curedge = map.findEdge(path.pts[i].edge_id);
 		if (curedge != nullptr)
 			printf(" Edge-%zu\n", curedge->id);
 		else
@@ -165,22 +193,21 @@ int main()
 		//printf("[%zd]: Node-%zu, Edge-%zu\n", i, curnode->id, curedge->id);
 		//printf("[%zd]: Node-%zu, Edge-%zu\n", i, path.pts[i].node_id, path.pts[i].edge_id);
 	}
-	 //for (size_t i = 14; i < 26; i++)
-	 //{
-	 //	Node* curnode = map.findNode(path.pts[i].node_id);
-	 //	Edge* curedge = map.findEdge(path.pts[i].edge_id);
-	 //	newPath.pts.push_back(PathElement(curnode->id, curedge->id));
-	 //	printf("[%zd]: Node-%zu, Edge-%zu\n", i, curnode->id, curedge->id);
-	 //	//printf("[%zd]: Node-%zu, Edge-%zu\n", i, path.pts[i].node_id, path.pts[i].edge_id);
-	 //}
-	 //Node* curnode = map.findNode(path.pts[26].node_id);
-	 //newPath.pts.push_back(PathElement(curnode->id, 0));
-	 //path = newPath;
 
-	// PathElement start_node = newPath.pts.front();
-	// PathElement dest_node = newPath.pts.back();
-	//printf("[%zd]: Node-%zu\n", path.pts.size() - 1, path.pts[path.pts.size() - 1].node_id);
-	
+	//temporarily edit map
+	for (size_t i = 33; i < 50; i++)
+	{
+		dg::Node* curnode = map.findNode(path.pts[i].node_id);
+		dg::Edge* curedge = map.findEdge(path.pts[i].edge_id);
+		newPath.pts.push_back(PathElement(curnode->id, curedge->id));
+		printf("[%zd]: Node-%zu, Edge-%zu\n", i, curnode->id, curedge->id);
+		//printf("[%zd]: Node-%zu, Edge-%zu\n", i, path.pts[i].node_id, path.pts[i].edge_id);
+	}
+	dg::Node* curnode = map.findNode(path.pts[26].node_id);
+	newPath.pts.push_back(PathElement(curnode->id, 0));
+	path = newPath;
+
+
 	//auto gps_data = getExampleGPSData("data/191115_ETRI_asen_fix.csv");
 	//printf("\tSample gps data loaded!\n");
 
@@ -191,6 +218,21 @@ int main()
 	printf("\tSample Path generated! start=%zu, dest=%zu\n", start_node.node_id, dest_node.node_id);
 
 
+	//initialize exploation
+    // Initialize the Python interpreter
+    init_python_environment("python3", nullptr, false);
+    // Initialize Python module
+    ActiveNavigation active_nav;
+    Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+    if (!active_nav.initialize())
+    {
+        return -1;
+    }
+    Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+    printf("Initialization: it took %lf seconds\n", t2 - t1);
+	cv::Mat image = cv::imread("obs_sample.png");
+
+	//initialize guidance
 	GuidanceManager guider;
 	if (!guider.setPathNMap(path, map))
 	{
@@ -207,7 +249,6 @@ int main()
 
 	std::string str_status[4] = { "ON_NODE", "ON_EDGE", "APPROACHING_NODE"
 		, "ARRIVED" };
-
 
 	//Initial move
 	GuidanceManager::Guidance curGuide;
@@ -228,21 +269,39 @@ int main()
 		curConf = Confs[i];
 		curGStatus = guider.getGuidanceStatus(curPose, curConf);
 		curGuide = guider.getGuidance(curPose, curGStatus);
+		//curGuide = guider.getGuidance(curPose);
 
 		//save latest GPS
-		Node* node = map.findNode(curPose.node_id);
+		dg::Node* node = map.findNode(curPose.node_id);
 		if (node != nullptr)
 		{
 			guider.applyPoseGPS(LatLon(node->lat, node->lon));
 		}
-
-		//print status
+		
+		//print status and guidance message
 		fprintf(stdout, "[Status] %s\n", str_status[(int)curGuide.moving_status].c_str());
-		curGuide = guider.getGuidance(curPose);
-
-		//print guidance message
 		fprintf(stdout, "%s\n", curGuide.msg.c_str());
+
+		//apply exploration
+		dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+		active_nav.apply(image, curGuide, t1);
+		if (i==1)
+		{
+			curGuide.guide_status = GuidanceManager::GuideStatus::GUIDE_LOST;
+			printf("GUIDANCE_LOST\n");
+			active_nav.apply(image, curGuide, t1);
+		}
+		
 	}
+
+    // Clear the Python module
+    active_nav.clear();
+
+    // Close the Python Interpreter
+    close_python_environment();
+
+    printf("done..\n");
+
 	fprintf(stdout, "\n Press any key to finish.\n");
 		
 	getchar();
