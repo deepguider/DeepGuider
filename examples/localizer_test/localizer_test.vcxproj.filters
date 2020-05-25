@@ -35,7 +35,7 @@
     <ClInclude Include="..\..\src\core\map.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\localizer\simple_localizer.hpp">
+    <ClInclude Include="..\..\src\localizer\localizer_simple.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_localizer_graph.hpp">

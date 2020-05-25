@@ -35,7 +35,7 @@ public:
         double progress = std::min(pose_t.dist / edge_dist, 1.);
         Pose2 pose_m = (1 - progress) * from->data + progress * to->data;
         Point2 d = to->data - from->data;
-        pose_m.theta = atan2(d.y, d.x);
+        pose_m.theta = cx::trimRad(atan2(d.y, d.x) + pose_t.head);
         return pose_m;
 
     }
@@ -93,6 +93,7 @@ public:
                 double dx = min_dist2.second.x - from->data.x;
                 double dy = min_dist2.second.y - from->data.y;
                 pose_t.dist = sqrt(dx * dx + dy * dy);
+                pose_t.head = cx::trimRad(pose_m.theta - atan2(dy, dx));
             }
         }
         return pose_t;

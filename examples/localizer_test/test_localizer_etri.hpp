@@ -168,9 +168,11 @@ int runLocalizerETRIGPS(dg::SimpleLocalizer* localizer, dg::SimpleRoadPainter* p
     VVS_CHECK_TRUE(!gps_data.empty());
     cv::VideoCapture video_data;
     VVS_CHECK_TRUE(video_data.open(video_file));
-    double video_time_offset = gps_data.front().first - 0.5, video_time_scale = 1.75; // Calculated from 'bag' files
-    double video_resize_scale = 0.4;
-    cv::Point video_offset(32, 542);
+
+    const double video_time_offset = gps_data.front().first - 0.5, video_time_scale = 1.75; // Calculated from 'bag' files
+    const double video_resize_scale = 0.4;
+    const cv::Point video_offset(32, 542);
+    const double robot_radius = 10; // Unit: [m]
 
     // Run localization
     cv::Mat video_image;
@@ -185,7 +187,7 @@ int runLocalizerETRIGPS(dg::SimpleLocalizer* localizer, dg::SimpleRoadPainter* p
         {
             // Draw GPS observation
             dg::Point2 pt = localizer->toMetric(gps_datum);
-            VVS_CHECK_TRUE(painter->drawNode(map_image, map_info, dg::Point2ID(0, pt), 1, 0, cv::Vec3b(0, 0, 255)));
+            cv::circle(map_image, painter->cvtMeter2Pixel(pt, map_info), 1, cx::COLOR_RED, -1);
             cv::Mat image = map_image.clone();
 
             // Draw a video image if necessary
@@ -204,9 +206,12 @@ int runLocalizerETRIGPS(dg::SimpleLocalizer* localizer, dg::SimpleRoadPainter* p
 
             // Draw the robot
             dg::TopometricPose pose_t = localizer->getPoseTopometric();
-            //dg::Pose2 pose_m = localizer->getPose();
             dg::Pose2 pose_m = localizer->toTopmetric2Metric(pose_t);
-            VVS_CHECK_TRUE(painter->drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 10, 0, cx::COLOR_BLUE));
+            //dg::Pose2 pose_m = localizer->getPose();
+            if (!painter->drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), robot_radius, 0, cx::COLOR_BLUE)) break;
+            cv::Point pose_body = painter->cvtMeter2Pixel(pose_m, map_info);
+            cv::Point pose_head = painter->cvtMeter2Pixel(pose_m + dg::Point2(robot_radius * cos(pose_m.theta), robot_radius * sin(pose_m.theta)), map_info);
+            cv::line(image, pose_body, pose_head, cx::COLOR_GREEN, 2);
             cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f (Lat: %.6f, Lon: %.6f)", pose_t.node_id, pose_t.edge_idx, pose_t.dist, gps_datum.lat, gps_datum.lon);
             cv::putText(image, info_topo, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
 
@@ -298,8 +303,8 @@ int testLocETRIRealMap(int wait_msec = 1, const char* map_file = "data/NaverLabs
     VVS_CHECK_TRUE(painter.setParamValue("grid_unit_pos", { 120, 10 }));
     VVS_CHECK_TRUE(painter.setParamValue("node_radius", 2));
     VVS_CHECK_TRUE(painter.setParamValue("node_font_scale", 0));
-    VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 50, 255 }));
-    VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 200, 100, 100 }));
+    VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 100, 100}));
+    VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 150, 100, 100}));
     VVS_CHECK_TRUE(painter.setParamValue("edge_thickness", 1));
 
     return runLocalizerETRIGPS(&localizer, &painter, wait_msec);
