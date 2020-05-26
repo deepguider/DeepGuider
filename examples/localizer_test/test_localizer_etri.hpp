@@ -234,7 +234,7 @@ int testLocMap2RoadMap(int wait_msec = 1, const char* background_file = "data/Na
     // Convert it to 'dg::RoadMap'
     dg::UTMConverter converter;
     VVS_CHECK_TRUE(converter.setReference(map.nodes.front())); // Select the first node as the origin
-    dg::RoadMap road_map = dg::SimpleLocalizer::cvtMap2SimpleRoadMap(map, converter);
+    dg::RoadMap road_map = dg::SimpleLocalizer::cvtMap2RoadMap(map, converter);
     VVS_CHECK_TRUE(!road_map.isEmpty());
 
     // Draw the converted map
