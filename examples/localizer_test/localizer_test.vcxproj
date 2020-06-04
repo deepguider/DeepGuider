@@ -102,6 +102,8 @@
     <ClInclude Include="..\..\src\localizer\directed_graph.hpp" />
     <ClInclude Include="..\..\src\localizer\graph_painter.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_base.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_ekf.hpp" />
     <ClInclude Include="..\..\src\localizer\road_map.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_simple.hpp" />
     <ClInclude Include="test_core_type.hpp" />

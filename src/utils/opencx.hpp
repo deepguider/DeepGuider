@@ -2,14 +2,14 @@
  * OpenCX: Sunglok's OpenCV Extension
  *
  * OpenCX aims to provide extended functionality and tools to OpenCV for more convenience.
- * It consists of a single header file, 'opencx.hpp', which only depends on OpenCV in C++.
+ * It consists of several header files, 'opencx.hpp' and others, which only depend on OpenCV in C++.
  * Just include the file to your project. It will work without complex configuration and dependency.
  * OpenCX is Beerware so that it is free to use and distribute.
  *
  * - Homepage: https://github.com/sunglok/opencx
  *
  * @author  Sunglok Choi (http://sites.google.com/site/sunglok)
- * @version 0.3 (12/10/2019)
+ * @version 0.4 (05/28/2020)
  */
 
 /**
@@ -24,8 +24,9 @@
 #ifndef __OPEN_CX__
 #define __OPEN_CX__
 
-#include "utils/opensx.hpp"
 #include "opencv2/opencv.hpp"
+#include "opensx.hpp"
+#include "ekf.hpp"
 
 #ifndef CX_LOAD_PARAM_TO
 /** A macro function to load a value from cv::FileNode */
@@ -350,6 +351,7 @@ namespace cx
 
     /** A key code for _Space_ */
     const int KEY_SPACE = 0x20;
+
 } // End of 'cx'
 
 #endif // End of '__OPEN_CX__'

@@ -23,7 +23,7 @@ public:
 
     virtual TopometricPose getPoseTopometric() const
     {
-        return toMetric2Topometric(m_pose);
+        return toMetric2Topometric(getPose());
     }
 
     virtual double getPoseConfidence() const
@@ -31,43 +31,12 @@ public:
         return -1;
     }
 
-    virtual bool applyPose(const Pose2& pose, Timestamp time = -1, double confidence = -1)
-    {
-        cv::AutoLock lock(m_mutex);
-        m_pose = pose;
-        return true;
-    }
-
-    virtual bool applyPosition(const Point2& xy, Timestamp time = -1, double confidence = -1)
-    {
-        cv::AutoLock lock(m_mutex);
-        m_pose.x = xy.x;
-        m_pose.y = xy.y;
-        return true;
-    }
-
-    virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1)
-    {
-        Point2 xy = toMetric(ll);
-        cv::AutoLock lock(m_mutex);
-        m_pose.x = xy.x;
-        m_pose.y = xy.y;
-        return true;
-    }
-
-    virtual bool applyOrientation(double theta, Timestamp time = -1, double confidence = -1)
-    {
-        cv::AutoLock lock(m_mutex);
-        m_pose.theta = theta;
-        return true;
-    }
-
     virtual bool applyOdometry(const Pose2& pose_curr, const Pose2& pose_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1)
     {
+        const double dx = pose_curr.x - pose_prev.x;
+        const double dy = pose_curr.y - pose_prev.y;
+        const double c = cos(m_pose.theta - pose_prev.theta), s = sin(m_pose.theta - pose_prev.theta);
         cv::AutoLock lock(m_mutex);
-        double dx = pose_curr.x - pose_prev.x;
-        double dy = pose_curr.y - pose_prev.y;
-        double c = cos(m_pose.theta - pose_prev.theta), s = sin(m_pose.theta - pose_prev.theta);
         m_pose.x += c * dx - s * dy;
         m_pose.x += s * dx + c * dy;
         m_pose.theta = cx::trimRad(m_pose.theta + pose_curr.theta - pose_prev.theta);
@@ -90,11 +59,39 @@ public:
         return true;
     }
 
+    virtual bool applyPose(const Pose2& pose, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        m_pose = pose;
+        return true;
+    }
+
+    virtual bool applyPosition(const Point2& xy, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        m_pose.x = xy.x;
+        m_pose.y = xy.y;
+        return true;
+    }
+
+    virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1)
+    {
+        Point2 xy = toMetric(ll);
+        return applyPosition(xy, time, confidence);
+    }
+
+    virtual bool applyOrientation(double theta, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        m_pose.theta = theta;
+        return true;
+    }
+
     virtual bool applyLocClue(ID node_id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
+        cv::AutoLock lock(m_mutex);
         RoadMap::Node* node = m_map.getNode(Point2ID(node_id));
         if (node == NULL) return false;
-        cv::AutoLock lock(m_mutex);
         m_pose.x = node->data.x;
         m_pose.y = node->data.y;
         return true;

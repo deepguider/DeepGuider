@@ -8,5 +8,6 @@
 #include "localizer/road_map.hpp"
 #include "localizer/localizer_base.hpp"
 #include "localizer/localizer_simple.hpp"
+#include "localizer/localizer_ekf.hpp"
 
 #endif // End of '__DG_LOCALIZER__'

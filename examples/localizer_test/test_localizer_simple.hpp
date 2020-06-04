@@ -60,7 +60,7 @@ std::vector<std::pair<std::string, cv::Vec3d>> getSimpleDataset()
     return dataset;
 }
 
-int testLocSimpleTest(int wait_msec = 1)
+int testLocSimple(int wait_msec = 1)
 {
     // Load a map
     dg::SimpleLocalizer localizer;
@@ -97,7 +97,7 @@ int testLocSimpleTest(int wait_msec = 1)
             cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f", pose_t.node_id, pose_t.edge_idx, pose_t.dist);
             cv::putText(image, info_topo, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
 
-            cv::imshow("testLocSimpleLocalizer", image);
+            cv::imshow("testLocSimpleTest", image);
             int key = cv::waitKey(wait_msec);
             if (key == cx::KEY_ESC) return -1;
         }

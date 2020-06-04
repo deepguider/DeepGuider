@@ -152,7 +152,43 @@ int saveETRINaverMap(const char* map_file = "data/NaverLabs_ETRI.csv", const dg:
 }
 */
 
-int runLocalizerETRIGPS(dg::SimpleLocalizer* localizer, dg::SimpleRoadPainter* painter, int wait_msec = 1, const char* gps_file = "data/191115_ETRI_asen_fix.csv", const char* video_file = "data/191115_ETRI.avi", const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
+int testLocMap2RoadMap(int wait_msec = 1, const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
+{
+    // Load a map
+    dg::Map map = getETRISyntheticMap();
+    VVS_CHECK_TRUE(!map.nodes.empty());
+
+    // Convert it to 'dg::RoadMap'
+    dg::UTMConverter converter;
+    VVS_CHECK_TRUE(converter.setReference(map.nodes.front())); // Select the first node as the origin
+    dg::RoadMap road_map = dg::BaseLocalizer::cvtMap2RoadMap(map, converter);
+    VVS_CHECK_TRUE(!road_map.isEmpty());
+
+    // Draw the converted map
+    dg::SimpleRoadPainter painter;
+    VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 1));
+    VVS_CHECK_TRUE(painter.setParamValue("canvas_margin", 0));
+    VVS_CHECK_TRUE(painter.setParamValue("canvas_offset", { 344, 293 }));
+    VVS_CHECK_TRUE(painter.setParamValue("grid_step", 100));
+    VVS_CHECK_TRUE(painter.setParamValue("grid_unit_pos", { 120, 10 }));
+    VVS_CHECK_TRUE(painter.setParamValue("node_radius", 5));
+    VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 0, 255 }));
+    VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 100, 0, 0 }));
+
+    cv::Mat map_image = cv::imread(background_file);
+    VVS_CHECK_TRUE(map_image.empty() == false);
+    VVS_CHECK_TRUE(painter.drawMap(map_image, road_map));
+
+    if (wait_msec >= 0)
+    {
+        cv::imshow("testLocMap2RoadMap", map_image);
+        cv::waitKey(wait_msec);
+    }
+
+    return 0;
+}
+
+int runLocalizerETRIGPS(dg::BaseLocalizer* localizer, dg::SimpleRoadPainter* painter, int wait_msec = 1, const char* gps_file = "data/191115_ETRI_asen_fix.csv", const char* video_file = "data/191115_ETRI.avi", const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
 {
     if (localizer == nullptr || painter == nullptr) return -1;
 
@@ -220,42 +256,6 @@ int runLocalizerETRIGPS(dg::SimpleLocalizer* localizer, dg::SimpleRoadPainter* p
             if (key == cx::KEY_SPACE) key = cv::waitKey(0);
             if (key == cx::KEY_ESC) return -1;
         }
-    }
-
-    return 0;
-}
-
-int testLocMap2RoadMap(int wait_msec = 1, const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
-{
-    // Load a map
-    dg::Map map = getETRISyntheticMap();
-    VVS_CHECK_TRUE(!map.nodes.empty());
-
-    // Convert it to 'dg::RoadMap'
-    dg::UTMConverter converter;
-    VVS_CHECK_TRUE(converter.setReference(map.nodes.front())); // Select the first node as the origin
-    dg::RoadMap road_map = dg::SimpleLocalizer::cvtMap2RoadMap(map, converter);
-    VVS_CHECK_TRUE(!road_map.isEmpty());
-
-    // Draw the converted map
-    dg::SimpleRoadPainter painter;
-    VVS_CHECK_TRUE(painter.setParamValue("pixel_per_meter", 1));
-    VVS_CHECK_TRUE(painter.setParamValue("canvas_margin", 0));
-    VVS_CHECK_TRUE(painter.setParamValue("canvas_offset", { 344, 293 }));
-    VVS_CHECK_TRUE(painter.setParamValue("grid_step", 100));
-    VVS_CHECK_TRUE(painter.setParamValue("grid_unit_pos", { 120, 10 }));
-    VVS_CHECK_TRUE(painter.setParamValue("node_radius", 5));
-    VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 0, 255 }));
-    VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 100, 0, 0 }));
-
-    cv::Mat map_image = cv::imread(background_file);
-    VVS_CHECK_TRUE(map_image.empty() == false);
-    VVS_CHECK_TRUE(painter.drawMap(map_image, road_map));
-
-    if (wait_msec >= 0)
-    {
-        cv::imshow("testLocMap2RoadMap", map_image);
-        cv::waitKey(wait_msec);
     }
 
     return 0;

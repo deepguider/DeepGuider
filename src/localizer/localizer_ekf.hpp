@@ -1,0 +1,420 @@
+#ifndef __EKF_LOCALIZER__
+#define __EKF_LOCALIZER__
+
+#include "localizer/localizer_base.hpp"
+#include "utils/opencx.hpp"
+
+namespace dg
+{
+
+class EKFLocalizer : public BaseLocalizer, public cx::EKF, public cx::Algorithm
+{
+public:
+    EKFLocalizer()
+    {
+        // Parameters
+        m_threshold_time = 0.01;
+        m_threshold_dist = 1;
+        m_noise_motion = cv::Mat::eye(3, 3, CV_64F);
+        m_noise_gps = cv::Mat::eye(2, 2, CV_64F);
+        m_noise_loc_clue = cv::Mat::eye(4, 4, CV_64F);
+        m_offset_gps = cv::Vec2d(0, 0);
+
+        // Internal variables
+        m_time_last_update = -1;
+        m_time_last_delta = -1;
+
+        initialize(cv::Mat::zeros(5, 1, CV_64F), cv::Mat::eye(5, 5, CV_64F));
+    }
+
+    virtual int readParam(const cv::FileNode& fn)
+    {
+        int n_read = cx::Algorithm::readParam(fn);
+        CX_LOAD_PARAM_COUNT(fn, "threshold_time", m_threshold_time, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "threshold_dist", m_threshold_dist, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "noise_motion", m_noise_motion, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "noise_gps", m_noise_gps, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "noise_loc_clue", m_noise_loc_clue, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "offset_gps", m_offset_gps, n_read);
+        return n_read;
+    }
+
+    bool setParamMotionNoise(double t, double v, double w, double vw = 0)
+    {
+        cv::AutoLock lock(m_mutex);
+        m_noise_motion = (cv::Mat_<double>(3, 3) <<
+            t,  0,  0,
+            0,  v, vw,
+            0, vw,  w);
+        return true;
+    }
+
+    bool setParamGPSNoise(double x, double y)
+    {
+        cv::AutoLock lock(m_mutex);
+        m_noise_gps = cv::Mat::diag(cv::Mat(cv::Vec2d(x * x, y * y)));
+        return true;
+    }
+
+    bool setParamLocClueNoise(double rho, double phi)
+    {
+        cv::AutoLock lock(m_mutex);
+        m_noise_loc_clue = cv::Mat::zeros(4, 4, CV_64F);
+        m_noise_loc_clue.at<double>(0, 0) = rho * rho;
+        m_noise_loc_clue.at<double>(1, 1) = phi * phi;
+        return true;
+    }
+
+    virtual Pose2 getPose() const
+    {
+        cv::AutoLock lock(m_mutex);
+        return Pose2(m_state_vec.at<double>(0), m_state_vec.at<double>(1), m_state_vec.at<double>(2));
+    }
+
+    Polar2 getVelocity() const
+    {
+        cv::AutoLock lock(m_mutex);
+        return Polar2(m_state_vec.at<double>(3), m_state_vec.at<double>(4));
+    }
+
+    virtual LatLon getPoseGPS() const
+    {
+        return toLatLon(getPose());
+    }
+
+    virtual TopometricPose getPoseTopometric() const
+    {
+        return toMetric2Topometric(getPose());
+    }
+
+    virtual double getPoseConfidence() const
+    {
+        cv::AutoLock lock(m_mutex);
+        double det = cv::determinant(m_state_cov.rowRange(0, 3).colRange(0, 3));
+        return det;
+    }
+
+    virtual bool applyOdometry(const Pose2& pose_curr, const Pose2& pose_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1)
+    {
+        double dt = time_curr - time_prev;
+        if (dt > DBL_EPSILON)
+        {
+            double dx = pose_curr.x - pose_prev.x, dy = pose_curr.y - pose_prev.y;
+            double v = sqrt(dx * dx + dy * dy) / dt, w = cx::trimRad(pose_curr.theta - pose_prev.theta) / dt;
+            cv::AutoLock lock(m_mutex);
+            double interval = time_curr - m_time_last_update;
+            if (interval > DBL_EPSILON && predict(cv::Vec3d(interval, v, w)))
+            {
+                m_time_last_update = time_curr;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    virtual bool applyOdometry(const Polar2& delta, Timestamp time = -1, double confidence = -1)
+    {
+        double dt = 0;
+        cv::AutoLock lock(m_mutex);
+        if (m_time_last_delta > 0) dt = time - m_time_last_delta;
+        m_time_last_delta = time;
+        if (dt > DBL_EPSILON)
+        {
+            double interval = time - m_time_last_update;
+            if (interval > DBL_EPSILON && predict(cv::Vec3d(interval, delta.lin / dt, delta.ang / dt)))
+            {
+                m_time_last_update = time;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    virtual bool applyOdometry(double theta_curr, double theta_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1)
+    {
+        double dt = time_curr - time_prev;
+        if (dt > DBL_EPSILON)
+        {
+            double w = cx::trimRad(theta_curr - theta_prev) / dt;
+            cv::AutoLock lock(m_mutex);
+            double interval = time_curr - m_time_last_update;
+            if (interval > DBL_EPSILON && predict(cv::Vec3d(interval, w)))
+            {
+                m_time_last_update = time_curr;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    virtual bool applyPose(const Pose2& pose, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        // TODO: Consider pose observation
+        return false;
+    }
+
+    virtual bool applyPosition(const Point2& xy, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        double interval = 0;
+        if (m_time_last_update > 0) interval = time - m_time_last_update;
+        if (interval > m_threshold_time) predict(interval);
+        if (correct(cv::Vec2d(xy.x, xy.y)))
+        {
+            m_time_last_update = time;
+            return true;
+        }
+        return false;
+    }
+
+    virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1)
+    {
+        Point2 xy = toMetric(ll);
+        return applyPosition(xy, time, confidence);
+    }
+
+    virtual bool applyOrientation(double theta, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        // TODO: Consider orientation observation
+        return false;
+    }
+
+    virtual bool applyLocClue(ID node_id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        RoadMap::Node* node = m_map.getNode(Point2ID(node_id));
+        if (node == NULL) return false;
+
+        double interval = 0;
+        if (m_time_last_update > 0) interval = time - m_time_last_update;
+        if (interval > m_threshold_time) predict(interval);
+        // TODO: Deal with missing observation
+        if (obs.lin > m_threshold_dist && obs.ang < CV_PI && correct(cv::Vec4d(obs.lin, obs.ang, node->data.x, node->data.y)))
+        {
+            m_time_last_update = time;
+            return true;
+        }
+        return false;
+    }
+
+    virtual bool applyLocClue(const std::vector<ID>& node_ids, const std::vector<Polar2>& obs, Timestamp time = -1, const std::vector<double>& confidence = std::vector<double>())
+    {
+        if (node_ids.empty() || node_ids.size() != obs.size()) return false;
+        if (confidence.size() == node_ids.size())
+        {
+            for (size_t i = 0; i < node_ids.size(); i++)
+                if (!applyLocClue(node_ids[i], obs[i], time, confidence[i])) return false;
+        }
+        else
+        {
+            for (size_t i = 0; i < node_ids.size(); i++)
+                if (!applyLocClue(node_ids[i], obs[i], time)) return false;
+        }
+        return true;
+    }
+
+protected:
+    virtual cv::Mat transitModel(const cv::Mat& state, const cv::Mat& control)
+    {
+        const double t = control.at<double>(0);
+        if (control.rows == 1)
+        {
+            const double vt = state.at<double>(3) * t;
+            const double wt = state.at<double>(4) * t;
+            return (cv::Mat_<double>(5, 1) <<
+                state.at<double>(0) + vt * cos(state.at<double>(2) + wt / 2),
+                state.at<double>(1) + vt * sin(state.at<double>(2) + wt / 2),
+                state.at<double>(2) + wt,
+                state.at<double>(3),
+                state.at<double>(4));
+        }
+        else if (control.rows == 2)
+        {
+            const double vt = state.at<double>(3) * t;
+            const double wt = control.at<double>(1) * t;
+            return (cv::Mat_<double>(5, 1) <<
+                state.at<double>(0) + vt * cos(state.at<double>(2) + wt / 2),
+                state.at<double>(1) + vt * sin(state.at<double>(2) + wt / 2),
+                state.at<double>(2) + wt,
+                state.at<double>(3),
+                control.at<double>(1));
+        }
+        else if (control.rows >= 3)
+        {
+            const double vt = control.at<double>(1) * t;
+            const double wt = control.at<double>(2) * t;
+            return (cv::Mat_<double>(5, 1) <<
+                state.at<double>(0) + vt * cos(state.at<double>(2) + wt / 2),
+                state.at<double>(1) + vt * sin(state.at<double>(2) + wt / 2),
+                state.at<double>(2) + wt,
+                control.at<double>(1),
+                control.at<double>(2));
+        }
+        return cv::Mat();
+    }
+
+    virtual cv::Mat transitJacobian(const cv::Mat& state, const cv::Mat& control)
+    {
+        const double t = control.at<double>(0);
+        if (control.rows == 1)
+        {
+            const double vt = state.at<double>(3) * t;
+            const double th = state.at<double>(2) + state.at<double>(4) * t / 2;
+            const double c = cos(th), s = sin(th);
+            return (cv::Mat_<double>(5, 5) <<
+                1, 0, -vt * s, t * c, -vt * t * s / 2,
+                0, 1,  vt * c, t * s,  vt * t * c / 2,
+                0, 0,       1,     0,               t,
+                0, 0,       0,     1,               0,
+                0, 0,       0,     0,               1);
+        }
+        else if (control.rows == 2)
+        {
+            const double vt = state.at<double>(3) * t;
+            const double th = state.at<double>(2) + control.at<double>(1) * t / 2;
+            const double c = cos(th), s = sin(th);
+            return (cv::Mat_<double>(5, 5) <<
+                1, 0, -vt * s, t * c, 0,
+                0, 1,  vt * c, t * s, 0,
+                0, 0,       1,     0, 0,
+                0, 0,       0,     1, 0,
+                0, 0,       0,     0, 0);
+        }
+        else if (control.rows >= 3)
+        {
+            const double vt = control.at<double>(1) * t;
+            const double th = state.at<double>(2) + control.at<double>(2) * t / 2;
+            const double c = cos(th), s = sin(th);
+            return (cv::Mat_<double>(5, 5) <<
+                1, 0, -vt * s, 0, 0,
+                0, 1,  vt * c, 0, 0,
+                0, 0,       1, 0, 0,
+                0, 0,       0, 0, 0,
+                0, 0,       0, 0, 0);
+        }
+        return cv::Mat();
+    }
+
+    virtual cv::Mat transitNoiseCov(const cv::Mat& state, const cv::Mat& control)
+    {
+        const double t = control.at<double>(0);
+        if (control.rows == 1)
+        {
+            const double vt = state.at<double>(3) * t;
+            const double th = state.at<double>(2) + state.at<double>(4) * t / 2;
+            const double c = cos(th), s = sin(th);
+            cv::Mat W = (cv::Mat_<double>(5, 1) <<
+                state.at<double>(3) * c - vt * s,
+                state.at<double>(3) * s + vt * c,
+                state.at<double>(4),
+                DBL_EPSILON,
+                DBL_EPSILON);
+            return W * m_noise_motion.at<double>(0) * W.t();
+        }
+        else if (control.rows == 2)
+        {
+            const double vt = state.at<double>(3) * t;
+            const double th = state.at<double>(2) + control.at<double>(1) * t / 2;
+            const double c = cos(th), s = sin(th);
+            cv::Mat W = (cv::Mat_<double>(5, 2) <<
+                state.at<double>(3) * c - vt * s, -vt * t * s / 2,
+                state.at<double>(3) * s + vt * c,  vt * t * c / 2,
+                control.at<double>(1), t,
+                0, 0,
+                0, 1);
+            cv::Mat S = (cv::Mat_<double>(2, 2) <<
+                m_noise_motion.at<double>(0, 0), m_noise_motion.at<double>(0, 2),
+                m_noise_motion.at<double>(2, 0), m_noise_motion.at<double>(2, 2));
+            return W * S * W.t();
+        }
+        else if (control.rows >= 3)
+        {
+            const double vt = control.at<double>(1) * t;
+            const double th = state.at<double>(2) + control.at<double>(2) * t / 2;
+            const double c = cos(th), s = sin(th);
+            cv::Mat W = (cv::Mat_<double>(5, 3) <<
+                state.at<double>(3) * c - vt * s, t * c, -vt * t * s / 2,
+                state.at<double>(3) * s + vt * c, t * s, vt * t * c / 2,
+                control.at<double>(1), 0, t,
+                0, 1, 0,
+                0, 0, 1);
+            return W * m_noise_motion * W.t();
+        }
+        return cv::Mat();
+    }
+
+    virtual cv::Mat observeModel(const cv::Mat& state, const cv::Mat& measure)
+    {
+        if (measure.rows == 2)
+        {
+            const double th = state.at<double>(2) + m_offset_gps(1);
+            return (cv::Mat_<double>(2, 1) <<
+                state.at<double>(0) + m_offset_gps(0) * cos(th),
+                state.at<double>(1) + m_offset_gps(0) * sin(th));
+        }
+        else if (measure.rows >= 4)
+        {
+            const double dx = measure.at<double>(2) - state.at<double>(0);
+            const double dy = measure.at<double>(3) - state.at<double>(1);
+            return (cv::Mat_<double>(4, 1) <<
+                sqrt(dx * dx + dy * dy),
+                atan2(dy, dx),
+                measure.at<double>(2),
+                measure.at<double>(3));
+        }
+        return cv::Mat();
+    }
+
+    virtual cv::Mat observeJacobian(const cv::Mat& state, const cv::Mat& measure)
+    {
+        if (measure.rows == 2)
+        {
+            const double th = state.at<double>(2) + m_offset_gps(1);
+            return (cv::Mat_<double>(2, 5) <<
+                1, 0, -m_offset_gps(0) * sin(th), 0, 0,
+                0, 1,  m_offset_gps(0) * cos(th), 0, 0);
+        }
+        else if (measure.rows >= 4)
+        {
+            const double dx = measure.at<double>(2) - state.at<double>(0);
+            const double dy = measure.at<double>(3) - state.at<double>(1);
+            const double r = sqrt(dx * dx + dy * dy);
+            return (cv::Mat_<double>(4, 5) <<
+                -2 * dx / r, -2 * dy / r, 0, 0, 0,
+                 dy / r / r, -dx / r / r, 0, 0, 0,
+                0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0);
+        }
+        return cv::Mat();
+    };
+
+    virtual cv::Mat observeNoiseCov(const cv::Mat& state, const cv::Mat& measure)
+    {
+        if (measure.rows == 2) return m_noise_gps;
+        else if (measure.rows >= 4) return m_noise_loc_clue;
+        return cv::Mat();
+    }
+
+    double m_threshold_time;
+
+    double m_threshold_dist;
+
+    cv::Mat m_noise_motion;
+
+    cv::Mat m_noise_gps;
+
+    cv::Mat m_noise_loc_clue;
+
+    cv::Vec2d m_offset_gps;
+
+    double m_time_last_update;
+
+    double m_time_last_delta;
+
+}; // End of 'EKFLocalizer'
+
+} // End of 'dg'
+
+#endif // End of '__EKF_LOCALIZER__'
