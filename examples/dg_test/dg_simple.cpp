@@ -32,8 +32,8 @@ protected:
     bool m_enable_roadtheta = false;
     bool m_enable_vps = true;
     bool m_enable_poi = false;
-    //std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
-    std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
+    std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
+    //std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
 
     bool m_threaded_run_python = false;
     std::string m_video_header_name = "dg_test_";
@@ -338,10 +338,15 @@ int DeepGuider::run()
         printf("\tconfidence: %lf\n", pose_confidence);
 
         // Guidance: generate navigation guidance
-        dg::GuidanceManager::MoveStatus cur_status;
+        dg::GuidanceManager::GuideStatus cur_status;
         dg::GuidanceManager::Guidance cur_guide;
-        cur_status = m_guider.applyPose(pose_topo);
-        cur_guide = m_guider.getGuidance(cur_status);
+        cur_status = m_guider.getGuidanceStatus(pose_topo, pose_confidence);
+        cur_guide = m_guider.getGuidance(pose_topo, cur_status);
+        dg::Node* node = m_map_manager.getMap().findNode(pose_topo.node_id);
+        if (node != nullptr)
+        {
+            m_guider.applyPoseGPS(dg::LatLon(node->lat, node->lon));
+        }
         printf("%s\n", cur_guide.msg.c_str());
 
         // check arrival
@@ -364,7 +369,8 @@ int DeepGuider::run()
 
         // update iteration
         itr++;
-    }    
+    }
+    
     if (m_recording) m_video.release();
     cv::destroyWindow("deep_guider");    
     printf("End deepguider system...\n");
@@ -463,20 +469,16 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
         cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
 
-        printf("[Localizer]\n");
-        printf("\ttopo: node=%zu, edge=%d, dist=%lf\n", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
-        printf("\tmetr: x=%lf, y=%lf, theta=%lf\n", pose_metric.x, pose_metric.y, pose_metric.theta);
-        printf("\tgps : lat=%lf, lon=%lf\n", pose_gps.lat, pose_gps.lon);
-        printf("\tconfidence: %lf\n", pose_confidence);
-
-        // Guidance: generate navigation guidance
-        dg::GuidanceManager::MoveStatus cur_status;
-        dg::GuidanceManager::Guidance cur_guide;
-        cur_status = m_guider.applyPose(pose_topo);
-        cur_guide = m_guider.getGuidance(cur_status);
-        printf("%s\n", cur_guide.msg.c_str());
-
         // draw guidance output on the video image
+        dg::GuidanceManager::GuideStatus cur_status;
+        dg::GuidanceManager::Guidance cur_guide;
+        cur_status = m_guider.getGuidanceStatus(pose_topo, pose_confidence);
+        cur_guide = m_guider.getGuidance(pose_topo, cur_status);
+        dg::Node* node = m_map_manager.getMap().findNode(pose_topo.node_id);
+        if (node != nullptr)
+        {
+            m_guider.applyPoseGPS(dg::LatLon(node->lat, node->lon));
+        }
         if (!video_image.empty())
         {
             drawGuidance(image, cur_guide, video_rect);
@@ -487,6 +489,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
 
 void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect)
 {
+    if(guide.actions.empty()) return;
+
     int guide_cx = rect.x + rect.width / 2;
     int guide_cy = rect.y + m_icon_forward.rows / 2 + 40;
     cv::Point center_pos(guide_cx, guide_cy);
@@ -506,7 +510,7 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         if (cmd == dg::GuidanceManager::Motion::ENTER_FORWARD) dir_msg = "[Guide] ENTER_FORWARD";
         if (cmd == dg::GuidanceManager::Motion::EXIT_FORWARD) dir_msg = "[Guide] EXIT_FORWARD";
     }
-    if (cmd == dg::GuidanceManager::Motion::TURN_LEFT || cmd == dg::GuidanceManager::Motion::CROSS_LEFT || cmd == dg::GuidanceManager::Motion::ENTER_LEFT || cmd == dg::GuidanceManager::Motion::EXIT_LEFT)
+    else if (cmd == dg::GuidanceManager::Motion::TURN_LEFT || cmd == dg::GuidanceManager::Motion::CROSS_LEFT || cmd == dg::GuidanceManager::Motion::ENTER_LEFT || cmd == dg::GuidanceManager::Motion::EXIT_LEFT)
     {
         cv::Mat& icon = m_icon_turn_left;
         cv::Mat& mask = m_mask_turn_left;
@@ -519,7 +523,7 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         if (cmd == dg::GuidanceManager::Motion::ENTER_LEFT) dir_msg = "[Guide] ENTER_LEFT";
         if (cmd == dg::GuidanceManager::Motion::EXIT_LEFT) dir_msg = "[Guide] EXIT_LEFT";
     }
-    if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT || cmd == dg::GuidanceManager::Motion::CROSS_RIGHT || cmd == dg::GuidanceManager::Motion::ENTER_RIGHT || cmd == dg::GuidanceManager::Motion::EXIT_RIGHT)
+    else if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT || cmd == dg::GuidanceManager::Motion::CROSS_RIGHT || cmd == dg::GuidanceManager::Motion::ENTER_RIGHT || cmd == dg::GuidanceManager::Motion::EXIT_RIGHT)
     {
         cv::Mat& icon = m_icon_turn_right;
         cv::Mat& mask = m_mask_turn_right;
@@ -532,7 +536,7 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) dir_msg = "[Guide] ENTER_RIGHT";
         if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) dir_msg = "[Guide] EXIT_RIGHT";
     }
-    if (cmd == dg::GuidanceManager::Motion::TURN_BACK)
+    else if (cmd == dg::GuidanceManager::Motion::TURN_BACK)
     {
         cv::Mat& icon = m_icon_turn_back;
         cv::Mat& mask = m_mask_turn_back;
@@ -542,6 +546,10 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "[Guide] TURN_BACK";
     }
+    else
+    {
+        dir_msg = "[Guide] N/A";
+    }    
 
     // show direction message
     cv::Point msg_offset = rect.tl() + cv::Point(10, 30);
