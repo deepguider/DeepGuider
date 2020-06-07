@@ -23,7 +23,7 @@ namespace cx
      * @brief Extended Kalman Filter (EKF)
      *
      * The extended Kalman filter is a nonlinear extension of the Kalman filter which linearizes nonlinear state transition and observation models at the point of the current state.
-     * You can make your EKF application by inheriting this class and overriding six functions: transitModel, transitJacobian, transitNoise, observeModel, observeJacobian, and observeNoise.
+     * You can make your EKF application by inheriting this class and overriding six functions: transitFunc, transitJacobian, transitNoise, observeFunc, observeJacobian, and observeNoise.
      *
      * @see Extended Kalman Filter (Wikipedia), http://en.wikipedia.org/wiki/Extended_Kalman_filter
      * @see Welch, The Kalman Filter, http://www.cs.unc.edu/~welch/kalman/
@@ -77,14 +77,12 @@ namespace cx
          */
         virtual bool predict(cv::InputArray control)
         {
-            // Calculate 'F' and 'Q'
             cv::Mat u = control.getMat();
             if (u.rows < u.cols) u = u.t();
-            cv::Mat F = transitJacobian(m_state_vec, u);
-            cv::Mat Q = transitNoiseCov(m_state_vec, u);
 
             // Predict the state
-            m_state_vec = transitModel(m_state_vec, u);
+            cv::Mat F, Q;
+            m_state_vec = transitFunc(m_state_vec, u, F, Q);
             m_state_cov = F * m_state_cov * F.t() + Q;
 
             // Enforce the state covariance symmetric
@@ -94,19 +92,20 @@ namespace cx
 
         /**
          * Correct the state variable and covariance with the given measurement
-         * @param measurement The given measurement
+         * @param measure The given measurement
          * @return True if successful (false if failed)
          */
-        virtual bool correct(cv::InputArray measurement)
+        virtual bool correct(cv::InputArray measure)
         {
-            // Calculate Kalman gain
-            cv::Mat z = measurement.getMat();
+            cv::Mat z = measure.getMat();
             if (z.rows < z.cols) z = z.t();
-            cv::Mat H = observeJacobian(m_state_vec, z);
-            cv::Mat R = observeNoiseCov(m_state_vec, z);
+
+            // Calculate Kalman gain
+            cv::Mat H, R;
+            cv::Mat expectation = observeFunc(m_state_vec, z, H, R);
             cv::Mat S = H * m_state_cov * H.t() + R;
             cv::Mat K = m_state_cov * H.t() * S.inv(cv::DecompTypes::DECOMP_SVD);
-            cv::Mat innovation = z - observeModel(m_state_vec, z);
+            cv::Mat innovation = z - expectation;
 
             // Correct the state
             m_state_vec = m_state_vec + K * innovation;
@@ -121,17 +120,19 @@ namespace cx
 
         /**
          * Calculate squared <a href="https://en.wikipedia.org/wiki/Mahalanobis_distance">Mahalanobis distance</a> of the given measurement
-         * @param measurement The given measurement
+         * @param measure The given measurement
          * @return The squared Mahalanobis distance
          */
-        virtual double checkMeasurement(cv::InputArray measurement)
+        virtual double checkMeasurement(cv::InputArray measure)
         {
-            cv::Mat z = measurement.getMat();
+            cv::Mat z = measure.getMat();
             if (z.rows < z.cols) z = z.t();
-            cv::Mat delta = z - observeModel(m_state_vec, z);
-            cv::Mat H = observeJacobian(m_state_vec, z);
+
+            cv::Mat H, R;
+            cv::Mat expectation = observeFunc(m_state_vec, z, H, R);
+            cv::Mat innovation = z - expectation;
             cv::Mat S = H * m_state_cov * H.t();
-            cv::Mat mah_dist2 = delta.t() * S.inv(cv::DecompTypes::DECOMP_SVD) * delta;
+            cv::Mat mah_dist2 = innovation.t() * S.inv(cv::DecompTypes::DECOMP_SVD) * innovation;
             return cv::sum(mah_dist2)(0);
         }
 
@@ -175,52 +176,24 @@ namespace cx
 
     protected:
         /**
-         * The state transition function
+         * The state transition function, its Jacobian, and noise
          * @param state The state variable
          * @param control The given control input
+         * @param jacobian The state transition function's Jacobian (return value)
+         * @param noise The state transition noise (return value)
          * @return The predicted state variable
          */
-        virtual cv::Mat transitModel(const cv::Mat& state, const cv::Mat& control) = 0;
+        virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise) = 0;
 
         /**
-         * Return the Jacobian of the state transition function
+         * The state observation function, its Jacobian, and noise
          * @param state The state variable
-         * @param control The given control input
-         * @return The Jacobian of the state transition function
-         */
-        virtual cv::Mat transitJacobian(const cv::Mat& state, const cv::Mat& control) = 0;
-
-        /**
-         * Return the state transition noise
-         * @param state The state variable
-         * @param control The given control input
-         * @return The state transition noise
-         */
-        virtual cv::Mat transitNoiseCov(const cv::Mat& state, const cv::Mat& control) = 0;
-
-        /**
-         * The state observation function
-         * @param state The state variable
-         * @param measurement The given measurement
+         * @param measure The given measurement
+         * @param jacobian The state observation function's Jacobian (return value)
+         * @param noise The state observation noise (return value)
          * @return The expected measurement
          */
-        virtual cv::Mat observeModel(const cv::Mat& state, const cv::Mat& measurement) = 0;
-
-        /**
-         * Return the Jacobian of the state observation function
-         * @param state The state variable
-         * @param measurement The given measurement
-         * @return The Jacobian of the state observation function
-         */
-        virtual cv::Mat observeJacobian(const cv::Mat& state, const cv::Mat& measurement) = 0;
-
-        /**
-         * Return the state observation noise
-         * @param state The state variable
-         * @param measurement The given measurement
-         * @return The state observation noise
-         */
-        virtual cv::Mat observeNoiseCov(const cv::Mat& state, const cv::Mat& measurement) = 0;
+        virtual cv::Mat observeFunc(const cv::Mat& state, const cv::Mat& measure, cv::Mat& jacobian, cv::Mat& noise) = 0;
 
         /** The state variable */
         cv::Mat m_state_vec;

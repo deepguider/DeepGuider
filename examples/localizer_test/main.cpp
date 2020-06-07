@@ -44,8 +44,11 @@ int main()
     VVS_RUN_TEST(testLocEKFGPS());
     VVS_RUN_TEST(testLocEKFGyroGPS());
     VVS_RUN_TEST(testLocEKFLocClue());
+
     VVS_RUN_TEST(testLocETRISyntheticMap());
     VVS_RUN_TEST(testLocETRIRealMap());
+    VVS_RUN_TEST(testLocETRISyntheticMap("EKFLocalizer"));
+    VVS_RUN_TEST(testLocETRIRealMap("EKFLocalizer"));
 
     return 0;
 }
