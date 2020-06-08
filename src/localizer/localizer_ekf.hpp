@@ -138,7 +138,7 @@ public:
             double w = cx::trimRad(theta_curr - theta_prev) / dt;
             cv::AutoLock lock(m_mutex);
             double interval = time_curr - m_time_last_update;
-            if (interval > DBL_EPSILON && predict(cv::Vec3d(interval, w)))
+            if (interval > DBL_EPSILON && predict(cv::Vec2d(interval, w)))
             {
                 m_time_last_update = time_curr;
                 return true;
@@ -242,8 +242,8 @@ protected:
                 state.at<double>(3) * c - vt * s,
                 state.at<double>(3) * s + vt * c,
                 state.at<double>(4),
-                DBL_EPSILON,
-                DBL_EPSILON);
+                0,
+                0);
             noise = W * m_noise_motion.at<double>(0, 0) * W.t();
         }
         else if (control.rows == 2)
@@ -357,6 +357,34 @@ protected:
     double m_time_last_delta;
 
 }; // End of 'EKFLocalizer'
+
+class EKFLocalizerZeroGyro : public EKFLocalizer
+{
+protected:
+    virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
+    {
+        if (control.rows == 1)
+        {
+            cv::Vec2d control_fake(control.at<double>(0), 0); // Add fake observation
+            return EKFLocalizer::transitFunc(state, cv::Mat(control_fake), jacobian, noise);
+        }
+        return EKFLocalizer::transitFunc(state, control, jacobian, noise);
+    }
+};
+
+class EKFLocalizerZeroCtrl : public EKFLocalizer
+{
+protected:
+    virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
+    {
+        if (control.rows == 1)
+        {
+            cv::Vec3d control_fake(control.at<double>(0), 0, 0); // Add fake observation
+            return EKFLocalizer::transitFunc(state, cv::Mat(control_fake), jacobian, noise);
+        }
+        return EKFLocalizer::transitFunc(state, control, jacobian, noise);
+    }
+};
 
 } // End of 'dg'
 
