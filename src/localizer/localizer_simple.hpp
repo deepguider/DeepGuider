@@ -2,7 +2,6 @@
 #define __SIMPLE_LOCALIZER__
 
 #include "localizer/localizer_base.hpp"
-#include "utils/opencx.hpp"
 
 namespace dg
 {

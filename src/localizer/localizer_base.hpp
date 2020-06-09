@@ -1,6 +1,7 @@
 #ifndef __BASE_LOCALIZER__
 #define __BASE_LOCALIZER__
 
+#include "core/map.hpp"
 #include "localizer/localizer.hpp"
 #include "utils/opencx.hpp"
 

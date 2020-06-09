@@ -2,7 +2,6 @@
 #define __EKF_LOCALIZER__
 
 #include "localizer/localizer_base.hpp"
-#include "utils/opencx.hpp"
 
 namespace dg
 {
@@ -372,7 +371,7 @@ protected:
     }
 };
 
-class EKFLocalizerZeroCtrl : public EKFLocalizer
+class EKFLocalizerZeroOdom : public EKFLocalizer
 {
 protected:
     virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)

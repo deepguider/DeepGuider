@@ -273,9 +273,8 @@ int testLocETRISyntheticMap(const std::string localizer_name = "SimpleLocalizer"
     cv::Ptr<dg::BaseLocalizer> localizer;
     if (localizer_name == "SimpleLocalizer") localizer = cv::makePtr<dg::SimpleLocalizer>();
     else if (localizer_name == "EKFLocalizer") localizer = cv::makePtr<dg::EKFLocalizer>();
-    else if (localizer_name == "EKFLocalizerZeroCtrl") localizer = cv::makePtr<dg::EKFLocalizerZeroCtrl>();
     else if (localizer_name == "EKFLocalizerZeroGyro") localizer = cv::makePtr<dg::EKFLocalizerZeroGyro>();
-    else if (localizer_name == "EKFLocalizerZeroCtrl") localizer = cv::makePtr<dg::EKFLocalizerZeroCtrl>();
+    else if (localizer_name == "EKFLocalizerZeroOdom") localizer = cv::makePtr<dg::EKFLocalizerZeroOdom>();
     if (localizer.empty()) return -1;
 
     cv::Ptr<dg::EKFLocalizer> localizer_ekf = localizer.dynamicCast<dg::EKFLocalizer>();
@@ -311,7 +310,7 @@ int testLocETRIRealMap(const std::string localizer_name = "SimpleLocalizer", int
     if (localizer_name == "SimpleLocalizer") localizer = cv::makePtr<dg::SimpleLocalizer>();
     else if (localizer_name == "EKFLocalizer") localizer = cv::makePtr<dg::EKFLocalizer>();
     else if (localizer_name == "EKFLocalizerZeroGyro") localizer = cv::makePtr<dg::EKFLocalizerZeroGyro>();
-    else if (localizer_name == "EKFLocalizerZeroCtrl") localizer = cv::makePtr<dg::EKFLocalizerZeroCtrl>();
+    else if (localizer_name == "EKFLocalizerZeroOdom") localizer = cv::makePtr<dg::EKFLocalizerZeroOdom>();
     if (localizer.empty()) return -1;
 
     cv::Ptr<dg::EKFLocalizer> localizer_ekf = localizer.dynamicCast<dg::EKFLocalizer>();
