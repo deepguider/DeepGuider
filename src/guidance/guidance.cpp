@@ -209,15 +209,17 @@ GuidanceManager::Guidance GuidanceManager::getGuidance(TopometricPose pose, Guid
 		result = getNormalGuidance(MoveStatus::ON_NODE);
 		break;
 	}		
-	case GuideStatus::GUIDE_LOST:
-		break;
-	case GuideStatus::GUIDE_RECOVERY:
-		break;
-	case GuideStatus::GUIDE_EXPLORATION:
-		break;
-	case GuideStatus::GUIDE_OPTIMAL_VIEW:
-		break;
+	// case GuideStatus::GUIDE_LOST:
+	// 	break;
+	// case GuideStatus::GUIDE_RECOVERY:
+	// 	break;
+	// case GuideStatus::GUIDE_EXPLORATION:
+	// 	break;
+	// case GuideStatus::GUIDE_OPTIMAL_VIEW:
+	// 	break;
 	default:
+		ms = applyPose(pose);
+		result = getNormalGuidance(ms);
 		break;
 	}
 
