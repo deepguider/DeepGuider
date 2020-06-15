@@ -532,6 +532,49 @@ int dg::GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
 	return -1;
 }
 
+void dg::GuidanceManager::makeLostValue(double prevconf, double curconf)
+{
+	double lowerlimit = 0.4;
+	double upperlimit = 0.85;
+	double middlevalue = 0.7;
+	int weight = 150;
+	int smallweight = 75;
+
+	if (curconf <= lowerlimit)
+		g_lostvalue = 100.0;
+	else if (curconf >= upperlimit)
+		g_lostvalue = 0.0;
+	else if (curconf < middlevalue)
+	{
+		if (curconf < prevconf)
+			g_lostvalue = g_lostvalue + ((prevconf - curconf) * weight);
+		else
+			g_lostvalue = g_lostvalue + ((curconf - prevconf) * smallweight);
+	}
+	else
+	{
+		if (curconf < prevconf)
+			g_lostvalue = g_lostvalue - ((prevconf - curconf) * smallweight);
+		else
+			g_lostvalue = g_lostvalue - ((curconf - prevconf) * weight);
+	}
+
+	if (g_lostvalue > 100.0)
+		g_lostvalue = 100.0;
+	else if (g_lostvalue < 0.0)
+		g_lostvalue = 0.0;
+
+	m_prevconf = curconf;
+}
+
+// bool updateActiveNav(cv::Mat image, GuidanceManager::Guidance guidance)
+// {
+//     dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+//     extern dg::ActiveNavigation m_active_nav;
+// 	m_active_nav.apply(image, guidance, t1);	
+// }
+
+
 // test code
 //GuidanceManager guider;
 //int t1 = guider.getDegree(0.0, 0.0, 1.0, 0.0, 1.0, 1.0);

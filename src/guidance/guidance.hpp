@@ -1,6 +1,8 @@
 #pragma once
 #include <time.h>
+#include <chrono>
 #include "dg_core.hpp"
+#include "dg_map_manager.hpp"
 
 namespace dg
 {
@@ -176,6 +178,7 @@ private:
 	//	/** Next NODE*/
 	//	Node to_node;
 
+
 	//	/** Next EDGE*/
 	//	Edge next_edge;
 
@@ -294,9 +297,11 @@ public:
 	Guidance getGuidance(TopometricPose pose);
 	Guidance getGuidance(TopometricPose pose, GuideStatus gStatus);
 
-
+	//makeLostValue related variable and method
+	double m_prevconf = 1.0;
+	double g_lostvalue = 0.0;
+	void makeLostValue(double prevconf, double curconf);
 };
 
 
 }
-
