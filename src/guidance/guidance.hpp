@@ -293,7 +293,8 @@ public:
 	LatLon getPoseGPS() { return m_latlon; };
 	Map getMap() { return m_map; };
 
-	void setGuideStatus(GuideStatus gs) { m_dgstatus = gs; };
+	void setGuideStatus(GuideStatus gs) { m_dgstatus = gs; }; 
+	MoveStatus getMoveStatus() { return m_mvstatus; };
 	Guidance getNormalGuidance(MoveStatus status);
 	Guidance getGuidance(TopometricPose pose);
 	Guidance getGuidance(TopometricPose pose, GuideStatus gStatus);
