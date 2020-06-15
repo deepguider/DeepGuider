@@ -196,6 +196,7 @@ private:
 	double m_edge_progress = 0;
 	MoveStatus  m_mvstatus = MoveStatus::ON_EDGE;
 	GuideStatus  m_dgstatus = GuideStatus::GUIDE_NORMAL;
+	Guidance m_curguidance;
 	std::vector<Guidance> m_past_guides;
 	time_t oop_start = 0 , oop_end = 0;
 
@@ -296,6 +297,8 @@ public:
 	Guidance getNormalGuidance(MoveStatus status);
 	Guidance getGuidance(TopometricPose pose);
 	Guidance getGuidance(TopometricPose pose, GuideStatus gStatus);
+	bool updateGuidance(TopometricPose pose, GuideStatus gStatus);
+	Guidance getGuidance(){ return m_curguidance; };
 
 	//makeLostValue related variable and method
 	double m_prevconf = 1.0;
