@@ -303,7 +303,7 @@ public:
 
 	//makeLostValue related variable and method
 	double m_prevconf = 1.0;
-	double g_lostvalue = 0.0;
+	double m_lostvalue = 0.0;
 	void makeLostValue(double prevconf, double curconf);
 };
 
