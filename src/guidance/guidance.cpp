@@ -591,28 +591,28 @@ void dg::GuidanceManager::makeLostValue(double prevconf, double curconf)
 	int smallweight = 75;
 
 	if (curconf <= lowerlimit)
-		g_lostvalue = 100.0;
+		m_lostvalue = 100.0;
 	else if (curconf >= upperlimit)
-		g_lostvalue = 0.0;
+		m_lostvalue = 0.0;
 	else if (curconf < middlevalue)
 	{
 		if (curconf < prevconf)
-			g_lostvalue = g_lostvalue + ((prevconf - curconf) * weight);
+			m_lostvalue = m_lostvalue + ((prevconf - curconf) * weight);
 		else
-			g_lostvalue = g_lostvalue + ((curconf - prevconf) * smallweight);
+			m_lostvalue = m_lostvalue + ((curconf - prevconf) * smallweight);
 	}
 	else
 	{
 		if (curconf < prevconf)
-			g_lostvalue = g_lostvalue - ((prevconf - curconf) * smallweight);
+			m_lostvalue = m_lostvalue - ((prevconf - curconf) * smallweight);
 		else
-			g_lostvalue = g_lostvalue - ((curconf - prevconf) * weight);
+			m_lostvalue = m_lostvalue - ((curconf - prevconf) * weight);
 	}
 
-	if (g_lostvalue > 100.0)
-		g_lostvalue = 100.0;
-	else if (g_lostvalue < 0.0)
-		g_lostvalue = 0.0;
+	if (m_lostvalue > 100.0)
+		m_lostvalue = 100.0;
+	else if (m_lostvalue < 0.0)
+		m_lostvalue = 0.0;
 
 	m_prevconf = curconf;
 }
