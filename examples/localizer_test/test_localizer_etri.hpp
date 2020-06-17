@@ -282,6 +282,7 @@ int testLocETRISyntheticMap(const std::string localizer_name = "SimpleLocalizer"
     {
         if (!localizer_ekf->setParamGPSNoise(1, 1)) return -1;
         if (!localizer_ekf->setParamValue("offset_gps", { 1, 0 })) return -1;
+        if (!localizer_ekf->setParamMotionNoise(0.1, 0.1)) return -1;
     }
 
     dg::Map map = getETRISyntheticMap();
@@ -318,6 +319,7 @@ int testLocETRIRealMap(const std::string localizer_name = "SimpleLocalizer", int
     {
         if (!localizer_ekf->setParamGPSNoise(1, 1)) return -1;
         if (!localizer_ekf->setParamValue("offset_gps", { 1, 0 })) return -1;
+        if (!localizer_ekf->setParamMotionNoise(0.1, 0.1)) return -1;
     }
 
     dg::RoadMap map;

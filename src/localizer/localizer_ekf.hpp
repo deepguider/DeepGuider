@@ -14,7 +14,7 @@ public:
         // Parameters
         m_threshold_time = 0.01;
         m_threshold_dist = 1;
-        m_noise_motion = cv::Mat::eye(3, 3, CV_64F);
+        m_noise_motion = cv::Mat::eye(2, 2, CV_64F);
         m_noise_gps = cv::Mat::eye(2, 2, CV_64F);
         m_noise_loc_clue = cv::Mat::eye(4, 4, CV_64F);
         m_offset_gps = cv::Vec2d(0, 0);
@@ -38,13 +38,10 @@ public:
         return n_read;
     }
 
-    bool setParamMotionNoise(double t, double v, double w, double vw = 0)
+    bool setParamMotionNoise(double vv, double ww, double vw = 0)
     {
         cv::AutoLock lock(m_mutex);
-        m_noise_motion = (cv::Mat_<double>(3, 3) <<
-            t,  0,  0,
-            0,  v, vw,
-            0, vw,  w);
+        m_noise_motion = (cv::Mat_<double>(2, 2) << vv * vv, vw * vw, vw * vw, ww * ww);
         return true;
     }
 
@@ -217,102 +214,99 @@ public:
 protected:
     virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
     {
+        const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
         const double dt = control.at<double>(0);
-        cv::Mat func;
+        cv::Mat func, W;
         if (control.rows == 1)
         {
             // The control input: [ dt ]
-            const double vt = state.at<double>(3) * dt;
-            const double wt = state.at<double>(4) * dt;
-            const double c = cos(state.at<double>(2) + wt / 2), s = sin(state.at<double>(2) + wt / 2);
+            const double v = state.at<double>(3), w = state.at<double>(4);
+            const double vt = v * dt, wt = w * dt;
+            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2);
             func = (cv::Mat_<double>(5, 1) <<
-                state.at<double>(0) + vt * c,
-                state.at<double>(1) + vt * s,
-                state.at<double>(2) + wt,
-                state.at<double>(3),
-                state.at<double>(4));
+                x + vt * c,
+                y + vt * s,
+                theta + wt,
+                v,
+                w);
             jacobian = (cv::Mat_<double>(5, 5) <<
                 1, 0, -vt * s, dt * c, -vt * dt * s / 2,
                 0, 1,  vt * c, dt * s,  vt * dt * c / 2,
                 0, 0,       1,      0,               dt,
                 0, 0,       0,      1,                0,
                 0, 0,       0,      0,                1);
-            cv::Mat W = (cv::Mat_<double>(5, 1) <<
-                state.at<double>(3) * c - vt * s,
-                state.at<double>(3) * s + vt * c,
-                state.at<double>(4),
-                0,
-                0);
-            noise = W * m_noise_motion.at<double>(0, 0) * W.t();
+            W = (cv::Mat_<double>(5, 2) <<
+                dt * c, -vt * dt * s / 2,
+                dt * s,  vt * dt * c / 2,
+                0, dt,
+                1, 0,
+                0, 1);
         }
         else if (control.rows == 2)
         {
             // The control input: [ dt, w_c ]
-            const double vt = state.at<double>(3) * dt;
-            const double wt = control.at<double>(1) * dt;
-            const double c = cos(state.at<double>(2) + wt / 2), s = sin(state.at<double>(2) + wt / 2);
+            const double v = state.at<double>(3), w = control.at<double>(1);
+            const double vt = v * dt, wt = w * dt;
+            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2);
             func = (cv::Mat_<double>(5, 1) <<
-                state.at<double>(0) + vt * cos(state.at<double>(2) + wt / 2),
-                state.at<double>(1) + vt * sin(state.at<double>(2) + wt / 2),
-                state.at<double>(2) + wt,
-                state.at<double>(3),
-                control.at<double>(1));
+                x + vt * c,
+                y + vt * s,
+                theta + wt,
+                v,
+                w);
             jacobian = (cv::Mat_<double>(5, 5) <<
                 1, 0, -vt * s, dt * c, 0,
                 0, 1,  vt * c, dt * s, 0,
                 0, 0,       1,      0, 0,
                 0, 0,       0,      1, 0,
                 0, 0,       0,      0, 0);
-            cv::Mat W = (cv::Mat_<double>(5, 2) <<
-                state.at<double>(3) * c - vt * s, -vt * dt * s / 2,
-                state.at<double>(3) * s + vt * c,  vt * dt * c / 2,
-                control.at<double>(1), dt,
-                0, 0,
+            W = (cv::Mat_<double>(5, 2) <<
+                dt * c, -vt * dt * s / 2,
+                dt * s,  vt * dt * c / 2,
+                0, dt,
+                1, 0,
                 0, 1);
-            cv::Mat S = (cv::Mat_<double>(2, 2) <<
-                m_noise_motion.at<double>(0, 0), m_noise_motion.at<double>(0, 2),
-                m_noise_motion.at<double>(2, 0), m_noise_motion.at<double>(2, 2));
-            noise = W * S * W.t();
         }
         else if (control.rows >= 3)
         {
             // The control input: [ dt, v_c, w_c ]
-            const double vt = control.at<double>(1) * dt;
-            const double wt = control.at<double>(2) * dt;
-            const double c = cos(state.at<double>(2) + wt / 2), s = sin(state.at<double>(2) + wt / 2);
+            const double v = control.at<double>(1), w = control.at<double>(2);
+            const double vt = v * dt, wt = w * dt;
+            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2);
             func = (cv::Mat_<double>(5, 1) <<
-                state.at<double>(0) + vt * cos(state.at<double>(2) + wt / 2),
-                state.at<double>(1) + vt * sin(state.at<double>(2) + wt / 2),
-                state.at<double>(2) + wt,
-                control.at<double>(1),
-                control.at<double>(2));
+                x + vt * c,
+                y + vt * s,
+                theta + wt,
+                v,
+                w);
             jacobian = (cv::Mat_<double>(5, 5) <<
                 1, 0, -vt * s, 0, 0,
                 0, 1,  vt * c, 0, 0,
                 0, 0,       1, 0, 0,
                 0, 0,       0, 0, 0,
                 0, 0,       0, 0, 0);
-            cv::Mat W = (cv::Mat_<double>(5, 3) <<
-                state.at<double>(3) * c - vt * s, dt * c, -vt * dt * s / 2,
-                state.at<double>(3) * s + vt * c, dt * s, vt * dt * c / 2,
-                control.at<double>(1), 0, dt,
-                0, 1, 0,
-                0, 0, 1);
-            noise = W * m_noise_motion * W.t();
+            W = (cv::Mat_<double>(5, 2) <<
+                dt * c, -vt * dt * s / 2,
+                dt * s,  vt * dt * c / 2,
+                0, dt,
+                1, 0,
+                0, 1);
         }
+        if (!W.empty()) noise = W * m_noise_motion * W.t();
         return func;
     }
 
     virtual cv::Mat observeFunc(const cv::Mat& state, const cv::Mat& measure, cv::Mat& jacobian, cv::Mat& noise)
     {
+        const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
         cv::Mat func;
         if (measure.rows == 2)
         {
             // Measurement: [ x_{GPS}, y_{GPS} ]
-            const double c = cos(state.at<double>(2) + m_offset_gps(1)), s = sin(state.at<double>(2) + m_offset_gps(1));
+            const double c = cos(theta + m_offset_gps(1)), s = sin(theta + m_offset_gps(1));
             func = (cv::Mat_<double>(2, 1) <<
-                state.at<double>(0) + m_offset_gps(0) * c,
-                state.at<double>(1) + m_offset_gps(0) * s);
+                x + m_offset_gps(0) * c,
+                y + m_offset_gps(0) * s);
             jacobian = (cv::Mat_<double>(2, 5) <<
                 1, 0, -m_offset_gps(0) * s, 0, 0,
                 0, 1,  m_offset_gps(0) * c, 0, 0);
@@ -321,17 +315,17 @@ protected:
         else if (measure.rows >= 4)
         {
             // Measurement: [ rho_{id}, phi_{id}, x_{id}, y_{id} ]
-            const double dx = measure.at<double>(2) - state.at<double>(0);
-            const double dy = measure.at<double>(3) - state.at<double>(1);
+            const double dx = measure.at<double>(2) - x;
+            const double dy = measure.at<double>(3) - y;
             const double r = sqrt(dx * dx + dy * dy);
             func = (cv::Mat_<double>(4, 1) <<
                 r,
-                atan2(dy, dx),
+                cx::trimRad(atan2(dy, dx) - theta),
                 measure.at<double>(2),
                 measure.at<double>(3));
             jacobian = (cv::Mat_<double>(4, 5) <<
-               -2 * dx / r, -2 * dy / r, 0, 0, 0,
-                dy / r / r, -dx / r / r, 0, 0, 0,
+               -2 * dx / r, -2 * dy / r,  0, 0, 0,
+                dy / r / r, -dx / r / r, -1, 0, 0,
                 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0);
             noise = m_noise_loc_clue;
@@ -379,6 +373,20 @@ protected:
         if (control.rows == 1)
         {
             cv::Vec3d control_fake(control.at<double>(0), 0, 0); // Add fake observation
+            return EKFLocalizer::transitFunc(state, cv::Mat(control_fake), jacobian, noise);
+        }
+        return EKFLocalizer::transitFunc(state, control, jacobian, noise);
+    }
+};
+
+class EKFLocalizerPositive : public EKFLocalizer
+{
+protected:
+    virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
+    {
+        if (control.rows == 1)
+        {
+            cv::Vec3d control_fake(control.at<double>(0), 1e-3, 0); // Add fake observation
             return EKFLocalizer::transitFunc(state, cv::Mat(control_fake), jacobian, noise);
         }
         return EKFLocalizer::transitFunc(state, control, jacobian, noise);

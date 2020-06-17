@@ -47,8 +47,8 @@ int main()
 
     VVS_RUN_TEST(testLocETRISyntheticMap());
     VVS_RUN_TEST(testLocETRIRealMap());
-    VVS_RUN_TEST(testLocETRISyntheticMap("EKFLocalizerZeroCtrl"));
-    VVS_RUN_TEST(testLocETRIRealMap("EKFLocalizerZeroCtrl"));
+    VVS_RUN_TEST(testLocETRISyntheticMap("EKFLocalizerZeroGyro"));
+    VVS_RUN_TEST(testLocETRIRealMap("EKFLocalizerZeroGyro"));
 
     return 0;
 }
