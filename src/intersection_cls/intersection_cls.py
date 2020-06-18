@@ -5,6 +5,7 @@ from torchvision import transforms
 from lib_intersection_cls.initialize_network import initialize_network
 from PIL import Image
 import torch.nn as nn
+import time
 
 class IntersectionClassifier:
     def __init__(self):
@@ -20,11 +21,11 @@ class IntersectionClassifier:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # initialize network
-        network_type = 'resnet34_tnetnlbv2'
+        network_type = 'resnet18'
         self.network, _ = initialize_network(network_type, output_class=2)
 
         # load network
-        resume_load = torch.load('./data_intersection_cls/v0.3_binary_resnet34_tnetnlbv2_4_best.pth')
+        resume_load = torch.load('./data_intersection_cls/v0.14_binary_resnet18_dropprob0.75_dropblocksize3_3_best.pth')
         self.network.load_state_dict(resume_load['model_state_dict'])
 
         self.network.eval()
@@ -76,7 +77,14 @@ if __name__ == "__main__":
     classifier.initialize()
 
     # run classifier
+    tic = time.perf_counter()
     cls, prob = classifier.apply(nonintersection_img)
+    toc = time.perf_counter()
+    print(f'processing time: {toc - tic:0.4f} seconds')
     print('nonintersection_img demo: class ', cls, ' confidence ', prob)
+
+    tic = time.perf_counter()
     cls, prob = classifier.apply(intersection_img)
+    toc = time.perf_counter()
+    print(f'processing time: {toc - tic:0.4f} seconds')
     print('intersection_img demo: class ', cls, ' confidence ', prob)

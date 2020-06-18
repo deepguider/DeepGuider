@@ -16,6 +16,7 @@
     - Pillow 6.1.0
     - PyTorch 1.2.0
     - Torchvision 0.4.0
+    - Dropblock 0.3.0
     
 ### Run demo
 - Run demo from this current folder `python intersection_cls.py`
