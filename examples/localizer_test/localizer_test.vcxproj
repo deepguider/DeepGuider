@@ -104,6 +104,7 @@
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_base.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_ekf.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_ekf_variants.hpp" />
     <ClInclude Include="..\..\src\localizer\road_map.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_simple.hpp" />
     <ClInclude Include="test_core_type.hpp" />

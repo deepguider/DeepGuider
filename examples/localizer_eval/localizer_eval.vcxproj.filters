@@ -56,5 +56,8 @@
     <ClInclude Include="..\..\src\localizer\localizer_base.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\localizer\localizer_ekf_variants.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -67,7 +67,7 @@ public:
         return Pose2(m_state_vec.at<double>(0), m_state_vec.at<double>(1), m_state_vec.at<double>(2));
     }
 
-    Polar2 getVelocity() const
+    virtual Polar2 getVelocity() const
     {
         cv::AutoLock lock(m_mutex);
         return Polar2(m_state_vec.at<double>(3), m_state_vec.at<double>(4));
@@ -101,6 +101,7 @@ public:
             double interval = time_curr - m_time_last_update;
             if (interval > DBL_EPSILON && predict(cv::Vec3d(interval, v, w)))
             {
+                m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
                 m_time_last_update = time_curr;
                 return true;
             }
@@ -119,6 +120,7 @@ public:
             double interval = time - m_time_last_update;
             if (interval > DBL_EPSILON && predict(cv::Vec3d(interval, delta.lin / dt, delta.ang / dt)))
             {
+                m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
                 m_time_last_update = time;
                 return true;
             }
@@ -136,6 +138,7 @@ public:
             double interval = time_curr - m_time_last_update;
             if (interval > DBL_EPSILON && predict(cv::Vec2d(interval, w)))
             {
+                m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
                 m_time_last_update = time_curr;
                 return true;
             }
@@ -158,6 +161,7 @@ public:
         if (interval > m_threshold_time) predict(interval);
         if (correct(cv::Vec2d(xy.x, xy.y)))
         {
+            m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
             m_time_last_update = time;
             return true;
         }
@@ -189,6 +193,7 @@ public:
         // TODO: Deal with missing observation
         if (obs.lin > m_threshold_dist && obs.ang < CV_PI && correct(cv::Vec4d(obs.lin, obs.ang, node->data.x, node->data.y)))
         {
+            m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
             m_time_last_update = time;
             return true;
         }
@@ -214,8 +219,8 @@ public:
 protected:
     virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
     {
-        const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
         const double dt = control.at<double>(0);
+        const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
         cv::Mat func, W;
         if (control.rows == 1)
         {
@@ -350,48 +355,6 @@ protected:
     double m_time_last_delta;
 
 }; // End of 'EKFLocalizer'
-
-class EKFLocalizerZeroGyro : public EKFLocalizer
-{
-protected:
-    virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
-    {
-        if (control.rows == 1)
-        {
-            cv::Vec2d control_fake(control.at<double>(0), 0); // Add fake observation
-            return EKFLocalizer::transitFunc(state, cv::Mat(control_fake), jacobian, noise);
-        }
-        return EKFLocalizer::transitFunc(state, control, jacobian, noise);
-    }
-};
-
-class EKFLocalizerZeroOdom : public EKFLocalizer
-{
-protected:
-    virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
-    {
-        if (control.rows == 1)
-        {
-            cv::Vec3d control_fake(control.at<double>(0), 0, 0); // Add fake observation
-            return EKFLocalizer::transitFunc(state, cv::Mat(control_fake), jacobian, noise);
-        }
-        return EKFLocalizer::transitFunc(state, control, jacobian, noise);
-    }
-};
-
-class EKFLocalizerPositive : public EKFLocalizer
-{
-protected:
-    virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
-    {
-        if (control.rows == 1)
-        {
-            cv::Vec3d control_fake(control.at<double>(0), 1e-3, 0); // Add fake observation
-            return EKFLocalizer::transitFunc(state, cv::Mat(control_fake), jacobian, noise);
-        }
-        return EKFLocalizer::transitFunc(state, control, jacobian, noise);
-    }
-};
 
 } // End of 'dg'
 

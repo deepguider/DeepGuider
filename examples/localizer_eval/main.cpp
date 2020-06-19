@@ -31,7 +31,13 @@ int runLocalizer(const string& localizer_name, const string& traj_name, const ve
     if (localizer_name == "EKFLocalizer") localizer = cv::makePtr<dg::EKFLocalizer>();
     else if (localizer_name == "EKFLocalizerZeroGyro") localizer = cv::makePtr<dg::EKFLocalizerZeroGyro>();
     else if (localizer_name == "EKFLocalizerZeroOdom") localizer = cv::makePtr<dg::EKFLocalizerZeroOdom>();
-    else if (localizer_name == "EKFLocalizerPositive") localizer = cv::makePtr<dg::EKFLocalizerPositive>();
+    else if (localizer_name == "EKFLocalizerPostOdom") localizer = cv::makePtr<dg::EKFLocalizerPostOdom>();
+    else if (localizer_name == "EKFLocalizerSlowGyro") localizer = cv::makePtr<dg::EKFLocalizerSlowGyro>();
+    else if (localizer_name == "EKFLocalizerHyperTan") localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
+    else if (localizer_name == "EKFLocalizerVelModel") localizer = cv::makePtr<dg::EKFLocalizerVelModel>();
+    else if (localizer_name == "EKFLocalizerFreqPred") localizer = cv::makePtr<dg::EKFLocalizerFreqPred>();
+    else if (localizer_name == "EKFLocalizerVTAdjust") localizer = cv::makePtr<dg::EKFLocalizerVTAdjust>();
+    else if (localizer_name == "EKFLocalizerObsvFunc") localizer = cv::makePtr<dg::EKFLocalizerObsvFunc>();
     if (localizer.empty()) return -1;
 
     cv::Ptr<dg::EKFLocalizer> localizer_ekf = localizer.dynamicCast<dg::EKFLocalizer>();
@@ -78,61 +84,68 @@ int runLocalizerAll(const string& dataset, const string& result_name, double gps
     fprintf(gps_file, "# Time[sec], X[m], Y[m], Theta[rad], LinVel[m/s], AngVel[rad/s]\n");
     for (auto gps = gps_data.begin(); gps != gps_data.end(); gps++)
         fprintf(gps_file, "%f, %f, %f, 0, 0, 0\n", gps->val[0], gps->val[1], gps->val[2]);
+    fclose(gps_file);
 
     if (runLocalizer("EKFLocalizer", cv::format(result_name.c_str(), "CV"), gps_data, gps_noise, gps_offset, motion_noise, kidnap) < 0) return -1;
     if (runLocalizer("EKFLocalizerZeroGyro", cv::format(result_name.c_str(), "ZG"), gps_data, gps_noise, gps_offset, motion_noise, kidnap) < 0) return -1;
-    if (runLocalizer("EKFLocalizerZeroOdom", cv::format(result_name.c_str(), "ZO"), gps_data, gps_noise, gps_offset, motion_noise, kidnap) < 0) return -1;
-    if (runLocalizer("EKFLocalizerPositive", cv::format(result_name.c_str(), "PO"), gps_data, gps_noise, gps_offset, motion_noise, kidnap) < 0) return -1;
+    if (runLocalizer("EKFLocalizerHyperTan", cv::format(result_name.c_str(), "HT"), gps_data, gps_noise, gps_offset, motion_noise, kidnap) < 0) return -1;
+    if (runLocalizer("EKFLocalizerFreqPred", cv::format(result_name.c_str(), "FP"), gps_data, gps_noise, gps_offset, motion_noise, kidnap) < 0) return -1;
+    if (runLocalizer("EKFLocalizerVTAdjust", cv::format(result_name.c_str(), "VT"), gps_data, gps_noise, gps_offset, motion_noise, kidnap) < 0) return -1;
+    if (runLocalizer("EKFLocalizerObsvFunc", cv::format(result_name.c_str(), "OF"), gps_data, gps_noise, gps_offset, motion_noise, kidnap) < 0) return -1;
     return 0;
 }
 int main()
 {
-    double gps_noise = 0.5;
-    //vector<double> motion_noise_set = { 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    vector<double> motion_noise_set = { 0.1, 1 };
+    const double gps_noise = 0.5;
+    //const vector<double> motion_noise_set = { 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    const vector<double> motion_noise_set = { 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1 };
+    const int trial_num = 10;
     for (auto motion_noise = motion_noise_set.begin(); motion_noise != motion_noise_set.end(); motion_noise++)
     {
         printf("Motion Noise: %.2f\n", *motion_noise);
 
-        dg::Polar2 gps_offset;
-        bool kidnap = false;
-        string config_text;
+        for (int trial = 0; trial < trial_num; trial++)
+        {
+            dg::Polar2 gps_offset;
+            bool kidnap = false;
+            string config_text, postfix = cv::format(".%03d.csv", trial);
 
-        gps_offset.lin = 1;
-        kidnap = false;
-        config_text = cv::format("%.1f,%.0f,%.02f,%d", gps_noise, gps_offset.lin, *motion_noise, kidnap);
-        if (runLocalizerAll("data_localizer/Stop.pose.csv",   "data_localizer/results/Stop(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Line.pose.csv",   "data_localizer/results/Line(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Sine.pose.csv",   "data_localizer/results/Sine(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Square.pose.csv", "data_localizer/results/Square(" + config_text + ",%s).000.csv", gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Circle.pose.csv", "data_localizer/results/Circle(" + config_text + ",%s).000.csv", gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            gps_offset.lin = 1;
+            kidnap = false;
+            config_text = cv::format("%.1f,%.0f,%.02f,%d", gps_noise, gps_offset.lin, *motion_noise, kidnap);
+            if (runLocalizerAll("data_localizer/Stop.pose.csv",   "data_localizer/results/Stop(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            if (runLocalizerAll("data_localizer/Line.pose.csv",   "data_localizer/results/Line(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            if (runLocalizerAll("data_localizer/Sine.pose.csv",   "data_localizer/results/Sine(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            if (runLocalizerAll("data_localizer/Square.pose.csv", "data_localizer/results/Square(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            if (runLocalizerAll("data_localizer/Circle.pose.csv", "data_localizer/results/Circle(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
 
-        gps_offset.lin = 1;
-        kidnap = true;
-        config_text = cv::format("%.1f,%.0f,%.02f,%d", gps_noise, gps_offset.lin, *motion_noise, kidnap);
-        if (runLocalizerAll("data_localizer/Stop.pose.csv",   "data_localizer/results/Stop(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Line.pose.csv",   "data_localizer/results/Line(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Sine.pose.csv",   "data_localizer/results/Sine(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Square.pose.csv", "data_localizer/results/Square(" + config_text + ",%s).000.csv", gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Circle.pose.csv", "data_localizer/results/Circle(" + config_text + ",%s).000.csv", gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //gps_offset.lin = 1;
+            //kidnap = true;
+            //config_text = cv::format("%.1f,%.0f,%.02f,%d", gps_noise, gps_offset.lin, *motion_noise, kidnap);
+            //if (runLocalizerAll("data_localizer/Stop.pose.csv",   "data_localizer/results/Stop(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Line.pose.csv",   "data_localizer/results/Line(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Sine.pose.csv",   "data_localizer/results/Sine(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Square.pose.csv", "data_localizer/results/Square(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Circle.pose.csv", "data_localizer/results/Circle(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
 
-        gps_offset.lin = 0;
-        kidnap = false;
-        config_text = cv::format("%.1f,%.0f,%.02f,%d", gps_noise, gps_offset.lin, *motion_noise, kidnap);
-        if (runLocalizerAll("data_localizer/Stop.pose.csv",   "data_localizer/results/Stop(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Line.pose.csv",   "data_localizer/results/Line(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Sine.pose.csv",   "data_localizer/results/Sine(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Square.pose.csv", "data_localizer/results/Square(" + config_text + ",%s).000.csv", gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Circle.pose.csv", "data_localizer/results/Circle(" + config_text + ",%s).000.csv", gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //gps_offset.lin = 0;
+            //kidnap = false;
+            //config_text = cv::format("%.1f,%.0f,%.02f,%d", gps_noise, gps_offset.lin, *motion_noise, kidnap);
+            //if (runLocalizerAll("data_localizer/Stop.pose.csv",   "data_localizer/results/Stop(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Line.pose.csv",   "data_localizer/results/Line(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Sine.pose.csv",   "data_localizer/results/Sine(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Square.pose.csv", "data_localizer/results/Square(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Circle.pose.csv", "data_localizer/results/Circle(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
 
-        gps_offset.lin = 0;
-        kidnap = true;
-        config_text = cv::format("%.1f,%.0f,%.02f,%d", gps_noise, gps_offset.lin, *motion_noise, kidnap);
-        if (runLocalizerAll("data_localizer/Stop.pose.csv",   "data_localizer/results/Stop(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Line.pose.csv",   "data_localizer/results/Line(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Sine.pose.csv",   "data_localizer/results/Sine(" + config_text + ",%s).000.csv",   gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Square.pose.csv", "data_localizer/results/Square(" + config_text + ",%s).000.csv", gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
-        if (runLocalizerAll("data_localizer/Circle.pose.csv", "data_localizer/results/Circle(" + config_text + ",%s).000.csv", gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //gps_offset.lin = 0;
+            //kidnap = true;
+            //config_text = cv::format("%.1f,%.0f,%.02f,%d", gps_noise, gps_offset.lin, *motion_noise, kidnap);
+            //if (runLocalizerAll("data_localizer/Stop.pose.csv",   "data_localizer/results/Stop(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Line.pose.csv",   "data_localizer/results/Line(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Sine.pose.csv",   "data_localizer/results/Sine(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Square.pose.csv", "data_localizer/results/Square(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+            //if (runLocalizerAll("data_localizer/Circle.pose.csv", "data_localizer/results/Circle(" + config_text + ",%s)" + postfix, gps_noise, gps_offset, *motion_noise, kidnap) < 0) return -1;
+        }
     }
     return 0;
 }

@@ -248,7 +248,7 @@ int runLocalizerETRIGPS(dg::BaseLocalizer* localizer, dg::SimpleRoadPainter* pai
             cv::Point pose_body = painter->cvtMeter2Pixel(pose_m, map_info);
             cv::Point pose_head = painter->cvtMeter2Pixel(pose_m + dg::Point2(robot_radius * cos(pose_m.theta), robot_radius * sin(pose_m.theta)), map_info);
             cv::line(image, pose_body, pose_head, cx::COLOR_GREEN, 2);
-            cv::String info_topo = cv::format("Node ID: %zd, Edge Idx: %d, Dist: %.3f (Lat: %.6f, Lon: %.6f)", pose_t.node_id, pose_t.edge_idx, pose_t.dist, gps_datum.lat, gps_datum.lon);
+            cv::String info_topo = cv::format("Node ID: %zd, Edge Idx: %d, Dist: %.3f (Lat: %.6f, Lon: %.6f, Ori: %.1f)", pose_t.node_id, pose_t.edge_idx, pose_t.dist, gps_datum.lat, gps_datum.lon, cx::cvtRad2Deg(pose_m.theta));
             dg::EKFLocalizer* localizer_ekf = dynamic_cast<dg::EKFLocalizer*>(localizer);
             if (localizer_ekf != nullptr)
             {
@@ -267,23 +267,36 @@ int runLocalizerETRIGPS(dg::BaseLocalizer* localizer, dg::SimpleRoadPainter* pai
     return 0;
 }
 
-int testLocETRISyntheticMap(const std::string localizer_name = "SimpleLocalizer", int wait_msec = 1)
+cv::Ptr<dg::BaseLocalizer> getLocalizer(const std::string localizer_name)
 {
-    // Prepare the localizer
     cv::Ptr<dg::BaseLocalizer> localizer;
     if (localizer_name == "SimpleLocalizer") localizer = cv::makePtr<dg::SimpleLocalizer>();
     else if (localizer_name == "EKFLocalizer") localizer = cv::makePtr<dg::EKFLocalizer>();
     else if (localizer_name == "EKFLocalizerZeroGyro") localizer = cv::makePtr<dg::EKFLocalizerZeroGyro>();
     else if (localizer_name == "EKFLocalizerZeroOdom") localizer = cv::makePtr<dg::EKFLocalizerZeroOdom>();
-    if (localizer.empty()) return -1;
+    else if (localizer_name == "EKFLocalizerPostOdom") localizer = cv::makePtr<dg::EKFLocalizerPostOdom>();
+    else if (localizer_name == "EKFLocalizerSlowGyro") localizer = cv::makePtr<dg::EKFLocalizerSlowGyro>();
+    else if (localizer_name == "EKFLocalizerHyperTan") localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
+    else if (localizer_name == "EKFLocalizerVelModel") localizer = cv::makePtr<dg::EKFLocalizerVelModel>();
+    else if (localizer_name == "EKFLocalizerFreqPred") localizer = cv::makePtr<dg::EKFLocalizerFreqPred>();
+    else if (localizer_name == "EKFLocalizerVTAdjust") localizer = cv::makePtr<dg::EKFLocalizerVTAdjust>();
+    else if (localizer_name == "EKFLocalizerObsvFunc") localizer = cv::makePtr<dg::EKFLocalizerObsvFunc>();
 
     cv::Ptr<dg::EKFLocalizer> localizer_ekf = localizer.dynamicCast<dg::EKFLocalizer>();
     if (!localizer_ekf.empty())
     {
-        if (!localizer_ekf->setParamGPSNoise(1, 1)) return -1;
-        if (!localizer_ekf->setParamValue("offset_gps", { 1, 0 })) return -1;
-        if (!localizer_ekf->setParamMotionNoise(0.1, 0.1)) return -1;
+        if (!localizer_ekf->setParamGPSNoise(1, 1)) return nullptr;
+        if (!localizer_ekf->setParamValue("offset_gps", { 1, 0 })) return nullptr;
+        if (!localizer_ekf->setParamMotionNoise(0.1, 0.1)) return nullptr;
     }
+    return localizer;
+}
+
+int testLocETRISyntheticMap(const std::string localizer_name = "SimpleLocalizer", int wait_msec = 1)
+{
+    // Prepare the localizer and its map
+    cv::Ptr<dg::BaseLocalizer> localizer = getLocalizer(localizer_name);
+    if (localizer.empty()) return -1;
 
     dg::Map map = getETRISyntheticMap();
     VVS_CHECK_TRUE(!map.nodes.empty());
@@ -306,21 +319,9 @@ int testLocETRISyntheticMap(const std::string localizer_name = "SimpleLocalizer"
 
 int testLocETRIRealMap(const std::string localizer_name = "SimpleLocalizer", int wait_msec = 1, const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442))
 {
-    // Prepare the localizer
-    cv::Ptr<dg::BaseLocalizer> localizer;
-    if (localizer_name == "SimpleLocalizer") localizer = cv::makePtr<dg::SimpleLocalizer>();
-    else if (localizer_name == "EKFLocalizer") localizer = cv::makePtr<dg::EKFLocalizer>();
-    else if (localizer_name == "EKFLocalizerZeroGyro") localizer = cv::makePtr<dg::EKFLocalizerZeroGyro>();
-    else if (localizer_name == "EKFLocalizerZeroOdom") localizer = cv::makePtr<dg::EKFLocalizerZeroOdom>();
+    // Prepare the localizer and its map
+    cv::Ptr<dg::BaseLocalizer> localizer = getLocalizer(localizer_name);
     if (localizer.empty()) return -1;
-
-    cv::Ptr<dg::EKFLocalizer> localizer_ekf = localizer.dynamicCast<dg::EKFLocalizer>();
-    if (!localizer_ekf.empty())
-    {
-        if (!localizer_ekf->setParamGPSNoise(1, 1)) return -1;
-        if (!localizer_ekf->setParamValue("offset_gps", { 1, 0 })) return -1;
-        if (!localizer_ekf->setParamMotionNoise(0.1, 0.1)) return -1;
-    }
 
     dg::RoadMap map;
     VVS_CHECK_TRUE(map.load(map_file));

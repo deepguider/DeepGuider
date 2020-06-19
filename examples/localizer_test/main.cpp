@@ -8,6 +8,8 @@
 
 int main()
 {
+    return testLocETRIRealMap("EKFLocalizer");
+
     // Test 'core' module
     // 1. Test basic data structures
     VVS_RUN_TEST(testCoreLatLon());

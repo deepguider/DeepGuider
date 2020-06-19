@@ -9,5 +9,6 @@
 #include "localizer/localizer_base.hpp"
 #include "localizer/localizer_simple.hpp"
 #include "localizer/localizer_ekf.hpp"
+#include "localizer/localizer_ekf_variants.hpp"
 
 #endif // End of '__DG_LOCALIZER__'
