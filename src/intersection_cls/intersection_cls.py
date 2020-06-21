@@ -76,15 +76,24 @@ if __name__ == "__main__":
     classifier = IntersectionClassifier()
     classifier.initialize()
 
-    # run classifier
-    tic = time.perf_counter()
-    cls, prob = classifier.apply(nonintersection_img)
-    toc = time.perf_counter()
-    print(f'processing time: {toc - tic:0.4f} seconds')
-    print('nonintersection_img demo: class ', cls, ' confidence ', prob)
+    total_time = 0
 
-    tic = time.perf_counter()
-    cls, prob = classifier.apply(intersection_img)
-    toc = time.perf_counter()
-    print(f'processing time: {toc - tic:0.4f} seconds')
-    print('intersection_img demo: class ', cls, ' confidence ', prob)
+    for _ in range(20):
+        # run classifier
+        tic = time.perf_counter()
+        cls, prob = classifier.apply(nonintersection_img)
+        toc = time.perf_counter()
+        print(f'processing time: {toc - tic:0.4f} seconds')
+        print('nonintersection_img demo: class ', cls, ' confidence ', prob)
+
+        total_time += (toc-tic)
+
+        tic = time.perf_counter()
+        cls, prob = classifier.apply(intersection_img)
+        toc = time.perf_counter()
+        print(f'processing time: {toc - tic:0.4f} seconds')
+        print('intersection_img demo: class ', cls, ' confidence ', prob)
+
+        total_time += (toc-tic)
+
+    print(f'average time on apply: {total_time/40:0.4f}')
