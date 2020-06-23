@@ -1,10 +1,14 @@
 import numpy as np
 
-save_file = 'Line.py.csv'
-dt = 0.1    # [sec]
-v_max = 1   # [m/s]
-v_acc = 1   # [m/s^2]
-L = 100     # [m]
+gps_freq = 10       # [Hz]
+sim_freq = 100      # [Hz]
+wait_time = 0       # [sec]
+v_max = 1           # [m/s]
+v_acc = 1           # [m/s^2]
+traj_length = 100   # [m]
+
+save_file = 'Line(%02.0fHz,%02.0fs).pose.csv' % (gps_freq, wait_time)
+dt = 1. / sim_freq
 
 data = [ [0, 0, 0, 0, 0, 0] ]
 while True:
@@ -15,17 +19,20 @@ while True:
     v = data[-1][4]
     w = data[-1][5]
 
-    t = t + dt
-    if v < v_max: v += v_acc * dt
-    if v > v_max: v = v_max
-    w = 0
+    for i in range(int(sim_freq / gps_freq)):
+        t = t + dt
+        if t >= wait_time:
+            if v < v_max: v += v_acc * dt
+            if v > v_max: v = v_max
+            w = 0
 
-    x = x + v * dt * np.cos(theta + w * dt / 2)
-    y = y + v * dt * np.sin(theta + w * dt / 2)
-    theta = theta + w * dt
+        x = x + v * dt * np.cos(theta + w * dt / 2)
+        y = y + v * dt * np.sin(theta + w * dt / 2)
+        theta = theta + w * dt
+
     data.append([t, x, y, theta, v, w])
 
-    if x > L: break
+    if x >= traj_length: break
 
 comment = '# Time [sec], X [m], Y [m], Theta [rad], LinVel [m/s], AngVel [rad/s]'
 np.savetxt(save_file, data, fmt='%.6f', delimiter=', ', header=comment)
