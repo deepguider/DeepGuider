@@ -93,13 +93,13 @@ int runLocalizerAll(const string& dataset, const string& result_name, double gps
 }
 int main()
 {
-    const vector<double> gps_noise_set = { 0.5 };
+    const vector<double> gps_noise_set = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
     const vector<double> gps_offset_set = { 0, 1 };
-    const vector<double> gps_freq_set = { 1, 2, 4, 5, 10 };
-    const vector<double> wait_time_set = { 0, 10 };
-    const vector<bool>   kidnap_set = { false, true };
+    const vector<double> gps_freq_set = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    const vector<double> wait_time_set = { 0 };
+    const vector<bool>   kidnap_set = { true };
     //const vector<double> motion_noise_set = { 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    const vector<double> motion_noise_set = { 0.05, 0.1, 0.5, 1, 5 };
+    const vector<double> motion_noise_set = { 0.1, 0.5 };
     //const vector<string> traj_set = { "Stop", "Line", "Circle", "Sine", "Square" };
     const vector<string> traj_set = { "Sine" };
     const int trial_num = 100;
