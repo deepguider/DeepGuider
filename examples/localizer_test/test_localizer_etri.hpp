@@ -200,7 +200,7 @@ int runLocalizerETRIGPS(dg::BaseLocalizer* localizer, dg::SimpleRoadPainter* pai
     dg::CanvasInfo map_info = painter->getCanvasInfo(road_map, map_image.size());
 
     // Prepare the ETRI dataset
-    auto gps_data = getETRIGPSData();
+    auto gps_data = getETRIGPSData(gps_file);
     VVS_CHECK_TRUE(!gps_data.empty());
     cv::VideoCapture video_data;
     VVS_CHECK_TRUE(video_data.open(video_file));
@@ -285,7 +285,7 @@ cv::Ptr<dg::BaseLocalizer> getLocalizer(const std::string localizer_name)
     cv::Ptr<dg::EKFLocalizer> localizer_ekf = localizer.dynamicCast<dg::EKFLocalizer>();
     if (!localizer_ekf.empty())
     {
-        if (!localizer_ekf->setParamGPSNoise(1, 1)) return nullptr;
+        if (!localizer_ekf->setParamGPSNoise(1)) return nullptr;
         if (!localizer_ekf->setParamValue("offset_gps", { 1, 0 })) return nullptr;
         if (!localizer_ekf->setParamMotionNoise(0.1, 0.1)) return nullptr;
     }

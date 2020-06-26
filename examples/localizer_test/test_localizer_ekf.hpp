@@ -7,7 +7,7 @@
 int testLocEKFGPS(double gps_noise = 0.3, const dg::Polar2& gps_offset = dg::Polar2(1, 0), double interval = 0.1, double velocity = 1)
 {
     dg::EKFLocalizer localizer;
-    if (!localizer.setParamGPSNoise(gps_noise, gps_noise)) return -1;
+    if (!localizer.setParamGPSNoise(gps_noise)) return -1;
     if (!localizer.setParamValue("offset_gps", { gps_offset.lin, gps_offset.ang })) return -1;
 
     printf("| Time [sec] | GPS Data [m] | Pose [m] [deg] | Velocity [m/s] [deg/s] | Confidence |\n");
@@ -36,7 +36,7 @@ int testLocEKFGyroGPS(double gyro_noise = 0.01, double gps_noise = 0.3, const dg
 {
     dg::EKFLocalizer localizer;
     if (!localizer.setParamMotionNoise(1, 1, gyro_noise)) return -1;
-    if (!localizer.setParamGPSNoise(gps_noise, gps_noise)) return -1;
+    if (!localizer.setParamGPSNoise(gps_noise)) return -1;
     if (!localizer.setParamValue("offset_gps", { gps_offset.lin, gps_offset.ang })) return -1;
 
     printf("| Time [sec] | Gyro Data [deg] | GPS Data [m] | Pose [m] [deg] | Velocity [m/s] [deg/s] | Confidence |\n");

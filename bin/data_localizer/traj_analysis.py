@@ -4,13 +4,13 @@ import matplotlib.ticker as ticker
 import glob
 import pickle
 
-def draw_graph(title, datax, datay, name=None, lwidth=2, lcolor=None, lalpha=1):
+def draw_graph(title, datax, datay, label=None, lwidth=2, lcolor=None, lalpha=1):
     plt.figure(title)
-    line, = plt.plot(datax, datay, label=name, linewidth=lwidth, alpha=lalpha)
+    line, = plt.plot(datax, datay, label=label, linewidth=lwidth, alpha=lalpha)
     if lcolor != None:
         line.set_color(lcolor)
 
-def config_graph(title, xlabel=None, ylabel=None, xrange=None, yrange=None, xy_equal=False, xy_equal_tick=(1, 10), show_title=False, show_legend=True, fsize=14):
+def config_graph(title, xlabel=None, ylabel=None, xrange=None, yrange=None, xy_equal=False, xy_tick=(1, 10), show_title=False, show_legend=True, fsize=14):
     plt.figure(title)
     plt.grid(which='both')
     if xlabel != None:
@@ -21,14 +21,14 @@ def config_graph(title, xlabel=None, ylabel=None, xrange=None, yrange=None, xy_e
         plt.xlim(xrange)
     if yrange != None:
         plt.ylim(yrange)
-    plt.xtick(None, fontsize=fsize)
-    plt.ytick(None, fontsize=fsize)
+    plt.xticks(None, fontsize=fsize)
+    plt.yticks(None, fontsize=fsize)
     if xy_equal:
         plt.gca().set_aspect('equal')
-        plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(xy_equal_tick[0]))
-        plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(xy_equal_tick[1]))
-        plt.gca().yaxis.set_minor_locator(ticker.MultipleLocator(xy_equal_tick[0]))
-        plt.gca().yaxis.set_major_locator(ticker.MultipleLocator(xy_equal_tick[1]))
+        plt.gca().xaxis.set_minor_locator(ticker.MultipleLocator(xy_tick[0]))
+        plt.gca().xaxis.set_major_locator(ticker.MultipleLocator(xy_tick[1]))
+        plt.gca().yaxis.set_minor_locator(ticker.MultipleLocator(xy_tick[0]))
+        plt.gca().yaxis.set_major_locator(ticker.MultipleLocator(xy_tick[1]))
         plt.gca().grid(which='minor', alpha=0.5)
         plt.gca().grid(which='major', alpha=1)
     if show_title:
@@ -55,7 +55,7 @@ def calc_traj_error(true, traj):
 def load_csv_file(fname):
     return np.loadtxt(fname, delimiter=',', comments='#')
 
-def draw_traj(fnames, show_more=True):
+def draw_traj(fnames, xy_tick=(1, 10), show_more=True):
     title = str(fnames);
     if (type(fnames) is not list) and (type(fnames) is not tuple):
         fnames = [ fnames ]
@@ -66,7 +66,7 @@ def draw_traj(fnames, show_more=True):
             draw_graph(title + ': Orientation', traj[:,0], traj[:,3] * 180 / np.pi, fname)
             draw_graph(title + ': Linear Velocity', traj[:,0], traj[:,4], fname)
             draw_graph(title + ': Angular Velocity', traj[:,0], traj[:,5] * 180 / np.pi, fname)
-    config_graph(title, 'X [m]', 'Y [m]', xy_equal=True)
+    config_graph(title, 'X [m]', 'Y [m]', xy_equal=True, xy_tick=xy_tick)
     if show_more:
         config_graph(title + ': Orientation', 'Time [sec]', 'Orientation [deg]')
         config_graph(title + ': Linear Velocity', 'Time [sec]', 'Linear Velocity [m/s]')
