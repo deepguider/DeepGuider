@@ -16,7 +16,7 @@ public:
         m_threshold_dist = 1;
         m_noise_motion = cv::Mat::eye(2, 2, CV_64F);
         m_noise_gps_normal = cv::Mat::eye(2, 2, CV_64F);
-        m_noise_gps_inaccurate = 10 * cv::Mat::eye(2, 2, CV_64F);
+        m_noise_gps_deadzone = 10 * cv::Mat::eye(2, 2, CV_64F);
         m_noise_gps = m_noise_gps_normal;
         m_noise_loc_clue = cv::Mat::eye(4, 4, CV_64F);
         m_offset_gps = cv::Vec2d(0, 0);
@@ -35,10 +35,10 @@ public:
         CX_LOAD_PARAM_COUNT(fn, "threshold_dist", m_threshold_dist, n_read);
         CX_LOAD_PARAM_COUNT(fn, "noise_motion", m_noise_motion, n_read);
         CX_LOAD_PARAM_COUNT(fn, "noise_gps_normal", m_noise_gps_normal, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "noise_gps_inaccurate", m_noise_gps_inaccurate, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "noise_gps_deadzone", m_noise_gps_deadzone, n_read);
         CX_LOAD_PARAM_COUNT(fn, "noise_loc_clue", m_noise_loc_clue, n_read);
         CX_LOAD_PARAM_COUNT(fn, "offset_gps", m_offset_gps, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "inaccurate_boxes", m_inaccurate_boxes, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "gps_dead_zones", m_gps_dead_zones, n_read);
         return n_read;
     }
 
@@ -53,7 +53,7 @@ public:
     {
         cv::AutoLock lock(m_mutex);
         if (normal > 0) m_noise_gps_normal = (cv::Mat_<double>(2, 2) << normal * normal, 0, 0, normal * normal);
-        if (inaccurate > 0) m_noise_gps_inaccurate = (cv::Mat_<double>(2, 2) << inaccurate * inaccurate, 0, 0, inaccurate * inaccurate);
+        if (inaccurate > 0) m_noise_gps_deadzone = (cv::Mat_<double>(2, 2) << inaccurate * inaccurate, 0, 0, inaccurate * inaccurate);
         return true;
     }
 
@@ -66,10 +66,10 @@ public:
         return true;
     }
 
-    bool addParamGPSInaccurateBox(const dg::Point2& p1, dg::Point2& p2)
+    bool addParamGPSDeadZone(const dg::Point2& p1, dg::Point2& p2)
     {
         cv::AutoLock lock(m_mutex);
-        m_inaccurate_boxes.push_back(cv::Rect2d(p1, p2));
+        m_gps_dead_zones.push_back(cv::Rect2d(p1, p2));
         return true;
     }
 
@@ -173,12 +173,12 @@ public:
         if (interval > m_threshold_time) predict(interval);
 
         bool is_normal = true;
-        for (auto box = m_inaccurate_boxes.begin(); box != m_inaccurate_boxes.end(); box++)
+        for (auto zone = m_gps_dead_zones.begin(); zone != m_gps_dead_zones.end(); zone++)
         {
-            if (xy.x > box->x && xy.y > box->y && xy.x < box->br().x && xy.y < box->br().y)
+            if (xy.x > zone->x && xy.y > zone->y && xy.x < zone->br().x && xy.y < zone->br().y)
             {
                 is_normal = false;
-                m_noise_gps = m_noise_gps_inaccurate;
+                m_noise_gps = m_noise_gps_deadzone;
                 break;
             }
         }
@@ -372,7 +372,7 @@ protected:
 
     cv::Mat m_noise_gps_normal;
 
-    cv::Mat m_noise_gps_inaccurate;
+    cv::Mat m_noise_gps_deadzone;
 
     cv::Mat m_noise_loc_clue;
 
@@ -382,7 +382,7 @@ protected:
 
     double m_time_last_delta;
 
-    std::vector<cv::Rect2d> m_inaccurate_boxes;
+    std::vector<cv::Rect2d> m_gps_dead_zones;
 
 }; // End of 'EKFLocalizer'
 

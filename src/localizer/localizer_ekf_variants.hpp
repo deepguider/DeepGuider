@@ -92,7 +92,7 @@ class EKFLocalizerHyperTan : public EKFLocalizer
 protected:
     virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
     {
-        const double bandwidth = 1;
+        const double w_op = 1;
         if (control.rows == 1)
         {
             // The control input: [ dt ]
@@ -100,7 +100,7 @@ protected:
             const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
             const double v = state.at<double>(3), w = state.at<double>(4);
             const double vt = v * dt, wt = w * dt;
-            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2), th = tanh(w / bandwidth);
+            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2), th = w_op * tanh(w / w_op);
             cv::Mat func = (cv::Mat_<double>(5, 1) <<
                 x + vt * c,
                 y + vt * s,
@@ -112,13 +112,51 @@ protected:
                 0, 1,  vt * c, dt * s,  vt * dt * c / 2,
                 0, 0, 1, 0, dt,
                 0, 0, 0, 1, 0,
-                0, 0, 0, 0, (1 - th * th) / bandwidth);
+                0, 0, 0, 0, 1 - th * th);
             cv::Mat W = (cv::Mat_<double>(5, 2) <<
                 dt * c, -vt * dt * s / 2,
                 dt * s,  vt * dt * c / 2,
                 0, dt,
                 1, 0,
-                0, (1 - th * th) / bandwidth);
+                0, 1 - th * th);
+            if (!W.empty()) noise = W * m_noise_motion * W.t();
+            return func;
+        }
+        return EKFLocalizer::transitFunc(state, control, jacobian, noise);
+    }
+};
+
+class EKFLocalizerZeroRate : public EKFLocalizer
+{
+protected:
+    virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
+    {
+        if (control.rows == 1)
+        {
+            // The control input: [ dt ]
+            const double dt = control.at<double>(0);
+            const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
+            const double v = state.at<double>(3), w = state.at<double>(4);
+            const double vt = v * dt, wt = w * dt;
+            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2);
+            cv::Mat func = (cv::Mat_<double>(5, 1) <<
+                x + vt * c,
+                y + vt * s,
+                theta + wt,
+                v,
+                0);
+            jacobian = (cv::Mat_<double>(5, 5) <<
+                1, 0, -vt * s, dt * c, -vt * dt * s / 2,
+                0, 1,  vt * c, dt * s,  vt * dt * c / 2,
+                0, 0, 1, 0, dt,
+                0, 0, 0, 1, 0,
+                0, 0, 0, 0, 0);
+            cv::Mat W = (cv::Mat_<double>(5, 2) <<
+                dt * c, -vt * dt * s / 2,
+                dt * s,  vt * dt * c / 2,
+                0, dt,
+                1, 0,
+                0, 0);
             if (!W.empty()) noise = W * m_noise_motion * W.t();
             return func;
         }

@@ -33,6 +33,7 @@ cv::Ptr<dg::EKFLocalizer> getEKFLocalizer(const string& name)
     else if (name == "EKFLocalizerPostOdom") localizer = cv::makePtr<dg::EKFLocalizerPostOdom>();
     else if (name == "EKFLocalizerSlowGyro") localizer = cv::makePtr<dg::EKFLocalizerSlowGyro>();
     else if (name == "EKFLocalizerHyperTan") localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
+    else if (name == "EKFLocalizerZeroRate") localizer = cv::makePtr<dg::EKFLocalizerZeroRate>();
     else if (name == "EKFLocalizerVelModel") localizer = cv::makePtr<dg::EKFLocalizerVelModel>();
     else if (name == "EKFLocalizerFreqPred") localizer = cv::makePtr<dg::EKFLocalizerFreqPred>();
     else if (name == "EKFLocalizerVTAdjust") localizer = cv::makePtr<dg::EKFLocalizerVTAdjust>();
@@ -124,7 +125,7 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
                     painter->cvtMeter2Pixel(pose, bg_info),
                     cv::Size2d(bg_info.ppm * covar_scale * sqrt(eval.at<double>(0)), bg_info.ppm * covar_scale * sqrt(eval.at<double>(1))),
                     static_cast<float>(cx::cvtRad2Deg(atan2(-evec.at<double>(1, 0), evec.at<double>(0, 0)))));
-                cv::ellipse(image, covar_box, robot_color, 2);
+                cv::ellipse(image, covar_box, robot_color, 2);                                                                                      // EKF covariance
             }
 
             double confidence = localizer->getPoseConfidence();
@@ -147,6 +148,14 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
 int runLocalizerSynthetic(const string& localizer_name, const string& gps_file, const string& traj_file = "",
     double gps_noise = 0.5, dg::Polar2 gps_offset = dg::Polar2(1, 0), double motion_noise = 0.1, const dg::Pose2& init = dg::Pose2(), int wait_msec = 1)
 {
+    // Prepare a localizer
+    cv::Ptr<dg::EKFLocalizer> localizer = getEKFLocalizer(localizer_name);
+    if (localizer.empty()) return -1;
+    if (!localizer->setParamMotionNoise(motion_noise, motion_noise)) return -1;
+    if (!localizer->setParamGPSNoise(gps_noise)) return -1;
+    if (!localizer->setParamValue("offset_gps", { gps_offset.lin, gps_offset.ang })) return -1;
+    if (!localizer->setState(cv::Vec<double, 5>(init.x, init.y, init.theta, 0, 0))) return -1;
+
     // Read GPS data
     vector<cv::Vec3d> gps_data = getGPSData(gps_file, gps_noise, gps_offset);
 
@@ -158,14 +167,7 @@ int runLocalizerSynthetic(const string& localizer_name, const string& gps_file, 
     if (!painter.setParamValue("grid_unit_pos", { 110, 10 })) return -2;
     if (!painter.setParamValue("axes_length", 2)) return -2;
 
-    // Run a localizer
-    cv::Ptr<dg::EKFLocalizer> localizer = getEKFLocalizer(localizer_name);
-    if (localizer.empty()) return -3;
-    if (!localizer->setParamMotionNoise(motion_noise, motion_noise)) return -3;
-    if (!localizer->setParamGPSNoise(gps_noise)) return -3;
-    if (!localizer->setParamValue("offset_gps", { gps_offset.lin, gps_offset.ang })) return -3;
-    if (!localizer->setState(cv::Vec<double, 5>(init.x, init.y, init.theta, 0, 0))) return -2;
-
+    // Run the localizer
     return runLocalizer(localizer, gps_data, "", wait_msec, &painter);
 }
 
@@ -267,50 +269,55 @@ int cvtGPSData2UTM(const string& gps_file = "data/191115_ETRI_asen_fix.csv", con
 }
 
 int runLocalizerETRI(const string& localizer_name, const string& gps_file, const string& traj_file = "",
-    double gps_noise = 0.5, dg::Polar2 gps_offset = dg::Polar2(1, 0), double motion_noise = 0.1, const dg::Pose2& init = dg::Pose2(), int wait_msec = 1, const string& background_file = "")
+    double gps_noise = 0.5, dg::Polar2 gps_offset = dg::Polar2(1, 0), double motion_noise = 0.1, const dg::Pose2& init = dg::Pose2(), int wait_msec = 1, const string& map_file = "", const string& background_file = "")
 {
+    // Prepare a localizer
+    cv::Ptr<dg::EKFLocalizer> localizer = getEKFLocalizer(localizer_name);
+    if (localizer.empty()) return -1;
+    if (!localizer->setParamMotionNoise(motion_noise, motion_noise)) return -1;
+    if (!localizer->setParamGPSNoise(gps_noise)) return -1;
+    if (!localizer->setParamValue("offset_gps", { gps_offset.lin, gps_offset.ang })) return -1;
+    if (!localizer->setState(cv::Vec<double, 5>(init.x, init.y, init.theta, 0, 0))) return -1;
+    if (!localizer->addParamGPSDeadZone(dg::Point2(550, 150), dg::Point2(950, 250))) return -1;
+    dg::RoadMap map;
+    if (!map_file.empty() && !map.load(map_file.c_str())) return -1;
+    if (!localizer->loadMap(map)) return -1;
+
     // Read GPS data
     cx::CSVReader csv;
-    if (!csv.open(gps_file)) return -1;
+    if (!csv.open(gps_file)) return -2;
     cx::CSVReader::Double2D csv_ext = csv.extDouble2D(1, { 0, 1, 2 }); // Skip the header
-    if (csv_ext.empty()) return -1;
+    if (csv_ext.empty()) return -2;
     vector<cv::Vec3d> gps_data;
     for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
     {
-        if (row->size() < 3) return -1;
+        if (row->size() < 3) return -2;
         gps_data.push_back(cv::Vec3d(row->at(0), row->at(1), row->at(2)));
     }
 
     // Prepare a painter for visualization
     dg::SimpleRoadPainter painter;
-    if (!painter.setParamValue("pixel_per_meter", 1.045)) return -2;
-    if (!painter.setParamValue("canvas_margin", 0)) return -2;
-    if (!painter.setParamValue("canvas_offset", { 344, 293 })) return -2;
-    if (!painter.setParamValue("grid_step", 100)) return -2;
-    if (!painter.setParamValue("grid_unit_pos", { 120, 10 })) return -2;
-    if (!painter.setParamValue("axes_length", 10)) return -2;
-    if (!painter.setParamValue("node_radius", 2)) return -2;
-    if (!painter.setParamValue("node_font_scale", 0)) return -2;
-    if (!painter.setParamValue("node_color", { 255, 100, 100 })) return -2;
-    if (!painter.setParamValue("edge_color", { 150, 100, 100 })) return -2;
-    if (!painter.setParamValue("edge_thickness", 1)) return -2;
+    if (!painter.setParamValue("pixel_per_meter", 1.045)) return -3;
+    if (!painter.setParamValue("canvas_margin", 0)) return -3;
+    if (!painter.setParamValue("canvas_offset", { 344, 293 })) return -3;
+    if (!painter.setParamValue("grid_step", 100)) return -3;
+    if (!painter.setParamValue("grid_unit_pos", { 120, 10 })) return -3;
+    if (!painter.setParamValue("axes_length", 10)) return -3;
+    if (!painter.setParamValue("node_radius", 2)) return -3;
+    if (!painter.setParamValue("node_font_scale", 0)) return -3;
+    if (!painter.setParamValue("node_color", { 255, 100, 100 })) return -3;
+    if (!painter.setParamValue("edge_color", { 150, 100, 100 })) return -3;
+    if (!painter.setParamValue("edge_thickness", 1)) return -3;
     cv::Mat background;
     if (!background_file.empty()) background = cv::imread(background_file);
+    if (!painter.drawMap(background, map)) return -3;
 
-    // Run a localizer
-    cv::Ptr<dg::EKFLocalizer> localizer = getEKFLocalizer(localizer_name);
-    if (localizer.empty()) return -3;
-    if (!localizer->setParamMotionNoise(motion_noise, motion_noise)) return -3;
-    if (!localizer->setParamGPSNoise(gps_noise)) return -3;
-    if (!localizer->setParamValue("offset_gps", { gps_offset.lin, gps_offset.ang })) return -3;
-    if (!localizer->setState(cv::Vec<double, 5>(init.x, init.y, init.theta, 0, 0))) return -2;
-    if (!localizer->addParamGPSInaccurateBox(dg::Point2(550, 150), dg::Point2(950, 250))) return -3;
-
+    // Run the localizer
     return runLocalizer(localizer, gps_data, traj_file, wait_msec, &painter, background, 10, cv::Vec3b(0, 0, 255), 300);
 }
 
 int main()
 {
+    return runLocalizerETRI("EKFLocalizerHyperTan", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.1, dg::Pose2(), 1, "data/NaverLabs_ETRI.csv", "data/NaverMap_ETRI(Satellite)_191127.png");
     return runLocalizerSynthetic("EKFLocalizerHyperTan", "data_localizer/synthetic_truth/Square(10Hz,00s).pose.csv", "", 0.5, dg::Polar2(1, 0), 0.1);
-    return runLocalizerETRI("EKFLocalizerHyperTan", "data_localizer/ETRI_191115_HT.traj.csv", "", 0.5, dg::Polar2(1, 0), 0.1, dg::Pose2(), 1, "data/NaverMap_ETRI(Satellite)_191127.png");
 }
