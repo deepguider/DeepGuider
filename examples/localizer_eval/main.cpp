@@ -41,7 +41,7 @@ cv::Ptr<dg::EKFLocalizer> getEKFLocalizer(const string& name)
 }
 
 int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& gps_data, const string& traj_name = "",
-    int wait_msec = -1, dg::SimpleRoadPainter* painter = nullptr, const cv::Mat& background = cv::Mat(), double robot_radius = 1, cv::Vec3b robot_color = cv::Vec3b(0, 0, 255))
+    int wait_msec = -1, dg::SimpleRoadPainter* painter = nullptr, const cv::Mat& background = cv::Mat(), double robot_radius = 1, cv::Vec3b robot_color = cv::Vec3b(0, 0, 255), double covar_scale = 30)
 {
     CV_DbgAssert(!localizer.empty() && !gps_data.empty());
 
@@ -107,15 +107,25 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
                 fprintf(traj_file, "%f, %f, %f, %f, %f, %f\n", gps_data[i][0], pose.x, pose.y, pose.theta, velocity.lin, velocity.ang);
 
             // Visualize the current state
-            if (i > 0) cv::line(bg_image, painter->cvtMeter2Pixel(pose_prev, bg_info), painter->cvtMeter2Pixel(pose, bg_info), robot_color, 2);
+            if (i > 0) cv::line(bg_image, painter->cvtMeter2Pixel(pose_prev, bg_info), painter->cvtMeter2Pixel(pose, bg_info), robot_color, 2);     // Trajectory
             pose_prev = pose;
-            cv::circle(bg_image, painter->cvtMeter2Pixel(gps, bg_info), 2, cv::Vec3b(64, 64, 64), -1);
+            cv::circle(bg_image, painter->cvtMeter2Pixel(gps, bg_info), 2, cv::Vec3b(64, 64, 64), -1);                                              // GPS data
             cv::Mat image = bg_image.clone();
-            painter->drawNode(image, bg_info, dg::Point2ID(0, pose.x, pose.y), robot_radius, 0, robot_color);
-            painter->drawNode(image, bg_info, dg::Point2ID(0, pose.x, pose.y), robot_radius, 0, cv::Vec3b(255, 255, 255) - robot_color, 1);
+            painter->drawNode(image, bg_info, dg::Point2ID(0, pose.x, pose.y), robot_radius, 0, robot_color);                                       // Robot
+            painter->drawNode(image, bg_info, dg::Point2ID(0, pose.x, pose.y), robot_radius, 0, cv::Vec3b(255, 255, 255) - robot_color, 1);         // Robot outline
             cv::Point pose_body = painter->cvtMeter2Pixel(pose, bg_info);
             cv::Point pose_head = painter->cvtMeter2Pixel(pose + dg::Point2(robot_radius * cos(pose.theta), robot_radius * sin(pose.theta)), bg_info);
-            cv::line(image, pose_body, pose_head, cv::Vec3b(255, 255, 255) - robot_color, 2);
+            cv::line(image, pose_body, pose_head, cv::Vec3b(255, 255, 255) - robot_color, 2);                                                       // Robot heading
+            if (covar_scale > 0)
+            {
+                cv::Mat covar = localizer->getStateCov(), eval, evec;
+                cv::eigen(covar(cv::Rect(0, 0, 2, 2)), eval, evec);
+                cv::RotatedRect covar_box(
+                    painter->cvtMeter2Pixel(pose, bg_info),
+                    cv::Size2d(bg_info.ppm * covar_scale * sqrt(eval.at<double>(0)), bg_info.ppm * covar_scale * sqrt(eval.at<double>(1))),
+                    static_cast<float>(cx::cvtRad2Deg(atan2(-evec.at<double>(1, 0), evec.at<double>(0, 0)))));
+                cv::ellipse(image, covar_box, robot_color, 2);
+            }
 
             double confidence = localizer->getPoseConfidence();
             string state_text = cv::format("Pose: %.3f, %.3f, %.1f / Velocity: %.3f, %.1f / Confidence: %.3f", pose.x, pose.y, cx::cvtRad2Deg(pose.theta), velocity.lin, cx::cvtRad2Deg(velocity.ang), confidence);
@@ -278,6 +288,7 @@ int runLocalizerETRI(const string& localizer_name, const string& gps_file, const
     if (!painter.setParamValue("canvas_offset", { 344, 293 })) return -2;
     if (!painter.setParamValue("grid_step", 100)) return -2;
     if (!painter.setParamValue("grid_unit_pos", { 120, 10 })) return -2;
+    if (!painter.setParamValue("axes_length", 10)) return -2;
     if (!painter.setParamValue("node_radius", 2)) return -2;
     if (!painter.setParamValue("node_font_scale", 0)) return -2;
     if (!painter.setParamValue("node_color", { 255, 100, 100 })) return -2;
@@ -293,9 +304,9 @@ int runLocalizerETRI(const string& localizer_name, const string& gps_file, const
     if (!localizer->setParamGPSNoise(gps_noise)) return -3;
     if (!localizer->setParamValue("offset_gps", { gps_offset.lin, gps_offset.ang })) return -3;
     if (!localizer->setState(cv::Vec<double, 5>(init.x, init.y, init.theta, 0, 0))) return -2;
-    if (!localizer->addParamGPSInaccurateBox(dg::Point2(700, 150), dg::Point2(900, 250))) return -3;
+    if (!localizer->addParamGPSInaccurateBox(dg::Point2(550, 150), dg::Point2(950, 250))) return -3;
 
-    return runLocalizer(localizer, gps_data, traj_file, wait_msec, &painter, background, 10);
+    return runLocalizer(localizer, gps_data, traj_file, wait_msec, &painter, background, 10, cv::Vec3b(0, 0, 255), 300);
 }
 
 int main()
