@@ -48,7 +48,7 @@ public:
         m_grid_unit_color = cv::Vec3b(64, 64, 64);
         m_grid_unit_pos = cv::Point(100, 10);
 
-        m_axes_length = 0.5;
+        m_axes_length = 1;
         m_axes_x_color = cx::COLOR_RED;
         m_axes_y_color = cx::COLOR_BLUE;
         m_axes_thickness = 2;
@@ -140,10 +140,9 @@ public:
         return false;
     }
 
-    bool drawMap(cv::Mat& image, Point2IDGraph& map) const
+    bool drawMap(cv::Mat& image, const CanvasInfo& info, Point2IDGraph& map = Point2IDGraph()) const
     {
         // Prepare a canvas
-        CanvasInfo info = getCanvasInfo(map, image.size());
         if (image.empty())
         {
             if (!clearCanvas(image, info, m_canvas_color))
@@ -166,9 +165,16 @@ public:
         return false;
     }
 
-    CanvasInfo getCanvasInfo(Point2IDGraph& map, const cv::Size& sz = cv::Size()) const
+    bool drawMap(cv::Mat& image, Point2IDGraph& map) const
     {
-        CanvasInfo info = buildCanvasInfo(map, m_pixel_per_meter, m_canvas_margin);
+        // Prepare a canvas
+        CanvasInfo info = getCanvasInfo(map, image.size());
+        return drawMap(image, info, map);
+    }
+
+    CanvasInfo getCanvasInfo(const cv::Rect2d& box, const cv::Size& sz = cv::Size()) const
+    {
+        CanvasInfo info = buildCanvasInfo(box, m_pixel_per_meter, m_canvas_margin);
         if (sz.width > 0 && sz.height > 0)
         {
             info.width = sz.width;
@@ -185,11 +191,9 @@ public:
         return info;
     }
 
-    static CanvasInfo buildCanvasInfo(Point2IDGraph& map, double ppm, double margin)
+    CanvasInfo getCanvasInfo(Point2IDGraph& map, const cv::Size& sz = cv::Size()) const
     {
-        CanvasInfo info;
-        info.ppm = ppm;
-        info.margin = margin;
+        cv::Rect2d box;
         if (map.countNodes() > 0)
         {
             Point2 box_min = map.getHeadNode()->data, box_max = map.getHeadNode()->data;
@@ -200,17 +204,24 @@ public:
                 if (n->data.x > box_max.x) box_max.x = n->data.x;
                 if (n->data.y > box_max.y) box_max.y = n->data.y;
             }
-            info.box_m = cv::Rect2d(box_min, box_max);
-
-            info.width = static_cast<int>((box_max.x - box_min.x + 4 * margin) * ppm + 0.5);  // + 0.5: Rounding
-            info.height = static_cast<int>((box_max.y - box_min.y + 4 * margin) * ppm + 0.5); // + 0.5: Rounding
-
-            int margin_p = static_cast<int>(info.margin * info.ppm + 0.5); // + 0.5: Rounding
-            info.box_p.x = margin_p;
-            info.box_p.y = margin_p;
-            info.box_p.width = info.width - 2 * margin_p;
-            info.box_p.height = info.height - 2 * margin_p;
+            box = cv::Rect2d(box_min, box_max);
         }
+        return getCanvasInfo(box, sz);
+    }
+
+    static CanvasInfo buildCanvasInfo(const cv::Rect2d& box, double ppm, double margin)
+    {
+        CanvasInfo info;
+        info.box_m = box;
+        info.ppm = ppm;
+        info.margin = margin;
+        info.width = static_cast<int>((box.width + 4 * margin) * ppm + 0.5);    // + 0.5: Rounding
+        info.height = static_cast<int>((box.height + 4 * margin) * ppm + 0.5);  // + 0.5: Rounding
+        int margin_p = static_cast<int>(info.margin * info.ppm + 0.5);          // + 0.5: Rounding
+        info.box_p.x = margin_p;
+        info.box_p.y = margin_p;
+        info.box_p.width = info.width - 2 * margin_p;
+        info.box_p.height = info.height - 2 * margin_p;
         info.offset.x = 2 * margin * ppm;
         info.offset.y = info.height - 2 * margin * ppm;
         return info;
