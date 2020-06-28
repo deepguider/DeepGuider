@@ -94,7 +94,6 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
         else bg_info = painter->getCanvasInfo(cv::Rect2d(), bg_image.size());
         painter->drawMap(bg_image, bg_info);
 
-        dg::Pose2 pose_prev;
         for (size_t i = 0; i < gps_data.size(); i++)
         {
             // Apply noisy GPS position
@@ -109,8 +108,7 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
                 fprintf(traj_file, "%f, %f, %f, %f, %f, %f\n", gps_data[i][0], pose.x, pose.y, pose.theta, velocity.lin, velocity.ang);
 
             // Visualize the current state
-            if (i > 0) cv::line(bg_image, painter->cvtMeter2Pixel(pose_prev, bg_info), painter->cvtMeter2Pixel(pose, bg_info), robot_color, 2);     // Trajectory
-            pose_prev = pose;
+            cv::circle(bg_image, painter->cvtMeter2Pixel(pose, bg_info), 2, robot_color, -1);                                                       // Trajectory
             cv::circle(bg_image, painter->cvtMeter2Pixel(gps, bg_info), 2, cv::Vec3b(64, 64, 64), -1);                                              // GPS data
             cv::Mat image = bg_image.clone();
             painter->drawNode(image, bg_info, dg::Point2ID(0, pose.x, pose.y), robot_radius, 0, robot_color);                                       // Robot
@@ -130,8 +128,14 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
             }
 
             double confidence = localizer->getPoseConfidence();
-            string state_text = cv::format("Pose: %.3f, %.3f, %.1f / Velocity: %.3f, %.1f / Confidence: %.3f", pose.x, pose.y, cx::cvtRad2Deg(pose.theta), velocity.lin, cx::cvtRad2Deg(velocity.ang), confidence);
-            cv::putText(image, state_text, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
+            string metric_text = cv::format("Time: %.2f / Pose: %.2f, %.2f, %.0f / Velocity: %.2f, %.0f", gps_data[i][0] - gps_data[0][0], pose.x, pose.y, cx::cvtRad2Deg(pose.theta), velocity.lin, cx::cvtRad2Deg(velocity.ang));
+            cv::putText(image, metric_text, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
+            dg::TopometricPose topo_pose = localizer->getPoseTopometric();
+            if (topo_pose.node_id > 0)
+            {
+                string topo_text = cv::format("Node ID: %zd, Edge Idx: %d, Dist: %.2f, Head: %.0f / Con: %.2f", topo_pose.node_id, topo_pose.edge_idx, topo_pose.dist, cx::cvtRad2Deg(topo_pose.head), confidence);
+                cv::putText(image, topo_text, cv::Point(5, 35), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
+            }
 
             // Show the visualized image
             cv::imshow("runLocalizer", image);
@@ -319,6 +323,6 @@ int runLocalizerETRI(const string& localizer_name, const string& gps_file, const
 
 int main()
 {
-    return runLocalizerETRI("EKFLocalizerSinTrack", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.1, dg::Pose2(), 1, "data/NaverLabs_ETRI.csv", "data/NaverMap_ETRI(Satellite)_191127.png");
+    return runLocalizerETRI("EKFLocalizerSinTrack", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.1, dg::Pose2(), 1, "data/NaverLabs_ETRI(Road).csv", "data/NaverMap_ETRI(Satellite)_191127.png");
     return runLocalizerSynthetic("EKFLocalizerHyperTan", "data_localizer/synthetic_truth/Square(10Hz,00s).pose.csv", "", 0.5, dg::Polar2(1, 0), 0.1);
 }

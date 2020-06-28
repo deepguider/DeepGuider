@@ -127,7 +127,7 @@ public:
             {
                 const RoadMap::Node* to = edge->to;
                 if (to == nullptr) continue;
-                auto dist2 = calcDist2FromLineSeg(node_goal->data, to->data, pose_m);
+                auto dist2 = calcDist2FromLineSeg(node_goal->data, to->data, pose_m, turn_weight);
                 if (dist2.first < min_dist2.first)
                 {
                     min_dist2 = dist2;

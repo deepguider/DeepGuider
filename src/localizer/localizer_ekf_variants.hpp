@@ -312,6 +312,58 @@ protected:
 
 class EKFLocalizerSinTrack : public EKFLocalizerHyperTan
 {
+public:
+    EKFLocalizerSinTrack()
+    {
+        m_track_converge = 0;
+    }
+
+    virtual Pose2 getPose()
+    {
+        cv::AutoLock lock(m_mutex);
+        return cvtTopmetric2Metric(getPoseTopometric());
+    }
+
+    virtual TopometricPose getPoseTopometric()
+    {
+        cv::AutoLock lock(m_mutex);
+        return m_track_topo;
+    }
+
+    virtual bool applyPosition(const Point2& xy, Timestamp time = -1, double confidence = -1)
+    {
+        if (EKFLocalizerHyperTan::applyPosition(xy, time, confidence))
+        {
+            cv::AutoLock lock(m_mutex);
+            const double turn_weight = 1;
+            Pose2 pose_m = EKFLocalizerHyperTan::getPose();
+            if (m_track_topo.node_id == 0 || m_track_converge < 5)
+            {
+                m_track_topo = findNearestTopoPose(pose_m, turn_weight);
+                if (m_track_topo.node_id == m_track_prev.node_id && m_track_topo.edge_idx == m_track_prev.edge_idx && m_track_topo.dist > m_track_prev.dist) m_track_converge++;
+                else m_track_converge = 0;
+            }
+            else
+            {
+                //auto node = m_map.getNode(m_track_topo.node_id);
+                //CV_DbgAssert(node != nullptr);
+                //auto edge = m_map.getEdge(node, m_track_topo.edge_idx);
+                //CV_DbgAssert(edge != nullptr);
+                //double progress = m_track_topo.dist / edge->cost;
+                m_track_topo = trackTopoPose(m_track_topo, pose_m, turn_weight, m_track_topo.dist > 0);
+            }
+            m_track_prev = m_track_topo;
+            return true;
+        }
+        return false;
+    }
+
+protected:
+    TopometricPose m_track_topo;
+
+    TopometricPose m_track_prev;
+
+    int m_track_converge;
 };
 
 } // End of 'dg'
