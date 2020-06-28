@@ -5,6 +5,44 @@
 #include "dg_core.hpp"
 #include "dg_localizer.hpp"
 
+int testLocBaseDist2()
+{
+    dg::Point2 from(1, 1), to(2, 2);
+    std::pair<double, dg::Point2> result;
+
+    result = dg::BaseLocalizer::calcDist2FromLineSeg(from, to, dg::Pose2(1, 2, 0));
+    VVS_CHECK_NEAR(result.first, 0.5);
+    VVS_CHECK_NEAR(result.second.x, 1.5);
+    VVS_CHECK_NEAR(result.second.y, 1.5);
+
+    result = dg::BaseLocalizer::calcDist2FromLineSeg(from, to, dg::Pose2(1, 1, 0));
+    VVS_CHECK_NEAR(result.first, 0);
+    VVS_CHECK_NEAR(result.second.x, 1);
+    VVS_CHECK_NEAR(result.second.y, 1);
+
+    result = dg::BaseLocalizer::calcDist2FromLineSeg(from, to, dg::Pose2(2, 2, 0));
+    VVS_CHECK_NEAR(result.first, 0);
+    VVS_CHECK_NEAR(result.second.x, 2);
+    VVS_CHECK_NEAR(result.second.y, 2);
+
+    result = dg::BaseLocalizer::calcDist2FromLineSeg(from, to, dg::Pose2(0, 0, 0));
+    VVS_CHECK_NEAR(result.first, 2);
+    VVS_CHECK_NEAR(result.second.x, 1);
+    VVS_CHECK_NEAR(result.second.y, 1);
+
+    result = dg::BaseLocalizer::calcDist2FromLineSeg(from, to, dg::Pose2(3, 3, 0));
+    VVS_CHECK_NEAR(result.first, 2);
+    VVS_CHECK_NEAR(result.second.x, 2);
+    VVS_CHECK_NEAR(result.second.y, 2);
+
+    result = dg::BaseLocalizer::calcDist2FromLineSeg(from, to, dg::Pose2(1, 2, 0), 3);
+    VVS_CHECK_NEAR(result.first, 0.5 + 3 * CV_PI * CV_PI / 16);
+    VVS_CHECK_NEAR(result.second.x, 1.5);
+    VVS_CHECK_NEAR(result.second.y, 1.5);
+
+    return 0;
+}
+
 dg::RoadMap getSimpleRoadMap()
 {
     // An example road map ('+' represents direction of edges)
@@ -32,6 +70,89 @@ dg::RoadMap getSimpleRoadMap()
     map.addEdge(7, 5);
     map.addEdge(8, 7);
     return map;
+}
+
+int testLocBaseNearest()
+{
+    dg::SimpleLocalizer localizer;
+    dg::RoadMap map = getSimpleRoadMap();
+    VVS_CHECK_TRUE(localizer.loadMap(map));
+
+    dg::Pose2 pose_m = localizer.cvtTopmetric2Metric(dg::TopometricPose(1, 0, 0.5, -CV_PI / 2));
+    VVS_CHECK_NEAR(pose_m.x, 0);
+    VVS_CHECK_NEAR(pose_m.y, 0.5);
+    VVS_CHECK_NEAR(pose_m.theta, 0);
+
+    dg::TopometricPose pose_t1 = localizer.findNearestTopoPose(pose_m);
+    VVS_CHECK_EQUL(pose_t1.node_id, 1);
+    VVS_CHECK_EQUL(pose_t1.edge_idx, 0);
+    VVS_CHECK_NEAR(pose_t1.dist, 0.5);
+    VVS_CHECK_NEAR(pose_t1.head, -CV_PI / 2);
+
+    dg::TopometricPose pose_t2 = localizer.findNearestTopoPose(pose_m, 10);
+    VVS_CHECK_EQUL(pose_t2.node_id, 2);
+    VVS_CHECK_EQUL(pose_t2.edge_idx, 0);
+    VVS_CHECK_NEAR(pose_t2.dist, 0);
+    VVS_CHECK_NEAR(pose_t2.head, 0);
+
+    dg::TopometricPose pose_t3 = localizer.findNearestTopoPose(dg::Pose2(1.5, 1.5, CV_PI / 4), 1);
+    VVS_CHECK_EQUL(pose_t3.node_id, 3);
+    VVS_CHECK_EQUL(pose_t3.edge_idx, 1);
+    VVS_CHECK_NEAR(pose_t3.dist, 0.5);
+    VVS_CHECK_NEAR(pose_t3.head, CV_PI / 4);
+
+    dg::TopometricPose pose_t4 = localizer.findNearestTopoPose(dg::Pose2(1.5, 1.5, CV_PI * 3 / 4), 1);
+    VVS_CHECK_EQUL(pose_t4.node_id, 5);
+    VVS_CHECK_EQUL(pose_t4.edge_idx, 0);
+    VVS_CHECK_NEAR(pose_t4.dist, 0.5);
+    VVS_CHECK_NEAR(pose_t4.head, -CV_PI / 4);
+
+    return 0;
+}
+
+int testLocBaseTrack()
+{
+    dg::SimpleLocalizer localizer;
+    dg::RoadMap map = getSimpleRoadMap();
+    VVS_CHECK_TRUE(localizer.loadMap(map));
+
+    dg::TopometricPose pose_t1 = localizer.trackTopoPose(dg::TopometricPose(1, 0, 0, 0), dg::Pose2(0, 0.5, CV_PI / 2));
+    VVS_CHECK_EQUL(pose_t1.node_id, 1);
+    VVS_CHECK_EQUL(pose_t1.edge_idx, 0);
+    VVS_CHECK_NEAR(pose_t1.dist, 0.5);
+    VVS_CHECK_NEAR(pose_t1.head, 0);
+
+    dg::TopometricPose pose_t2 = localizer.trackTopoPose(dg::TopometricPose(1, 0, 0, 0), dg::Pose2(0, 1.0, CV_PI / 2));
+    VVS_CHECK_EQUL(pose_t2.node_id, 1);
+    VVS_CHECK_EQUL(pose_t2.edge_idx, 0);
+    VVS_CHECK_NEAR(pose_t2.dist, 1.0);
+    VVS_CHECK_NEAR(pose_t2.head, 0);
+
+    dg::TopometricPose pose_t3 = localizer.trackTopoPose(dg::TopometricPose(1, 0, 0, 0), dg::Pose2(0, 1.0, 0), 1);
+    VVS_CHECK_EQUL(pose_t3.node_id, 2);
+    VVS_CHECK_EQUL(pose_t3.edge_idx, 0);
+    VVS_CHECK_NEAR(pose_t3.dist, 0);
+    VVS_CHECK_NEAR(pose_t3.head, 0);
+
+    dg::TopometricPose pose_t4 = localizer.trackTopoPose(dg::TopometricPose(3, 1, 0.1, 0), dg::Pose2(1, 1, 0), 1);
+    VVS_CHECK_EQUL(pose_t4.node_id, 3);
+    VVS_CHECK_EQUL(pose_t4.edge_idx, 1);
+    VVS_CHECK_NEAR(pose_t4.dist, 0);
+    VVS_CHECK_NEAR(pose_t4.head, 0);
+
+    dg::TopometricPose pose_t5 = localizer.trackTopoPose(dg::TopometricPose(3, 1, 0.1, 0), dg::Pose2(1.5, 1.5, CV_PI), 1);
+    VVS_CHECK_EQUL(pose_t5.node_id, 5);
+    VVS_CHECK_EQUL(pose_t5.edge_idx, 0);
+    VVS_CHECK_NEAR(pose_t5.dist, 0.5);
+    VVS_CHECK_NEAR(pose_t5.head, 0);
+
+    dg::TopometricPose pose_t6 = localizer.trackTopoPose(dg::TopometricPose(3, 1, 0.1, 0), dg::Pose2(1.5, 1.5, CV_PI), 1, false);
+    VVS_CHECK_EQUL(pose_t6.node_id, 3);
+    VVS_CHECK_EQUL(pose_t6.edge_idx, 1);
+    VVS_CHECK_NEAR(pose_t6.dist, 0.5);
+    VVS_CHECK_NEAR(pose_t6.head, -CV_PI);
+
+    return 0;
 }
 
 std::vector<std::pair<std::string, cv::Vec3d>> getSimpleDataset()

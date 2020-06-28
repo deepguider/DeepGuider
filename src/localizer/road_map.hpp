@@ -199,6 +199,15 @@ public:
     Edge* getEdge(ID from, ID to);
 
     /**
+     * Find an edge using the edge's index (time complexity: O(|E|))
+     * @param from A pointer to the start node
+     * @param edge_idx The edge's index
+     * @return A pointer to the found edge (nullptr if not exist)
+     * @see getEdge
+     */
+    Edge* getEdge(Node* from, int edge_idx);
+
+    /**
      * Remove a node (time complexity: O(|V| |E|))<br>
      * This removes all edges connected from the node
      * @param node A node pointer to remove

@@ -11,7 +11,7 @@ int testDirectedGraphPtr(const char* file = "test_directed_graph.txt")
 {
     // Build a family tree
     FamilyTree family;
-    VVS_CHECK_TRUE(family.addNode("Dangeun") != NULL);
+    VVS_CHECK_TRUE(family.addNode("Dangeun") != nullptr);
     FamilyTree::Node* person[] =
     {
         /* 0 */ family.addNode("CY"),
@@ -26,24 +26,24 @@ int testDirectedGraphPtr(const char* file = "test_directed_graph.txt")
         /* 9 */ family.addNode("CW"),
     };
     VVS_CHECK_TRUE(family.getNode("CY") == person[0]);
-    VVS_CHECK_TRUE(family.getNode("Guest") == NULL);
+    VVS_CHECK_TRUE(family.getNode("Guest") == nullptr);
 
-    VVS_CHECK_TRUE(family.addEdge(person[0], person[1], 0) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(person[1], person[0], 0) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(person[0], person[2], 1) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(person[0], person[3], 1) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(family.getNode("CH"), family.getNode("PS"), 0) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(family.getNode("PS"), family.getNode("CH"), 0) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(family.getNode("PS"), family.getNode("PSY"), 1) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(family.getNode("CS"), family.getNode("LK"), 0) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(family.getNode("LK"), family.getNode("CS"), 0) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(family.getNode("PS"), family.getNode("PSE"), 1) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(family.getNode("CS"), family.getNode("CJ"), 1) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(family.getNode("CS"), family.getNode("CW"), 1) != NULL);
-    VVS_CHECK_TRUE(family.getEdge("CY", "CS") != NULL);
-    VVS_CHECK_TRUE(family.getEdge("CS", "CY") == NULL);
-    VVS_CHECK_TRUE(family.getEdge(person[0], person[1]) != NULL);
-    VVS_CHECK_TRUE(family.getEdge(person[1], person[0]) != NULL);
+    VVS_CHECK_TRUE(family.addEdge(person[0], person[1], 0) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(person[1], person[0], 0) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(person[0], person[2], 1) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(person[0], person[3], 1) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(family.getNode("CH"), family.getNode("PS"), 0) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(family.getNode("PS"), family.getNode("CH"), 0) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(family.getNode("PS"), family.getNode("PSY"), 1) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(family.getNode("CS"), family.getNode("LK"), 0) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(family.getNode("LK"), family.getNode("CS"), 0) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(family.getNode("PS"), family.getNode("PSE"), 1) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(family.getNode("CS"), family.getNode("CJ"), 1) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(family.getNode("CS"), family.getNode("CW"), 1) != nullptr);
+    VVS_CHECK_TRUE(family.getEdge("CY", "CS") != nullptr);
+    VVS_CHECK_TRUE(family.getEdge("CS", "CY") == nullptr);
+    VVS_CHECK_TRUE(family.getEdge(person[0], person[1]) != nullptr);
+    VVS_CHECK_TRUE(family.getEdge(person[1], person[0]) != nullptr);
 
     // Check connectivities
     VVS_CHECK_EQUL(family.getEdgeCost(person[3], person[8]), 1);
@@ -54,9 +54,9 @@ int testDirectedGraphPtr(const char* file = "test_directed_graph.txt")
     // Add and remove edges and nodes
     FamilyTree::Node* gf = family.addNode("Grand Father");
     FamilyTree::Node* gm = family.addNode("Grand Mother");
-    VVS_CHECK_TRUE(family.addEdge(gf, gm, 0) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(gm, gf, 0) != NULL);
-    VVS_CHECK_TRUE(family.addEdge(gf, person[0], 1) != NULL);
+    VVS_CHECK_TRUE(family.addEdge(gf, gm, 0) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(gm, gf, 0) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge(gf, person[0], 1) != nullptr);
     VVS_CHECK_EQUL(family.countEdges(gf), 2);
     VVS_CHECK_EQUL(family.countEdges(gm), 1);
     VVS_CHECK_TRUE(family.removeNode(gf));
@@ -66,7 +66,7 @@ int testDirectedGraphPtr(const char* file = "test_directed_graph.txt")
 
     // Write the family to the file
     FILE* fid = fopen(file, "wt");
-    VVS_CHECK_TRUE(fid != NULL);
+    VVS_CHECK_TRUE(fid != nullptr);
     for (FamilyTree::NodeItrConst node = family.getHeadNodeConst(); node != family.getTailNodeConst(); node++)
     {
         fprintf(fid, "* Node: %s\n", node->data.c_str());
@@ -87,14 +87,14 @@ int testDirectedGraphItr()
 {
     // Build a family tree
     FamilyTree family;
-    VVS_CHECK_TRUE(family.addNode("CS") != NULL);
-    VVS_CHECK_TRUE(family.addNode("LK") != NULL);
-    VVS_CHECK_TRUE(family.addNode("CJ") != NULL);
-    VVS_CHECK_TRUE(family.addNode("CW") != NULL);
-    VVS_CHECK_TRUE(family.addEdge("CS", "LK", 0) != NULL);
-    VVS_CHECK_TRUE(family.addEdge("LK", "CS", 0) != NULL);
-    VVS_CHECK_TRUE(family.addEdge("CS", "CJ", 1) != NULL);
-    VVS_CHECK_TRUE(family.addEdge("CS", "CW", 1) != NULL);
+    VVS_CHECK_TRUE(family.addNode("CS") != nullptr);
+    VVS_CHECK_TRUE(family.addNode("LK") != nullptr);
+    VVS_CHECK_TRUE(family.addNode("CJ") != nullptr);
+    VVS_CHECK_TRUE(family.addNode("CW") != nullptr);
+    VVS_CHECK_TRUE(family.addEdge("CS", "LK", 0) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge("LK", "CS", 0) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge("CS", "CJ", 1) != nullptr);
+    VVS_CHECK_TRUE(family.addEdge("CS", "CW", 1) != nullptr);
 
     // Test const_iterators
     FamilyTree::NodeItrConst const_cs = family.getNodeConst("CS");
@@ -129,12 +129,12 @@ int testDirectedGraphItr()
     VVS_CHECK_TRUE(cw != family.getTailNode() && cw->data == "CW");
 
     FamilyTree::Edge* cs2lk = family.getEdge(cs, lk);
-    VVS_CHECK_TRUE(cs2lk != NULL);
+    VVS_CHECK_TRUE(cs2lk != nullptr);
     VVS_CHECK_EQUL(family.getEdgeCost(cs, lk), 0);
     VVS_CHECK_TRUE(family.isConnected(cs, lk) == true);
 
     FamilyTree::Edge* lk2cj = family.getEdge(lk, cj);
-    VVS_CHECK_TRUE(lk2cj == NULL);
+    VVS_CHECK_TRUE(lk2cj == nullptr);
     VVS_CHECK_EQUL(family.getEdgeCost(lk, cj), -1);
     VVS_CHECK_TRUE(family.isConnected(lk, cj) == false);
 

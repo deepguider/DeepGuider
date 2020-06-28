@@ -8,7 +8,7 @@
 
 int main()
 {
-    return testLocETRIRealMap("EKFLocalizer");
+    return testLocETRIRealMap("SimpleLocalizer");
 
     // Test 'core' module
     // 1. Test basic data structures
@@ -41,12 +41,16 @@ int main()
     VVS_RUN_TEST(testLocRoadPainter());
 
     // 4. Test localizers
-    VVS_RUN_TEST(testLocMap2RoadMap());
+    VVS_RUN_TEST(testLocBaseDist2());
+    VVS_RUN_TEST(testLocBaseNearest());
+    VVS_RUN_TEST(testLocBaseTrack());
     VVS_RUN_TEST(testLocSimple());
+
     VVS_RUN_TEST(testLocEKFGPS());
     VVS_RUN_TEST(testLocEKFGyroGPS());
     VVS_RUN_TEST(testLocEKFLocClue());
 
+    VVS_RUN_TEST(testLocETRIMap2RoadMap());
     VVS_RUN_TEST(testLocETRISyntheticMap());
     VVS_RUN_TEST(testLocETRIRealMap());
     VVS_RUN_TEST(testLocETRISyntheticMap("EKFLocalizerZeroGyro"));

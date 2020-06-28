@@ -73,32 +73,32 @@ public:
         return true;
     }
 
-    virtual Pose2 getPose() const
+    virtual Pose2 getPose()
     {
         cv::AutoLock lock(m_mutex);
         return Pose2(m_state_vec.at<double>(0), m_state_vec.at<double>(1), m_state_vec.at<double>(2));
     }
 
-    virtual Polar2 getVelocity() const
+    virtual Polar2 getVelocity()
     {
         cv::AutoLock lock(m_mutex);
         return Polar2(m_state_vec.at<double>(3), m_state_vec.at<double>(4));
     }
 
-    virtual LatLon getPoseGPS() const
+    virtual LatLon getPoseGPS()
     {
         return toLatLon(getPose());
     }
 
-    virtual TopometricPose getPoseTopometric() const
+    virtual TopometricPose getPoseTopometric()
     {
-        return toMetric2Topometric(getPose());
+        return findNearestTopoPose(getPose());
     }
 
-    virtual double getPoseConfidence() const
+    virtual double getPoseConfidence()
     {
         cv::AutoLock lock(m_mutex);
-        double det = cv::determinant(m_state_cov.rowRange(0, 3).colRange(0, 3));
+        double det = log10(cv::determinant(m_state_cov.rowRange(0, 3).colRange(0, 3)));
         return det;
     }
 
@@ -209,7 +209,7 @@ public:
     {
         cv::AutoLock lock(m_mutex);
         RoadMap::Node* node = m_map.getNode(Point2ID(node_id));
-        if (node == NULL) return false;
+        if (node == nullptr) return false;
 
         double interval = 0;
         if (m_time_last_update > 0) interval = time - m_time_last_update;

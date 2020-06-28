@@ -152,7 +152,7 @@ int saveETRINaverMap(const char* map_file = "data/NaverLabs_ETRI.csv", const dg:
 }
 */
 
-int testLocMap2RoadMap(int wait_msec = 1, const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
+int testLocETRIMap2RoadMap(int wait_msec = 1, const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
 {
     // Load a map
     dg::Map map = getETRISyntheticMap();
@@ -242,7 +242,7 @@ int runLocalizerETRIGPS(dg::BaseLocalizer* localizer, dg::SimpleRoadPainter* pai
 
             // Draw the robot
             dg::TopometricPose pose_t = localizer->getPoseTopometric();
-            //dg::Pose2 pose_m = localizer->toTopmetric2Metric(pose_t);
+            //dg::Pose2 pose_m = localizer->cvtTopmetric2Metric(pose_t);
             dg::Pose2 pose_m = localizer->getPose();
             if (!painter->drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), robot_radius, 0, cx::COLOR_BLUE)) break;
             cv::Point pose_body = painter->cvtMeter2Pixel(pose_m, map_info);

@@ -366,7 +366,7 @@ public:
     static bool drawEdges(cv::Mat& image, const CanvasInfo& info, Point2IDGraph& map, Point2IDNode* node, double radius, const cv::Vec3b& color, int thickness = 1, double arrow_length = -1)
     {
         CV_DbgAssert(!image.empty());
-        if (thickness <= 0 || node == NULL) return false;
+        if (thickness <= 0 || node == nullptr) return false;
 
         const double r = radius * info.ppm;
         const double a = arrow_length * info.ppm;

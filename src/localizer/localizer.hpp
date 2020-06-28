@@ -132,19 +132,19 @@ public:
      * Get the current metric pose
      * @return The current metric pose
      */
-    virtual Pose2 getPose() const = 0;
+    virtual Pose2 getPose() = 0;
 
     /**
      * Get the current metric pose in geodesic notation
      * @return The current geodesic pose
      */
-    virtual LatLon getPoseGPS() const = 0;
+    virtual LatLon getPoseGPS() = 0;
 
     /**
      * Get the current confidence of localization
      * @return The current pose confidence
      */
-    virtual double getPoseConfidence() const = 0;
+    virtual double getPoseConfidence() = 0;
 };
 
 /**
@@ -159,7 +159,7 @@ public:
      * Get the current topometric pose
      * @return The current topometric pose
      */
-    virtual TopometricPose getPoseTopometric() const = 0;
+    virtual TopometricPose getPoseTopometric() = 0;
 };
 
 } // End of 'dg'

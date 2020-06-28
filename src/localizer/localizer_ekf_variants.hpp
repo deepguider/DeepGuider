@@ -241,7 +241,7 @@ public:
         return EKFLocalizer::applyPosition(xy, time * ratio, confidence);
     }
 
-    virtual Polar2 getVelocity() const
+    virtual Polar2 getVelocity()
     {
         const double ratio = 0.1;
         Polar2 velocity = EKFLocalizer::getVelocity();
@@ -308,6 +308,10 @@ protected:
     }
 
     double m_transit_dt;
+};
+
+class EKFLocalizerSinTrack : public EKFLocalizerHyperTan
+{
 };
 
 } // End of 'dg'

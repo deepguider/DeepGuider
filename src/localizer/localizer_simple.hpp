@@ -9,25 +9,25 @@ namespace dg
 class SimpleLocalizer : public BaseLocalizer
 {
 public:
-    virtual Pose2 getPose() const
+    virtual Pose2 getPose()
     {
         cv::AutoLock lock(m_mutex);
         return m_pose;
     }
 
-    virtual LatLon getPoseGPS() const
+    virtual LatLon getPoseGPS()
     {
         return toLatLon(getPose());
     }
 
-    virtual TopometricPose getPoseTopometric() const
+    virtual TopometricPose getPoseTopometric()
     {
-        return toMetric2Topometric(getPose());
+        return findNearestTopoPose(getPose());
     }
 
-    virtual double getPoseConfidence() const
+    virtual double getPoseConfidence()
     {
-        return -1;
+        return 0;
     }
 
     virtual bool applyOdometry(const Pose2& pose_curr, const Pose2& pose_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1)
@@ -90,7 +90,7 @@ public:
     {
         cv::AutoLock lock(m_mutex);
         RoadMap::Node* node = m_map.getNode(Point2ID(node_id));
-        if (node == NULL) return false;
+        if (node == nullptr) return false;
         m_pose.x = node->data.x;
         m_pose.y = node->data.y;
         return true;
