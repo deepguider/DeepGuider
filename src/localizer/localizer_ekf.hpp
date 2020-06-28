@@ -20,6 +20,8 @@ public:
         m_noise_gps = m_noise_gps_normal;
         m_noise_loc_clue = cv::Mat::eye(4, 4, CV_64F);
         m_offset_gps = cv::Vec2d(0, 0);
+        m_norm_conf_a = 1;
+        m_norm_conf_b = 2;
 
         // Internal variables
         m_time_last_update = -1;
@@ -98,8 +100,9 @@ public:
     virtual double getPoseConfidence()
     {
         cv::AutoLock lock(m_mutex);
-        double det = log10(cv::determinant(m_state_cov.rowRange(0, 3).colRange(0, 3)));
-        return det;
+        double conf = log10(cv::determinant(m_state_cov.rowRange(0, 3).colRange(0, 3)));
+        if (m_norm_conf_a > 0) conf = 1 / (1 + exp(m_norm_conf_a * conf + m_norm_conf_b));
+        return conf;
     }
 
     virtual bool applyOdometry(const Pose2& pose_curr, const Pose2& pose_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1)
@@ -377,6 +380,10 @@ protected:
     cv::Mat m_noise_loc_clue;
 
     cv::Vec2d m_offset_gps;
+
+    double m_norm_conf_a;
+
+    double m_norm_conf_b;
 
     double m_time_last_update;
 
