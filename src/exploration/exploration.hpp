@@ -109,17 +109,17 @@ class ActiveNavigation : public PythonModuleWrapper
 
             // flush
             if (guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED )
-                PyObject* pValue = Py_True;
+                pValue = Py_True;
             else
-                PyObject* pValue = Py_False;
+                pValue = Py_False;
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // exp_active
             if (guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_LOST || guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_EXPLORATION ||
-                                     guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_RECOVERY_MODE || guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW)
-                PyObject* pValue = Py_True;
+                                     guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_RECOVERY || guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW)
+                pValue = Py_True;
             else
-                PyObject* pValue = Py_False;
+                pValue = Py_False;
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // Timestamp
@@ -139,15 +139,16 @@ class ActiveNavigation : public PythonModuleWrapper
                 // list of list
                 m_actions.clear();
                 
-                PyObject* pList1 = PyTuple_GetItem(pRet, 1);
-                pValue = PyList_GetItem(pList1, 0);
+                // PyObject* pList1 = PyTuple_GetItem(pRet, 1);
+                // pValue = PyList_GetItem(pList1, 0);
+                pValue = PyTuple_GetItem(pRet, 1);
                 string stat = PyUnicode_AsUTF8(pValue);
                 if (stat == "Normal")
                     m_status = GuidanceManager::GuideStatus::GUIDE_NORMAL;
                 else if (stat == "Exploration")
                     m_status = GuidanceManager::GuideStatus::GUIDE_EXPLORATION;
                 else if (stat == "Recovery")
-                    m_status = GuidanceManager::GuideStatus::GUIDE_RECOVERY_MODE;
+                    m_status = GuidanceManager::GuideStatus::GUIDE_RECOVERY;
                 else
                     m_status = GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW;
 

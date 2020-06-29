@@ -1,8 +1,9 @@
 import torch.nn as nn
 import torch
-from .modules.resnet_network import TNetNLBv2 as ResNet_TNetNLBv2
+from .modules.resnet_network import ResNetDropblock
 from torchvision.models.vgg import vgg16
 from torchvision.models.resnet import resnet18, resnet50, resnet34
+
 
 def reinitialize_base_weight(network_base, network_type='vgg16'):
     """
@@ -30,27 +31,21 @@ def reinitialize_base_weight(network_base, network_type='vgg16'):
     return network_base
 
 
-def initialize_network(network_opt='vgg16', output_class=7, full_train=False):
-    assert network_opt in ['resnet18_tnetnlbv2', 'resnet34_tnetnlbv2', 'resnet50_tnetnlbv2']
-    if network_opt == 'resnet18_tnetnlbv2':
+def initialize_network(network_opt='resnet18', output_class=7):
+    assert network_opt in ['resnet18', 'resnet34', 'resnet50']
+    if network_opt == 'resnet18':
         resnet_type = 18
         base_net = 'resnet18'
-    elif network_opt == 'resnet34_tnetnlbv2':
+    elif network_opt == 'resnet34':
         resnet_type = 34
         base_net = 'resnet34'
-    else:  # elif network_opt == 'resnet50_tnetnlbv2':
+    else:  # elif network_opt == 'resnet50':
         resnet_type = 50
         base_net = 'resnet50'
-    network = ResNet_TNetNLBv2(output_class=output_class, resnet_type=resnet_type)
-    if not full_train:
-        trained_params = list(network.base.layer3.parameters()) \
-                         + list(network.base.layer4.parameters())\
-                         + list(network.base.fc.parameters())\
-                         + list(network.nlb.parameters())
-    else:
-        reinitialize_base_weight(network.base, base_net)
+    network = ResNetDropblock(output_class=output_class, resnet_type=resnet_type,
+                              drop_block=True, drop_pos=None, layer_depth=4,
+                              drop_prob=0.75, drop_block_size=3)
 
-    if full_train:
-        trained_params = network.parameters()
+    trained_params = network.parameters()
 
     return network, trained_params

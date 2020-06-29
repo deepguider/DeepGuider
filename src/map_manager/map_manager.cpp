@@ -1164,11 +1164,9 @@ cv::Mat MapManager::queryImage2server(std::string url, int timeout)
 
 			return cv::imdecode(stream, -1);      
 		}
-		else
-		{
-			return cv::Mat();
-		}
 	}
+
+	return cv::Mat();
 }
 
 cv::Mat MapManager::downloadStreetViewImage(ID sv_id, const std::string cubic, int timeout, const std::string url_middle)

@@ -177,6 +177,56 @@ GuidanceManager::Guidance GuidanceManager::getGuidance(TopometricPose pose)
 	return guide;
 }
 
+bool GuidanceManager::updateGuidance(TopometricPose pose, GuideStatus gStatus)
+{
+	Guidance guide;
+	MoveStatus ms;
+	bool result = false;
+
+	switch (gStatus)
+	{
+	case GuideStatus::GUIDE_NORMAL:
+		ms = applyPose(pose);
+		guide = getNormalGuidance(ms);
+		break;
+	case GuideStatus::GUIDE_ARRIVED:
+		guide = getNormalGuidance(MoveStatus::ARRIVED);
+		break;
+	case GuideStatus::GUIDE_OOP_DETECT:
+		guide = getNormalGuidance(MoveStatus::ON_EDGE);
+		break;
+	case GuideStatus::GUIDE_OOP:
+	{	//need new map and generate path from current pose
+		//take original goal and change start to current pose
+		double start_lat, start_lon, dest_lat, dest_lon;
+		LatLon curGPS = getPoseGPS();
+		start_lat = curGPS.lat;
+		start_lon = curGPS.lon;
+		Node* dest = m_map.findNode(m_path.pts.back().node_id);
+		dest_lat = dest->lat;
+		dest_lon = dest->lon;
+		regeneratePath(start_lat, start_lon, dest_lat, dest_lon);
+		guide = getNormalGuidance(MoveStatus::ON_NODE);
+		break;
+	}		
+	// case GuideStatus::GUIDE_LOST:
+	// 	break;
+	// case GuideStatus::GUIDE_RECOVERY:
+	// 	break;
+	// case GuideStatus::GUIDE_EXPLORATION:
+	// 	break;
+	// case GuideStatus::GUIDE_OPTIMAL_VIEW:
+	// 	break;
+	default:
+		ms = applyPose(pose);
+		guide = getNormalGuidance(ms);
+		break;
+	}
+
+	m_curguidance = guide;
+	result = true;
+	return result;
+}
 
 GuidanceManager::Guidance GuidanceManager::getGuidance(TopometricPose pose, GuideStatus gStatus)
 {
@@ -209,15 +259,17 @@ GuidanceManager::Guidance GuidanceManager::getGuidance(TopometricPose pose, Guid
 		result = getNormalGuidance(MoveStatus::ON_NODE);
 		break;
 	}		
-	case GuideStatus::GUIDE_LOST:
-		break;
-	case GuideStatus::GUIDE_RECOVERY:
-		break;
-	case GuideStatus::GUIDE_EXPLORATION:
-		break;
-	case GuideStatus::GUIDE_OPTIMAL_VIEW:
-		break;
+	// case GuideStatus::GUIDE_LOST:
+	// 	break;
+	// case GuideStatus::GUIDE_RECOVERY:
+	// 	break;
+	// case GuideStatus::GUIDE_EXPLORATION:
+	// 	break;
+	// case GuideStatus::GUIDE_OPTIMAL_VIEW:
+	// 	break;
 	default:
+		ms = applyPose(pose);
+		result = getNormalGuidance(ms);
 		break;
 	}
 
@@ -529,6 +581,49 @@ int dg::GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
 	}
 	return -1;
 }
+
+void dg::GuidanceManager::makeLostValue(double prevconf, double curconf)
+{
+	double lowerlimit = 0.4;
+	double upperlimit = 0.85;
+	double middlevalue = 0.7;
+	int weight = 150;
+	int smallweight = 75;
+
+	if (curconf <= lowerlimit)
+		m_lostvalue = 100.0;
+	else if (curconf >= upperlimit)
+		m_lostvalue = 0.0;
+	else if (curconf < middlevalue)
+	{
+		if (curconf < prevconf)
+			m_lostvalue = m_lostvalue + ((prevconf - curconf) * weight);
+		else
+			m_lostvalue = m_lostvalue + ((curconf - prevconf) * smallweight);
+	}
+	else
+	{
+		if (curconf < prevconf)
+			m_lostvalue = m_lostvalue - ((prevconf - curconf) * smallweight);
+		else
+			m_lostvalue = m_lostvalue - ((curconf - prevconf) * weight);
+	}
+
+	if (m_lostvalue > 100.0)
+		m_lostvalue = 100.0;
+	else if (m_lostvalue < 0.0)
+		m_lostvalue = 0.0;
+
+	m_prevconf = curconf;
+}
+
+// bool updateActiveNav(cv::Mat image, GuidanceManager::Guidance guidance)
+// {
+//     dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+//     extern dg::ActiveNavigation m_active_nav;
+// 	m_active_nav.apply(image, guidance, t1);	
+// }
+
 
 // test code
 //GuidanceManager guider;

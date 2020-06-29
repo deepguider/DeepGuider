@@ -1,6 +1,8 @@
 #pragma once
 #include <time.h>
+#include <chrono>
 #include "dg_core.hpp"
+#include "dg_map_manager.hpp"
 
 namespace dg
 {
@@ -176,6 +178,7 @@ private:
 	//	/** Next NODE*/
 	//	Node to_node;
 
+
 	//	/** Next EDGE*/
 	//	Edge next_edge;
 
@@ -193,6 +196,7 @@ private:
 	double m_edge_progress = 0;
 	MoveStatus  m_mvstatus = MoveStatus::ON_EDGE;
 	GuideStatus  m_dgstatus = GuideStatus::GUIDE_NORMAL;
+	Guidance m_curguidance;
 	std::vector<Guidance> m_past_guides;
 	time_t oop_start = 0 , oop_end = 0;
 
@@ -289,14 +293,19 @@ public:
 	LatLon getPoseGPS() { return m_latlon; };
 	Map getMap() { return m_map; };
 
-	void setGuideStatus(GuideStatus gs) { m_dgstatus = gs; };
+	void setGuideStatus(GuideStatus gs) { m_dgstatus = gs; }; 
+	MoveStatus getMoveStatus() { return m_mvstatus; };
 	Guidance getNormalGuidance(MoveStatus status);
 	Guidance getGuidance(TopometricPose pose);
 	Guidance getGuidance(TopometricPose pose, GuideStatus gStatus);
+	bool updateGuidance(TopometricPose pose, GuideStatus gStatus);
+	Guidance getGuidance(){ return m_curguidance; };
 
-
+	//makeLostValue related variable and method
+	double m_prevconf = 1.0;
+	double m_lostvalue = 0.0;
+	void makeLostValue(double prevconf, double curconf);
 };
 
 
 }
-
