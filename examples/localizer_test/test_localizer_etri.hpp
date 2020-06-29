@@ -1,5 +1,5 @@
-#ifndef __TEST_LOCALIZER_EXAMPLE__
-#define __TEST_LOCALIZER_EXAMPLE__
+#ifndef __TEST_LOCALIZER_ETRI__
+#define __TEST_LOCALIZER_ETRI__
 
 #include "vvs.h"
 #include "dg_core.hpp"
@@ -22,7 +22,7 @@ std::vector<std::pair<double, dg::LatLon>> getETRIGPSData(const char* csv_file =
 }
 
 /*
-int generateExampleMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID id_offset = 100, double pixel_per_meter = 1, const dg::LatLon& first_latlon = dg::LatLon(36.383837659737225, 127.36788082844413))
+int saveETRISyntheticMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID id_offset = 100, double pixel_per_meter = 1, const dg::LatLon& first_latlon = dg::LatLon(36.383837659737225, 127.36788082844413))
 {
     // Read 'yml_file' generated from 'simple_picker'
     cv::FileStorage fs;
@@ -72,7 +72,7 @@ int generateExampleMap(const char* yml_file = "data/NaverMap_ETRI.yml", dg::ID i
 }
 */
 
-dg::Map getExampleMap()
+dg::Map getETRISyntheticMap()
 {
     // An example map around ETRI
     // - Note: Geodesic data were roughly generated from 'generateExampleMap()' from manually selected nodes on Naver Map.
@@ -122,119 +122,46 @@ dg::Map getExampleMap()
 /*
 #include "dg_map_manager.hpp"
 
-int saveETRIMap(const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442), double radius = 10000)
+int saveETRINaverMap(const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442), double radius = 2000)
 {
-    // Load GPS data
-    auto gps_data = getETRIGPSData();
-    VVS_CHECK_TRUE(!gps_data.empty());
-    auto gps_start = gps_data.front().second;
-    auto gps_dest = gps_data.back().second;
-
     // Load a map including POIs and StreetViews
     dg::MapManager map_manager;
-    dg::Path path = map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon);
-    dg::Map map = map_manager.getMap();
-    for (auto node = map.nodes.begin(); node != map.nodes.end(); node++)
-    {
-        // Fix a wrong node
-        if (node->lat > 90)
-        {
-            double temp = node->lat;
-            node->lat = node->lon;
-            node->lon = temp;
-        }
-    }
-    map_manager.getPOI(gps_start.lat, gps_start.lon, radius);
-    map_manager.getStreetView(gps_start.lat, gps_start.lon, radius);
+    if (!map_manager.setIP("129.254.87.96"))
+        return -1;
+    dg::Map map;
+    if (!map_manager.getMap(ref_gps.lat, ref_gps.lon, radius, map))
+        return -2;
+    std::vector<dg::POI> pois;
+    if (!map_manager.getPOI(ref_gps.lat, ref_gps.lon, radius, pois))
+        return -3;
+    std::vector<dg::StreetView> sviews;
+    if (!map_manager.getStreetView(ref_gps.lat, ref_gps.lon, radius, sviews))
+        return -4;
 
-    // Convert the map to 'dg::RoadMap' and save it
+    // Convert the map, POIs, and StreetViews to 'dg::RoadMap' and save it
     dg::UTMConverter converter;
     VVS_CHECK_TRUE(converter.setReference(ref_gps));
     dg::RoadMap road_map = dg::SimpleLocalizer::cvtMap2SimpleRoadMap(map, converter, false);
+    for (auto p = pois.begin(); p != pois.end(); p++)
+        road_map.addNode(dg::Point2ID(p->id, converter.toMetric(*p)));
+    for (auto sv = sviews.begin(); sv != sviews.end(); sv++)
+        road_map.addNode(dg::Point2ID(sv->id, converter.toMetric(*sv)));
     VVS_CHECK_TRUE(!road_map.isEmpty());
     VVS_CHECK_TRUE(road_map.save(map_file));
     return 0;
 }
 */
 
-int runLocalizerETRIGPS(dg::SimpleLocalizer* localizer, dg::SimpleRoadPainter* painter, int wait_msec = 1, const char* gps_file = "data/191115_ETRI_asen_fix.csv", const char* video_file = "data/191115_ETRI.avi", const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
-{
-    if (localizer == nullptr || painter == nullptr) return -1;
-
-    // Prepare visualization
-    cv::Mat map_image = cv::imread(background_file);
-    VVS_CHECK_TRUE(!map_image.empty());
-    dg::RoadMap road_map = localizer->getMap();
-    VVS_CHECK_TRUE(painter->drawMap(map_image, road_map));
-    dg::CanvasInfo map_info = painter->getCanvasInfo(road_map, map_image.size());
-
-    // Prepare the ETRI dataset
-    auto gps_data = getETRIGPSData();
-    VVS_CHECK_TRUE(!gps_data.empty());
-    cv::VideoCapture video_data;
-    VVS_CHECK_TRUE(video_data.open(video_file));
-    double video_time_offset = gps_data.front().first - 0.5, video_time_scale = 1.75; // Calculated from 'bag' files
-    double video_resize_scale = 0.4;
-    cv::Point video_offset(32, 542);
-
-    // Run localization
-    cv::Mat video_image;
-    double video_time = video_time_scale * video_data.get(cv::VideoCaptureProperties::CAP_PROP_POS_MSEC) / 1000 + video_time_offset;
-    for (size_t gps_idx = 0; gps_idx < gps_data.size(); gps_idx++)
-    {
-        const dg::Timestamp gps_time = gps_data[gps_idx].first;
-        const dg::LatLon gps_datum = gps_data[gps_idx].second;
-        VVS_CHECK_TRUE(localizer->applyGPS(gps_datum, gps_time));
-
-        if (wait_msec >= 0)
-        {
-            // Draw GPS observation
-            dg::Point2 pt = localizer->toMetric(gps_datum);
-            VVS_CHECK_TRUE(painter->drawNode(map_image, map_info, dg::Point2ID(0, pt), 1, 0, cv::Vec3b(0, 0, 255)));
-            cv::Mat image = map_image.clone();
-
-            // Draw a video image if necessary
-            while (video_time <= gps_time)
-            {
-                video_data >> video_image;
-                if (video_image.empty()) break;
-                video_time = video_time_scale * video_data.get(cv::VideoCaptureProperties::CAP_PROP_POS_MSEC) / 1000 + video_time_offset;
-            }
-            if (!video_image.empty())
-            {
-                cv::resize(video_image, video_image, cv::Size(), video_resize_scale, video_resize_scale);
-                cv::Rect rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
-                if (rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = video_image * 1;
-            }
-
-            // Draw the robot
-            dg::TopometricPose pose_t = localizer->getPoseTopometric();
-            //dg::Pose2 pose_m = localizer->getPose();
-            dg::Pose2 pose_m = localizer->toTopmetric2Metric(pose_t);
-            VVS_CHECK_TRUE(painter->drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), 10, 0, cx::COLOR_BLUE));
-            cv::String info_topo = cv::format("Node ID: %d, Edge Idx: %d, Dist: %.3f (Lat: %.6f, Lon: %.6f)", pose_t.node_id, pose_t.edge_idx, pose_t.dist, gps_datum.lat, gps_datum.lon);
-            cv::putText(image, info_topo, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
-
-            cv::imshow("runLocalizerETRIGPS", image);
-            int key = cv::waitKey(wait_msec);
-            if (key == cx::KEY_SPACE) key = cv::waitKey(0);
-            if (key == cx::KEY_ESC) return -1;
-        }
-    }
-
-    return 0;
-}
-
-int testLocMap2RoadMap(int wait_msec = 1, const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
+int testLocETRIMap2RoadMap(int wait_msec = 1, const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
 {
     // Load a map
-    dg::Map map = getExampleMap();
+    dg::Map map = getETRISyntheticMap();
     VVS_CHECK_TRUE(!map.nodes.empty());
 
     // Convert it to 'dg::RoadMap'
     dg::UTMConverter converter;
     VVS_CHECK_TRUE(converter.setReference(map.nodes.front())); // Select the first node as the origin
-    dg::RoadMap road_map = dg::SimpleLocalizer::cvtMap2SimpleRoadMap(map, converter);
+    dg::RoadMap road_map = dg::BaseLocalizer::cvtMap2RoadMap(map, converter);
     VVS_CHECK_TRUE(!road_map.isEmpty());
 
     // Draw the converted map
@@ -261,14 +188,120 @@ int testLocMap2RoadMap(int wait_msec = 1, const char* background_file = "data/Na
     return 0;
 }
 
-int testLocSimpleExample(int wait_msec = 1)
+int runLocalizerETRIGPS(dg::BaseLocalizer* localizer, dg::SimpleRoadPainter* painter, int wait_msec = 1, const char* gps_file = "data/191115_ETRI_asen_fix.csv", const char* video_file = "data/191115_ETRI.avi", const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
 {
-    // Prepare the localizer
-    dg::SimpleLocalizer localizer;
-    dg::Map map = getExampleMap();
+    if (localizer == nullptr || painter == nullptr) return -1;
+
+    // Prepare visualization
+    cv::Mat map_image = cv::imread(background_file);
+    VVS_CHECK_TRUE(!map_image.empty());
+    dg::RoadMap road_map = localizer->getMap();
+    VVS_CHECK_TRUE(painter->drawMap(map_image, road_map));
+    dg::CanvasInfo map_info = painter->getCanvasInfo(road_map, map_image.size());
+
+    // Prepare the ETRI dataset
+    auto gps_data = getETRIGPSData(gps_file);
+    VVS_CHECK_TRUE(!gps_data.empty());
+    cv::VideoCapture video_data;
+    VVS_CHECK_TRUE(video_data.open(video_file));
+
+    const double video_time_offset = gps_data.front().first - 0.5, video_time_scale = 1.75; // Calculated from 'bag' files
+    const double video_resize_scale = 0.4;
+    const cv::Point video_offset(32, 542);
+    const double robot_radius = 10; // Unit: [m]
+
+    // Run localization
+    cv::Mat video_image;
+    double video_time = video_time_scale * video_data.get(cv::VideoCaptureProperties::CAP_PROP_POS_MSEC) / 1000 + video_time_offset;
+    for (size_t gps_idx = 0; gps_idx < gps_data.size(); gps_idx++)
+    {
+        const dg::Timestamp gps_time = gps_data[gps_idx].first;
+        const dg::LatLon gps_datum = gps_data[gps_idx].second;
+        VVS_CHECK_TRUE(localizer->applyGPS(gps_datum, gps_time));
+
+        if (wait_msec >= 0)
+        {
+            // Draw GPS observation
+            dg::Point2 pt = localizer->toMetric(gps_datum);
+            cv::circle(map_image, painter->cvtMeter2Pixel(pt, map_info), 1, cx::COLOR_RED, -1);
+            cv::Mat image = map_image.clone();
+
+            // Draw a video image if necessary
+            while (video_time <= gps_time)
+            {
+                video_data >> video_image;
+                if (video_image.empty()) break;
+                video_time = video_time_scale * video_data.get(cv::VideoCaptureProperties::CAP_PROP_POS_MSEC) / 1000 + video_time_offset;
+            }
+            if (!video_image.empty())
+            {
+                cv::resize(video_image, video_image, cv::Size(), video_resize_scale, video_resize_scale);
+                cv::Rect rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
+                if (rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = video_image * 1;
+            }
+
+            // Draw the robot
+            dg::TopometricPose pose_t = localizer->getPoseTopometric();
+            //dg::Pose2 pose_m = localizer->cvtTopmetric2Metric(pose_t);
+            dg::Pose2 pose_m = localizer->getPose();
+            if (!painter->drawNode(image, map_info, dg::Point2ID(0, pose_m.x, pose_m.y), robot_radius, 0, cx::COLOR_BLUE)) break;
+            cv::Point pose_body = painter->cvtMeter2Pixel(pose_m, map_info);
+            cv::Point pose_head = painter->cvtMeter2Pixel(pose_m + dg::Point2(robot_radius * cos(pose_m.theta), robot_radius * sin(pose_m.theta)), map_info);
+            cv::line(image, pose_body, pose_head, cx::COLOR_GREEN, 2);
+            cv::String info_topo = cv::format("Node ID: %zd, Edge Idx: %d, Dist: %.3f (Lat: %.6f, Lon: %.6f, Ori: %.1f)", pose_t.node_id, pose_t.edge_idx, pose_t.dist, gps_datum.lat, gps_datum.lon, cx::cvtRad2Deg(pose_m.theta));
+            dg::EKFLocalizer* localizer_ekf = dynamic_cast<dg::EKFLocalizer*>(localizer);
+            if (localizer_ekf != nullptr)
+            {
+                dg::Polar2 velocity = localizer_ekf->getVelocity();
+                info_topo += cv::format(", Velocity: %.3f, %.1f", velocity.lin, cx::cvtRad2Deg(velocity.ang));
+            }
+            cv::putText(image, info_topo, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
+
+            cv::imshow("runLocalizerETRIGPS", image);
+            int key = cv::waitKey(wait_msec);
+            if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+            if (key == cx::KEY_ESC) return -1;
+        }
+    }
+
+    return 0;
+}
+
+cv::Ptr<dg::BaseLocalizer> getLocalizer(const std::string localizer_name)
+{
+    cv::Ptr<dg::BaseLocalizer> localizer;
+    if (localizer_name == "SimpleLocalizer") localizer = cv::makePtr<dg::SimpleLocalizer>();
+    else if (localizer_name == "EKFLocalizer") localizer = cv::makePtr<dg::EKFLocalizer>();
+    else if (localizer_name == "EKFLocalizerZeroGyro") localizer = cv::makePtr<dg::EKFLocalizerZeroGyro>();
+    else if (localizer_name == "EKFLocalizerZeroOdom") localizer = cv::makePtr<dg::EKFLocalizerZeroOdom>();
+    else if (localizer_name == "EKFLocalizerPostOdom") localizer = cv::makePtr<dg::EKFLocalizerPostOdom>();
+    else if (localizer_name == "EKFLocalizerSlowGyro") localizer = cv::makePtr<dg::EKFLocalizerSlowGyro>();
+    else if (localizer_name == "EKFLocalizerHyperTan") localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
+    else if (localizer_name == "EKFLocalizerVelModel") localizer = cv::makePtr<dg::EKFLocalizerVelModel>();
+    else if (localizer_name == "EKFLocalizerFreqPred") localizer = cv::makePtr<dg::EKFLocalizerFreqPred>();
+    else if (localizer_name == "EKFLocalizerVTAdjust") localizer = cv::makePtr<dg::EKFLocalizerVTAdjust>();
+    else if (localizer_name == "EKFLocalizerObsvFunc") localizer = cv::makePtr<dg::EKFLocalizerObsvFunc>();
+
+    cv::Ptr<dg::EKFLocalizer> localizer_ekf = localizer.dynamicCast<dg::EKFLocalizer>();
+    if (!localizer_ekf.empty())
+    {
+        if (!localizer_ekf->setParamGPSNoise(1)) return nullptr;
+        if (!localizer_ekf->setParamValue("offset_gps", { 1, 0 })) return nullptr;
+        if (!localizer_ekf->setParamMotionNoise(0.1, 0.1)) return nullptr;
+    }
+    return localizer;
+}
+
+int testLocETRISyntheticMap(const std::string localizer_name = "SimpleLocalizer", int wait_msec = 1)
+{
+    // Prepare the localizer and its map
+    cv::Ptr<dg::BaseLocalizer> localizer = getLocalizer(localizer_name);
+    if (localizer.empty()) return -1;
+
+    dg::Map map = getETRISyntheticMap();
     VVS_CHECK_TRUE(!map.nodes.empty());
-    VVS_CHECK_TRUE(localizer.setReference(map.nodes.front()));
-    VVS_CHECK_TRUE(localizer.loadMap(map, true));
+    VVS_CHECK_TRUE(localizer->setReference(map.nodes.front()));
+    VVS_CHECK_TRUE(localizer->loadMap(map, true));
 
     // Prepare the painter 
     dg::SimpleRoadPainter painter;
@@ -281,18 +314,20 @@ int testLocSimpleExample(int wait_msec = 1)
     VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 0, 255 }));
     VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 100, 0, 0 }));
 
-    return runLocalizerETRIGPS(&localizer, &painter, wait_msec);
+    return runLocalizerETRIGPS(localizer, &painter, wait_msec);
 }
 
-int testLocSimpleETRI(int wait_msec = 1, const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442))
+int testLocETRIRealMap(const std::string localizer_name = "SimpleLocalizer", int wait_msec = 1, const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442))
 {
-    // Prepare the localizer
-    dg::SimpleLocalizer localizer;
+    // Prepare the localizer and its map
+    cv::Ptr<dg::BaseLocalizer> localizer = getLocalizer(localizer_name);
+    if (localizer.empty()) return -1;
+
     dg::RoadMap map;
     VVS_CHECK_TRUE(map.load(map_file));
     VVS_CHECK_TRUE(!map.isEmpty());
-    VVS_CHECK_TRUE(localizer.loadMap(map));
-    VVS_CHECK_TRUE(localizer.setReference(ref_gps));
+    VVS_CHECK_TRUE(localizer->loadMap(map));
+    VVS_CHECK_TRUE(localizer->setReference(ref_gps));
 
     // Prepare the painter 
     dg::SimpleRoadPainter painter;
@@ -303,11 +338,11 @@ int testLocSimpleETRI(int wait_msec = 1, const char* map_file = "data/NaverLabs_
     VVS_CHECK_TRUE(painter.setParamValue("grid_unit_pos", { 120, 10 }));
     VVS_CHECK_TRUE(painter.setParamValue("node_radius", 2));
     VVS_CHECK_TRUE(painter.setParamValue("node_font_scale", 0));
-    VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 50, 255 }));
-    VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 200, 100, 100 }));
+    VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 100, 100}));
+    VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 150, 100, 100}));
     VVS_CHECK_TRUE(painter.setParamValue("edge_thickness", 1));
 
-    return runLocalizerETRIGPS(&localizer, &painter, wait_msec);
+    return runLocalizerETRIGPS(localizer, &painter, wait_msec);
 }
 
-#endif // End of '__TEST_LOCALIZER_EXAMPLE__'
+#endif // End of '__TEST_LOCALIZER_ETRI__'

@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{F763329B-5B6C-414A-BDBA-F2BB39FDF4D0}</ProjectGuid>
+    <ProjectGuid>{2476B4FE-A327-4717-A6FC-5F52631A2114}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
@@ -62,12 +62,12 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include;..\..\opencv\build\include;..\..\EXTERNAL\rapidjson\include;..\..\EXTERNAL\curl\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib;..\..\opencv\build\x64\vc15\lib;..\..\EXTERNAL\curl\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>opencv_world411d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -92,15 +92,21 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
-    <ClCompile Include="..\..\src\guidance\guidance.cpp" />
+    <ClCompile Include="..\..\src\localizer\road_map.cpp" />
     <ClCompile Include="..\..\src\localizer\utm_converter.cpp" />
-    <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\EXTERNAL\qgroundcontrol\UTM.h" />
-    <ClInclude Include="..\..\src\guidance\guidance.hpp" />
-    <ClInclude Include="..\..\src\localizer\utm_converter.hpp" />
+    <ClInclude Include="..\..\src\core\basic_type.hpp" />
+    <ClInclude Include="..\..\src\core\map.hpp" />
+    <ClInclude Include="..\..\src\localizer\directed_graph.hpp" />
+    <ClInclude Include="..\..\src\localizer\graph_painter.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_base.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_ekf.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_ekf_variants.hpp" />
+    <ClInclude Include="..\..\src\localizer\road_map.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_simple.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

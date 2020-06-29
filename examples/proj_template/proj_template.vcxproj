@@ -91,7 +91,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\localizer\simple_road_map.cpp" />
+    <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
+    <ClCompile Include="..\..\src\localizer\road_map.cpp" />
+    <ClCompile Include="..\..\src\localizer\utm_converter.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

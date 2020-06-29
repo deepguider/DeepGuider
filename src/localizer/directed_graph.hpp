@@ -76,7 +76,7 @@ public:
     /**
      * The default constructor
      */
-    EdgeType() { to = NULL; }
+    EdgeType() { to = nullptr; }
 
     /**
      * A constructor with assigning #to and #cost
@@ -182,7 +182,7 @@ public:
      */
     Edge* addEdge(Node* from, Node* to, const C& cost)
     {
-        if ((from == NULL) || (to == NULL)) return NULL;
+        if ((from == nullptr) || (to == nullptr)) return nullptr;
         from->m_edge_list.push_back(Edge(to, cost));
         return &(from->m_edge_list.back());
     }
@@ -190,11 +190,11 @@ public:
     /**
      * Find a node using its data (time complexity: O(|N|))
      * @param data Data to search
-     * @return A pointer to the found node (NULL if not exist)
+     * @return A pointer to the found node (nullptr if not exist)
      */
     Node* getNode(const D& data)
     {
-        Node* node = NULL;
+        Node* node = nullptr;
         for (NodeItr node_itr = getHeadNode(); node_itr != getTailNode(); node_itr++)
         {
             if (node_itr->data == data)
@@ -207,50 +207,50 @@ public:
     }
 
     /**
-     * Find an edge using its start and destination node (time complexity: O(|N| + |E|))
+     * Find an edge using its connecting node data (time complexity: O(|N| + |E|))
      * @param from Data of the start node
      * @param to Data of the destination node
-     * @return A pointer to the found edge (NULL if not exist)
+     * @return A pointer to the found edge (nullptr if not exist)
      */
     Edge* getEdge(const D& from, const D& to)
     {
         Node* fnode = getNode(from);
         Node* tnode = getNode(to);
-        if (fnode == NULL || tnode == NULL) return NULL;
+        if (fnode == nullptr || tnode == nullptr) return nullptr;
         return getEdge(fnode, tnode);
     }
 
     /**
-     * Find an edge using its start and destination node (time complexity: O(|E|))
+     * Find an edge using its connecting node pointers (time complexity: O(|E|))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
-     * @return A pointer to the found edge (NULL if not exist)
+     * @return A pointer to the found edge (nullptr if not exist)
      */
     Edge* getEdge(Node* from, Node* to)
     {
-        if ((from == NULL) || (to == NULL)) return NULL;
-        Edge* edge = NULL;
+        if ((from == nullptr) || (to == nullptr)) return nullptr;
+        Edge* edge = nullptr;
         for (EdgeItr edge_itr = getHeadEdge(from); edge_itr != getTailEdge(from); edge_itr++)
             if (edge_itr->to->data == to->data) { edge = &(*edge_itr); break; }
         return edge;
     }
 
     /**
-     * Find an edge using its start and destination node (time complexity: O(|E|))
+     * Find an edge using its connecting node iterators (time complexity: O(|E|))
      * @param from An iterator of the start node
      * @param to An iterator of the destination node
-     * @return A pointer to the found edge (NULL if not exist)
+     * @return A pointer to the found edge (nullptr if not exist)
      */
     Edge* getEdge(NodeItr from, NodeItr to)
     {
-        Edge* edge = NULL;
+        Edge* edge = nullptr;
         for (EdgeItr edge_itr = getHeadEdge(from); edge_itr != getTailEdge(from); edge_itr++)
             if (edge_itr->to->data == to->data) { edge = &(*edge_itr); break; }
         return edge;
     }
 
     /**
-     * Retrieve edge cost using its start and destination node (time complexity: O(|E|))
+     * Retrieve edge cost from its start node to its destination node (time complexity: O(|N| + |E|))
      * @param from Data of the start node
      * @param to Data of the destination node
      * @return Cost of the found edge
@@ -258,12 +258,12 @@ public:
     C getEdgeCost(const D& from, const D& to)
     {
         Edge* edge = getEdge(from, to);
-        if (edge == NULL) return C(-1);
+        if (edge == nullptr) return C(-1);
         return edge->cost;
     }
 
     /**
-     * Retrieve edge cost using its start and destination node (time complexity: O(|E|))
+     * Retrieve edge cost from its start node to its destination node (time complexity: O(|E|))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
      * @return Cost of the found edge
@@ -271,12 +271,12 @@ public:
     C getEdgeCost(Node* from, Node* to)
     {
         Edge* edge = getEdge(from, to);
-        if (edge == NULL) return C(-1);
+        if (edge == nullptr) return C(-1);
         return edge->cost;
     }
 
     /**
-     * Retrieve edge cost using its start and destination node (time complexity: O(|E|))
+     * Retrieve edge cost from its start node to its destination node (time complexity: O(|E|))
      * @param from A const_iterator of the start node
      * @param to A const_iterator of the destination node
      * @return Cost of the found edge
@@ -289,7 +289,7 @@ public:
     }
 
     /**
-     * Check connectivity from a start node to a destination node (time complexity: O(|E|))
+     * Check connectivity from its start node to its destination node (time complexity: O(|E|))
      * @param from Data of the start node
      * @param to Data of the destination node
      * @return True if they are connected (false if not connected)
@@ -297,7 +297,7 @@ public:
     bool isConnected(const D& from, const D& to) { return (getEdgeCost(from, to) >= 0); }
 
     /**
-     * Check connectivity from a start node to a destination node (time complexity: O(|E|))
+     * Check connectivity from its start node to its destination node (time complexity: O(|E|))
      * @param from A pointer to the start node
      * @param to A pointer to the destination node
      * @return True if they are connected (false if not connected)
@@ -305,7 +305,7 @@ public:
     bool isConnected(Node* from, Node* to) { return (getEdgeCost(from, to) >= 0); }
 
     /**
-     * Check connectivity from a start node to a destination node (time complexity: O(|E|))
+     * Check connectivity from its start node to its destination node (time complexity: O(|E|))
      * @param from A const_iterator of the start node
      * @param to A const_iterator of the destination node
      * @return True if they are connected (false if not connected)
@@ -313,13 +313,13 @@ public:
     bool isConnected(NodeItrConst from, NodeItrConst to) const { return (getEdgeCost(from, to) >= 0); }
 
     /**
-     * Copy this to the other graph (time complexity: O(|N||E|))
+     * Copy this to the other graph (time complexity: O(|N|^2|E|))
      * @param dest A pointer to the other graph
      * @return True if successful (false if failed)
      */
     bool copyTo(DirectedGraph<D, C>* dest) const
     {
-        if (dest == NULL) return false;
+        if (dest == nullptr) return false;
 
         dest->removeAll();
         for (NodeItrConst node = getHeadNodeConst(); node != getTailNodeConst(); node++)
@@ -349,7 +349,7 @@ public:
      */
     bool removeNode(Node* node)
     {
-        if (node == NULL) return false;
+        if (node == nullptr) return false;
         NodeItr is_found = getTailNode();
         for (NodeItr node_itr = getHeadNode(); node_itr != getTailNode(); node_itr++)
         {
@@ -388,7 +388,7 @@ public:
      */
     bool removeEdge(Node* from, Node* to)
     {
-        if ((from == NULL) || (to == NULL)) return false;
+        if ((from == nullptr) || (to == nullptr)) return false;
         bool is_found = false;
         EdgeItr edge_itr = getHeadEdge(from);
         while (edge_itr != getTailEdge(from))
@@ -458,7 +458,7 @@ public:
      */
     size_t countEdges(const Node* node) const
     {
-        if (node == NULL) return 0;
+        if (node == nullptr) return 0;
         return node->m_edge_list.size();
     }
 

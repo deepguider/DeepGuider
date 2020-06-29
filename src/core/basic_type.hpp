@@ -1,6 +1,9 @@
 #ifndef __BASIC_TYPE__
 #define __BASIC_TYPE__
-#define NOMINMAX // 윈도우즈(windows.h 등) 안에서 min(a,b)와 max(a,b) 메크로를 정의하지 못하게 막음
+
+// Disable additional macro definition of 'min' and 'max' in 'windows.h'
+#define NOMINMAX
+
 #include "opencv2/opencv.hpp"
 
 namespace dg
@@ -117,7 +120,7 @@ public:
 /**
  * @brief 2D pose
  *
- * 2D Pose is represented in the rectangular coordinate.
+ * 2D pose is represented in the rectangular coordinate.
  * Its member variables includes 2D position (x, y) and orientation (theta).
  */
 class Pose2 : public Point2
@@ -215,29 +218,36 @@ public:
 };
 
 /**
- * @brief Robot pose on topological maps
+ * @brief 2D pose on topological maps
  *
- * On topological robot pose can be rep
+ * A robot's location is minimally represented with a node and its connecting edge on topological maps.
+ * The node is defined as <i>the reference node</i>.
+ * A member variable dist is the distance from the reference node, which presents more exact location of the robot on the edge.
+ * Since the robot is not exactly on the edge, more information such as the heading angle and lateral offset is given for further usages.
  */
 class TopometricPose
 {
 public:
     /**
      * A constructor with assignment
-     * @param _node_id ID of previously departed node
-     * @param _edge_idx Index of currently moving edge
-     * @param _dist The traveled distance from the previously departed node (Unit: [m])
+     * @param _node_id ID of the reference node
+     * @param _edge_idx Index of the currently moving edge
+     * @param _dist The traveled distance from the reference node (Unit: [m])
+     * @param _head The heading angle with respect to the direction of the currently moving edge (Unit: [rad])
      */
-    TopometricPose(ID _node_id = 0, int _edge_idx = 0, double _dist = 0) : node_id(_node_id), edge_idx(_edge_idx), dist(_dist) { }
+    TopometricPose(ID _node_id = 0, int _edge_idx = 0, double _dist = 0, double _head = 0) : node_id(_node_id), edge_idx(_edge_idx), dist(_dist), head(_head) { }
 
-    /** ID of previously departed node */
+    /** ID of the reference node (also defined as the previously departed node) */
     ID node_id;
 
-    /** Index of currently moving edge */
+    /** Index of the currently moving edge */
 	int edge_idx;
 
-    /** The traveled distance from the previously departed node (Unit: [m]) */
+    /** The traveled distance from the reference node (Unit: [m]) */
     double dist;
+
+    /** The heading angle with respect to the direction of the currently moving edge (Unit: [rad]) */
+    double head;
 };
 
 } // End of 'dg'

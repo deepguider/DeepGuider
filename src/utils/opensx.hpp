@@ -1,15 +1,6 @@
 /**
- * OpenCX: Sunglok's OpenCV Extension
- *
- * OpenCX aims to provide extended functionality and tools to OpenCV for more convenience.
- * It consists of a single header file, 'opencx.hpp', which only depends on OpenCV in C++.
- * Just include the file to your project. It will work without complex configuration and dependency.
- * OpenCX is Beerware so that it is free to use and distribute.
- *
+ * This file is a part of OpenCX, especially about functionalities not depending on OpenCV.
  * - Homepage: https://github.com/sunglok/opencx
- *
- * @author  Sunglok Choi (http://sites.google.com/site/sunglok)
- * @version 0.3 (12/10/2019)
  */
 
 /**
@@ -19,10 +10,6 @@
  * can do whatever you want with this stuff. If we meet some day, and you think
  * this stuff is worth it, you can buy me a beer in return.        Sunglok Choi
  * ----------------------------------------------------------------------------
- */
-
-/**
- * This file is a part of OpenCX, but it contains functionalities which does not depend on OpenCV.
  */
 
 #ifndef __OPEN_SX__
@@ -248,8 +235,8 @@ namespace cx
                 permutation[i] = start + step * i;
             return permutation;
         }
-
     }; // End of 'CSVReader'
+
 } // End of 'cx'
 
 #endif // End of '__OPEN_SX__'
