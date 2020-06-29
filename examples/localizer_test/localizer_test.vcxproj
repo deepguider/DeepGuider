@@ -102,10 +102,14 @@
     <ClInclude Include="..\..\src\localizer\directed_graph.hpp" />
     <ClInclude Include="..\..\src\localizer\graph_painter.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_base.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_ekf.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_ekf_variants.hpp" />
     <ClInclude Include="..\..\src\localizer\road_map.hpp" />
-    <ClInclude Include="..\..\src\localizer\simple_localizer.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_simple.hpp" />
     <ClInclude Include="test_core_type.hpp" />
-    <ClInclude Include="test_localizer_example.hpp" />
+    <ClInclude Include="test_localizer_ekf.hpp" />
+    <ClInclude Include="test_localizer_etri.hpp" />
     <ClInclude Include="test_localizer_gps2utm.hpp" />
     <ClInclude Include="test_localizer_graph.hpp" />
     <ClInclude Include="test_localizer_road.hpp" />
