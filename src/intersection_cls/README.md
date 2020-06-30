@@ -18,6 +18,10 @@
     - Torchvision 0.4.0
     - Dropblock 0.3.0
     
+- Download weight file from this 
+[link](https://drive.google.com/file/d/1sX411P95LHE6kB7yzgmHq537uvZRUcA-/view?usp=sharing) 
+and put it inside *data_intersection_cls* folder
+    
 ### Run demo
 - Run demo from this current folder `python intersection_cls.py`
 - Output should be 
