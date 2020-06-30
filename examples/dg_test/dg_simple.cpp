@@ -9,10 +9,13 @@
 #include "dg_poi_recog.hpp"
 #include "dg_vps.hpp"
 #include "dg_guidance.hpp"
+#include "dg_exploration.hpp"
 #include "dg_utils.hpp"
 #include <chrono>
-#include <jsoncpp/json/json.h>
-#include <curl/curl.h>
+#ifdef VPSSERVER
+    #include <jsoncpp/json/json.h>
+    #include <curl/curl.h>
+#endif
 
 using namespace dg;
 using namespace std;
@@ -30,8 +33,9 @@ protected:
     // configuable parameters
     bool m_recording = false;
     bool m_enable_roadtheta = false;
-    bool m_enable_vps = true;
+    bool m_enable_vps = false;
     bool m_enable_poi = false;
+    bool m_enable_exploration = false;
     std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
     //std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
 
@@ -50,9 +54,11 @@ protected:
     bool procVps();
     bool procPoi();
 
+#ifdef VPSSERVER
 	// curl api's
 	static std::size_t curl_callback(const char* in, std::size_t size, std::size_t num, std::string* out);
 	bool curl_request(const std::string url, const char * CMD, const Json::Value * post_json, Json::Value * get_json);
+#endif
 
     // shared variables for multi-threading
     cv::Mutex m_cam_mutex;
@@ -76,6 +82,7 @@ protected:
     dg::POIRecognizer m_poi;
     dg::VPS m_vps;
     dg::GuidanceManager m_guider;
+    dg::ActiveNavigation m_active_nav;
 
     // guidance icons
     cv::Mat m_icon_forward;
@@ -137,6 +144,10 @@ bool DeepGuider::initialize()
     module_path = m_srcdir + "/road_recog";
     if (m_enable_roadtheta && !m_roadtheta.initialize("road_direction_recognizer", module_path.c_str())) return false;
     if (m_enable_roadtheta) printf("\tRoadTheta initialized!\n");
+
+    //initialize exploation 
+    if (m_enable_exploration && !m_active_nav.initialize()) return false;
+    if (m_enable_exploration) printf("\tExploation initialized!\n");
 
     // prepare GUI map
     m_painter.setParamValue("pixel_per_meter", 1.045);
@@ -234,7 +245,7 @@ bool DeepGuider::initializeMapAndPath(dg::LatLon gps_start, dg::LatLon gps_dest)
     for (int idx = 0; idx < (int)path.pts.size(); idx++)
     {
         dg::ID node_id = path.pts[idx].node_id;
-        dg::DirectedGraph<dg::Point2ID, double>::Node* node = road_map.findNode(node_id);
+        dg::DirectedGraph<dg::Point2ID, double>::Node* node = road_map.getNode(node_id);
         if (node){
             if (node_prev) m_painter.drawEdge(m_map_image, m_map_info, node_prev->data, node->data, 0, cv::Vec3b(200, 0, 0), 2);
             if (node_prev) m_painter.drawNode(m_map_image, m_map_info, node_prev->data, 5, 0, cv::Vec3b(50, 0, 255));
@@ -341,6 +352,7 @@ int DeepGuider::run()
         dg::GuidanceManager::GuideStatus cur_status;
         dg::GuidanceManager::Guidance cur_guide;
         cur_status = m_guider.getGuidanceStatus(pose_topo, pose_confidence);
+        m_guider.updateGuidance(pose_topo, cur_status);
         cur_guide = m_guider.getGuidance(pose_topo, cur_status);
         dg::Node* node = m_map_manager.getMap().findNode(pose_topo.node_id);
         if (node != nullptr)
@@ -348,6 +360,23 @@ int DeepGuider::run()
             m_guider.applyPoseGPS(dg::LatLon(node->lat, node->lon));
         }
         printf("%s\n", cur_guide.msg.c_str());
+
+        // check lost
+        if (m_enable_exploration)
+        {
+            m_guider.makeLostValue(m_guider.m_prevconf, pose_confidence);
+            m_active_nav.apply(m_cam_image, cur_guide, t1);
+            if (cur_status == dg::GuidanceManager::GuideStatus::GUIDE_LOST)
+            {
+                std::vector<ExplorationGuidance> actions;
+                GuidanceManager::GuideStatus status;
+                m_active_nav.get(actions, status);
+                for (int k = 0; k < actions.size(); k++)
+                {
+                    printf("\t action %d: [%lf, %lf, %lf]\n", k, actions[k].theta1, actions[k].d, actions[k].theta2);
+                }
+            }
+        }
 
         // check arrival
         // TODO
@@ -452,9 +481,9 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     {
         // draw robot on the map
         m_localizer_mutex.lock();
+        dg::Pose2 pose_metric = m_localizer.getPose();
         dg::TopometricPose pose_topo = m_localizer.getPoseTopometric();
         dg::LatLon pose_gps = m_localizer.getPoseGPS();
-        dg::Pose2 pose_metric = m_localizer.toTopmetric2Metric(pose_topo);
         double pose_confidence = m_localizer.getPoseConfidence();
         m_localizer_mutex.unlock();
 
@@ -606,6 +635,7 @@ bool DeepGuider::procRoadTheta()
 }
 
 
+#ifdef VPSSERVER
 std::size_t DeepGuider::curl_callback(const char* in, std::size_t size, std::size_t num, std::string* out)
 {
     const std::size_t totalBytes(size * num);
@@ -613,82 +643,79 @@ std::size_t DeepGuider::curl_callback(const char* in, std::size_t size, std::siz
     return totalBytes;
 }
 
-
-bool DeepGuider::curl_request(const std::string url, const char * CMD, const Json::Value * post_json, Json::Value * get_json)
+bool DeepGuider::curl_request(const std::string url, const char* CMD, const Json::Value* post_json, Json::Value* get_json)
 {
-	CURLcode res;
-	CURL *hnd;
-	struct curl_slist *slist1;
-	slist1 = NULL;
-	slist1 = curl_slist_append(slist1, "Content-Type: application/json"); //Do not edit
-	int ret = 0;
-	std::string jsonstr;
-	long httpCode(0);
-	std::unique_ptr<std::string> httpData(new std::string());
+    CURLcode res;
+    CURL* hnd;
+    struct curl_slist* slist1;
+    slist1 = NULL;
+    slist1 = curl_slist_append(slist1, "Content-Type: application/json"); //Do not edit
+    int ret = 0;
+    std::string jsonstr;
+    long httpCode(0);
+    std::unique_ptr<std::string> httpData(new std::string());
 
-	hnd = curl_easy_init();
-	// url = "http://localhost:7729/Apply/";
-	curl_easy_setopt(hnd, CURLOPT_URL, url.c_str());
-	curl_easy_setopt(hnd, CURLOPT_NOPROGRESS, 1L);
+    hnd = curl_easy_init();
+    // url = "http://localhost:7729/Apply/";
+    curl_easy_setopt(hnd, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(hnd, CURLOPT_NOPROGRESS, 1L);
 
-	/** Post messate to server **/
-	if(strcmp("POST", CMD) == 0)
-	{
-		// std::string jsonstr = "{\"username\":\"bob\",\"password\":\"12345\"}";
-		jsonstr = post_json->toStyledString();
-		// cout << jsonstr << endl;
-		curl_easy_setopt(hnd, CURLOPT_POSTFIELDS, jsonstr.c_str());
-		curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.38.0");
-		curl_easy_setopt(hnd, CURLOPT_HTTPHEADER, slist1);
-		curl_easy_setopt(hnd, CURLOPT_MAXREDIRS, 50L);
-		curl_easy_setopt(hnd, CURLOPT_CUSTOMREQUEST, "POST");
-		curl_easy_setopt(hnd, CURLOPT_TCP_KEEPALIVE, 1L);
-	}
+    /** Post messate to server **/
+    if (strcmp("POST", CMD) == 0)
+    {
+        // std::string jsonstr = "{\"username\":\"bob\",\"password\":\"12345\"}";
+        jsonstr = post_json->toStyledString();
+        // cout << jsonstr << endl;
+        curl_easy_setopt(hnd, CURLOPT_POSTFIELDS, jsonstr.c_str());
+        curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.38.0");
+        curl_easy_setopt(hnd, CURLOPT_HTTPHEADER, slist1);
+        curl_easy_setopt(hnd, CURLOPT_MAXREDIRS, 50L);
+        curl_easy_setopt(hnd, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_easy_setopt(hnd, CURLOPT_TCP_KEEPALIVE, 1L);
+    }
 
-	/** Get response from server **/
- 	// POST needs GET afere it, so we don't need break; here.
-	if(strcmp("POST", CMD) == 0 || strcmp("GET", CMD) == 0)
-	{
-		curl_easy_setopt(hnd, CURLOPT_WRITEFUNCTION, curl_callback);
-		curl_easy_setopt(hnd, CURLOPT_WRITEDATA, httpData.get());
-		curl_easy_setopt(hnd, CURLOPT_PROXY, "");
-		
-		res = curl_easy_perform(hnd);
-		curl_easy_getinfo(hnd, CURLINFO_RESPONSE_CODE, &httpCode);
-		curl_easy_cleanup(hnd);
-		curl_slist_free_all(slist1);
+    /** Get response from server **/
+    // POST needs GET afere it, so we don't need break; here.
+    if (strcmp("POST", CMD) == 0 || strcmp("GET", CMD) == 0)
+    {
+        curl_easy_setopt(hnd, CURLOPT_WRITEFUNCTION, curl_callback);
+        curl_easy_setopt(hnd, CURLOPT_WRITEDATA, httpData.get());
+        curl_easy_setopt(hnd, CURLOPT_PROXY, "");
 
-		hnd = NULL;
-		slist1 = NULL;
-		
-		// Run our HTTP GET command, capture the HTTP response code, and clean up.
-		if (httpCode == 200)
-		{
-		    //Json::Value *get_json;
-		    Json::Reader jsonReader;
-		    if (jsonReader.parse(*httpData.get(), *get_json))
-		    {
-		        //std::cout << get_json->toStyledString() << std::endl;
-				ret = 0;
-		    }
-		    else
-		    {
-		        std::cout << "Could not parse HTTP data as JSON" << std::endl;
-		        std::cout << "HTTP data was:\n" << *httpData.get() << std::endl;
-		        ret = 1;
-		    }
-		}
-		else
-		{
-		    std::cout << "Couldn't GET from " << url << " - exiting" << std::endl;
-		    ret = 1;
-		}
-	}
-	return ret;
+        res = curl_easy_perform(hnd);
+        curl_easy_getinfo(hnd, CURLINFO_RESPONSE_CODE, &httpCode);
+        curl_easy_cleanup(hnd);
+        curl_slist_free_all(slist1);
+
+        hnd = NULL;
+        slist1 = NULL;
+
+        // Run our HTTP GET command, capture the HTTP response code, and clean up.
+        if (httpCode == 200)
+        {
+            //Json::Value *get_json;
+            Json::Reader jsonReader;
+            if (jsonReader.parse(*httpData.get(), *get_json))
+            {
+                //std::cout << get_json->toStyledString() << std::endl;
+                ret = 0;
+            }
+            else
+            {
+                std::cout << "Could not parse HTTP data as JSON" << std::endl;
+                std::cout << "HTTP data was:\n" << *httpData.get() << std::endl;
+                ret = 1;
+            }
+        }
+        else
+        {
+            std::cout << "Couldn't GET from " << url << " - exiting" << std::endl;
+            ret = 1;
+        }
+    }
+    return ret;
 }
 
-
-#ifdef VPSSERVER		
 bool DeepGuider::procVps() // This sends query image and parameters to server using curl_request() and it receives its results (Id,conf.)
 {
     m_cam_mutex.lock();
@@ -798,8 +825,7 @@ bool DeepGuider::procVps() // This sends query image and parameters to server us
     return true;
 }
 
-
-#else // VPSSERVER		
+#else // VPSSERVER
 bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++ 
 {
     m_cam_mutex.lock();

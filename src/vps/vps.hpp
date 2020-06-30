@@ -119,7 +119,7 @@ namespace dg
                 Py_ssize_t n_ret = PyList_Size(pRet);
                 if (n_ret < 2)
                 {
-                    fprintf(stderr, "VPS::apply() - Wrong number of returns: %ld\n", n_ret);
+                    fprintf(stderr, "VPS::apply() - Wrong number of returns: %d\n", (int)n_ret);
                     return false;
                 }
 

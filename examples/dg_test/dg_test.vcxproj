@@ -88,6 +88,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib;..\..\EXTERNAL\python\lib;..\..\EXTERNAL\curl\lib;..\..\EXTERNAL\curl\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>opencv_world411.lib;python36.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
