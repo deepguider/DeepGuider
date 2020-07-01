@@ -17,6 +17,7 @@ from .yolo3.model import yolo_eval, yolo_body, tiny_yolo_body
 from .yolo3.utils import letterbox_image
 import os
 from keras.utils import multi_gpu_model
+import tensorflow as tf  # added by jylee to resolve thread problem of keras (2020.7.1)
 
 class YOLO(object):
     _defaults = {
