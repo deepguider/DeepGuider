@@ -8,8 +8,6 @@
 
 int main()
 {
-    return testLocETRIRealMap("SimpleLocalizer");
-
     // Test 'core' module
     // 1. Test basic data structures
     VVS_RUN_TEST(testCoreLatLon());

@@ -48,12 +48,21 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
     CV_DbgAssert(!localizer.empty() && !gps_data.empty());
 
     // Prepare the result trajectory
-    FILE* traj_file = nullptr;
+    cx::VideoWriter traj_vid;
+    FILE* traj_csv = nullptr;
     if (!traj_name.empty())
     {
-        traj_file = fopen(traj_name.c_str(), "wt");
-        if (traj_file == nullptr) return -1;
-        fprintf(traj_file, "# Time[sec], X[m], Y[m], Theta[rad], LinVel[m/s], AngVel[rad/s]\n");
+        string traj_ext = cx::toLowerCase(traj_name.substr(max<size_t>(traj_name.size() - 4, 0)));
+        if (traj_ext == ".avi")
+        {
+            if (!traj_vid.open(traj_name)) return -1;
+        }
+        else
+        {
+            traj_csv = fopen(traj_name.c_str(), "wt");
+            if (traj_csv == nullptr) return -1;
+            fprintf(traj_csv, "# Time[sec], X[m], Y[m], Theta[rad], LinVel[m/s], AngVel[rad/s]\n");
+        }
     }
 
     // Run GPS-only localization
@@ -66,11 +75,11 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
             if (!success) fprintf(stderr, "applyPosition() was failed.\n");
 
             // Record the current state
-            if (traj_file != nullptr)
+            if (traj_csv != nullptr)
             {
                 dg::Pose2 pose = localizer->getPose();
                 dg::Polar2 velocity = localizer->getVelocity();
-                fprintf(traj_file, "%f, %f, %f, %f, %f, %f\n", gps_data[i][0], pose.x, pose.y, pose.theta, velocity.lin, velocity.ang);
+                fprintf(traj_csv, "%f, %f, %f, %f, %f, %f\n", gps_data[i][0], pose.x, pose.y, pose.theta, velocity.lin, velocity.ang);
             }
         }
     }
@@ -101,11 +110,11 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
             bool success = localizer->applyPosition(gps, gps_data[i][0]);
             if (!success) fprintf(stderr, "applyPosition() was failed.\n");
 
-            // Record the current state
+            // Record the current state on the CSV file
             dg::Pose2 pose = localizer->getPose();
             dg::Polar2 velocity = localizer->getVelocity();
-            if (traj_file != nullptr)
-                fprintf(traj_file, "%f, %f, %f, %f, %f, %f\n", gps_data[i][0], pose.x, pose.y, pose.theta, velocity.lin, velocity.ang);
+            if (traj_csv != nullptr)
+                fprintf(traj_csv, "%f, %f, %f, %f, %f, %f\n", gps_data[i][0], pose.x, pose.y, pose.theta, velocity.lin, velocity.ang);
 
             // Visualize the current state
             cv::circle(bg_image, painter->cvtMeter2Pixel(pose, bg_info), 2, robot_color, -1);                                                       // Trajectory
@@ -137,6 +146,10 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
                 cv::putText(image, topo_text, cv::Point(5, 35), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
             }
 
+            // Record the current visualization on the AVI file
+            if (traj_vid.isConfigured())
+                traj_vid << image;
+
             // Show the visualized image
             cv::imshow("runLocalizer", image);
             int key = cv::waitKey(wait_msec);
@@ -146,7 +159,7 @@ int runLocalizer(cv::Ptr<dg::EKFLocalizer> localizer, const vector<cv::Vec3d>& g
         cv::waitKey(0);
     }
 
-    if (traj_file != nullptr) fclose(traj_file);
+    if (traj_csv != nullptr) fclose(traj_csv);
     return 0;
 }
 
@@ -323,6 +336,8 @@ int runLocalizerETRI(const string& localizer_name, const string& gps_file, const
 
 int main()
 {
+    return runLocalizerETRI("EKFLocalizer", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.1, dg::Pose2(), 1, "data/NaverLabs_ETRI(Road).csv", "data/NaverMap_ETRI(Satellite)_191127.png");
+    return runLocalizerETRI("EKFLocalizerZeroGyro", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.5, dg::Pose2(), 1, "data/NaverLabs_ETRI(Road).csv", "data/NaverMap_ETRI(Satellite)_191127.png");
     return runLocalizerETRI("EKFLocalizerSinTrack", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.1, dg::Pose2(), 1, "data/NaverLabs_ETRI(Road).csv", "data/NaverMap_ETRI(Satellite)_191127.png");
-    return runLocalizerSynthetic("EKFLocalizerHyperTan", "data_localizer/synthetic_truth/Square(10Hz,00s).pose.csv", "", 0.5, dg::Polar2(1, 0), 0.1);
+    return runLocalizerSynthetic("EKFLocalizerHyperTan", "data_localizer/synthetic_truth/Sine(10Hz,00s).pose.csv", "", 0.5, dg::Polar2(1, 0), 0.1);
 }

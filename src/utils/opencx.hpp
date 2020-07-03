@@ -202,7 +202,7 @@ namespace cx
          * Check whether VideoWriter is properly initialized
          * @return True if successfully configured (false if not)
          */
-        virtual bool isConfiged() const
+        virtual bool isConfigured() const
         {
             return !m_filename.empty() && m_fps > 0;
         }
@@ -214,7 +214,7 @@ namespace cx
         virtual void write(const cv::Mat& image)
         {
             if (isOpened()) cv::VideoWriter::write(image);
-            else if (isConfiged())
+            else if (isConfigured())
             {
                 if (cv::VideoWriter::open(m_filename, m_fourcc, m_fps, image.size(), image.channels() > 1))
                     cv::VideoWriter::write(image);
