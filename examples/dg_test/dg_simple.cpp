@@ -33,11 +33,11 @@ protected:
     // configuable parameters
     bool m_recording = false;
     bool m_enable_roadtheta = false;
-    bool m_enable_vps = false;
+    bool m_enable_vps = true;
     bool m_enable_poi = false;
     bool m_enable_exploration = false;
-    std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
-    //std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
+    //std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
+    std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
 
     bool m_threaded_run_python = false;
     std::string m_video_header_name = "dg_test_";
@@ -50,6 +50,8 @@ protected:
     bool initializeMapAndPath(dg::LatLon gps_start, dg::LatLon gps_dest);
     void applyGpsData(dg::LatLon gps_datum, dg::Timestamp ts);
     void drawGuiDisplay(cv::Mat& gui_image);
+    void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
+    void drawPOI(cv::Mat target_image, std::vector<POIResult> pois, cv::Size original_image_size);
     bool procRoadTheta();
     bool procVps();
     bool procPoi();
@@ -70,6 +72,10 @@ protected:
     cv::Mat m_vps_image;            // top-1 matched streetview image
     dg::ID m_vps_id;                // top-1 matched streetview id
     double m_vps_confidence;        // top-1 matched confidence(similarity)
+
+    cv::Mutex m_poi_mutex;
+    cv::Mat m_poi_image;
+    std::vector<POIResult> m_pois;
 
     cv::Mutex m_localizer_mutex;
     int m_gps_update_cnt = 0;
@@ -93,7 +99,6 @@ protected:
     cv::Mat m_mask_turn_right;
     cv::Mat m_icon_turn_back;
     cv::Mat m_mask_turn_back;
-    void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
 
     // local variables
     cx::VideoWriter m_video;
@@ -428,6 +433,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     }
 
     // draw vps result
+    cv::Rect vps_rect = video_rect;
     if (m_enable_vps)
     {
         // top-1 matched streetview image
@@ -446,22 +452,25 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
 
         if (!sv_image.empty())
         {
-            double fy = (double)video_rect.height / sv_image.rows;
-            cv::resize(sv_image, sv_image, cv::Size(), fy, fy);
             cv::Point sv_offset = video_offset;
             sv_offset.x = video_rect.x + video_rect.width + 20;
             cv::Rect rect(sv_offset, sv_offset + cv::Point(sv_image.cols, sv_image.rows));
-            if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = sv_image * 1;
+            if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows)
+            {
+                image(rect) = sv_image * 1;
 
-            cv::Point msg_offset = sv_offset + cv::Point(10, 30);
-            double font_scale = 0.8;
-            std::string str_confidence = cv::format("Confidence: %.2lf", sv_confidence);
-            cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
-            cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
-            std::string str_id = cv::format("ID: %zu", sv_id);
-            msg_offset.y += 30;
-            cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
-            cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
+                cv::Point msg_offset = sv_offset + cv::Point(10, 30);
+                double font_scale = 0.8;
+                std::string str_confidence = cv::format("Confidence: %.2lf", sv_confidence);
+                cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
+                cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
+                std::string str_id = cv::format("ID: %zu", sv_id);
+                msg_offset.y += 30;
+                cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
+                cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
+
+                vps_rect = rect;
+            }
         }
 
         // show gps position of top-1 matched image on the map
@@ -473,6 +482,35 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
                 dg::Point2 sv_pos = m_localizer.toMetric(dg::LatLon(sv.lat, sv.lon));
                 m_painter.drawNode(image, m_map_info, dg::Point2ID(0, sv_pos.x, sv_pos.y), 6, 0, cv::Vec3b(255, 255, 0));
             }
+        }
+    }
+
+    // draw poi result
+    cv::Rect poi_rect = vps_rect;
+    if (m_enable_poi)
+    {
+        cv::Mat poi_image;
+        std::vector<POIResult> pois;
+        cv::Size original_image_size;
+        m_poi_mutex.lock();
+        if(!m_poi_image.empty())
+        {
+            original_image_size.width = m_poi_image.cols;
+            original_image_size.height = m_poi_image.rows;
+            double fy = (double)video_rect.height / m_poi_image.rows;
+            cv::resize(m_poi_image, poi_image, cv::Size(), fy, fy);
+            pois = m_pois;
+        }
+        m_poi_mutex.unlock();
+
+        if (!poi_image.empty())
+        {
+            drawPOI(poi_image, pois, original_image_size);
+            cv::Point poi_offset = video_offset;
+            poi_offset.x = vps_rect.x + vps_rect.width + 20;
+            cv::Rect rect(poi_offset, poi_offset + cv::Point(poi_image.cols, poi_image.rows));
+            if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = poi_image * 1;
+            poi_rect = rect;
         }
     }
 
@@ -595,6 +633,28 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
     msg_offset = rect.tl() + cv::Point(0, rect.height + 25);
     cv::putText(image, guide.msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 255), 4);
     cv::putText(image, guide.msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 0), 2);
+}
+
+
+void DeepGuider::drawPOI(cv::Mat image, std::vector<POIResult> pois, cv::Size original_image_size)
+{
+    double xscale = (double)image.cols / original_image_size.width;
+    double yscale = (double)image.rows / original_image_size.height;
+
+    for(size_t i=0; i<pois.size(); i++)
+    {
+        pois[i].xmin = (int)(xscale * pois[i].xmin + 0.5);
+        pois[i].ymin = (int)(yscale * pois[i].ymin + 0.5);
+        pois[i].xmax = (int)(xscale * pois[i].xmax + 0.5);
+        pois[i].ymax = (int)(yscale * pois[i].ymax + 0.5);
+
+        cv::Rect rc(pois[i].xmin, pois[i].ymin, pois[i].xmax-pois[i].xmin+1, pois[i].ymax-pois[i].ymin+1);
+        cv::rectangle(image, rc, cv::Scalar(0, 255, 0), 2);
+        cv::Point pt(pois[i].xmin + 5, pois[i].ymin + 35);
+        std::string msg = cv::format("%s %.2lf", pois[i].label.c_str(), pois[i].confidence);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
+    }
 }
 
 
@@ -918,6 +978,22 @@ bool DeepGuider::procPoi()
             printf("\tpoi%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, ts=%lf\n", k, pois[k].xmin, pois[k].ymin, pois[k].xmax, pois[k].ymax, pois[k].label.c_str(), pois[k].confidence, capture_time);
         }
         VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, capture_time, confs));
+
+        if(!pois.empty())
+        {
+            m_poi_mutex.lock();
+            m_poi_image = cam_image;
+            m_pois = pois;
+            m_poi_mutex.unlock();
+        }
+        else
+        {
+            m_poi_mutex.lock();
+            m_poi_image = cv::Mat();
+            m_pois.clear();
+            m_poi_mutex.unlock();
+        }
+          
     }
 
     return true;

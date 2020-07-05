@@ -22,7 +22,7 @@ protected:
     bool m_recording = false;
     bool m_enable_roadtheta = false;
     bool m_enable_vps = true;
-    bool m_enable_poi = false;
+    bool m_enable_poi = true;
     //std::string m_server_ip = "127.0.0.1";         // default: 127.0.0.1 (localhost)
     std::string m_server_ip = "129.254.87.96";       // default: 127.0.0.1 (localhost)
 
