@@ -221,12 +221,17 @@ class RawDataset(Dataset):
     def __init__(self, root, opt):
         self.opt = opt
         self.image_path_list = []
-        for dirpath, dirnames, filenames in os.walk(root):
-            for name in filenames:
-                _, ext = os.path.splitext(name)
-                ext = ext.lower()
-                if ext == '.jpg' or ext == '.jpeg' or ext == '.png':
-                    self.image_path_list.append(os.path.join(dirpath, name))
+
+        if os.path.isdir(root):
+            for dirpath, dirnames, filenames in os.walk(root):
+                for name in filenames:
+                    _, ext = os.path.splitext(name)
+                    ext = ext.lower()
+                    if ext == '.jpg' or ext == '.jpeg' or ext == '.png':
+                        self.image_path_list.append(os.path.join(dirpath, name))
+        else : #file
+            self.image_path_list.append(root)
+
 
         self.image_path_list = natsorted(self.image_path_list)
         self.nSamples = len(self.image_path_list)
