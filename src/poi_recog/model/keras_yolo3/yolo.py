@@ -17,6 +17,7 @@ from .yolo3.model import yolo_eval, yolo_body, tiny_yolo_body
 from .yolo3.utils import letterbox_image
 import os
 from keras.utils import multi_gpu_model
+import tensorflow as tf  # added by jylee to resolve thread problem of keras (2020.7.1)
 
 class YOLO(object):
     _defaults = {
@@ -43,6 +44,7 @@ class YOLO(object):
         self.anchors = self._get_anchors()
         self.sess = K.get_session()
         self.boxes, self.scores, self.classes = self.generate()
+        self.graph = tf.get_default_graph()
 
     def _get_class(self):
         classes_path = os.path.expanduser(self.classes_path)
@@ -121,13 +123,14 @@ class YOLO(object):
         image_data /= 255.
         image_data = np.expand_dims(image_data, 0)  # Add batch dimension.
 
-        out_boxes, out_scores, out_classes = self.sess.run(
-            [self.boxes, self.scores, self.classes],
-            feed_dict={
-                self.yolo_model.input: image_data,
-                self.input_image_shape: [image.size[1], image.size[0]],
-                K.learning_phase(): 0
-            })
+        with self.graph.as_default():
+            out_boxes, out_scores, out_classes = self.sess.run(
+                [self.boxes, self.scores, self.classes],
+                feed_dict={
+                    self.yolo_model.input: image_data,
+                    self.input_image_shape: [image.size[1], image.size[0]],
+                    K.learning_phase(): 0
+                })
 
         print('Found {} boxes for {}'.format(len(out_boxes), 'img'))
         out_prediction = []
