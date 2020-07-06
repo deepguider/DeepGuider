@@ -31,9 +31,9 @@ public:
 
 protected:
     // configuable parameters
-    bool m_recording = false;
+    bool m_recording = true;
     bool m_enable_roadtheta = false;
-    bool m_enable_vps = true;
+    bool m_enable_vps = false;
     bool m_enable_poi = false;
     bool m_enable_exploration = false;
     //std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
@@ -118,7 +118,8 @@ DeepGuider::~DeepGuider()
     if(m_enable_poi) m_poi.clear();
     if(m_enable_vps) m_vps.clear();
 
-    close_python_environment();
+    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_exploration;
+    if(enable_python) close_python_environment();
 }
 
 
@@ -127,8 +128,9 @@ bool DeepGuider::initialize()
     printf("Initialize deepguider system...\n");
 
     // initialize python
-    if (!init_python_environment("python3", "", m_threaded_run_python)) return false;
-    printf("\tPython environment initialized!\n");
+    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_exploration;
+    if (enable_python && !init_python_environment("python3", "", m_threaded_run_python)) return false;
+    if(enable_python) printf("\tPython environment initialized!\n");
 
     // initialize map manager
     m_map_manager.setIP(m_server_ip);
@@ -366,6 +368,13 @@ int DeepGuider::run()
         }
         printf("%s\n", cur_guide.msg.c_str());
 
+        // check out of path
+        if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP_DETECT || cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
+        {
+            printf("GUIDANCE: out of path detected!\n");
+            VVS_CHECK_TRUE(initializeMapAndPath(pose_gps, gps_dest));
+        }
+
         // check lost
         if (m_enable_exploration)
         {
@@ -383,12 +392,18 @@ int DeepGuider::run()
             }
         }
 
-        // check arrival
-        // TODO
-
         // draw GUI display
         cv::Mat gui_image = m_map_image.clone();
         drawGuiDisplay(gui_image);
+
+        // check arrival
+        if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
+        {
+            std::string msg = "ARRIVED!";
+            cv::Point pt(600, 500);
+            cv::putText(gui_image, msg, pt, cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 255, 0), 8);
+            cv::putText(gui_image, msg, pt, cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 0, 0), 4);
+        }
 
         // recording
         if (m_recording) m_video << gui_image;
