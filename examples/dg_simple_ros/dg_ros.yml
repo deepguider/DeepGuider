@@ -1,0 +1,20 @@
+%YAML:1.0
+---
+## activate/deactivate submodules
+enable_roadtheta: 0
+enable_vps: 1
+enable_poi: 1
+enable_logo: 0
+enable_intersect: 0
+enable_exploration: 0
+
+## other main settings
+#server_ip: "127.0.0.1"             # localhost
+server_ip: "129.254.87.96"          # etri map server
+threaded_run_python: 1
+dg_srcdir: "/work/deepguider/src"   # path of deepguider/src folder (required for python embedding)
+
+## etc
+recording: 0
+map_image_path: "data/NaverMap_ETRI(Satellite)_191127.png"
+recording_header_name: "dg_ros_"

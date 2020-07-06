@@ -18,18 +18,6 @@ public:
     bool runOnce(double timestamp);
 
 protected:
-    // Configuable parameters
-    bool m_recording = false;
-    bool m_enable_roadtheta = false;
-    bool m_enable_vps = true;
-    bool m_enable_poi = true;
-    //std::string m_server_ip = "127.0.0.1";         // default: 127.0.0.1 (localhost)
-    std::string m_server_ip = "129.254.87.96";       // default: 127.0.0.1 (localhost)
-
-    bool m_threaded_run_python = true;
-    std::string m_video_header_name = "dg_ros_";
-    std::string m_srcdir = "/work/deepguider/src";   // system path of deepguider/src (required for python embedding)
-    const char* m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";    
     double m_wait_sec = 0.1;
 
     // Thread routines
@@ -72,17 +60,24 @@ protected:
 DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
 {
     // overwrite configuable parameters of base class
-    DeepGuider::m_recording = m_recording;
-    DeepGuider::m_enable_roadtheta = m_enable_roadtheta;
-    DeepGuider::m_enable_vps = m_enable_vps;
-    DeepGuider::m_enable_poi = m_enable_poi;
-    DeepGuider::m_server_ip = m_server_ip;
-    DeepGuider::m_threaded_run_python = m_threaded_run_python;
-    DeepGuider::m_video_header_name = m_video_header_name;
-    DeepGuider::m_srcdir = m_srcdir;
-    DeepGuider::m_map_image_path = m_map_image_path;
+    m_enable_roadtheta = false;
+    m_enable_vps = true;
+    m_enable_poi = true;
+    m_enable_logo = false;
+    m_enable_intersect = false;
+    m_enable_exploration = false;
 
-    // Read parameters
+    //m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
+    m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
+    m_threaded_run_python = true;
+    m_srcdir = "/work/deepguider/src";   // system path of deepguider/src (required for python embedding)
+
+    m_recording = false;
+    m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
+    m_recording_header_name = "dg_ros_";
+
+    // Read ros-specific parameters
+    m_wait_sec = 0.1;
     nh_dg.param<double>("wait_sec", m_wait_sec, m_wait_sec);
 
     // Initialize subscribers
@@ -103,10 +98,8 @@ DeepGuiderROS::~DeepGuiderROS()
 
 bool DeepGuiderROS::initialize()
 {
-    bool ok = DeepGuider::initialize();
-    if(!ok) return false;
-
-    return true;
+    bool ok = DeepGuider::initialize("dg_ros.yml");
+    return ok;
 }
 
 int DeepGuiderROS::run()
@@ -119,6 +112,8 @@ int DeepGuiderROS::run()
     VVS_CHECK_TRUE(initializeMapAndPath(gps_start, gps_dest));
     printf("\tgps_start: lat=%lf, lon=%lf\n", gps_start.lat, gps_start.lon);
     printf("\tgps_dest: lat=%lf, lon=%lf\n", gps_dest.lat, gps_dest.lon);
+    m_gps_start = gps_start;
+    m_gps_dest = gps_dest;
 
     cv::namedWindow("deep_guider", cv::WINDOW_AUTOSIZE);
 
@@ -145,6 +140,9 @@ int DeepGuiderROS::run()
 
 bool DeepGuiderROS::runOnce(double timestamp)
 {
+    // process Guidance
+    procGuidance(timestamp);
+
     // draw GUI display
     cv::Mat gui_image = m_map_image.clone();
     drawGuiDisplay(gui_image);
