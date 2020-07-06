@@ -1,5 +1,5 @@
 #!/bin/bash
-##Current Directory : topdir/examples/dg_test
+##Current Directory : topdir/examples/dg_simple
 mkdir -p build
 cd build
 cmake ..

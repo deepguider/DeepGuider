@@ -20,13 +20,13 @@ fi
 
 ## Make symbolic links to ROS workspace
 mkdir -p ~/$ROSDIR/src
-ln -sf $DGDIR/examples/dg_test_ros $ROSDIR/src/
+ln -sf $DGDIR/examples/dg_simple_ros $ROSDIR/src/
 ln -sf $DGDIR/src/vps/data_vps $ROSDIR/
 ln -sf $DGDIR/src/poi_recog/model $ROSDIR/
 ln -sf $DGDIR/bin/data $ROSDIR/
 
 ## Copy example shell scripts to ROS workspace
-cp $DGDIR/examples/dg_test_ros/dg_run.sh $ROSDIR/
-cp $DGDIR/examples/dg_test_ros/dg_databag.sh $ROSDIR/
+cp $DGDIR/examples/dg_simple_ros/dg_run.sh $ROSDIR/
+cp $DGDIR/examples/dg_simple_ros/dg_databag.sh $ROSDIR/
 chmod a+x $ROSDIR/dg_run.sh
 chmod a+x $ROSDIR/dg_databag.sh

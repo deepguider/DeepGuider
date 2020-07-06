@@ -20,6 +20,10 @@
 using namespace dg;
 using namespace std;
 
+#define LOAD_PARAM_VALUE(fn, name_cfg, name_var) \
+    if (!(fn)[name_cfg].empty()) (fn)[name_cfg] >> name_var;
+
+
 class DeepGuider
 {
 public:
@@ -30,21 +34,26 @@ public:
     int run();
 
 protected:
+    bool loadConfig(std::string config_file);
+
     // configuable parameters
-    bool m_recording = true;
     bool m_enable_roadtheta = false;
     bool m_enable_vps = false;
     bool m_enable_poi = false;
+    bool m_enable_logo = false;
+    bool m_enable_intersect = false;
     bool m_enable_exploration = false;
+
     //std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
     std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
-
     bool m_threaded_run_python = false;
-    std::string m_video_header_name = "dg_test_";
     std::string m_srcdir = "./../src";            // path of deepguider/src (required for python embedding)
-    const char* m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
-    const char* m_gps_input = "data/191115_ETRI_asen_fix.csv";
-    const char* m_video_input = "data/191115_ETRI.avi";
+
+    bool m_recording = false;
+    std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
+    std::string m_gps_input = "data/191115_ETRI_asen_fix.csv";
+    std::string m_video_input = "data/191115_ETRI.avi";
+    std::string m_recording_header_name = "dg_simple_";
 
     // internal api's
     bool initializeMapAndPath(dg::LatLon gps_start, dg::LatLon gps_dest);
@@ -118,8 +127,43 @@ DeepGuider::~DeepGuider()
     if(m_enable_poi) m_poi.clear();
     if(m_enable_vps) m_vps.clear();
 
-    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_exploration;
+    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_logo || m_enable_intersect || m_enable_exploration;
     if(enable_python) close_python_environment();
+}
+
+
+bool DeepGuider::loadConfig(std::string config_file)
+{
+    if (config_file.empty())
+    {
+        return false;
+    }
+
+    cv::FileStorage fs(config_file, cv::FileStorage::READ);
+    if (!fs.isOpened())
+    {
+        return false;
+    }
+
+    cv::FileNode fn = fs.root();
+    LOAD_PARAM_VALUE(fn, "enable_roadtheta", m_enable_roadtheta);
+    LOAD_PARAM_VALUE(fn, "enable_vps", m_enable_vps);
+    LOAD_PARAM_VALUE(fn, "enable_poi", m_enable_poi);
+    LOAD_PARAM_VALUE(fn, "enable_logo", m_enable_logo);
+    LOAD_PARAM_VALUE(fn, "enable_intersect", m_enable_intersect);
+    LOAD_PARAM_VALUE(fn, "enable_exploration", m_enable_exploration);
+
+    LOAD_PARAM_VALUE(fn, "server_ip", m_server_ip);
+    LOAD_PARAM_VALUE(fn, "threaded_run_python", m_threaded_run_python);
+    LOAD_PARAM_VALUE(fn, "dg_srcdir", m_srcdir);
+
+    LOAD_PARAM_VALUE(fn, "recording", m_recording);
+    LOAD_PARAM_VALUE(fn, "map_image_path", m_map_image_path);
+    LOAD_PARAM_VALUE(fn, "gps_input", m_gps_input);
+    LOAD_PARAM_VALUE(fn, "video_input", m_video_input);
+    LOAD_PARAM_VALUE(fn, "recording_header_name", m_recording_header_name);
+
+    return true;
 }
 
 
@@ -127,8 +171,11 @@ bool DeepGuider::initialize()
 {
     printf("Initialize deepguider system...\n");
 
+    // load config
+    loadConfig("dg_simple.yml");
+
     // initialize python
-    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_exploration;
+    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_logo || m_enable_intersect || m_enable_exploration;
     if (enable_python && !init_python_environment("python3", "", m_threaded_run_python)) return false;
     if(enable_python) printf("\tPython environment initialized!\n");
 
@@ -190,7 +237,7 @@ bool DeepGuider::initialize()
         tm _tm = *localtime(&start_t);
         char szfilename[255];
         strftime(szfilename, 255, "%y%m%d_%H%M%S.avi", &_tm);
-        std::string filename = m_video_header_name + szfilename;
+        std::string filename = m_recording_header_name + szfilename;
         m_video.open(filename, 30);
     }
 
@@ -266,7 +313,7 @@ bool DeepGuider::initializeMapAndPath(dg::LatLon gps_start, dg::LatLon gps_dest)
 }
 
 
-std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(const char* csv_file = "data/191115_ETRI_asen_fix.csv")
+std::vector<std::pair<double, dg::LatLon>> getExampleGPSData(std::string csv_file = "data/191115_ETRI_asen_fix.csv")
 {
     cx::CSVReader csv;
     VVS_CHECK_TRUE(csv.open(csv_file));

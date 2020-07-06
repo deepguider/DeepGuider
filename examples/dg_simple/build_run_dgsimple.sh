@@ -48,7 +48,7 @@ function check_vps_server() {
 }
 
 
-##Current Directory : topdir/examples/dg_test
+##Current Directory : topdir/examples/dg_simple
 CWD=`pwd`
 cd ../../
 topdir=`pwd`
@@ -78,8 +78,8 @@ python_venv $topdir
 # check_vps_server $topdir # If you use server_vps version, un-remark this line
 
 cd $topdir/bin
-#gdb ./dg_test #for debugging, you need to insert '-g' option at CXX_FLAGS in your CMakeLists.txt # in your CMakeLists.txt : set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
-#kdbg ./dg_test #for debugging in graphic mode
-./dg_test # for running without debugging
+#gdb ./dg_simple #for debugging, you need to insert '-g' option at CXX_FLAGS in your CMakeLists.txt # in your CMakeLists.txt : set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
+#kdbg ./dg_simple #for debugging in graphic mode
+./dg_simple # for running without debugging
 
-cd $topdir/examples/dg_test   # return to initial directory
+cd $topdir/examples/dg_simple   # return to initial directory

@@ -1,4 +1,4 @@
-## DeepGuider Test in ROS
+## DeepGuider Simple Test in ROS
 Simplified deepguider system that integrates its sub-modules and is implemented as a ROS package.
 
 ### Dependencies
