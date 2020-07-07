@@ -5,7 +5,7 @@ enable_roadtheta: 0
 enable_vps: 0
 enable_poi: 0
 enable_logo: 0
-enable_intersect: 0
+enable_intersection: 0
 enable_exploration: 0
 
 ## other main settings

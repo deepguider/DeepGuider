@@ -7,10 +7,10 @@ using namespace std;
 
 void drawIntersectionResult(cv::Mat image, IntersectionResult& intersect)
 {
-    cv::Point pt(100, 50);
+    cv::Point pt(image.cols/2 - 160, 100);
     std::string msg = cv::format("Intersect: %d (%.2lf)", intersect.cls, intersect.confidence);
-    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
-    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
+    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 255, 0), 6);
+    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 0, 0), 2);
 }
 
 void test_video_run(IntersectionClassifier& classifier, bool recording = false, const char* video_file = "data/191115_ETRI.avi")
@@ -52,18 +52,27 @@ void test_video_run(IntersectionClassifier& classifier, bool recording = false, 
         classifier.get(intersect);
         dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
         printf("iteration: %d (it took %lf seconds)\n", i, t2 - t1);
-        printf("\tIntersect: %d (%.2lf)", intersect.cls, intersect.confidence);
+        printf("\tIntersect: %d (%.2lf)\n", intersect.cls, intersect.confidence);
         i++;
+        
+        // draw frame number & fps
+        std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0/(t2 - t1));
+        cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
+        cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
 
+        // draw result
         drawIntersectionResult(image, intersect);
-        std::string fn = cv::format("#%d", frame_i);
-        cv::putText(image, fn.c_str(), cv::Point(10, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
-        cv::putText(image, fn.c_str(), cv::Point(10, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
+
         if(recording) video << image;
 
         cv::imshow(video_file, image);
         int key = cv::waitKey(1);
         if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+        if (key == 83)    // Right Key
+        {
+            int fi = video_data.get(cv::CAP_PROP_POS_FRAMES);
+            video_data.set(cv::CAP_PROP_POS_FRAMES, fi + 30);
+        }
         if (key == cx::KEY_ESC) break;
     }
     cv::destroyWindow(video_file); 
@@ -85,7 +94,8 @@ int main()
     printf("Initialization: it took %lf seconds\n", t2 - t1);
 
     // Run the Python module
-    test_video_run(classifier, false);
+    bool recording = true;
+    test_video_run(classifier, recording);
 
     // Clear the Python module
     classifier.clear();

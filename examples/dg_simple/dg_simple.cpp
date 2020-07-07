@@ -7,6 +7,7 @@
 #include "dg_localizer.hpp"
 #include "dg_road_recog.hpp"
 #include "dg_poi_recog.hpp"
+#include "dg_intersection.hpp"
 #include "dg_vps.hpp"
 #include "dg_guidance.hpp"
 #include "dg_exploration.hpp"
@@ -41,7 +42,7 @@ protected:
     bool m_enable_vps = false;
     bool m_enable_poi = false;
     bool m_enable_logo = false;
-    bool m_enable_intersect = false;
+    bool m_enable_intersection = false;
     bool m_enable_exploration = false;
 
     //std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
@@ -61,9 +62,11 @@ protected:
     void drawGuiDisplay(cv::Mat& gui_image);
     void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
     void drawPOI(cv::Mat target_image, std::vector<POIResult> pois, cv::Size original_image_size);
+    void drawIntersection(cv::Mat image, IntersectionResult r, cv::Size original_image_size);
     bool procRoadTheta();
     bool procVps();
     bool procPoi();
+    bool procIntersectionClassifier();
     void procGuidance(dg::Timestamp ts);
 
 #ifdef VPSSERVER
@@ -87,6 +90,11 @@ protected:
     cv::Mat m_poi_image;
     std::vector<POIResult> m_pois;
 
+    cv::Mutex m_intersection_mutex;
+    cv::Mat m_intersection_image;
+    IntersectionResult m_intersection_result;
+
+
     cv::Mutex m_localizer_mutex;
     int m_gps_update_cnt = 0;
     bool m_pose_initialized = false;
@@ -97,6 +105,7 @@ protected:
     dg::RoadDirectionRecognizer m_roadtheta;
     dg::POIRecognizer m_poi;
     dg::VPS m_vps;
+    dg::IntersectionClassifier m_intersection_classifier;
     dg::GuidanceManager m_guider;
     dg::ActiveNavigation m_active_nav;
 
@@ -129,8 +138,9 @@ DeepGuider::~DeepGuider()
     if(m_enable_roadtheta) m_roadtheta.clear();
     if(m_enable_poi) m_poi.clear();
     if(m_enable_vps) m_vps.clear();
+    if(m_enable_intersection) m_intersection_classifier.clear();
 
-    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_logo || m_enable_intersect || m_enable_exploration;
+    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_logo || m_enable_intersection || m_enable_exploration;
     if(enable_python) close_python_environment();
 }
 
@@ -153,7 +163,7 @@ bool DeepGuider::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "enable_vps", m_enable_vps);
     LOAD_PARAM_VALUE(fn, "enable_poi", m_enable_poi);
     LOAD_PARAM_VALUE(fn, "enable_logo", m_enable_logo);
-    LOAD_PARAM_VALUE(fn, "enable_intersect", m_enable_intersect);
+    LOAD_PARAM_VALUE(fn, "enable_intersection", m_enable_intersection);
     LOAD_PARAM_VALUE(fn, "enable_exploration", m_enable_exploration);
 
     LOAD_PARAM_VALUE(fn, "server_ip", m_server_ip);
@@ -178,7 +188,7 @@ bool DeepGuider::initialize(std::string config_file)
     loadConfig(config_file);
 
     // initialize python
-    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_logo || m_enable_intersect || m_enable_exploration;
+    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_logo || m_enable_intersection || m_enable_exploration;
     if (enable_python && !init_python_environment("python3", "", m_threaded_run_python)) return false;
     if(enable_python) printf("\tPython environment initialized!\n");
 
@@ -196,6 +206,11 @@ bool DeepGuider::initialize(std::string config_file)
     module_path = m_srcdir + "/poi_recog";
     if (m_enable_poi && !m_poi.initialize("poi_recognizer", module_path.c_str())) return false;
     if (m_enable_poi) printf("\tPOI initialized!\n");
+
+    // initialize Intersection
+    module_path = m_srcdir + "/intersection_cls";
+    if (m_enable_intersection && !m_intersection_classifier.initialize("intersection_cls", module_path.c_str())) return false;
+    if (m_enable_intersection) printf("\tIntersection initialized!\n");
 
     // initialize roadTheta
     module_path = m_srcdir + "/road_recog";
@@ -252,6 +267,9 @@ bool DeepGuider::initialize(std::string config_file)
     m_vps_image.release();
     m_vps_id = 0;
     m_vps_confidence = 0;
+    m_poi_image.release();
+    m_pois.clear();
+    m_intersection_image.release();
 
     return true;
 }
@@ -395,6 +413,7 @@ int DeepGuider::run()
         if(m_enable_roadtheta) procRoadTheta();
         if(m_enable_vps) procVps();
         if(m_enable_poi) procPoi();
+        if(m_enable_intersection) procIntersectionClassifier();
 
         // process Guidance
         procGuidance(gps_time);
@@ -585,6 +604,35 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         }
     }
 
+    // draw intersection result
+    cv::Rect intersection_rect = poi_rect;
+    if (m_enable_intersection)
+    {
+        cv::Mat intersection_image;
+        IntersectionResult intersection_result;
+        cv::Size original_image_size;
+        m_intersection_mutex.lock();
+        if(!m_intersection_image.empty())
+        {
+            original_image_size.width = m_intersection_image.cols;
+            original_image_size.height = m_intersection_image.rows;
+            double fy = (double)video_rect.height / m_intersection_image.rows;
+            cv::resize(m_intersection_image, intersection_image, cv::Size(), fy, fy);
+            intersection_result = m_intersection_result;
+        }
+        m_intersection_mutex.unlock();
+
+        if (!intersection_image.empty())
+        {
+            drawIntersection(intersection_image, intersection_result, original_image_size);
+            cv::Point intersection_offset = video_offset;
+            intersection_offset.x = intersection_rect.x + poi_rect.width + 20;
+            cv::Rect rect(intersection_offset, intersection_offset + cv::Point(intersection_image.cols, intersection_image.rows));
+            if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = intersection_image * 1;
+            intersection_rect = rect;
+        }
+    }
+
     // draw localization & guidance info
     if (m_pose_initialized)
     {
@@ -735,6 +783,18 @@ void DeepGuider::drawPOI(cv::Mat image, std::vector<POIResult> pois, cv::Size or
         cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
         cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
     }
+}
+
+
+void DeepGuider::drawIntersection(cv::Mat image, IntersectionResult r, cv::Size original_image_size)
+{
+    double xscale = (double)image.cols / original_image_size.width;
+    double yscale = (double)image.rows / original_image_size.height;
+
+    cv::Point pt(60, 50);
+    std::string msg = cv::format("Intersect: %d (%.2lf)", r.cls, r.confidence);
+    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 255, 0), 6);
+    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 0, 0), 2);
 }
 
 
@@ -1079,6 +1139,35 @@ bool DeepGuider::procPoi()
     return true;
 }
 
+
+bool DeepGuider::procIntersectionClassifier()
+{
+    m_cam_mutex.lock();
+    cv::Mat cam_image = m_cam_image.clone();
+    dg::Timestamp capture_time = m_cam_capture_time;
+    dg::LatLon capture_pos = m_cam_capture_pos;
+    m_cam_mutex.unlock();
+
+    if (!cam_image.empty() && m_intersection_classifier.apply(cam_image, capture_time))
+    {
+        m_intersection_mutex.lock();
+        m_intersection_classifier.get(m_intersection_result);
+        m_intersection_image = cam_image;
+        m_intersection_mutex.unlock();
+        printf("[Intersect] %d (%.2lf)\n", m_intersection_result.cls, m_intersection_result.confidence);   
+
+        // apply the result to localizer
+        // TBD...
+    }
+    else
+    {
+        m_intersection_mutex.lock();
+        m_intersection_image = cv::Mat();
+        m_intersection_mutex.unlock();
+    }
+
+    return true;
+}
 
 #endif      // #ifndef __DEEPGUIDER_SIMPLE__
 

@@ -23,12 +23,15 @@ protected:
     // Thread routines
     std::thread* vps_thread = nullptr;
     std::thread* poi_thread = nullptr;
+    std::thread* intersection_thread = nullptr;
     std::thread* roadtheta_thread = nullptr;
     static void threadfunc_vps(DeepGuiderROS* guider);
     static void threadfunc_poi(DeepGuiderROS* guider);
+    static void threadfunc_intersection(DeepGuiderROS* guider);
     static void threadfunc_roadtheta(DeepGuiderROS* guider);    
     bool is_vps_running = false;
     bool is_poi_running = false;
+    bool is_intersection_running = false;
     bool is_roadtheta_running = false;
     void terminateThreadFunctions();
 
@@ -64,7 +67,7 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_enable_vps = true;
     m_enable_poi = true;
     m_enable_logo = false;
-    m_enable_intersect = false;
+    m_enable_intersection = false;
     m_enable_exploration = false;
 
     //m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
@@ -120,6 +123,7 @@ int DeepGuiderROS::run()
     // start recognizer threads
     if (m_enable_vps) vps_thread = new std::thread(threadfunc_vps, this);
     if (m_enable_poi) poi_thread = new std::thread(threadfunc_poi, this);
+    if (m_enable_intersection) intersection_thread = new std::thread(threadfunc_intersection, this);
     if (m_enable_roadtheta) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
 
     ros::Rate loop(1 / m_wait_sec);
@@ -180,6 +184,17 @@ void DeepGuiderROS::threadfunc_poi(DeepGuiderROS* guider)
     guider->is_poi_running = false;
 }
 
+// Thread fnuction for IntersectionClassifier
+void DeepGuiderROS::threadfunc_intersection(DeepGuiderROS* guider)
+{
+    guider->is_intersection_running = true;
+    while (guider->m_enable_intersection)
+    {
+        guider->procIntersectionClassifier();
+    }
+    guider->is_intersection_running = false;
+}
+
 // Thread fnuction for RoadTheta
 void DeepGuiderROS::threadfunc_roadtheta(DeepGuiderROS* guider)
 {
@@ -194,31 +209,35 @@ void DeepGuiderROS::threadfunc_roadtheta(DeepGuiderROS* guider)
 
 void DeepGuiderROS::terminateThreadFunctions()
 {
-    if (vps_thread == nullptr && poi_thread == nullptr && roadtheta_thread == nullptr) return;
+    if (vps_thread == nullptr && poi_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr) return;
 
     // disable all thread running
     m_enable_vps = false;
     m_enable_poi = false;
+    m_enable_intersection = false;
     m_enable_roadtheta = false;
 
     // wait up to 4000 ms at maximum
     for (int i = 0; i<40; i++)
     {
-        if (!is_vps_running && !is_poi_running && !is_roadtheta_running) break;
+        if (!is_vps_running && !is_poi_running && !is_intersection_running && !is_roadtheta_running) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     // wait child thread to terminate
     if (is_vps_running) vps_thread->join();
     if (is_poi_running) poi_thread->join();
+    if (is_intersection_running) intersection_thread->join();
     if (is_roadtheta_running) roadtheta_thread->join();
 
     // clear threads
     if (vps_thread) delete vps_thread;
     if (poi_thread) delete poi_thread;
+    if (intersection_thread) delete intersection_thread;
     if (roadtheta_thread) delete roadtheta_thread;
     vps_thread = nullptr;
     poi_thread = nullptr;
+    intersection_thread = nullptr;
     roadtheta_thread = nullptr;
 }
 
