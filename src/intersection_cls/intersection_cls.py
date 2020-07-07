@@ -42,7 +42,7 @@ class IntersectionClassifier:
         return True
 
     ##### Process one frame
-    def apply(self, image):
+    def apply(self, image, timestamp):
         self.image = image
 
         ##### Process Input #####
