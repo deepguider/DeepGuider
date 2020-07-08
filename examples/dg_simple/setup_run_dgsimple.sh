@@ -68,6 +68,7 @@ fi
 echo "####### Run ..... #######"
 cd $topdir/bin
 ln -sf ../src/vps/data_vps
+ln -sf ../src/intersection_cls/data_intersection_cls
 ln -sf ../src/poi_recog/model
 cd data
 ln -sf ../../src/poi_recog/data/test

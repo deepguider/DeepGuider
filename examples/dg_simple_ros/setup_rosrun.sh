@@ -23,7 +23,13 @@ mkdir -p ~/$ROSDIR/src
 ln -sf $DGDIR/examples/dg_simple_ros $ROSDIR/src/
 ln -sf $DGDIR/src/vps/data_vps $ROSDIR/
 ln -sf $DGDIR/src/poi_recog/model $ROSDIR/
+ln -sf $DGDIR/src/intersection_cls/data_intersection_cls $ROSDIR/
+ln -sf $DGDIR/bin/data_localizer $ROSDIR/
 ln -sf $DGDIR/bin/data $ROSDIR/
+
+## Copy machine-specific files from template to local
+cp $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt $DGDIR/examples/dg_simple_ros/CMakeLists.txt
+cp $DGDIR/examples/dg_simple_ros/dg_ros.yml $ROSDIR/
 
 ## Copy example shell scripts to ROS workspace
 cp $DGDIR/examples/dg_simple_ros/dg_run.sh $ROSDIR/
