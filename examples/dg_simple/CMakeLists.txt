@@ -18,7 +18,7 @@ project(${ProjectId} C CXX)
 
 find_package( PythonInterp 3.6 REQUIRED )
 find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV 4.0 REQUIRED )
+find_package( OpenCV 3.2 REQUIRED )
 find_package( CURL REQUIRED ) 
 
 INCLUDE_DIRECTORIES ( ${SRCDIR} ${RAPIDJSON_INC} ${PYTHON_INCLUDE_DIRS} )

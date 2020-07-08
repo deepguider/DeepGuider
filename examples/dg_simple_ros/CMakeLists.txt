@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(dg_ros)
+project(dg_simple_ros)
 
 # set Python path
 set(PYTHON_INCLUDE_DIRS "/usr/include/python3.6m")
 set(PYTHON_LIBRARIES "/usr/lib/x86_64-linux-gnu/libpython3.6m.so")
 
 # set DeepGuider path
-set(DGDIR   "/work/deepguider")
+set(DGDIR   "${HOME}/dg/DeepGuider")
 set(BINDIR	"${DGDIR}/bin")
 set(SRCDIR	"${DGDIR}/src")
 set(EXTDIR	"${DGDIR}/EXTERNAL")
@@ -25,12 +25,12 @@ find_package(catkin REQUIRED COMPONENTS
 
 #find_package( PythonInterp 3.6 REQUIRED )
 #find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV REQUIRED )
+find_package( OpenCV 3.2 REQUIRED )
 find_package( CURL REQUIRED )
 
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES dg_ros
+#  LIBRARIES dg_simple_ros
    CATKIN_DEPENDS cv_bridge roscpp std_msgs
 #  DEPENDS system_lib
 )
@@ -39,11 +39,11 @@ include_directories( ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${SRCDIR} ${R
 
 file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/exploration/*.cpp ${SRCDIR}/guidance/*.cpp ${SRCDIR}/localizer/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/poi_recog/*.cpp ${SRCDIR}/road_recog/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp *.cpp)
 
-add_executable(${PROJECT_NAME}_node src/dg_ros.cpp ${SOURCES})
-add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_executable(${PROJECT_NAME} src/dg_simple_ros.cpp ${SOURCES})
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 target_link_libraries(
-  ${PROJECT_NAME}_node
+  ${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
   ${PYTHON_LIBRARIES}

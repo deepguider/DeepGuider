@@ -27,7 +27,7 @@ protected:
     std::string m_server_ip = "129.254.87.96";       // default: 127.0.0.1 (localhost)
 
     bool m_threaded_run_python = true;
-    std::string m_video_header_name = "dg_ros_";
+    std::string m_recording_header_name = "dg_simple_ros_";
     std::string m_srcdir = "/work/deepguider/src";   // system path of deepguider/src (required for python embedding)
     const char* m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";    
     double m_wait_sec = 0.1;
@@ -78,7 +78,7 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     DeepGuider::m_enable_poi = m_enable_poi;
     DeepGuider::m_server_ip = m_server_ip;
     DeepGuider::m_threaded_run_python = m_threaded_run_python;
-    DeepGuider::m_video_header_name = m_video_header_name;
+    DeepGuider::m_recording_header_name = m_recording_header_name;
     DeepGuider::m_srcdir = m_srcdir;
     DeepGuider::m_map_image_path = m_map_image_path;
 
