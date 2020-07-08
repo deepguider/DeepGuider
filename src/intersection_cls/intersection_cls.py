@@ -25,7 +25,7 @@ class IntersectionClassifier:
         self.network, _ = initialize_network(network_type, output_class=2)
 
         # load network
-        resume_load = torch.load('./data_intersection_cls/v0.14_binary_resnet18_dropprob0.75_dropblocksize3_3_best.pth')
+        resume_load = torch.load('./data_intersection_cls/weight.pth')
         self.network.load_state_dict(resume_load['model_state_dict'])
 
         self.network.eval()
@@ -78,22 +78,22 @@ if __name__ == "__main__":
 
     total_time = 0
 
-    for _ in range(20):
-        # run classifier
-        tic = time.perf_counter()
-        cls, prob = classifier.apply(nonintersection_img)
-        toc = time.perf_counter()
-        print(f'processing time: {toc - tic:0.4f} seconds')
-        print('nonintersection_img demo: class ', cls, ' confidence ', prob)
+    # for _ in range(20):
+    # run classifier
+    tic = time.perf_counter()
+    cls, prob = classifier.apply(nonintersection_img, 1)
+    toc = time.perf_counter()
+    print(f'processing time: {toc - tic:0.4f} seconds')
+    print('nonintersection_img demo: class ', cls, ' confidence ', prob)
 
-        total_time += (toc-tic)
+    # total_time += (toc-tic)
 
-        tic = time.perf_counter()
-        cls, prob = classifier.apply(intersection_img)
-        toc = time.perf_counter()
-        print(f'processing time: {toc - tic:0.4f} seconds')
-        print('intersection_img demo: class ', cls, ' confidence ', prob)
+    tic = time.perf_counter()
+    cls, prob = classifier.apply(intersection_img, 1)
+    toc = time.perf_counter()
+    print(f'processing time: {toc - tic:0.4f} seconds')
+    print('intersection_img demo: class ', cls, ' confidence ', prob)
 
-        total_time += (toc-tic)
-
-    print(f'average time on apply: {total_time/40:0.4f}')
+    #     total_time += (toc-tic)
+    #
+    # print(f'average time on apply: {total_time/40:0.4f}')
