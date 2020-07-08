@@ -5,9 +5,9 @@ Simplified deepguider system that integrates its sub-modules and is implemented 
 Refere to each sub-module's README.md
 
 ### How to Build and Run Codes
-1. Set the value of **DGDIR** and Python paths properly in CMakeLists.txt
-2. Set **DGDIR** and **ROSDIR** properly in setup_rosrun.sh
-3. Modify **m_srcdir** properly in the code src/dg_ros.cpp:176-186_.
+1. Open **dg_ros.yml** and edit **dg_srcdir** properly
+2. Set the value of **DGDIR** and Python paths properly in CMakeLists.txt
+3. Set **DGDIR** and **ROSDIR** properly in setup_rosrun.sh
 4. Run the following shell commands in order:
 ```
 $ ./setup_rosrun.sh

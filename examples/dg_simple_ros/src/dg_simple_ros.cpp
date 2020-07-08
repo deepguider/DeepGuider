@@ -18,29 +18,20 @@ public:
     bool runOnce(double timestamp);
 
 protected:
-    // Configuable parameters
-    bool m_recording = false;
-    bool m_enable_roadtheta = false;
-    bool m_enable_vps = true;
-    bool m_enable_poi = true;
-    //std::string m_server_ip = "127.0.0.1";         // default: 127.0.0.1 (localhost)
-    std::string m_server_ip = "129.254.87.96";       // default: 127.0.0.1 (localhost)
-
-    bool m_threaded_run_python = true;
-    std::string m_recording_header_name = "dg_simple_ros_";
-    std::string m_srcdir = "/work/deepguider/src";   // system path of deepguider/src (required for python embedding)
-    const char* m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";    
     double m_wait_sec = 0.1;
 
     // Thread routines
     std::thread* vps_thread = nullptr;
     std::thread* poi_thread = nullptr;
+    std::thread* intersection_thread = nullptr;
     std::thread* roadtheta_thread = nullptr;
     static void threadfunc_vps(DeepGuiderROS* guider);
     static void threadfunc_poi(DeepGuiderROS* guider);
+    static void threadfunc_intersection(DeepGuiderROS* guider);
     static void threadfunc_roadtheta(DeepGuiderROS* guider);    
     bool is_vps_running = false;
     bool is_poi_running = false;
+    bool is_intersection_running = false;
     bool is_roadtheta_running = false;
     void terminateThreadFunctions();
 
@@ -72,17 +63,24 @@ protected:
 DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
 {
     // overwrite configuable parameters of base class
-    DeepGuider::m_recording = m_recording;
-    DeepGuider::m_enable_roadtheta = m_enable_roadtheta;
-    DeepGuider::m_enable_vps = m_enable_vps;
-    DeepGuider::m_enable_poi = m_enable_poi;
-    DeepGuider::m_server_ip = m_server_ip;
-    DeepGuider::m_threaded_run_python = m_threaded_run_python;
-    DeepGuider::m_recording_header_name = m_recording_header_name;
-    DeepGuider::m_srcdir = m_srcdir;
-    DeepGuider::m_map_image_path = m_map_image_path;
+    m_enable_roadtheta = false;
+    m_enable_vps = true;
+    m_enable_poi = true;
+    m_enable_logo = false;
+    m_enable_intersection = false;
+    m_enable_exploration = false;
 
-    // Read parameters
+    //m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
+    m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
+    m_threaded_run_python = true;
+    m_srcdir = "/work/deepguider/src";   // system path of deepguider/src (required for python embedding)
+
+    m_recording = false;
+    m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
+    m_recording_header_name = "dg_ros_";
+
+    // Read ros-specific parameters
+    m_wait_sec = 0.1;
     nh_dg.param<double>("wait_sec", m_wait_sec, m_wait_sec);
 
     // Initialize subscribers
@@ -103,10 +101,8 @@ DeepGuiderROS::~DeepGuiderROS()
 
 bool DeepGuiderROS::initialize()
 {
-    bool ok = DeepGuider::initialize();
-    if(!ok) return false;
-
-    return true;
+    bool ok = DeepGuider::initialize("dg_ros.yml");
+    return ok;
 }
 
 int DeepGuiderROS::run()
@@ -119,12 +115,15 @@ int DeepGuiderROS::run()
     VVS_CHECK_TRUE(initializeMapAndPath(gps_start, gps_dest));
     printf("\tgps_start: lat=%lf, lon=%lf\n", gps_start.lat, gps_start.lon);
     printf("\tgps_dest: lat=%lf, lon=%lf\n", gps_dest.lat, gps_dest.lon);
+    m_gps_start = gps_start;
+    m_gps_dest = gps_dest;
 
     cv::namedWindow("deep_guider", cv::WINDOW_AUTOSIZE);
 
     // start recognizer threads
     if (m_enable_vps) vps_thread = new std::thread(threadfunc_vps, this);
     if (m_enable_poi) poi_thread = new std::thread(threadfunc_poi, this);
+    if (m_enable_intersection) intersection_thread = new std::thread(threadfunc_intersection, this);
     if (m_enable_roadtheta) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
 
     ros::Rate loop(1 / m_wait_sec);
@@ -145,6 +144,9 @@ int DeepGuiderROS::run()
 
 bool DeepGuiderROS::runOnce(double timestamp)
 {
+    // process Guidance
+    procGuidance(timestamp);
+
     // draw GUI display
     cv::Mat gui_image = m_map_image.clone();
     drawGuiDisplay(gui_image);
@@ -182,6 +184,17 @@ void DeepGuiderROS::threadfunc_poi(DeepGuiderROS* guider)
     guider->is_poi_running = false;
 }
 
+// Thread fnuction for IntersectionClassifier
+void DeepGuiderROS::threadfunc_intersection(DeepGuiderROS* guider)
+{
+    guider->is_intersection_running = true;
+    while (guider->m_enable_intersection)
+    {
+        guider->procIntersectionClassifier();
+    }
+    guider->is_intersection_running = false;
+}
+
 // Thread fnuction for RoadTheta
 void DeepGuiderROS::threadfunc_roadtheta(DeepGuiderROS* guider)
 {
@@ -196,31 +209,35 @@ void DeepGuiderROS::threadfunc_roadtheta(DeepGuiderROS* guider)
 
 void DeepGuiderROS::terminateThreadFunctions()
 {
-    if (vps_thread == nullptr && poi_thread == nullptr && roadtheta_thread == nullptr) return;
+    if (vps_thread == nullptr && poi_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr) return;
 
     // disable all thread running
     m_enable_vps = false;
     m_enable_poi = false;
+    m_enable_intersection = false;
     m_enable_roadtheta = false;
 
     // wait up to 4000 ms at maximum
     for (int i = 0; i<40; i++)
     {
-        if (!is_vps_running && !is_poi_running && !is_roadtheta_running) break;
+        if (!is_vps_running && !is_poi_running && !is_intersection_running && !is_roadtheta_running) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     // wait child thread to terminate
     if (is_vps_running) vps_thread->join();
     if (is_poi_running) poi_thread->join();
+    if (is_intersection_running) intersection_thread->join();
     if (is_roadtheta_running) roadtheta_thread->join();
 
     // clear threads
     if (vps_thread) delete vps_thread;
     if (poi_thread) delete poi_thread;
+    if (intersection_thread) delete intersection_thread;
     if (roadtheta_thread) delete roadtheta_thread;
     vps_thread = nullptr;
     poi_thread = nullptr;
+    intersection_thread = nullptr;
     roadtheta_thread = nullptr;
 }
 
