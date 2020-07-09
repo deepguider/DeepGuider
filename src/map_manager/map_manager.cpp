@@ -688,12 +688,22 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	bool ok = downloadPath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
 	if (!ok) return false;
 	//decodeUni();
+	if (m_json == "[]\n")
+	{
+		ok = downloadPath(round(start_lat * 1000) / 1000, round(start_lon * 1000) / 1000, round(dest_lat * 1000) / 1000, round(dest_lon * 1000) / 1000, num_paths);
+		if (m_json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
+		{
+			std::cout << "Invalid latitude or longitude!!" << std::endl;
+			return false;
+		}
+		if (!ok) return false;
+	}
+	
 	const char* json = m_json.c_str();
 
 //#ifdef _DEBUG
 //	fprintf(stdout, "%s\n", json);
 //#endif
-
 	ok = parsePath(json);
 	if (!ok) return false;
 
