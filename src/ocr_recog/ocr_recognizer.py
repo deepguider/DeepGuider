@@ -37,9 +37,8 @@ class OCRRecognizer:
         start = time.time()
 
         # self.image_path = './demo_image/demo_5.png'
-        self.saved_model = '/home/sungeun.kim/ocr_recog/saved_models/ocr_train/best_accuracy.pth'
-        self.logfilepath = './log_ocr_result.txt'
-
+        self.saved_model = './data_ocr/best_accuracy.pth'   # modified by jylee, 2020.7.10
+        self.logfilepath = './data_ocr/log_ocr_result.txt'       # modified by jylee, 2020.7.10
 
         """ vocab / character number configuration """
         if self.sensitive:
