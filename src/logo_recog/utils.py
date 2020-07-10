@@ -151,7 +151,7 @@ def load_features(model_name):
     if model_name == 'InceptionV3':
         filename = './model/inception_logo_features_200_trunc_248.hdf5'
     elif model_name == 'VGG16':
-        filename = './modelvgg16_logo_features_224.hdf5'
+        filename = './model/vgg16_logo_features_128.hdf5'
         
     # get database features
     with  h5py.File(filename, 'r') as hf:

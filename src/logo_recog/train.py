@@ -188,7 +188,7 @@ if __name__ == '__main__':
             help='Dataset', choices=['litw'])
     parser.add_argument('--model_path', type=str, default='model/keras_yolo3',
             help='Model path')
-    parser.add_argument('--log_dir', type=str, default='logs/0002',
+    parser.add_argument('--log_dir', type=str, default='logs/0001',
             help='Log directory path')
     parser.add_argument('--classes_path', type=str, default='logo_data/preprocessed/classes.txt',
             help='Path where class_list.txt is stored')
