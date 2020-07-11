@@ -8,6 +8,7 @@ import os
 from timeit import default_timer as timer
 
 import numpy as np
+import tensorflow as tf
 from keras import backend as K
 from keras.models import load_model
 from keras.layers import Input
@@ -69,7 +70,8 @@ class YOLO(object):
         num_classes = len(self.class_names)
         is_tiny_version = num_anchors==6 # default setting
         try:
-            self.yolo_model = load_model(model_path, compile=False)
+            self.yolo_model = load_weights(model_path, compile=False)
+            #self.yolo_model = load_model(model_path, compile=False)
         except:
             self.yolo_model = tiny_yolo_body(Input(shape=(None,None,3)), num_anchors//2, num_classes) \
                 if is_tiny_version else yolo_body(Input(shape=(None,None,3)), num_anchors//3, num_classes)

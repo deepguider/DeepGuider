@@ -37,7 +37,7 @@ def detect_and_match(img_path, model_preproc, params, save_img=False, save_img_p
     '''Detect and Recognize logos from image.'''
 
     start = time.time()
-    if not test:
+    if not is_test:
         try:
             image = Image.open(img_path)
             if image.mode != 'RGB':

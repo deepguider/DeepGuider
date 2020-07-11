@@ -3,3 +3,6 @@ model/keras_yolo3/model_data/*
 model/*.hdf5
 logo_data/kr_brandROIs/*
 logo_data/*.ipynb
+logo_data/test/*
+logo_data/input/*
+logo_data/preprocessed/*.pkl
