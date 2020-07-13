@@ -23,6 +23,8 @@ def main(args):
                    'gpu_num': args.gpu_num,
                    'model_image_size': (416, 416),
                    })
+    if not os.path.exists(args.result_path):
+        os.mkdir(args.result_path)
 
     if args.mode.lower() == 'detect':
         img_list = list(Path(args.input_path).iterdir())
@@ -70,7 +72,7 @@ def main(args):
 def initialize(yolo, model_name, DB_path):
     print("\n\nInitialization in progress...!\n")
     start = time.time()
-
+    
     # load pre-processed features database
     features, _, _ = load_features(model_name)
     with open(args.classes_path, 'rb') as f:
@@ -84,7 +86,7 @@ def initialize(yolo, model_name, DB_path):
     #input_feats = extract_features(img_input, model, my_preprocess)
     sim_cutoff, (bins, cdf_list) = similarity_cutoff(input_feats, features, 0.95)
 
-    print("Done...! It tooks {:.3f} mins".format((time.time() - start)/60))
+    print("Done...! It tooks {:.3f} mins\n".format((time.time() - start)/60))
 
     return (yolo, model, my_preprocess), (input_feats, sim_cutoff, bins, cdf_list, input_labels)
 

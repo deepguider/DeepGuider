@@ -20,7 +20,7 @@ class LogoRecognizer():
         self.output_txt = 'out.txt'
         self.model_path = './model/keras_yolo3/model_data/logo_yolo_weights.h5'
         self.anchors = './model/keras_yolo3/model_data/yolo_anchors.txt'
-        self.yolo_classes_path = './logo_data/preprocessed/classes.txt'
+        self.yolo_classes_path = './logo_data/preprocessed/openset_classes.txt'
         self.confidence = 0.5
         self.gpu_num = 1
         self.recog_model = 'InceptionV3'
@@ -29,6 +29,8 @@ class LogoRecognizer():
         self.save_image = True
         self.input_path = './logo_data/demo'
         self.result_path = './logo_data/test'
+        if not os.path.exists(self.result_path):
+            os.mkdir(self.result_path)
         self.DB_list = './logo_data/preprocessed/DB_list.txt'
         
     def initialize_fast(self):
@@ -60,23 +62,23 @@ class LogoRecognizer():
         my_preprocess = lambda x: preprocessed(pad_image(x, input_shape))
 
         #input_feat = extract_features(img_input, model, my_preprocess)
-        sim_cutoff, (bins, cdf_list) = similarity_cutoff(input_feat, features, 0.95)
+        sim_cutoff, (bins, cdf_list) = similarity_cutoff(input_feats, features, 0.95)
 
-        print("Done...! It tooks {:.3f} mins".format((time.time() - start)/60))
+        print("Done...! It tooks {:.3f} mins\n".format((time.time() - start)/60))
         
         self.model_preproc = (yolo, model, my_preprocess)
-        self.params = (input_feat, sim_cutoff, bins, cdf_list, input_labels)
-        return True        
+        self.params = (input_feats, sim_cutoff, bins, cdf_list, input_labels)       
     
     def apply(self, image, timestamp):
         
-        pred, _, t = detect_and_match(image, self.model_preproc,
-                                      self.params, 
+        pred, _, t = detect_and_match(image, self.model_preproc, self.params, 
                                       save_img=self.save_image, 
                                       save_img_path=self.result_path,
                                       is_test=True)
         
         return pred, timestamp
-    
-#poi_recog = POIRecognizer()
-#poi_recog.apply('./logo_data/demo/ibk.jpg', '2020-04-24')
+
+# If you want to test using the code below, change the value of is_test in apply() to False.
+#logo_recog = LogoRecognizer()
+#logo_recog.initialize()
+#logo_recog.apply('./logo_data/demo/ibk.jpg', '2020-04-24')
