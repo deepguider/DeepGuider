@@ -31,6 +31,12 @@ tar -xvzf model.tar.gz
 mv trained_brands.pkl ../logo_data/preprocessed
 mv logo_yolo_weights.h5 keras_yolo3/model_data
 cd ..
+```
+
+Create a virtual environment to run and install the necessary modules.
+```
+conda create --name logo python=3.6
+conda activate logo
 pip install -r requirements.txt
 ```
 
