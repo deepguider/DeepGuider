@@ -30,6 +30,7 @@ cd model
 tar -xvzf model.tar.gz
 mv trained_brands.pkl ../logo_data/preprocessed
 mv logo_yolo_weights.h5 keras_yolo3/model_data
+mkdir keras_yolo3/log
 cd ..
 ```
 
