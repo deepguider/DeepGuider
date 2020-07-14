@@ -36,11 +36,16 @@ class OCRRecognizer:
         self.converter = None
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+        self.res_imagefileName = None
+
         self.opt_craft, self.opt_recog = self.setup_parser()
 
         self.args_craft= vars(self.opt_craft)
         self.args = vars(self.opt_recog)
 
+        self.detect_time = 0.0
+        self.recog_time = 0.0
+        self.total_time =0.0
         # print("~~~~~~~~ Hyperparameters used: ~~~~~~~")
         # for x, y in self.args.items():
         #     print("{} : {}".format(x, y))
@@ -56,7 +61,8 @@ class OCRRecognizer:
 
         # self.saved_model = '/home_hongdo/sungeun.kim/checkpoints/ocr/ocr_train_addKorean_synth/best_accuracy.pth'
         # self.craft_trained_model = '/home_hongdo/sungeun.kim/checkpoints/ocr/ocr_train/craft_mlt_25k.pth'
-
+        # self.saved_model = '/home_hongdo/sungeun.kim/checkpoints/ocr/ocr_train_v2/best_accuracy.pth'
+        # self.craft_trained_model = '/home_hongdo/sungeun.kim/checkpoints/ocr/ocr_train_v2/best_accuracy_craft.pth'
         #
         # official
 
