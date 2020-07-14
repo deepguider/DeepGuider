@@ -10,9 +10,12 @@ from craft.Detection_txt import Detection_txt
 import cv2
 from PIL import ImageFont,Image,ImageDraw
 
-def saveResult(img,boxes,pred_list,dirname):
+def saveResult(img,boxes,pred_list,dirname,res_imagefileName):
     img = np.array(img)
     res_img_file = dirname + 'result.jpg'
+    if res_imagefileName is not None :
+        res_img_file = res_imagefileName
+
 
     for i, box in enumerate(boxes):
         poly = np.array(box).astype(np.int32).reshape((-1))
@@ -24,15 +27,16 @@ def saveResult(img,boxes,pred_list,dirname):
         # font_scale = 0.5
         # cv2.putText(img, "{},{:.3f}".format(pred_list[i][1],pred_list[i][2].item() ), (poly[0][0]+1, poly[0][1]+1), font, font_scale, (0, 0, 0), thickness=1)
 
-        font_size= 25
+        font_size= 20
         # font = ImageFont.truetype("batang.ttf", 20)
         font = ImageFont.truetype("font/gulim.ttf", font_size)
 
         # b, g, r, a = 0, 255, 0, 0
-        b, g, r, a = 0, 0, 255, 0
+        b, g, r, a = 255, 0, 0, 0
         img_pil = Image.fromarray(img)
         draw = ImageDraw.Draw(img_pil)
-        draw.text((poly[0][0], poly[0][1]-font_size), "{},{:.3f}".format(pred_list[i][1],pred_list[i][2]), font=font, fill=(b, g, r, a))
+        text_y = max(poly[0][1]-font_size,0)
+        draw.text((poly[0][0], text_y), "{},{:.3f}".format(pred_list[i][1],pred_list[i][2]), font=font, fill=(b, g, r, a))
 
 
         img = np.array(img_pil)
@@ -72,11 +76,11 @@ def detect_ocr(config, image, timestamp,save_img):
         log = open(f'{config.logfilepath}', 'a')
         dashed_line = '-' * 80
         head = f'{"coordinates":25s}\t{"predicted_labels":25s}\tconfidence score'
-        print(f'{dashed_line}\n{head}\n{dashed_line}')
+        if save_img: print(f'{dashed_line}\n{head}\n{dashed_line}')
         log.write(f'{dashed_line}\n{head}\n{dashed_line}\n')
 
         pred_list = []
-
+        new_boxes = []
         for image_tensors, coordinate_list in demo_loader:
             batch_size = image_tensors.size(0)
             # print(image_tensors.shape)
@@ -99,21 +103,25 @@ def detect_ocr(config, image, timestamp,save_img):
             for coordinate, pred, pred_max_prob in zip(coordinate_list, preds_str, preds_max_prob):
 
                 pred_EOS = pred.find('[s]')
-                pred = pred[:pred_EOS]  # prune after "end of sentence" token ([s])
-                pred_max_prob = pred_max_prob[:pred_EOS]
 
-                # calculate confidence score (= multiply of pred_max_prob)
-                confidence_score = pred_max_prob.cumprod(dim=0)[-1].item()
+                pred = pred[:pred_EOS]  # prune after "end of sentence" token ([s])
+
+                if pred_EOS == 0: confidence_score = 0.0
+                else:
+                    pred_max_prob = pred_max_prob[:pred_EOS]
+                    # calculate confidence score (= multiply of pred_max_prob)
+                    confidence_score = pred_max_prob.cumprod(dim=0)[-1].item()
                 coordinate = list(coordinate)
                 pred_list.append([coordinate,pred,confidence_score])
-                print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
+                if save_img: print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
                 log.write(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}\n')
 
         log.close()
+    recog_time = time.time() - t
+    config.recog_time = config.recog_time+recog_time
 
+    # print("\nrun time (recognition) : {:.2f} , {:.2f} s".format(recog_time,config.recog_time))
 
-    print("\nrun time (recognition) : {:.2f} s".format(time.time() - t))
-
-    if save_img: saveResult(img, boxes, pred_list, config.result_folder)
+    if save_img: saveResult(img, boxes, pred_list, config.result_folder, config.res_imagefileName)
 
     return  pred_list, timestamp

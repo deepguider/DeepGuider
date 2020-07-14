@@ -132,7 +132,7 @@ def Detection_txt(args, image_path,net):
 
     if type(image_path) is str:
 
-        print("Test image : {:s}".format(image_path))
+        # print("Test image : {:s}".format(image_path))
         image = imgproc.loadImage(image_path)
         image_for_recog = Image.open(image_path).convert('L')
 
@@ -183,8 +183,10 @@ def Detection_txt(args, image_path,net):
     # detection_list = file_utils.saveResult(image_path, image[:,:,::-1],image_for_recog, polys, dirname=args.result_folder)
     detection_list = file_utils.imgcrop(image_for_recog, polys)
 
+    detect_time = time.time() - t
+    args.detect_time = args.detect_time + detect_time
 
-    print("\nrun time (detection) : {:.2f} s".format(time.time() - t))
+    # print("\nrun time (detection) : {:.2f} {:.2f} s".format(detect_time, args.detect_time ))
 
     return detection_list,image[:,:,::-1],polys
 
