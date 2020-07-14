@@ -103,10 +103,11 @@ def detect_ocr(config, image, timestamp,save_img):
                 pred_max_prob = pred_max_prob[:pred_EOS]
 
                 # calculate confidence score (= multiply of pred_max_prob)
-                confidence_score = pred_max_prob.cumprod(dim=0)[-1]
+                confidence_score = pred_max_prob.cumprod(dim=0)[-1].item()
                 coordinate = list(coordinate)
                 pred_list.append([coordinate,pred,confidence_score])
                 print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
+
                 log.write(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}\n')
 
         log.close()
