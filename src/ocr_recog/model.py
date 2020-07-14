@@ -24,7 +24,7 @@ from modules.prediction import Attention
 
 class Model(nn.Module):
 
-    def __init__(self, opt):
+    def __init__(self ,opt,num_class):
         super(Model, self).__init__()
         self.opt = opt
 
@@ -44,7 +44,8 @@ class Model(nn.Module):
         self.SequenceModeling_output = opt.hidden_size
 
         """ Prediction Attn"""
-        self.Prediction = Attention(self.SequenceModeling_output, opt.hidden_size, opt.num_class)
+        self.Prediction = Attention(self.SequenceModeling_output, opt.hidden_size, opt.num_class ,num_class)
+
 
     def forward(self, input, text, is_train=True):
         """ Transformation stage """

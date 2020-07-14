@@ -6,13 +6,16 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Attention(nn.Module):
 
-    def __init__(self, input_size, hidden_size, num_classes):
+    def __init__(self, input_size, hidden_size, num_classes, num_last_out):
         super(Attention, self).__init__()
-        self.attention_cell = AttentionCell(input_size, hidden_size, num_classes)
+
+        # self.attention_cell = AttentionCell(input_size, hidden_size, num_classes)
+        #num_last_out = 38
+        self.attention_cell = AttentionCell(input_size, hidden_size, num_last_out)
         self.hidden_size = hidden_size
         self.num_classes = num_classes
-        self.generator = nn.Linear(hidden_size, num_classes)
-
+        # self.generator = nn.Linear(hidden_size, num_classes)
+        self.generator = nn.Linear(hidden_size, num_last_out)
     def _char_to_onehot(self, input_char, onehot_dim=38):
         input_char = input_char.unsqueeze(1)
         batch_size = input_char.size(0)
@@ -65,6 +68,8 @@ class AttentionCell(nn.Module):
         self.i2h = nn.Linear(input_size, hidden_size, bias=False)
         self.h2h = nn.Linear(hidden_size, hidden_size)  # either i2i or h2h should have bias
         self.score = nn.Linear(hidden_size, 1, bias=False)
+        # print(input_size,num_embeddings,input_size+num_embeddings,hidden_size )
+
         self.rnn = nn.LSTMCell(input_size + num_embeddings, hidden_size)
         self.hidden_size = hidden_size
 

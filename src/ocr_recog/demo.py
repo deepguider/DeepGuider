@@ -1,37 +1,86 @@
 import string
-import argparse
 
 import torch
-import torch.backends.cudnn as cudnn
 import torch.utils.data
 import torch.nn.functional as F
+import time
+from dataset import RawDataset,RawDataset_wPosition, AlignCollate
+import numpy as np
+from craft.Detection_txt import Detection_txt
+import cv2
+from PIL import ImageFont,Image,ImageDraw
 
-from dataset import RawDataset, AlignCollate
+def saveResult(img,boxes,pred_list,dirname):
+    img = np.array(img)
+    res_img_file = dirname + 'result.jpg'
+
+    for i, box in enumerate(boxes):
+        poly = np.array(box).astype(np.int32).reshape((-1))
+        poly = poly.reshape(-1, 2)
+        cv2.polylines(img, [poly.reshape((-1, 1, 2))], True, color=(0, 0, 255), thickness=2)
+        ptColor = (0, 255, 255)
+
+        # font = cv2.FONT_HERSHEY_SIMPLEX
+        # font_scale = 0.5
+        # cv2.putText(img, "{},{:.3f}".format(pred_list[i][1],pred_list[i][2].item() ), (poly[0][0]+1, poly[0][1]+1), font, font_scale, (0, 0, 0), thickness=1)
+
+        font_size= 25
+        # font = ImageFont.truetype("batang.ttf", 20)
+        font = ImageFont.truetype("font/gulim.ttf", font_size)
+
+        # b, g, r, a = 0, 255, 0, 0
+        b, g, r, a = 0, 0, 255, 0
+        img_pil = Image.fromarray(img)
+        draw = ImageDraw.Draw(img_pil)
+        draw.text((poly[0][0], poly[0][1]-font_size), "{},{:.3f}".format(pred_list[i][1],pred_list[i][2].item()), font=font, fill=(b, g, r, a))
 
 
+        img = np.array(img_pil)
+
+    cv2.imwrite(res_img_file, img)
+    print('\ncheck result : ' + res_img_file)
 
 #per image
-def detect_ocr(config, image, timestamp):
+def detect_ocr(config, image, timestamp,save_img):
 
+    detection_list,img,boxes = Detection_txt(config,image,config.net)
+
+    # print(detection_list)
+    t = time.time()
 
     device = config.device
     model = config.model
     converter = config.converter
 
-
+    # 32 * 100
     AlignCollate_demo = AlignCollate(imgH=config.imgH, imgW=config.imgW, keep_ratio_with_pad=config.PAD)
-    demo_data = RawDataset(root=image, opt=config)  # use RawDataset
+    # demo_data = RawDataset(root=image, opt=config)  # use RawDataset
+    demo_data = RawDataset_wPosition(root=detection_list, opt=config)  # use RawDataset
+
+
     demo_loader = torch.utils.data.DataLoader(
         demo_data, batch_size=config.batch_size,
         shuffle=False,
         num_workers=int(config.workers),
         collate_fn=AlignCollate_demo, pin_memory=True)
 
+    #(< PIL.Image.Image image mode=L size=398x120 at 0x7F376DAF30B8 >, './demo_image/demo_12.png')
+
     # predict
     model.eval()
     with torch.no_grad():
-        for image_tensors, image_path_list in demo_loader:
+        log = open(f'{config.logfilepath}', 'a')
+        dashed_line = '-' * 80
+        head = f'{"coordinates":25s}\t{"predicted_labels":25s}\tconfidence score'
+        print(f'{dashed_line}\n{head}\n{dashed_line}')
+        log.write(f'{dashed_line}\n{head}\n{dashed_line}\n')
+
+        pred_list = []
+
+        for image_tensors, coordinate_list in demo_loader:
             batch_size = image_tensors.size(0)
+            # print(image_tensors.shape)
+
             image = image_tensors.to(device)
             # For max length prediction
             length_for_pred = torch.IntTensor([config.batch_max_length] * batch_size).to(device)
@@ -44,16 +93,10 @@ def detect_ocr(config, image, timestamp):
             _, preds_index = preds.max(2)
             preds_str = converter.decode(preds_index, length_for_pred)
 
-            log = open(f'{config.logfilepath}', 'a')
-            dashed_line = '-' * 80
-            head = f'{"image_path":25s}\t{"predicted_labels":25s}\tconfidence score'
-
-            print(f'{dashed_line}\n{head}\n{dashed_line}')
-            log.write(f'{dashed_line}\n{head}\n{dashed_line}\n')
-
             preds_prob = F.softmax(preds, dim=2)
             preds_max_prob, _ = preds_prob.max(dim=2)
-            for img_name, pred, pred_max_prob in zip(image_path_list, preds_str, preds_max_prob):
+
+            for coordinate, pred, pred_max_prob in zip(coordinate_list, preds_str, preds_max_prob):
 
                 pred_EOS = pred.find('[s]')
                 pred = pred[:pred_EOS]  # prune after "end of sentence" token ([s])
@@ -61,10 +104,16 @@ def detect_ocr(config, image, timestamp):
 
                 # calculate confidence score (= multiply of pred_max_prob)
                 confidence_score = pred_max_prob.cumprod(dim=0)[-1]
+                coordinate = list(coordinate)
+                pred_list.append([coordinate,pred,confidence_score])
+                print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
+                log.write(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}\n')
 
-                print(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}')
-                log.write(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}\n')
+        log.close()
 
-            log.close()
 
-    return pred, timestamp
+    print("\nrun time (recognition) : {:.2f} s".format(time.time() - t))
+
+    if save_img: saveResult(img, boxes, pred_list, config.result_folder)
+
+    return  pred_list, timestamp

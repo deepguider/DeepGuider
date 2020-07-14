@@ -13,6 +13,7 @@ from torch.utils.data import Dataset, ConcatDataset, Subset
 from torch._utils import _accumulate
 import torchvision.transforms as transforms
 
+save_dir = '/home_hongdo/sungeun.kim/checkpoints/ocr'
 
 class Batch_Balanced_Dataset(object):
 
@@ -22,7 +23,8 @@ class Batch_Balanced_Dataset(object):
         For example, when select_data is "MJ-ST" and batch_ratio is "0.5-0.5",
         the 50% of the batch is filled with MJ and the other 50% of the batch is filled with ST.
         """
-        log = open(f'./saved_models/{opt.experiment_name}/log_dataset.txt', 'a')
+        # log = open(f'./saved_models/{opt.experiment_name}/log_dataset.txt', 'a')
+        log = open(f'{save_dir}/{opt.experiment_name}/log_dataset.txt', 'a')
         dashed_line = '-' * 80
         print(dashed_line)
         log.write(dashed_line + '\n')
@@ -218,7 +220,7 @@ class LmdbDataset(Dataset):
 
 class RawDataset(Dataset):
 
-    def __init__(self, root, opt):
+    def __init__(self, root,  opt):
         self.opt = opt
         self.image_path_list = []
 
@@ -257,6 +259,52 @@ class RawDataset(Dataset):
 
         return (img, self.image_path_list[index])
 
+class RawDataset_wPosition(Dataset):
+
+    def __init__(self, root, opt):
+
+        self.opt = opt
+        self.image_path_list = []
+
+
+        # if os.path.isdir(root):
+        #     for dirpath, dirnames, filenames in os.walk(root):
+        #         for name in filenames:
+        #             _, ext = os.path.splitext(name)
+        #             ext = ext.lower()
+        #             if ext == '.jpg' or ext == '.jpeg' or ext == '.png':
+        #                 self.image_path_list.append(os.path.join(dirpath, name))
+        # else : #file
+        #     self.image_path_list.append(root)
+
+
+        self.image_path_list = root
+        # self.image_path_list = natsorted(self.image_path_list)
+        self.nSamples = len(self.image_path_list)
+
+
+    def __len__(self):
+        return self.nSamples
+
+    def __getitem__(self, index):
+
+        try:
+            # img_crop_result= img_crop(img,strResult)
+            # detection_list.append(list(img_crop_result,strResult))
+
+            img = self.image_path_list[index][0]
+
+            # img = img.crop(self.crop_position)
+
+        except IOError:
+            print(f'Corrupted image for {index}')
+            # make dummy image and dummy label for corrupted image.
+            if self.opt.rgb:
+                img = Image.new('RGB', (self.opt.imgW, self.opt.imgH))
+            else:
+                img = Image.new('L', (self.opt.imgW, self.opt.imgH))
+
+        return (img, self.image_path_list[index][1])
 
 class ResizeNormalize(object):
 
