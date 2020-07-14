@@ -106,7 +106,7 @@ if __name__ == '__main__':
             default='./logo_data/preprocessed/DB_list.txt',
             help = 'Path to load the list of training dataset with labels.')
     parser.add_argument('--model_path', type=str,
-            #default='./model/keras_yolo3/logs/0001/trained_weights_final.h5',
+            #default='./model/keras_yolo3/model_data/trained_weights_final.h5',
             default='./model/keras_yolo3/model_data/logo_yolo_weights.h5',
             help = 'Path to Yolo model weight file')
     parser.add_argument('--anchors', type=str,
