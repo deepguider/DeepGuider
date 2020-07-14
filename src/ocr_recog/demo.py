@@ -32,7 +32,7 @@ def saveResult(img,boxes,pred_list,dirname):
         b, g, r, a = 0, 0, 255, 0
         img_pil = Image.fromarray(img)
         draw = ImageDraw.Draw(img_pil)
-        draw.text((poly[0][0], poly[0][1]-font_size), "{},{:.3f}".format(pred_list[i][1],pred_list[i][2].item()), font=font, fill=(b, g, r, a))
+        draw.text((poly[0][0], poly[0][1]-font_size), "{},{:.3f}".format(pred_list[i][1],pred_list[i][2]), font=font, fill=(b, g, r, a))
 
 
         img = np.array(img_pil)
@@ -107,7 +107,6 @@ def detect_ocr(config, image, timestamp,save_img):
                 coordinate = list(coordinate)
                 pred_list.append([coordinate,pred,confidence_score])
                 print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
-
                 log.write(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}\n')
 
         log.close()

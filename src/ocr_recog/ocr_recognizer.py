@@ -53,15 +53,18 @@ class OCRRecognizer:
         start = time.time()
 
 
-        # self.saved_model = '/home/sungeun.kim/ocr_recog/saved_models/ocr_train/best_accuracy.pth'  #only english
+
         # self.saved_model = '/home_hongdo/sungeun.kim/checkpoints/ocr/ocr_train_addKorean_synth/best_accuracy.pth'
         # self.craft_trained_model = '/home_hongdo/sungeun.kim/checkpoints/ocr/ocr_train/craft_mlt_25k.pth'
+
         #
         # official
 
         self.saved_model = './data_ocr/best_accuracy.pth'
-        self.craft_trained_model = '/data_ocr/best_accuracy_craft.pth'
+        self.craft_trained_model = './data_ocr/best_accuracy_craft.pth'
         self.logfilepath = './data_ocr/log_ocr_result.txt'
+
+
 
         """ vocab / character number configuration """
         # if self.sensitive:
