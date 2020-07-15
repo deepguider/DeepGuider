@@ -6,7 +6,7 @@ We train text recognition(OCR) classifier based on [CRAFT](https://github.com/cl
 
 
 ### Dependency
-- Expriments were performed with **python 3.6, PyTorch 0.4.1, CUDA 9.0**.
+- Expriments were performed with **python 3.6, PyTorch 1.2.0, torchvision 0.4.0, CUDA 9.0**.
 - requirements : lmdb, pillow, torchvision, nltk, natsort
 
 ### Download dataset for traininig and evaluation from [here](https://drive.google.com/open?id=1hywOh26U5BrX6a9depZ2JbEsUktlDbbM) 
