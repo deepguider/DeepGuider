@@ -34,6 +34,8 @@ def list_files(in_path):
 
 def img_crop(img, coordinate):
 
+    img_mono= Image.fromarray(img).convert('L')
+
     x1 = float(coordinate.split(',')[0])
     y1 = float(coordinate.split(',')[1])
     x2 = float(coordinate.split(',')[2])
@@ -46,14 +48,13 @@ def img_crop(img, coordinate):
     x_min = max(min(x1, x2, x3, x4),0.0)
     x_max = max(x1, x2, x3, x4)
 
-
     y_min = max(min(y1, y2, y3, y4),0.0)
     y_max = max(y1, y2, y3, y4)
 
     crop_position = (x_min, y_min, x_max, y_max)
     # print(crop_position)
 
-    imgCrop = img.crop(crop_position)
+    imgCrop = img_mono.crop(crop_position)
 
 
     return imgCrop,crop_position

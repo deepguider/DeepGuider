@@ -128,24 +128,9 @@ def Detection_txt(args, image_path,net):
     # image_list, _, _ = file_utils.get_files(args.test_folder)
     #
     image = None
-    image_for_recog = None
 
-    if type(image_path) is str:
+    image = imgproc.loadImage(image_path) #narray
 
-        # print("Test image : {:s}".format(image_path))
-        image = imgproc.loadImage(image_path)
-        image_for_recog = Image.open(image_path).convert('L')
-
-        # np_image_for_recog = np.asarray(image_for_recog)
-        # image_for_recog = Image.fromarray(np_image_for_recog)
-        #
-        # image=imgproc.loadImage_fromArray(np_image_for_recog)
-
-        # return Detection_txt(args, np_image_for_recog, net)
-
-    else: #numpy
-        image = imgproc.loadImage_fromArray(image_path)
-        image_for_recog = Image.fromarray(image_path)
 
     net.eval()
     # LinkRefiner
@@ -181,7 +166,7 @@ def Detection_txt(args, image_path,net):
     # cv2.imwrite(mask_file, score_text)
     detection_list= []
     # detection_list = file_utils.saveResult(image_path, image[:,:,::-1],image_for_recog, polys, dirname=args.result_folder)
-    detection_list = file_utils.imgcrop(image_for_recog, polys)
+    detection_list = file_utils.imgcrop(image, polys)
 
     detect_time = time.time() - t
     args.detect_time = args.detect_time + detect_time
