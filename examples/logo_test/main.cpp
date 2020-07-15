@@ -21,12 +21,15 @@ void drawLogoResult(cv::Mat image, const std::vector<LogoResult>& logos)
 
 void test_image_run(LogoRecognizer& logo_recog, bool recording = false, const char* image_file = "poi_sample.jpg", int nItr = 5)
 {
+    std::vector<std::string> image_path = {"./logo_data/demo/GS25.jpg", "./logo_data/demo/ibk.jpg", "./logo_data/demo/McDonalds.jpg"};
+
     printf("#### Test Image Run ####################\n");
-    cv::Mat image = cv::imread(image_file);
-    VVS_CHECK_TRUE(!image.empty());
     cv::namedWindow(image_file);
-    for (int i = 1; i <= nItr; i++)
+    for (int i = 0; i < (int)image_path.size(); i++)
     {
+        cv::Mat image = cv::imread(image_path[i]);
+        VVS_CHECK_TRUE(!image.empty());
+
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
         VVS_CHECK_TRUE(logo_recog.apply(image, t1));
 
@@ -36,25 +39,25 @@ void test_image_run(LogoRecognizer& logo_recog, bool recording = false, const ch
         printf("iteration: %d (it took %lf seconds)\n", i, t2 - t1);
         for (int k = 0; k < logos.size(); k++)
         {
-            printf("\tpoi%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, t=%lf\n", k, logos[k].xmin, logos[k].ymin, logos[k].xmax, logos[k].ymax, logos[k].label.c_str(), logos[k].confidence, t1);
+            printf("\tlogo%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, t=%lf\n", k, logos[k].xmin, logos[k].ymin, logos[k].xmax, logos[k].ymax, logos[k].label.c_str(), logos[k].confidence, t1);
         }
 
         cv::Mat image_result = image.clone();
         drawLogoResult(image_result, logos);
         cv::imshow(image_file, image_result);
-        cv::waitKey(1);
+        cv::waitKey(1000);
 
         if(recording)
         {
-            cv::imwrite("poi_result_image.jpg", image_result);
+            cv::imwrite("logo_result_image.jpg", image_result);
         }
     }
     cv::destroyWindow(image_file);
 }
 
-void test_video_run(LogoRecognizer& logo_recog, bool recording = false, const char* video_file = "data/191115_ETRI.avi")
+void test_video_run(LogoRecognizer& logo_recog, bool recording = false, int fps = 10, const char* video_file = "data/191115_ETRI.avi")
 {
-    bool save_latest_frame = true;
+    bool save_latest_frame = false;
 
     cx::VideoWriter video;
     if (recording)
@@ -63,9 +66,9 @@ void test_video_run(LogoRecognizer& logo_recog, bool recording = false, const ch
         time(&start_t);
         tm _tm = *localtime(&start_t);
         char szfilename[255];
-        strftime(szfilename, 255, "poi_result_%y%m%d_%H%M%S.avi", &_tm);
+        strftime(szfilename, 255, "logo_result_%y%m%d_%H%M%S.avi", &_tm);
         std::string filename = szfilename;
-        video.open(filename, 30);
+        video.open(filename, fps);
     }
  
     printf("#### Test Video Run ####################\n");
@@ -97,15 +100,22 @@ void test_video_run(LogoRecognizer& logo_recog, bool recording = false, const ch
         }
         i++;
 
+         // draw frame number & fps
+        std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0/(t2 - t1));
+        cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
+        cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);       
+
         drawLogoResult(image, logos);
-        std::string fn = cv::format("#%d", frame_i);
-        cv::putText(image, fn.c_str(), cv::Point(10, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
-        cv::putText(image, fn.c_str(), cv::Point(10, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
         if(recording) video << image;
 
         cv::imshow(video_file, image);
         int key = cv::waitKey(1);
         if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+        if (key == 83)    // Right Key
+        {
+            int fi = (int)video_data.get(cv::CAP_PROP_POS_FRAMES);
+            video_data.set(cv::CAP_PROP_POS_FRAMES, fi + 30);
+        }
         if (key == cx::KEY_ESC) break;
     }
     cv::destroyWindow(video_file); 
@@ -113,13 +123,19 @@ void test_video_run(LogoRecognizer& logo_recog, bool recording = false, const ch
 
 int main()
 {
+    bool recording = false;
+    int rec_fps = 5;
+    const char* video_path = "data/191115_ETRI.avi";
+    //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
+    //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
+
     // Initialize the Python interpreter
     init_python_environment("python3", "");
 
     // Initialize Python module
     LogoRecognizer logo_recog;
     Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-    if (!logo_recog.initialize_fast())
+    if (!logo_recog.initialize())
     {
         return -1;
     }
@@ -128,7 +144,7 @@ int main()
 
     // Run the Python module
     test_image_run(logo_recog, false);
-    test_video_run(logo_recog, false);
+    test_video_run(logo_recog, recording, rec_fps, video_path);
 
     // Clear the Python module
     logo_recog.clear();

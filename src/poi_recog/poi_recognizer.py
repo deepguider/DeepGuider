@@ -13,6 +13,14 @@ from PIL import Image
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGE = True
 
+# added by jylee to resolve "could not create cudnn handle" issue, 2020.7.10
+# ref: https://forums.developer.nvidia.com/t/could-not-create-cudnn-handle-cudnn-status-internal-error/74253/3
+import tensorflow as tf
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+tf.keras.backend.set_session(tf.Session(config=config))
+# end of added by jyee
+
 from timeit import default_timer as timer
 from keras_yolo3.yolo import YOLO
 from logos import detect_logo, match_logo, detect_logo_demo, detect_and_match
@@ -60,6 +68,6 @@ class POIRecognizer:
         return True
 
     def apply(self, image, timestamp):
-        pred, timestamp = detect_and_match(self.model_preproc, self.input_preproc, image, timestamp, save_img=True)
+        pred, timestamp = detect_and_match(self.model_preproc, self.input_preproc, image, timestamp, save_img=False)
         return pred, timestamp
         

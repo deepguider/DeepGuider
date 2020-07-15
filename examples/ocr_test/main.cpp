@@ -19,7 +19,7 @@ void drawOCRResult(cv::Mat image, const std::vector<OCRResult>& ocrs)
     }
 }
 
-void test_image_run(OCRRecognizer& ocr_recog, bool recording = false, const char* image_file = "ocr_sample.jpg", int nItr = 5)
+void test_image_run(OCRRecognizer& ocr_recog, bool recording = false, const char* image_file = "ocr_sample.png", int nItr = 5)
 {
     printf("#### Test Image Run ####################\n");
     cv::Mat image = cv::imread(image_file);
@@ -121,7 +121,8 @@ void test_video_run(OCRRecognizer& ocr_recog, bool recording = false, int fps = 
 int main()
 {
     bool recording = false;
-    int rec_fps = 5;
+    int rec_fps = 10;
+    //const char* video_path = "data/191115_ETRI.avi";
     const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
     //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
 

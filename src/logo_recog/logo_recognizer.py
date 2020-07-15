@@ -6,6 +6,14 @@ import time
 import pickle
 import argparse
 
+# added by jylee to resolve "could not create cudnn handle" issue, 2020.7.10
+# ref: https://forums.developer.nvidia.com/t/could-not-create-cudnn-handle-cudnn-status-internal-error/74253/3
+import tensorflow as tf
+cfg = tf.compat.v1.ConfigProto()
+cfg.gpu_options.allow_growth = True
+tf.keras.backend.set_session(tf.Session(config=cfg))
+# end of added by jyee
+
 from tqdm import tqdm
 from pathlib import Path
 from keras_yolo3.yolo import YOLO
@@ -26,7 +34,7 @@ class LogoRecognizer():
         self.recog_model = 'InceptionV3'
         self.DB_path = './model'
         self.classes_path = './logo_data/preprocessed/trained_brands.pkl'
-        self.save_image = True
+        self.save_image = False
         self.input_path = './logo_data/demo'
         self.result_path = './logo_data/test'
         if not os.path.exists(self.result_path):
@@ -67,7 +75,8 @@ class LogoRecognizer():
         print("Done...! It tooks {:.3f} mins\n".format((time.time() - start)/60))
         
         self.model_preproc = (yolo, model, my_preprocess)
-        self.params = (input_feats, sim_cutoff, bins, cdf_list, input_labels)       
+        self.params = (input_feats, sim_cutoff, bins, cdf_list, input_labels)        
+        return True
     
     def apply(self, image, timestamp):
         

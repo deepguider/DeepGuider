@@ -106,7 +106,7 @@ namespace dg
                     return false;
                 }
 
-                // list of list
+                // list of list: [[xmin:float, ymin:float, xmax:float, ymax:float]:list, label:str, confidence:float], timestamp
                 m_ocrs.clear();
                 PyObject* pList0 = PyTuple_GetItem(pRet, 0);
                 if (pList0 != NULL)
@@ -119,14 +119,19 @@ namespace dg
                         {
                             OCRResult ocr;
                             int idx = 0;
-                            pValue = PyList_GetItem(pList, idx++);
-                            ocr.xmin = PyLong_AsLong(pValue);
-                            pValue = PyList_GetItem(pList, idx++);
-                            ocr.ymin = PyLong_AsLong(pValue);
-                            pValue = PyList_GetItem(pList, idx++);
-                            ocr.xmax = PyLong_AsLong(pValue);
-                            pValue = PyList_GetItem(pList, idx++);
-                            ocr.ymax = PyLong_AsLong(pValue);
+                            PyObject* pListCoordinate = PyList_GetItem(pList, idx++);
+                            if (pListCoordinate != NULL)
+                            {
+                                int idx2 = 0;
+                                pValue = PyList_GetItem(pListCoordinate, idx2++);
+                                ocr.xmin = (int)PyFloat_AsDouble(pValue);
+                                pValue = PyList_GetItem(pListCoordinate, idx2++);
+                                ocr.ymin = (int)PyFloat_AsDouble(pValue);
+                                pValue = PyList_GetItem(pListCoordinate, idx2++);
+                                ocr.xmax = (int)PyFloat_AsDouble(pValue);
+                                pValue = PyList_GetItem(pListCoordinate, idx2++);
+                                ocr.ymax = (int)PyFloat_AsDouble(pValue);
+                            }
                             pValue = PyList_GetItem(pList, idx++);
                             ocr.label = PyUnicode_AsUTF8(pValue);
                             pValue = PyList_GetItem(pList, idx++);

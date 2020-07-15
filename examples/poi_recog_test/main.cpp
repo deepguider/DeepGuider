@@ -52,9 +52,9 @@ void test_image_run(POIRecognizer& poi_recog, bool recording = false, const char
     cv::destroyWindow(image_file);
 }
 
-void test_video_run(POIRecognizer& poi_recog, bool recording = false, const char* video_file = "data/191115_ETRI.avi")
+void test_video_run(POIRecognizer& poi_recog, bool recording = false, int fps = 10, const char* video_file = "data/191115_ETRI.avi")
 {
-    bool save_latest_frame = true;
+    bool save_latest_frame = false;
 
     cx::VideoWriter video;
     if (recording)
@@ -65,7 +65,7 @@ void test_video_run(POIRecognizer& poi_recog, bool recording = false, const char
         char szfilename[255];
         strftime(szfilename, 255, "poi_result_%y%m%d_%H%M%S.avi", &_tm);
         std::string filename = szfilename;
-        video.open(filename, 30);
+        video.open(filename, fps);
     }
  
     printf("#### Test Video Run ####################\n");
@@ -76,7 +76,7 @@ void test_video_run(POIRecognizer& poi_recog, bool recording = false, const char
     int i = 1;
     while (1)
     {
-        int frame_i = video_data.get(cv::CAP_PROP_POS_FRAMES);
+        int frame_i = (int)video_data.get(cv::CAP_PROP_POS_FRAMES);
 
         cv::Mat image;
         video_data >> image;
@@ -97,15 +97,22 @@ void test_video_run(POIRecognizer& poi_recog, bool recording = false, const char
         }
         i++;
 
+         // draw frame number & fps
+        std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0/(t2 - t1));
+        cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
+        cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);       
+
         drawPOIResult(image, pois);
-        std::string fn = cv::format("#%d", frame_i);
-        cv::putText(image, fn.c_str(), cv::Point(10, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
-        cv::putText(image, fn.c_str(), cv::Point(10, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
         if(recording) video << image;
 
         cv::imshow(video_file, image);
         int key = cv::waitKey(1);
         if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+        if (key == 83)    // Right Key
+        {
+            int fi = (int)video_data.get(cv::CAP_PROP_POS_FRAMES);
+            video_data.set(cv::CAP_PROP_POS_FRAMES, fi + 30);
+        }
         if (key == cx::KEY_ESC) break;
     }
     cv::destroyWindow(video_file); 
@@ -113,6 +120,12 @@ void test_video_run(POIRecognizer& poi_recog, bool recording = false, const char
 
 int main()
 {
+    bool recording = false;
+    int rec_fps = 5;
+    const char* video_path = "data/191115_ETRI.avi";
+    //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
+    //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
+
     // Initialize the Python interpreter
     init_python_environment("python3", "");
 
@@ -127,8 +140,8 @@ int main()
     printf("Initialization: it took %lf seconds\n", t2 - t1);
 
     // Run the Python module
-    test_image_run(poi_recog, false);
-    test_video_run(poi_recog, false);
+    //test_image_run(poi_recog, recording);
+    test_video_run(poi_recog, recording, rec_fps, video_path);
 
     // Clear the Python module
     poi_recog.clear();
