@@ -41,11 +41,6 @@ class LogoRecognizer():
             os.mkdir(self.result_path)
         self.DB_list = './logo_data/preprocessed/DB_list.txt'
         
-    def initialize_fast(self):
-        self.classes_path = './logo_data/preprocessed/trained_brands.pkl'
-        self.initialize()
-        return True
-
     def initialize(self):
 
         print('Initialization in progress...!\n')        

@@ -3,6 +3,7 @@
 
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
+#include <fstream>
 
 using namespace std;
 
@@ -27,32 +28,17 @@ namespace dg
         */
         bool initialize(const char* module_name = "logo_recognizer", const char* module_path = "./../src/logo_recog", const char* class_name = "LogoRecognizer", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
         {
-            PyGILState_STATE state;
-            bool ret;
+            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
+            PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
+            bool ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
 
-            return ret;
-        }
-
-        /**
-        * Initialize the module in fast mode (just for test purpose)
-        * @return true if successful (false if failed)
-        */
-        bool initialize_fast(const char* module_name = "logo_recognizer", const char* module_path = "./../src/logo_recog", const char* class_name = "LogoRecognizer", const char* func_name_init = "initialize_fast", const char* func_name_apply = "apply")
-        {
-            PyGILState_STATE state;
-            bool ret;
-
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
+            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+            m_processing_time = t2 - t1;
 
             return ret;
         }
@@ -63,29 +49,34 @@ namespace dg
         void clear()
         {
             PyGILState_STATE state;
-
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
             _clear();
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            m_logos.clear();
+            m_timestamp = -1;
+            m_processing_time = -1;
         }
 
         /**
         * Run once the module for a given input (support thread run)
         * @return true if successful (false if failed)
         */
-        bool apply(cv::Mat image, dg::Timestamp t)
+        bool apply(cv::Mat image, dg::Timestamp ts)
         {
-            PyGILState_STATE state;
-            bool ret;
+            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
+            PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            /* Call Python/C API functions here */
-            ret = _apply(image, t);
+            bool ret = _apply(image, ts);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+            m_processing_time = t2 - t1;
 
             return ret;
         }
@@ -133,7 +124,7 @@ namespace dg
                     for (int i = 0; i < cnt; i++)
                     {
                         PyObject* pList = PyList_GetItem(pList0, i);
-                        if(pList)
+                        if (pList)
                         {
                             LogoResult logo;
                             int idx = 0;
@@ -164,26 +155,69 @@ namespace dg
             m_timestamp = t;
 
             // Clean up
-            if(pRet) Py_DECREF(pRet);
-            if(pArgs) Py_DECREF(pArgs);            
+            if (pRet) Py_DECREF(pRet);
+            if (pArgs) Py_DECREF(pArgs);
 
             return true;
         }
 
-        void get(std::vector<LogoResult>& logos)
+        void get(std::vector<LogoResult>& logos) const
         {
             logos = m_logos;
         }
 
-        void get(std::vector<LogoResult>& logos, Timestamp& t)
+        void get(std::vector<LogoResult>& logos, Timestamp& ts) const
         {
             logos = m_logos;
-            t = m_timestamp;
+            ts = m_timestamp;
         }
+
+        double procTime() const
+        {
+            return m_processing_time;
+        }
+
+        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
+        {
+            for (size_t i = 0; i < m_logos.size(); i++)
+            {
+                cv::Rect rc(m_logos[i].xmin, m_logos[i].ymin, m_logos[i].xmax - m_logos[i].xmin + 1, m_logos[i].ymax - m_logos[i].ymin + 1);
+                cv::rectangle(image, rc, color, width);
+                cv::Point pt(m_logos[i].xmin + 5, m_logos[i].ymin + 35);
+                std::string msg = cv::format("%s %.2lf", m_logos[i].label.c_str(), m_logos[i].confidence);
+                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
+                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
+            }
+        }
+
+        void print() const
+        {
+            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
+            for (int k = 0; k < m_logos.size(); k++)
+            {
+                printf("\t%s, %.2lf, x1=%d, y1=%d, x2=%d, y2=%d\n", m_logos[k].label.c_str(), m_logos[k].confidence, m_logos[k].xmin, m_logos[k].ymin, m_logos[k].xmax, m_logos[k].ymax);
+            }
+        }
+
+        void write(std::ofstream& stream) const
+        {
+            for (int k = 0; k < m_logos.size(); k++)
+            {
+                std::string log = cv::format("%.3lf,%s,%s,%.2lf,%d,%d,%d,%d,%.3lf", m_timestamp, name(), m_logos[k].label.c_str(), m_logos[k].confidence, m_logos[k].xmin, m_logos[k].ymin, m_logos[k].xmax, m_logos[k].ymax, m_processing_time);
+                stream << log << std::endl;
+            }
+        }
+
+        static const char* name()
+        {
+            return "logo";
+        }
+
 
     protected:
         std::vector<LogoResult> m_logos;
         Timestamp m_timestamp = -1;
+        double m_processing_time = -1;
     };
 
 } // End of 'dg'

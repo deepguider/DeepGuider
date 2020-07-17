@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{3CC90140-7D1B-494F-AD0C-5EBDC0A12DBE}</ProjectGuid>
+    <ProjectGuid>{8E5F3EED-602E-4D9A-83EF-DA358453D535}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
@@ -97,6 +97,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp" />
+    <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\intersection_cls\intersection_cls.py" />

@@ -6,7 +6,8 @@
 #include "dg_map_manager.hpp"
 #include "dg_localizer.hpp"
 #include "dg_road_recog.hpp"
-#include "dg_poi_recog.hpp"
+#include "dg_logo.hpp"
+#include "dg_ocr.hpp"
 #include "dg_intersection.hpp"
 #include "dg_vps.hpp"
 #include "dg_guidance.hpp"
@@ -40,8 +41,8 @@ protected:
     // configuable parameters
     bool m_enable_roadtheta = false;
     bool m_enable_vps = false;
-    bool m_enable_poi = false;
     bool m_enable_logo = false;
+    bool m_enable_ocr = false;
     bool m_enable_intersection = false;
     bool m_enable_exploration = false;
 
@@ -51,6 +52,8 @@ protected:
     std::string m_srcdir = "./../src";            // path of deepguider/src (required for python embedding)
 
     bool m_recording = false;
+    int m_recording_fps = 30;
+    bool m_data_logging = false;
     std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
     std::string m_gps_input = "data/191115_ETRI_asen_fix.csv";
     std::string m_video_input = "data/191115_ETRI.avi";
@@ -61,12 +64,14 @@ protected:
     void applyGpsData(dg::LatLon gps_datum, dg::Timestamp ts);
     void drawGuiDisplay(cv::Mat& gui_image);
     void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
-    void drawPOI(cv::Mat target_image, std::vector<POIResult> pois, cv::Size original_image_size);
+    void drawLogo(cv::Mat target_image, std::vector<LogoResult> pois, cv::Size original_image_size);
+    void drawOcr(cv::Mat target_image, std::vector<OCRResult> pois, cv::Size original_image_size);
     void drawIntersection(cv::Mat image, IntersectionResult r, cv::Size original_image_size);
-    bool procRoadTheta();
     bool procVps();
-    bool procPoi();
+    bool procLogo();
+    bool procOcr();
     bool procIntersectionClassifier();
+    bool procRoadTheta();
     void procGuidance(dg::Timestamp ts);
 
 #ifdef VPSSERVER
@@ -86,14 +91,17 @@ protected:
     dg::ID m_vps_id;                // top-1 matched streetview id
     double m_vps_confidence;        // top-1 matched confidence(similarity)
 
-    cv::Mutex m_poi_mutex;
-    cv::Mat m_poi_image;
-    std::vector<POIResult> m_pois;
+    cv::Mutex m_logo_mutex;
+    cv::Mat m_logo_image;
+    std::vector<LogoResult> m_logos;
+
+    cv::Mutex m_ocr_mutex;
+    cv::Mat m_ocr_image;
+    std::vector<OCRResult> m_ocrs;
 
     cv::Mutex m_intersection_mutex;
     cv::Mat m_intersection_image;
     IntersectionResult m_intersection_result;
-
 
     cv::Mutex m_localizer_mutex;
     int m_gps_update_cnt = 0;
@@ -102,10 +110,11 @@ protected:
     // sub modules
     dg::MapManager m_map_manager;
     dg::SimpleLocalizer m_localizer;
-    dg::RoadDirectionRecognizer m_roadtheta;
-    dg::POIRecognizer m_poi;
     dg::VPS m_vps;
+    dg::LogoRecognizer m_logo;
+    dg::OCRRecognizer m_ocr;
     dg::IntersectionClassifier m_intersection_classifier;
+    dg::RoadDirectionRecognizer m_roadtheta;
     dg::GuidanceManager m_guider;
     dg::ActiveNavigation m_active_nav;
 
@@ -121,6 +130,7 @@ protected:
 
     // local variables
     cx::VideoWriter m_video;
+    std::ofstream m_log;
     cv::Mat m_map_image;
     dg::SimpleRoadPainter m_painter;
     dg::CanvasInfo m_map_info;
@@ -135,12 +145,13 @@ protected:
 
 DeepGuider::~DeepGuider()
 {
-    if(m_enable_roadtheta) m_roadtheta.clear();
-    if(m_enable_poi) m_poi.clear();
-    if(m_enable_vps) m_vps.clear();
+    if (m_enable_vps) m_vps.clear();
+    if(m_enable_logo) m_logo.clear();
+    if (m_enable_ocr) m_ocr.clear();
     if(m_enable_intersection) m_intersection_classifier.clear();
+    if (m_enable_roadtheta) m_roadtheta.clear();
 
-    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_logo || m_enable_intersection || m_enable_exploration;
+    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_logo || m_enable_ocr || m_enable_intersection || m_enable_exploration;
     if(enable_python) close_python_environment();
 }
 
@@ -159,11 +170,11 @@ bool DeepGuider::loadConfig(std::string config_file)
     }
 
     cv::FileNode fn = fs.root();
-    LOAD_PARAM_VALUE(fn, "enable_roadtheta", m_enable_roadtheta);
-    LOAD_PARAM_VALUE(fn, "enable_vps", m_enable_vps);
-    LOAD_PARAM_VALUE(fn, "enable_poi", m_enable_poi);
-    LOAD_PARAM_VALUE(fn, "enable_logo", m_enable_logo);
     LOAD_PARAM_VALUE(fn, "enable_intersection", m_enable_intersection);
+    LOAD_PARAM_VALUE(fn, "enable_vps", m_enable_vps);
+    LOAD_PARAM_VALUE(fn, "enable_poi_logo", m_enable_logo);
+    LOAD_PARAM_VALUE(fn, "enable_poi_ocr", m_enable_ocr);
+    LOAD_PARAM_VALUE(fn, "enable_roadtheta", m_enable_roadtheta);
     LOAD_PARAM_VALUE(fn, "enable_exploration", m_enable_exploration);
 
     LOAD_PARAM_VALUE(fn, "server_ip", m_server_ip);
@@ -171,6 +182,8 @@ bool DeepGuider::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "dg_srcdir", m_srcdir);
 
     LOAD_PARAM_VALUE(fn, "recording", m_recording);
+    LOAD_PARAM_VALUE(fn, "recording_fps", m_recording_fps);
+    LOAD_PARAM_VALUE(fn, "data_logging", m_data_logging);
     LOAD_PARAM_VALUE(fn, "map_image_path", m_map_image_path);
     LOAD_PARAM_VALUE(fn, "gps_input", m_gps_input);
     LOAD_PARAM_VALUE(fn, "video_input", m_video_input);
@@ -188,7 +201,7 @@ bool DeepGuider::initialize(std::string config_file)
     loadConfig(config_file);
 
     // initialize python
-    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_poi || m_enable_logo || m_enable_intersection || m_enable_exploration;
+    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_ocr || m_enable_logo || m_enable_intersection || m_enable_exploration;
     if (enable_python && !init_python_environment("python3", "", m_threaded_run_python)) return false;
     if(enable_python) printf("\tPython environment initialized!\n");
 
@@ -200,22 +213,22 @@ bool DeepGuider::initialize(std::string config_file)
     // initialize VPS
     std::string module_path = m_srcdir + "/vps";
     if (m_enable_vps && !m_vps.initialize("vps", module_path.c_str())) return false;
-    if (m_enable_vps) printf("\tVPS initialized!\n");
+    if (m_enable_vps) printf("\tVPS initialized in %.3lf seconds!\n", m_vps.procTime());
 
-    // initialize POI
-    module_path = m_srcdir + "/poi_recog";
-    if (m_enable_poi && !m_poi.initialize("poi_recognizer", module_path.c_str())) return false;
-    if (m_enable_poi) printf("\tPOI initialized!\n");
+    // initialize Logo
+    module_path = m_srcdir + "/logo_recog";
+    if (m_enable_logo && !m_logo.initialize("logo_recognizer", module_path.c_str())) return false;
+    if (m_enable_logo) printf("\tLogo initialized in %.3lf seconds!\n", m_logo.procTime());
+
+    // initialize OCR
+    module_path = m_srcdir + "/ocr_recog";
+    if (m_enable_ocr && !m_ocr.initialize("ocr_recognizer", module_path.c_str())) return false;
+    if (m_enable_ocr) printf("\tOCR initialized in %.3lf seconds!\n", m_ocr.procTime());
 
     // initialize Intersection
     module_path = m_srcdir + "/intersection_cls";
     if (m_enable_intersection && !m_intersection_classifier.initialize("intersection_cls", module_path.c_str())) return false;
-    if (m_enable_intersection) printf("\tIntersection initialized!\n");
-
-    // initialize roadTheta
-    module_path = m_srcdir + "/road_recog";
-    if (m_enable_roadtheta && !m_roadtheta.initialize("road_direction_recognizer", module_path.c_str())) return false;
-    if (m_enable_roadtheta) printf("\tRoadTheta initialized!\n");
+    if (m_enable_intersection) printf("\tIntersection initialized in %.3lf seconds!\n", m_intersection_classifier.procTime());
 
     //initialize exploation 
     if (m_enable_exploration && !m_active_nav.initialize()) return false;
@@ -248,15 +261,22 @@ bool DeepGuider::initialize(std::string config_file)
     VVS_CHECK_TRUE(!m_map_image.empty());
 
     // init video recording
+    time_t start_t;
+    time(&start_t);
+    tm _tm = *localtime(&start_t);
+    char sztime[255];
+    strftime(sztime, 255, "%y%m%d_%H%M%S", &_tm);
     if (m_recording)
     {
-        time_t start_t;
-        time(&start_t);
-        tm _tm = *localtime(&start_t);
-        char szfilename[255];
-        strftime(szfilename, 255, "%y%m%d_%H%M%S.avi", &_tm);
-        std::string filename = m_recording_header_name + szfilename;
-        m_video.open(filename, 30);
+        std::string filename = m_recording_header_name + sztime + ".avi";
+        m_video.open(filename, m_recording_fps);
+    }
+
+    // init data logging
+    if (m_data_logging)
+    {
+        std::string filename = m_recording_header_name + sztime + ".txt";
+        m_log.open(filename, ios::out);
     }
 
     // reset interval variables
@@ -267,8 +287,10 @@ bool DeepGuider::initialize(std::string config_file)
     m_vps_image.release();
     m_vps_id = 0;
     m_vps_confidence = 0;
-    m_poi_image.release();
-    m_pois.clear();
+    m_logo_image.release();
+    m_logos.clear();
+    m_ocr_image.release();
+    m_ocrs.clear();
     m_intersection_image.release();
 
     return true;
@@ -412,7 +434,8 @@ int DeepGuider::run()
         // process vision modules
         if(m_enable_roadtheta) procRoadTheta();
         if(m_enable_vps) procVps();
-        if(m_enable_poi) procPoi();
+        if(m_enable_logo) procLogo();
+        if (m_enable_ocr) procOcr();
         if(m_enable_intersection) procIntersectionClassifier();
 
         // process Guidance
@@ -435,6 +458,9 @@ int DeepGuider::run()
 
         // update iteration
         itr++;
+
+        // flush out logging data
+        if (m_data_logging) m_log.flush();
     }
     
     if (m_recording) m_video.release();
@@ -575,37 +601,66 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         }
     }
 
-    // draw poi result
-    cv::Rect poi_rect = vps_rect;
-    if (m_enable_poi)
+    // draw logo result
+    cv::Rect logo_rect = vps_rect;
+    if (m_enable_logo)
     {
-        cv::Mat poi_image;
-        std::vector<POIResult> pois;
+        cv::Mat logo_image;
+        std::vector<LogoResult> logos;
         cv::Size original_image_size;
-        m_poi_mutex.lock();
-        if(!m_poi_image.empty())
+        m_logo_mutex.lock();
+        if(!m_logo_image.empty())
         {
-            original_image_size.width = m_poi_image.cols;
-            original_image_size.height = m_poi_image.rows;
-            double fy = (double)video_rect.height / m_poi_image.rows;
-            cv::resize(m_poi_image, poi_image, cv::Size(), fy, fy);
-            pois = m_pois;
+            original_image_size.width = m_logo_image.cols;
+            original_image_size.height = m_logo_image.rows;
+            double fy = (double)video_rect.height / m_logo_image.rows;
+            cv::resize(m_logo_image, logo_image, cv::Size(), fy, fy);
+            logos = m_logos;
         }
-        m_poi_mutex.unlock();
+        m_logo_mutex.unlock();
 
-        if (!poi_image.empty())
+        if (!logo_image.empty())
         {
-            drawPOI(poi_image, pois, original_image_size);
-            cv::Point poi_offset = video_offset;
-            poi_offset.x = vps_rect.x + vps_rect.width + 20;
-            cv::Rect rect(poi_offset, poi_offset + cv::Point(poi_image.cols, poi_image.rows));
-            if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = poi_image * 1;
-            poi_rect = rect;
+            drawLogo(logo_image, logos, original_image_size);
+            cv::Point logo_offset = video_offset;
+            logo_offset.x = logo_rect.x + logo_rect.width + 20;
+            cv::Rect rect(logo_offset, logo_offset + cv::Point(logo_image.cols, logo_image.rows));
+            if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = logo_image * 1;
+            logo_rect = rect;
+        }
+    }
+
+    // draw ocr result
+    cv::Rect ocr_rect = logo_rect;
+    if (m_enable_ocr)
+    {
+        cv::Mat ocr_image;
+        std::vector<OCRResult> ocrs;
+        cv::Size original_image_size;
+        m_ocr_mutex.lock();
+        if (!m_ocr_image.empty())
+        {
+            original_image_size.width = m_ocr_image.cols;
+            original_image_size.height = m_ocr_image.rows;
+            double fy = (double)video_rect.height / m_ocr_image.rows;
+            cv::resize(m_ocr_image, ocr_image, cv::Size(), fy, fy);
+            ocrs = m_ocrs;
+        }
+        m_ocr_mutex.unlock();
+
+        if (!ocr_image.empty())
+        {
+            drawOcr(ocr_image, ocrs, original_image_size);
+            cv::Point ocr_offset = video_offset;
+            ocr_offset.x = ocr_rect.x + ocr_rect.width + 20;
+            cv::Rect rect(ocr_offset, ocr_offset + cv::Point(ocr_image.cols, ocr_image.rows));
+            if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = ocr_image * 1;
+            ocr_rect = rect;
         }
     }
 
     // draw intersection result
-    cv::Rect intersection_rect = poi_rect;
+    cv::Rect intersection_rect = ocr_rect;
     if (m_enable_intersection)
     {
         cv::Mat intersection_image;
@@ -626,7 +681,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         {
             drawIntersection(intersection_image, intersection_result, original_image_size);
             cv::Point intersection_offset = video_offset;
-            intersection_offset.x = intersection_rect.x + poi_rect.width + 20;
+            intersection_offset.x = intersection_rect.x + intersection_rect.width + 20;
             cv::Rect rect(intersection_offset, intersection_offset + cv::Point(intersection_image.cols, intersection_image.rows));
             if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = intersection_image * 1;
             intersection_rect = rect;
@@ -764,22 +819,44 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
 }
 
 
-void DeepGuider::drawPOI(cv::Mat image, std::vector<POIResult> pois, cv::Size original_image_size)
+void DeepGuider::drawLogo(cv::Mat image, std::vector<LogoResult> logos, cv::Size original_image_size)
 {
     double xscale = (double)image.cols / original_image_size.width;
     double yscale = (double)image.rows / original_image_size.height;
 
-    for(size_t i=0; i<pois.size(); i++)
+    for(size_t i=0; i<logos.size(); i++)
     {
-        pois[i].xmin = (int)(xscale * pois[i].xmin + 0.5);
-        pois[i].ymin = (int)(yscale * pois[i].ymin + 0.5);
-        pois[i].xmax = (int)(xscale * pois[i].xmax + 0.5);
-        pois[i].ymax = (int)(yscale * pois[i].ymax + 0.5);
+        logos[i].xmin = (int)(xscale * logos[i].xmin + 0.5);
+        logos[i].ymin = (int)(yscale * logos[i].ymin + 0.5);
+        logos[i].xmax = (int)(xscale * logos[i].xmax + 0.5);
+        logos[i].ymax = (int)(yscale * logos[i].ymax + 0.5);
 
-        cv::Rect rc(pois[i].xmin, pois[i].ymin, pois[i].xmax-pois[i].xmin+1, pois[i].ymax-pois[i].ymin+1);
+        cv::Rect rc(logos[i].xmin, logos[i].ymin, logos[i].xmax-logos[i].xmin+1, logos[i].ymax-logos[i].ymin+1);
         cv::rectangle(image, rc, cv::Scalar(0, 255, 0), 2);
-        cv::Point pt(pois[i].xmin + 5, pois[i].ymin + 35);
-        std::string msg = cv::format("%s %.2lf", pois[i].label.c_str(), pois[i].confidence);
+        cv::Point pt(logos[i].xmin + 5, logos[i].ymin + 35);
+        std::string msg = cv::format("%s %.2lf", logos[i].label.c_str(), logos[i].confidence);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
+    }
+}
+
+
+void DeepGuider::drawOcr(cv::Mat image, std::vector<OCRResult> ocrs, cv::Size original_image_size)
+{
+    double xscale = (double)image.cols / original_image_size.width;
+    double yscale = (double)image.rows / original_image_size.height;
+
+    for (size_t i = 0; i < ocrs.size(); i++)
+    {
+        ocrs[i].xmin = (int)(xscale * ocrs[i].xmin + 0.5);
+        ocrs[i].ymin = (int)(yscale * ocrs[i].ymin + 0.5);
+        ocrs[i].xmax = (int)(xscale * ocrs[i].xmax + 0.5);
+        ocrs[i].ymax = (int)(yscale * ocrs[i].ymax + 0.5);
+
+        cv::Rect rc(ocrs[i].xmin, ocrs[i].ymin, ocrs[i].xmax - ocrs[i].xmin + 1, ocrs[i].ymax - ocrs[i].ymin + 1);
+        cv::rectangle(image, rc, cv::Scalar(0, 255, 0), 2);
+        cv::Point pt(ocrs[i].xmin + 5, ocrs[i].ymin + 35);
+        std::string msg = cv::format("%s %.2lf", ocrs[i].label.c_str(), ocrs[i].confidence);
         cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
         cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
     }
@@ -1038,19 +1115,20 @@ bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++
     double gps_accuracy = 1;   // 0: search radius = 230m ~ 1: search radius = 30m
     if (!cam_image.empty() && m_vps.apply(cam_image, N, capture_pos.lat, capture_pos.lon, gps_accuracy, capture_time, m_server_ip.c_str()))
     {
+        if (m_data_logging) m_vps.write(m_log);
+        m_vps.print();
+
         std::vector<dg::ID> ids;
         std::vector<dg::Polar2> obs;
         std::vector<double> confs;
         std::vector<VPSResult> streetviews;
         m_vps.get(streetviews);
-        printf("[VPS]\n");
         for (int k = 0; k < (int)streetviews.size(); k++)
         {
             if (streetviews[k].id <= 0 || streetviews[k].confidence <= 0) continue;        // invalid data
             ids.push_back(streetviews[k].id);
             obs.push_back(rel_pose_defualt);
             confs.push_back(streetviews[k].confidence);
-            printf("\ttop%d: id=%zu, confidence=%lf, ts=%lf\n", k, streetviews[k].id, streetviews[k].confidence, capture_time);
         }
 
         if(ids.size() > 0)
@@ -1092,7 +1170,7 @@ bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++
 #endif // VPSSERVER
 
 
-bool DeepGuider::procPoi()
+bool DeepGuider::procLogo()
 {
     m_cam_mutex.lock();
     cv::Mat cam_image = m_cam_image.clone();
@@ -1100,40 +1178,89 @@ bool DeepGuider::procPoi()
     dg::LatLon capture_pos = m_cam_capture_pos;
     m_cam_mutex.unlock();
 
-    if (!cam_image.empty() && m_poi.apply(cam_image, capture_time))
+    if (!cam_image.empty() && m_logo.apply(cam_image, capture_time))
     {
+        if (m_data_logging) m_logo.write(m_log);
+        m_logo.print();
+
         std::vector<dg::ID> ids;
         std::vector<Polar2> obs;
         std::vector<double> confs;
-        std::vector<POIResult> pois;
-        m_poi.get(pois);
-        printf("[POI]\n");
-        for (int k = 0; k < (int)pois.size(); k++)
+        std::vector<LogoResult> logos;
+        m_logo.get(logos);
+        for (int k = 0; k < (int)logos.size(); k++)
         {
-            //dg::ID poi_id = m_map_manager.get_poi(pois[k].label);
-            dg::ID poi_id = 0;
-            ids.push_back(poi_id);
+            dg::ID logo_id = 0;
+            ids.push_back(logo_id);
             obs.push_back(rel_pose_defualt);
-            confs.push_back(pois[k].confidence);
-            printf("\tpoi%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, ts=%lf\n", k, pois[k].xmin, pois[k].ymin, pois[k].xmax, pois[k].ymax, pois[k].label.c_str(), pois[k].confidence, capture_time);
+            confs.push_back(logos[k].confidence);
         }
         VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, capture_time, confs));
 
-        if(!pois.empty())
+        if(!logos.empty())
         {
-            m_poi_mutex.lock();
-            m_poi_image = cam_image;
-            m_pois = pois;
-            m_poi_mutex.unlock();
+            m_logo_mutex.lock();
+            m_logo_image = cam_image;
+            m_logos = logos;
+            m_logo_mutex.unlock();
         }
         else
         {
-            m_poi_mutex.lock();
-            m_poi_image = cv::Mat();
-            m_pois.clear();
-            m_poi_mutex.unlock();
+            m_logo_mutex.lock();
+            m_logo_image = cv::Mat();
+            m_logos.clear();
+            m_logo_mutex.unlock();
         }
           
+    }
+
+    return true;
+}
+
+
+bool DeepGuider::procOcr()
+{
+    m_cam_mutex.lock();
+    cv::Mat cam_image = m_cam_image.clone();
+    dg::Timestamp capture_time = m_cam_capture_time;
+    dg::LatLon capture_pos = m_cam_capture_pos;
+    m_cam_mutex.unlock();
+
+    if (!cam_image.empty() && m_ocr.apply(cam_image, capture_time))
+    {
+        if (m_data_logging) m_ocr.write(m_log);
+        m_ocr.print();
+
+        std::vector<dg::ID> ids;
+        std::vector<Polar2> obs;
+        std::vector<double> confs;
+        std::vector<OCRResult> ocrs;
+        m_ocr.get(ocrs);
+        for (int k = 0; k < (int)ocrs.size(); k++)
+        {
+            //dg::ID ocr_id = m_map_manager.get_poi(ocrs[k].label);
+            dg::ID ocr_id = 0;
+            ids.push_back(ocr_id);
+            obs.push_back(rel_pose_defualt);
+            confs.push_back(ocrs[k].confidence);
+        }
+        VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, capture_time, confs));
+
+        if (!ocrs.empty())
+        {
+            m_ocr_mutex.lock();
+            m_ocr_image = cam_image;
+            m_ocrs = ocrs;
+            m_ocr_mutex.unlock();
+        }
+        else
+        {
+            m_ocr_mutex.lock();
+            m_ocr_image = cv::Mat();
+            m_ocrs.clear();
+            m_ocr_mutex.unlock();
+        }
+
     }
 
     return true;
@@ -1150,11 +1277,13 @@ bool DeepGuider::procIntersectionClassifier()
 
     if (!cam_image.empty() && m_intersection_classifier.apply(cam_image, capture_time))
     {
+        if (m_data_logging) m_intersection_classifier.write(m_log);
+        m_intersection_classifier.print();
+
         m_intersection_mutex.lock();
         m_intersection_classifier.get(m_intersection_result);
         m_intersection_image = cam_image;
         m_intersection_mutex.unlock();
-        printf("[Intersect] %d (%.2lf)\n", m_intersection_result.cls, m_intersection_result.confidence);   
 
         // apply the result to localizer
         // TBD...

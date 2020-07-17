@@ -1,35 +1,26 @@
-#include "dg_core.hpp"
 #include "dg_vps.hpp"
 #include "dg_utils.hpp"
 #include <chrono>
 #include <iostream>
-#include <experimental/filesystem>
 #include <string>
 #include <thread>
-#include <jsoncpp/json/json.h>
-#include <curl/curl.h>
+#ifdef VPSSERVER
+	#include <jsoncpp/json/json.h>
+	#include <curl/curl.h>
+#endif	// #ifdef VPSSERVER
 
 using namespace dg;
 using namespace std;
-using namespace std::experimental::filesystem;
 
 std::string map_server_ip = "129.254.87.96"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
 //std::string map_server_ip = "localhost"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
 
-void drawVPSResult(cv::Mat image, const std::vector<VPSResult>& streetviews)
-{
-    for(size_t i=0; i<streetviews.size(); i++)
-    {
-        // curerntly, do nothing (reserved for future use)
-    }
-}
 
-void test_image_run(VPS& vps, bool recording = false, const char* image_file = "./data_vps/vps_query.jpg", int nItr = 5)
+void test_image_run(VPS& recognizer, bool recording = false, const char* image_file = "./data_vps/vps_query.jpg", int nItr = 5)
 {
     printf("#### Test Image Run ####################\n");
     cv::Mat image = cv::imread(image_file);
     VVS_CHECK_TRUE(!image.empty());
-    cv::namedWindow(image_file);
 
     int N = 3;  // top-3
 	double gps_lat = 36.381438;
@@ -37,56 +28,48 @@ void test_image_run(VPS& vps, bool recording = false, const char* image_file = "
     double gps_lon = 127.378867;
     double gps_accuracy = 1.0;    //(0~1), 
 
+    cv::namedWindow(image_file);
     for (int i = 1; i <= nItr; i++)
     {
-        dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        VVS_CHECK_TRUE(recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str()));
         gps_lat += gps_lat_d;
-        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
 
-        std::vector<VPSResult> streetviews;
-        vps.get(streetviews);
-        dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        printf("iteration: %d (it took %lf seconds)\n", i, t2 - t1);
-        for (int k = 0; k < streetviews.size(); k++)
-        {
-            printf("\ttop%d: id=%ld, confidence=%.2lf, t=%lf\n", k, streetviews[k].id, streetviews[k].confidence, t1);
-        }
+		printf("iteration: %d (it took %lf seconds)\n", i, recognizer.procTime());
+		recognizer.print();
 
         cv::Mat image_result = image.clone();
-        drawVPSResult(image_result, streetviews);
+		recognizer.draw(image_result);
         cv::imshow(image_file, image_result);
-        cv::waitKey(1);
+        cv::waitKey(1000);
 
-        if(recording)
-        {
-            cv::imwrite("vps_result_image.jpg", image_result);
-        }
-    }
-    printf("press any key...\n");
-    cv::waitKey();
+		if (recording)
+		{
+			string fname = cv::format("%s_result.png", recognizer.name());
+			cv::imwrite(fname, image_result);
+		}
+	}
     cv::destroyWindow(image_file);
 }
 
-void test_video_run(VPS& vps, bool recording = false, const char* video_file = "data/191115_ETRI.avi")
+void test_video_run(VPS& recognizer, bool recording = false, int fps = 10, const char* video_file = "data/191115_ETRI.avi")
 {
-    bool save_latest_frame = false; // for debugging purpose
+	printf("#### Test Video Run ####################\n");
+	cv::VideoCapture video_data;
+	VVS_CHECK_TRUE(video_data.open(video_file));
 
-    cx::VideoWriter video;
-    if (recording)
-    {
-        time_t start_t;
-        time(&start_t);
-        tm _tm = *localtime(&start_t);
-        char szfilename[255];
-        strftime(szfilename, 255, "vps_result_%y%m%d_%H%M%S.avi", &_tm);
-        std::string filename = szfilename;
-        video.open(filename, 30);
-    }
- 
-    printf("#### Test Video Run ####################\n");
-    cv::VideoCapture video_data;
-    VVS_CHECK_TRUE(video_data.open(video_file));
-    cv::namedWindow(video_file);
+	cx::VideoWriter video;
+	std::ofstream log;
+	if (recording)
+	{
+		char sztime[255];
+		time_t start_t;
+		time(&start_t);
+		tm _tm = *localtime(&start_t);
+		strftime(sztime, 255, "%y%m%d_%H%M%S", &_tm);
+		video.open(cv::format("%s_%s.avi", recognizer.name(), sztime), fps);
+		log.open(cv::format("%s_%s.txt", recognizer.name(), sztime), ios::out);
+	}
 
     int N = 3;  // top-3
 #if 1	// Daejeon
@@ -98,51 +81,55 @@ void test_video_run(VPS& vps, bool recording = false, const char* video_file = "
 #endif
 	double gps_lat_d = 0.00001;
     double gps_accuracy = 1.0;    //(0~1), 
-
  
-    int i = 1;
+	cv::namedWindow(video_file);
+	int i = 1;
     while (1)
     {
-        int frame_i = video_data.get(cv::CAP_PROP_POS_FRAMES);
+		int frame_i = (int)video_data.get(cv::CAP_PROP_POS_FRAMES);
 
-        cv::Mat image;
-        video_data >> image;
-        if (image.empty()) break;
-        if(save_latest_frame) cv::imwrite("vps_latest_input.png", image);
+		cv::Mat image;
+		video_data >> image;
+		if (image.empty()) break;
 
-        dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+		dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+		VVS_CHECK_TRUE(recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str()));
 		if (int(i/300)*300 == i)
 		{
 			gps_lat_d *= -1.0;
 		}
         gps_lat += gps_lat_d;
-        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t1, map_server_ip.c_str()));
 
-        std::vector<VPSResult> streetviews;
-        vps.get(streetviews);
-        dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        printf("iteration: %d (it took %lf seconds)\n", i, t2 - t1);
-        for (int k = 0; k < streetviews.size(); k++)
-        {
-            printf("\ttop%d: id=%ld, confidence=%.2lf, t=%lf\n", k, streetviews[k].id, streetviews[k].confidence, t1);
-        }
-        i++;
+		printf("iteration: %d (it took %lf seconds)\n", i++, recognizer.procTime());
+		recognizer.print();
 
-        drawVPSResult(image, streetviews);
-        std::string fn = cv::format("#%d", frame_i);
-        cv::putText(image, fn.c_str(), cv::Point(10, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
-        cv::putText(image, fn.c_str(), cv::Point(10, 40), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
-        if(recording) video << image;
+		// draw frame number & fps
+		std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0 / recognizer.procTime());
+		cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
+		cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
 
-        cv::imshow(video_file, image);
-        int key = cv::waitKey(1);
-        if (key == cx::KEY_SPACE) key = cv::waitKey(0);
-        if (key == cx::KEY_ESC) break;
-    }
-    cv::destroyWindow(video_file); 
+		recognizer.draw(image);
+		if (recording)
+		{
+			video << image;
+			recognizer.write(log);
+		}
+
+		cv::imshow(video_file, image);
+		int key = cv::waitKey(1);
+		if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+		if (key == 83)    // Right Key
+		{
+			int fi = (int)video_data.get(cv::CAP_PROP_POS_FRAMES);
+			video_data.set(cv::CAP_PROP_POS_FRAMES, fi + 30);
+		}
+		if (key == cx::KEY_ESC) break;
+	}
+	cv::destroyWindow(video_file);
 }
 
 
+#ifdef VPSSERVER
 std::size_t curl_callback(
         const char* in,
         std::size_t size,
@@ -153,7 +140,6 @@ std::size_t curl_callback(
     out->append(in, totalBytes);
     return totalBytes;
 }
-
 
 bool curl_request(const std::string url, const char * CMD, const Json::Value * post_json, Json::Value * get_json)
 {
@@ -227,7 +213,6 @@ bool curl_request(const std::string url, const char * CMD, const Json::Value * p
 	}
 	return ret;
 }
-
 
 void test_video_server_run(bool recording = false, const char* video_file = "data/191115_ETRI.avi")
 {
@@ -355,10 +340,10 @@ void test_video_server_run(bool recording = false, const char* video_file = "dat
     }
     cv::destroyWindow(video_file); 
 }
+#endif	// #ifdef VPSSERVER
 
 
-
-void test_query_run(VPS& vps, bool recording = false, const char* qlist = "./data_vps/query_list.txt")
+void test_query_run(VPS& recognizer, bool recording = false, const char* qlist = "./data_vps/query_list.txt")
 {
     printf("#### Test Query Run ####################\n");
  
@@ -384,8 +369,8 @@ void test_query_run(VPS& vps, bool recording = false, const char* qlist = "./dat
     gps_lon = 127.378867;
     gps_accuracy = 1.0;    //(0~1), 
 
-	while(infile >> line){
-    	std::vector<VPSResult> streetviews; //Since it is manipulated in python, this declaration must be placed in a local loop.
+	while(infile >> line)
+	{
 		frame ++;
 		if (frame % 1 != 0)
 		{
@@ -394,35 +379,24 @@ void test_query_run(VPS& vps, bool recording = false, const char* qlist = "./dat
 
 		string img = line;
 		image = cv::imread(img);
-		// inImg = cv::imread(img);
-		// cv::resize(inImg, image, cv::Size(), 0.5, 0.5, cv::INTER_LINEAR);
-		// imshow("new",image);
-		// cv::waitKey(1);
 		cout << "[" << frame << "-th frame(" << image.rows << "x" << image.cols << ")] : " << img << endl;
 
-    // Run the Python module
 	    t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 		gps_lat += gps_lat_d;
-        VVS_CHECK_TRUE(vps.apply(image, N, gps_lat, gps_lon, gps_accuracy, t, map_server_ip.c_str()));
+        VVS_CHECK_TRUE(recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, t, map_server_ip.c_str()));
 
-        vps.get(streetviews);
-        t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        printf("It took %lf seconds\n", t2 - t);
-        for (int k = 0; k < streetviews.size(); k++)
-        {
-            printf("\ttop%d: id=%ld, confidence=%.2lf, t=%lf\n", k, streetviews[k].id, streetviews[k].confidence, t);
-        }
+		recognizer.print();
     }
 	printf("Finished\n");
 }
 
 
-void threadfunc_vps(VPS* vps, bool* is_running)
+void threadfunc_vps(VPS* recognizer, bool* is_running)
 {
     printf("#### Test Thread Run ####################\n");
 
     *is_running = true;
-    test_video_run(*vps, false);
+    test_video_run(*recognizer, false);
     *is_running = false;
 
     printf("Finished\n");
@@ -434,7 +408,9 @@ void threadfunc_vps_server(bool* is_running)
     printf("#### Test Thread Run ####################\n");
 
     *is_running = true;
-    test_video_server_run(false);
+#ifdef VPSSERVER
+	test_video_server_run(false);
+#endif	// #ifdef VPSSERVER
     *is_running = false;
 
     printf("Finished\n");
@@ -463,24 +439,22 @@ int main()
 	
 	    
 	    // Initialize Python module
-	    VPS vps;
-	    Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-		if (!vps.initialize())
+	    VPS recognizer;
+		if (!recognizer.initialize())
 	    {
 	        return -1;
 	    }
-	    Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-	    printf("Initialization: it took %lf seconds\n", t2 - t1);
-	
+		printf("Initialization: it took %.3lf seconds\n", recognizer.procTime());
+
 	    // Run the Python module
-	    if(test_image) test_image_run(vps, enable_recording);
-	    if(test_video) test_video_run(vps, enable_recording);
-	    if(test_query) test_query_run(vps, enable_recording);
+	    if(test_image) test_image_run(recognizer, enable_recording);
+	    if(test_video) test_video_run(recognizer, enable_recording);
+	    if(test_query) test_query_run(recognizer, enable_recording);
 	
 	    if(test_thread_run)
 	    {
 	        bool is_running_vps = true;
-	        std::thread* vps_thread = new std::thread(threadfunc_vps, &vps, &is_running_vps);
+	        std::thread* vps_thread = new std::thread(threadfunc_vps, &recognizer, &is_running_vps);
 	        while(is_running_vps)
 	        {
 	            std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -488,13 +462,14 @@ int main()
 	    }
 	
 	    // Clear the Python module
-	    vps.clear();
+	    recognizer.clear();
 	
 	    // Close the Python Interpreter
 	    close_python_environment();
 	}
 	else if (test_thread_run_server || test_video_server) /** Python Server Call version **/
 	{
+	#ifdef VPSSERVER
 		// We don't need Python interpreter, instead of it, use server call
 	    if(test_video_server) test_video_server_run(enable_recording);
 	
@@ -507,6 +482,7 @@ int main()
 	            std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	        }
 	    }
+	#endif	// #ifdef VPSSERVER
 	}
 
     return 0;

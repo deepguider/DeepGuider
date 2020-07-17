@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{3CC90140-7D1B-494F-AD0C-5EBDC0A12DBE}</ProjectGuid>
+    <ProjectGuid>{E6291A29-492D-413F-9624-A530F3D2E9EE}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup>
@@ -83,11 +83,12 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib;..\..\EXTERNAL\python\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>opencv_world411.lib;python36.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -95,6 +96,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
     <ClInclude Include="python_test.hpp" />
   </ItemGroup>
   <ItemGroup>
