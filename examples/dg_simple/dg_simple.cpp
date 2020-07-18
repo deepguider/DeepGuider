@@ -131,6 +131,7 @@ protected:
     // local variables
     cx::VideoWriter m_video;
     std::ofstream m_log;
+    cv::Mutex m_log_mutex;
     cv::Mat m_map_image;
     dg::SimpleRoadPainter m_painter;
     dg::CanvasInfo m_map_info;
@@ -215,11 +216,6 @@ bool DeepGuider::initialize(std::string config_file)
     if (m_enable_vps && !m_vps.initialize("vps", module_path.c_str())) return false;
     if (m_enable_vps) printf("\tVPS initialized in %.3lf seconds!\n", m_vps.procTime());
 
-    // initialize Logo
-    module_path = m_srcdir + "/logo_recog";
-    if (m_enable_logo && !m_logo.initialize("logo_recognizer", module_path.c_str())) return false;
-    if (m_enable_logo) printf("\tLogo initialized in %.3lf seconds!\n", m_logo.procTime());
-
     // initialize OCR
     module_path = m_srcdir + "/ocr_recog";
     if (m_enable_ocr && !m_ocr.initialize("ocr_recognizer", module_path.c_str())) return false;
@@ -229,6 +225,11 @@ bool DeepGuider::initialize(std::string config_file)
     module_path = m_srcdir + "/intersection_cls";
     if (m_enable_intersection && !m_intersection_classifier.initialize("intersection_cls", module_path.c_str())) return false;
     if (m_enable_intersection) printf("\tIntersection initialized in %.3lf seconds!\n", m_intersection_classifier.procTime());
+
+    // initialize Logo
+    module_path = m_srcdir + "/logo_recog";
+    if (m_enable_logo && !m_logo.initialize("logo_recognizer", module_path.c_str())) return false;
+    if (m_enable_logo) printf("\tLogo initialized in %.3lf seconds!\n", m_logo.procTime());
 
     //initialize exploation 
     if (m_enable_exploration && !m_active_nav.initialize()) return false;
@@ -405,7 +406,7 @@ int DeepGuider::run()
 
     // run iteration
     int maxItr = (int)gps_data.size();
-    int itr = 0;
+    int itr = 500;
     bool is_arrived = false;
     while (!is_arrived && itr < maxItr)
     {
@@ -531,6 +532,9 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
 
 void DeepGuider::drawGuiDisplay(cv::Mat& image)
 {
+    double video_resize_scale = 0.4;
+    int win_delta = 10;
+
     // cam image
     m_cam_mutex.lock();
     cv::Mat cam_image = m_cam_image.clone();
@@ -538,18 +542,46 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
 
     // draw cam image as subwindow on the GUI map image
     cv::Rect video_rect;
-    double video_resize_scale = 0.4;
     cv::Mat video_image;
-    cv::Point video_offset(32, 542);
+    cv::Point video_offset(20, 542);
     if (!cam_image.empty())
     {
-        cv::resize(cam_image, video_image, cv::Size(), video_resize_scale, video_resize_scale);
+        cv::resize(cam_image, video_image, cv::Size(), video_resize_scale*0.8, video_resize_scale);
         video_rect = cv::Rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
         if (video_rect.br().x < image.cols && video_rect.br().y < image.rows) image(video_rect) = video_image * 1;
     }
+    cv::Rect win_rect = video_rect;
+
+    // draw intersection result
+    if (m_enable_intersection)
+    {
+        cv::Mat intersection_image;
+        IntersectionResult intersection_result;
+        cv::Size original_image_size;
+        m_intersection_mutex.lock();
+        if(!m_intersection_image.empty())
+        {
+            original_image_size.width = m_intersection_image.cols;
+            original_image_size.height = m_intersection_image.rows;
+            double fy = (double)video_rect.height / m_intersection_image.rows;
+            cv::resize(m_intersection_image, intersection_image, cv::Size(video_rect.height, video_rect.height));
+            intersection_result = m_intersection_result;
+        }
+        m_intersection_mutex.unlock();
+
+        if (!intersection_image.empty())
+        {
+            drawIntersection(intersection_image, intersection_result, original_image_size);
+            cv::Point intersection_offset = video_offset;
+            intersection_offset.x = win_rect.x + win_rect.width + win_delta;
+            cv::Rect rect(intersection_offset, intersection_offset + cv::Point(intersection_image.cols, intersection_image.rows));
+            if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = intersection_image * 1;
+            win_rect = rect;
+        }
+    }
+
 
     // draw vps result
-    cv::Rect vps_rect = video_rect;
     if (m_enable_vps)
     {
         // top-1 matched streetview image
@@ -569,7 +601,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         if (!sv_image.empty())
         {
             cv::Point sv_offset = video_offset;
-            sv_offset.x = video_rect.x + video_rect.width + 20;
+            sv_offset.x = win_rect.x + win_rect.width + win_delta;
             cv::Rect rect(sv_offset, sv_offset + cv::Point(sv_image.cols, sv_image.rows));
             if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows)
             {
@@ -585,7 +617,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
                 cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
                 cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
 
-                vps_rect = rect;
+                win_rect = rect;
             }
         }
 
@@ -602,7 +634,6 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     }
 
     // draw logo result
-    cv::Rect logo_rect = vps_rect;
     if (m_enable_logo)
     {
         cv::Mat logo_image;
@@ -614,7 +645,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
             original_image_size.width = m_logo_image.cols;
             original_image_size.height = m_logo_image.rows;
             double fy = (double)video_rect.height / m_logo_image.rows;
-            cv::resize(m_logo_image, logo_image, cv::Size(), fy, fy);
+            cv::resize(m_logo_image, logo_image, cv::Size(), fy*0.9, fy);
             logos = m_logos;
         }
         m_logo_mutex.unlock();
@@ -623,15 +654,14 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         {
             drawLogo(logo_image, logos, original_image_size);
             cv::Point logo_offset = video_offset;
-            logo_offset.x = logo_rect.x + logo_rect.width + 20;
+            logo_offset.x = win_rect.x + win_rect.width + win_delta;
             cv::Rect rect(logo_offset, logo_offset + cv::Point(logo_image.cols, logo_image.rows));
             if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = logo_image * 1;
-            logo_rect = rect;
+            win_rect = rect;
         }
     }
 
     // draw ocr result
-    cv::Rect ocr_rect = logo_rect;
     if (m_enable_ocr)
     {
         cv::Mat ocr_image;
@@ -643,7 +673,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
             original_image_size.width = m_ocr_image.cols;
             original_image_size.height = m_ocr_image.rows;
             double fy = (double)video_rect.height / m_ocr_image.rows;
-            cv::resize(m_ocr_image, ocr_image, cv::Size(), fy, fy);
+            cv::resize(m_ocr_image, ocr_image, cv::Size(), fy*0.9, fy);
             ocrs = m_ocrs;
         }
         m_ocr_mutex.unlock();
@@ -652,39 +682,10 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         {
             drawOcr(ocr_image, ocrs, original_image_size);
             cv::Point ocr_offset = video_offset;
-            ocr_offset.x = ocr_rect.x + ocr_rect.width + 20;
+            ocr_offset.x = win_rect.x + win_rect.width + win_delta;
             cv::Rect rect(ocr_offset, ocr_offset + cv::Point(ocr_image.cols, ocr_image.rows));
             if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = ocr_image * 1;
-            ocr_rect = rect;
-        }
-    }
-
-    // draw intersection result
-    cv::Rect intersection_rect = ocr_rect;
-    if (m_enable_intersection)
-    {
-        cv::Mat intersection_image;
-        IntersectionResult intersection_result;
-        cv::Size original_image_size;
-        m_intersection_mutex.lock();
-        if(!m_intersection_image.empty())
-        {
-            original_image_size.width = m_intersection_image.cols;
-            original_image_size.height = m_intersection_image.rows;
-            double fy = (double)video_rect.height / m_intersection_image.rows;
-            cv::resize(m_intersection_image, intersection_image, cv::Size(), fy, fy);
-            intersection_result = m_intersection_result;
-        }
-        m_intersection_mutex.unlock();
-
-        if (!intersection_image.empty())
-        {
-            drawIntersection(intersection_image, intersection_result, original_image_size);
-            cv::Point intersection_offset = video_offset;
-            intersection_offset.x = intersection_rect.x + intersection_rect.width + 20;
-            cv::Rect rect(intersection_offset, intersection_offset + cv::Point(intersection_image.cols, intersection_image.rows));
-            if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) image(rect) = intersection_image * 1;
-            intersection_rect = rect;
+            win_rect = rect;
         }
     }
 
@@ -835,8 +836,8 @@ void DeepGuider::drawLogo(cv::Mat image, std::vector<LogoResult> logos, cv::Size
         cv::rectangle(image, rc, cv::Scalar(0, 255, 0), 2);
         cv::Point pt(logos[i].xmin + 5, logos[i].ymin + 35);
         std::string msg = cv::format("%s %.2lf", logos[i].label.c_str(), logos[i].confidence);
-        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
-        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 4);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 0), 2);
     }
 }
 
@@ -857,21 +858,18 @@ void DeepGuider::drawOcr(cv::Mat image, std::vector<OCRResult> ocrs, cv::Size or
         cv::rectangle(image, rc, cv::Scalar(0, 255, 0), 2);
         cv::Point pt(ocrs[i].xmin + 5, ocrs[i].ymin + 35);
         std::string msg = cv::format("%s %.2lf", ocrs[i].label.c_str(), ocrs[i].confidence);
-        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
-        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 255), 4);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 0), 2);
     }
 }
 
 
 void DeepGuider::drawIntersection(cv::Mat image, IntersectionResult r, cv::Size original_image_size)
 {
-    double xscale = (double)image.cols / original_image_size.width;
-    double yscale = (double)image.rows / original_image_size.height;
-
-    cv::Point pt(60, 50);
+    cv::Point pt(image.cols/2-120, 50);
     std::string msg = cv::format("Intersect: %d (%.2lf)", r.cls, r.confidence);
-    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 255, 0), 6);
-    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 0, 0), 2);
+    cv::putText(image, msg, pt, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 0), 5);
+    cv::putText(image, msg, pt, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 0), 2);
 }
 
 
@@ -1115,7 +1113,12 @@ bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++
     double gps_accuracy = 1;   // 0: search radius = 230m ~ 1: search radius = 30m
     if (!cam_image.empty() && m_vps.apply(cam_image, N, capture_pos.lat, capture_pos.lon, gps_accuracy, capture_time, m_server_ip.c_str()))
     {
-        if (m_data_logging) m_vps.write(m_log);
+        if (m_data_logging)
+        {
+            m_log_mutex.lock();
+            m_vps.write(m_log);
+            m_log_mutex.unlock();
+        } 
         m_vps.print();
 
         std::vector<dg::ID> ids;
@@ -1180,7 +1183,12 @@ bool DeepGuider::procLogo()
 
     if (!cam_image.empty() && m_logo.apply(cam_image, capture_time))
     {
-        if (m_data_logging) m_logo.write(m_log);
+        if (m_data_logging)
+        {
+            m_log_mutex.lock();
+            m_logo.write(m_log);
+            m_log_mutex.unlock();
+        }
         m_logo.print();
 
         std::vector<dg::ID> ids;
@@ -1228,7 +1236,12 @@ bool DeepGuider::procOcr()
 
     if (!cam_image.empty() && m_ocr.apply(cam_image, capture_time))
     {
-        if (m_data_logging) m_ocr.write(m_log);
+        if (m_data_logging)
+        {
+            m_log_mutex.lock();
+            m_ocr.write(m_log);
+            m_log_mutex.unlock();
+        }
         m_ocr.print();
 
         std::vector<dg::ID> ids;
@@ -1277,7 +1290,12 @@ bool DeepGuider::procIntersectionClassifier()
 
     if (!cam_image.empty() && m_intersection_classifier.apply(cam_image, capture_time))
     {
-        if (m_data_logging) m_intersection_classifier.write(m_log);
+        if (m_data_logging)
+        {
+            m_log_mutex.lock();
+            m_intersection_classifier.write(m_log);
+            m_log_mutex.unlock();
+        } 
         m_intersection_classifier.print();
 
         m_intersection_mutex.lock();

@@ -12,8 +12,8 @@
 using namespace dg;
 using namespace std;
 
-std::string map_server_ip = "129.254.87.96"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
-//std::string map_server_ip = "localhost"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
+//std::string map_server_ip = "129.254.87.96"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
+std::string map_server_ip = "localhost"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
 
 
 void test_image_run(VPS& recognizer, bool recording = false, const char* image_file = "./data_vps/vps_query.jpg", int nItr = 5)
@@ -81,7 +81,7 @@ void test_video_run(VPS& recognizer, bool recording = false, int fps = 10, const
 #endif
 	double gps_lat_d = 0.00001;
     double gps_accuracy = 1.0;    //(0~1), 
- 
+
 	cv::namedWindow(video_file);
 	int i = 1;
     while (1)
@@ -108,7 +108,6 @@ void test_video_run(VPS& recognizer, bool recording = false, int fps = 10, const
 		cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
 		cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
 
-		recognizer.draw(image);
 		if (recording)
 		{
 			video << image;
