@@ -13,6 +13,7 @@ from keras import Model
 from PIL import Image, ImageDraw, ImageFont
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
 from sklearn.metrics.pairwise import cosine_similarity
+import tensorflow as tf
 
 
 def draw_matches(image, label_list, prediction, matches):
@@ -123,7 +124,9 @@ def extract_features(img, model, preprocess, batch_size=100):
 
     steps = len(img) // batch_size + 1
     img_gen = chunks(img, batch_size, preprocessing_function = preprocess)
-    features = model.predict_generator(img_gen, steps = steps)
+
+    with graph_logo_extractor_model.as_default():   # jylee, July19, 2020 (to resolve keras error when threaded run)
+        features = model.predict_generator(img_gen, steps = steps)
 
     # if the generator has looped past end of array, cut it down
     features = features[:len(img)]
@@ -193,6 +196,9 @@ def load_extractor_model(model_name):
         model_out = Model(inputs=model.inputs, 
                           outputs=model.layers[trunc_layer[i_layer]].output)
         input_shape = (200, 200, 3) #(299,299,3) if flavor==0 else (200,200,3)
+
+        global graph_logo_extractor_model # jylee, July19, 2020 (to resolve keras error when threaded run)
+        graph_logo_extractor_model = tf.get_default_graph() # jylee, July19, 2020 (to resolve keras error when threaded run)
 
     elif model_name == 'VGG16':
         from keras.applications.vgg16 import VGG16

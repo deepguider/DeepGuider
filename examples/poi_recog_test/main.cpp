@@ -1,76 +1,62 @@
-#include "dg_core.hpp"
 #include "dg_poi_recog.hpp"
 #include "dg_utils.hpp"
 #include <chrono>
+#include <thread>
 
 using namespace dg;
 using namespace std;
 
-void drawPOIResult(cv::Mat image, const std::vector<POIResult>& pois)
-{
-    for(size_t i=0; i<pois.size(); i++)
-    {
-        cv::Rect rc(pois[i].xmin, pois[i].ymin, pois[i].xmax-pois[i].xmin+1, pois[i].ymax-pois[i].ymin+1);
-        cv::rectangle(image, rc, cv::Scalar(0, 255, 0), 2);
-        cv::Point pt(pois[i].xmin + 5, pois[i].ymin + 35);
-        std::string msg = cv::format("%s %.2lf", pois[i].label.c_str(), pois[i].confidence);
-        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
-        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
-    }
-}
+#define RECOGNIZER POIRecognizer
 
-void test_image_run(POIRecognizer& poi_recog, bool recording = false, const char* image_file = "poi_sample.jpg", int nItr = 5)
+
+void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* image_file = "sample.png", int nItr = 5)
 {
     printf("#### Test Image Run ####################\n");
     cv::Mat image = cv::imread(image_file);
     VVS_CHECK_TRUE(!image.empty());
+
     cv::namedWindow(image_file);
     for (int i = 1; i <= nItr; i++)
     {
-        dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        VVS_CHECK_TRUE(poi_recog.apply(image, t1));
+        dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        VVS_CHECK_TRUE(recognizer.apply(image, ts));
 
-        std::vector<POIResult> pois;
-        poi_recog.get(pois);
-        dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        printf("iteration: %d (it took %lf seconds)\n", i, t2 - t1);
-        for (int k = 0; k < pois.size(); k++)
-        {
-            printf("\tpoi%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, t=%lf\n", k, pois[k].xmin, pois[k].ymin, pois[k].xmax, pois[k].ymax, pois[k].label.c_str(), pois[k].confidence, t1);
-        }
+        printf("iteration: %d (it took %lf seconds)\n", i, recognizer.procTime());
+        recognizer.print();
 
         cv::Mat image_result = image.clone();
-        drawPOIResult(image_result, pois);
+        recognizer.draw(image_result);
         cv::imshow(image_file, image_result);
-        cv::waitKey(1);
+        cv::waitKey(1000);
 
-        if(recording)
+        if (recording)
         {
-            cv::imwrite("poi_result_image.jpg", image_result);
+            string fname = cv::format("%s_result.png", recognizer.name());
+            cv::imwrite(fname, image_result);
         }
     }
     cv::destroyWindow(image_file);
 }
 
-void test_video_run(POIRecognizer& poi_recog, bool recording = false, int fps = 10, const char* video_file = "data/191115_ETRI.avi")
-{
-    bool save_latest_frame = false;
 
-    cx::VideoWriter video;
-    if (recording)
-    {
-        time_t start_t;
-        time(&start_t);
-        tm _tm = *localtime(&start_t);
-        char szfilename[255];
-        strftime(szfilename, 255, "poi_result_%y%m%d_%H%M%S.avi", &_tm);
-        std::string filename = szfilename;
-        video.open(filename, fps);
-    }
- 
+void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10, const char* video_file = "data/191115_ETRI.avi")
+{
     printf("#### Test Video Run ####################\n");
     cv::VideoCapture video_data;
     VVS_CHECK_TRUE(video_data.open(video_file));
+
+    cx::VideoWriter video;
+    std::ofstream log;
+    if (recording)
+    {
+        char sztime[255];
+        time_t start_t;
+        time(&start_t);
+        tm _tm = *localtime(&start_t);
+        strftime(sztime, 255, "%y%m%d_%H%M%S", &_tm);
+        video.open(cv::format("%s_%s.avi", recognizer.name(), sztime), fps);
+        log.open(cv::format("%s_%s.txt", recognizer.name(), sztime), ios::out);
+    }
 
     cv::namedWindow(video_file);
     int i = 1;
@@ -82,28 +68,23 @@ void test_video_run(POIRecognizer& poi_recog, bool recording = false, int fps = 
         video_data >> image;
         if (image.empty()) break;
 
-        if(save_latest_frame) cv::imwrite("poi_latest_input.png", image);
+        dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        VVS_CHECK_TRUE(recognizer.apply(image, ts));
 
-        dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        VVS_CHECK_TRUE(poi_recog.apply(image, t1));
+        printf("iteration: %d (it took %lf seconds)\n", i++, recognizer.procTime());
+        recognizer.print();
 
-        std::vector<POIResult> pois;
-        poi_recog.get(pois);
-        dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        printf("iteration: %d (it took %lf seconds)\n", i, t2 - t1);
-        for (int k = 0; k < (int)pois.size(); k++)
-        {
-            printf("\tpoi%d: x1=%d, y1=%d, x2=%d, y2=%d, label=%s, confidence=%lf, t=%lf\n", k, pois[k].xmin, pois[k].ymin, pois[k].xmax, pois[k].ymax, pois[k].label.c_str(), pois[k].confidence, t1);
-        }
-        i++;
-
-         // draw frame number & fps
-        std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0/(t2 - t1));
+        // draw frame number & fps
+        std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0 / recognizer.procTime());
         cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
-        cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);       
+        cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
 
-        drawPOIResult(image, pois);
-        if(recording) video << image;
+        recognizer.draw(image);
+        if (recording)
+        {
+            video << image;
+            recognizer.write(log);
+        }
 
         cv::imshow(video_file, image);
         int key = cv::waitKey(1);
@@ -115,36 +96,48 @@ void test_video_run(POIRecognizer& poi_recog, bool recording = false, int fps = 
         }
         if (key == cx::KEY_ESC) break;
     }
-    cv::destroyWindow(video_file); 
+    cv::destroyWindow(video_file);
 }
+
+
+void procfunc(bool recording, int rec_fps, const char* video_path)
+{
+    // Initialize Python module
+    RECOGNIZER recognizer;
+    if (!recognizer.initialize()) return;
+    printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
+
+    // Run the Python module
+    test_image_run(recognizer, false, cv::format("%s_sample.png", recognizer.name()).c_str());
+    test_video_run(recognizer, recording, rec_fps, video_path);
+
+    // Clear the Python module
+    recognizer.clear();
+}
+
 
 int main()
 {
     bool recording = false;
     int rec_fps = 5;
+    bool threaded_run = true;
+
     const char* video_path = "data/191115_ETRI.avi";
     //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
     //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
 
     // Initialize the Python interpreter
-    init_python_environment("python3", "");
+    init_python_environment("python3", "", threaded_run);
 
-    // Initialize Python module
-    POIRecognizer poi_recog;
-    Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-    if (!poi_recog.initialize())
+    if(threaded_run)
     {
-        return -1;
+		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path);
+        test_thread->join();
     }
-    Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-    printf("Initialization: it took %lf seconds\n", t2 - t1);
-
-    // Run the Python module
-    //test_image_run(poi_recog, recording);
-    test_video_run(poi_recog, recording, rec_fps, video_path);
-
-    // Clear the Python module
-    poi_recog.clear();
+    else
+    {
+        procfunc(recording, rec_fps, video_path);
+    }
 
     // Close the Python Interpreter
     close_python_environment();

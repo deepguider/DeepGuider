@@ -37,12 +37,12 @@ class POIRecognizer:
         self.sim_threshold = 0.90
         self.output_txt = 'out.txt'
         
-        filename = './model/inception_logo_features_200_trunc2.hdf5'
+        filename = './model_poi/inception_logo_features_200_trunc2.hdf5'
         print('Initialization in progress...!\n')        
         start = time.time()
-        yolo = YOLO(**{"model_path": './model/keras_yolo3/model_data/yolo_weights_logos.h5',
-            "anchors_path": './model/keras_yolo3/model_data/yolo_anchors.txt',
-            "classes_path": './data/preprocessed/classes.txt',
+        yolo = YOLO(**{"model_path": './model_poi/keras_yolo3/model_data/yolo_weights_logos.h5',
+            "anchors_path": './model_poi/keras_yolo3/model_data/yolo_anchors.txt',
+            "classes_path": './data_poi/preprocessed/classes.txt',
             "score" : 0.05,
             "gpu_num" : 1,
             "model_image_size" : (416, 416),
@@ -57,7 +57,7 @@ class POIRecognizer:
         model, preprocess_input, input_shape = load_extractor_model(model_name, flavor)
         my_preprocess = lambda x: preprocess_input(utils.pad_image(x, input_shape))
 
-        with open('./data/preprocessed/trained_brands.pkl', 'rb') as f:
+        with open('./data_poi/preprocessed/trained_brands.pkl', 'rb') as f:
             img_input, input_labels = pickle.load(f)
 
         (img_input, feat_input, sim_cutoff, (bins, cdf_list)) = load_brands_compute_cutoffs(img_input, (model, my_preprocess), features, self.sim_threshold)

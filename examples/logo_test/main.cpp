@@ -1,5 +1,6 @@
 #include "dg_logo.hpp"
 #include "dg_utils.hpp"
+#include <thread>
 #include <chrono>
 
 using namespace dg;
@@ -98,22 +99,13 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
     cv::destroyWindow(video_file);
 }
 
-int main()
+
+void procfunc(bool recording, int rec_fps, const char* video_path)
 {
-    bool recording = false;
-    int rec_fps = 5;
-
-    const char* video_path = "data/191115_ETRI.avi";
-    //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
-    //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
-
-    // Initialize the Python interpreter
-    init_python_environment("python3", "");
-
     // Initialize Python module
     RECOGNIZER recognizer;
-    if (!recognizer.initialize()) return -1;
-    printf("Initialization: it took %.3lf seconds\n", recognizer.procTime());
+    if (!recognizer.initialize()) return;
+    printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
 
     // Run the Python module
     test_image_run(recognizer, false, cv::format("%s_sample.png", recognizer.name()).c_str());
@@ -121,6 +113,31 @@ int main()
 
     // Clear the Python module
     recognizer.clear();
+}
+
+
+int main()
+{
+    bool recording = false;
+    int rec_fps = 5;
+    bool threaded_run = true;
+
+    const char* video_path = "data/191115_ETRI.avi";
+    //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
+    //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
+
+    // Initialize the Python interpreter
+    init_python_environment("python3", "", threaded_run);
+
+    if(threaded_run)
+    {
+		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path);
+        test_thread->join();
+    }
+    else
+    {
+        procfunc(recording, rec_fps, video_path);
+    }
 
     // Close the Python Interpreter
     close_python_environment();

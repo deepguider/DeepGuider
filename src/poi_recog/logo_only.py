@@ -30,20 +30,20 @@ if __name__ == '__main__':
         help='Video detection mode')
     parser.add_argument("--input_images", type=str, default='input',
         help = "path to image directory or video to find logos in")
-    parser.add_argument("--output", type=str, default="./data/test/",
+    parser.add_argument("--output", type=str, default="./data_poi/test/",
         help = "output path: either directory for single/batch image, or filename for video")
     parser.add_argument("--outtxt", default=False, dest='save_to_txt', action="store_true",
         help = "save text file with inference results")
     parser.add_argument("--no_save_img", default=False, action="store_true",
         help = "do not save output images with annotated boxes")
     parser.add_argument('--yolo_model', type=str, dest='model_path', 
-        default = './model/keras_yolo3/model_data/yolo_weights_logos.h5',
+        default = './model_poi/keras_yolo3/model_data/yolo_weights_logos.h5',
         help='path to YOLO model weight file')
     parser.add_argument('--anchors', type=str, dest='anchors_path', 
-        default = './model/keras_yolo3/model_data/yolo_anchors.txt',
+        default = './model_poi/keras_yolo3/model_data/yolo_anchors.txt',
         help='path to YOLO anchors')
     parser.add_argument('--classes', type=str, dest='classes_path', 
-        default = './data/preprocessed/classes.txt',
+        default = './data_poi/preprocessed/classes.txt',
         help='path to YOLO class specifications')
     parser.add_argument('--gpu_num', type=int, default = 1,
         help='Number of GPU to use')
@@ -117,7 +117,7 @@ if __name__ == '__main__':
         else:
             exit('Error: path not found: {}'.format(FLAGS.input_images))
 
-        if FLAGS.output == "./data/test/":
+        if FLAGS.output == "./data_poi/test/":
             FLAGS.output = os.path.splitext(FLAGS.input_images)[0]+'.mp4'
 
         detect_video(yolo, video_path = FLAGS.input_images, output_path = FLAGS.output)

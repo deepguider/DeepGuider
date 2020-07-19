@@ -1,12 +1,12 @@
 #include "dg_intersection.hpp"
 #include "dg_utils.hpp"
 #include <chrono>
+#include <thread>
 
 using namespace dg;
 using namespace std;
 
 #define RECOGNIZER IntersectionClassifier
-
 
 void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* image_file = "sample.png", int nItr = 5)
 {
@@ -55,7 +55,7 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
         strftime(sztime, 255, "%y%m%d_%H%M%S", &_tm);
         video.open(cv::format("%s_%s.avi", recognizer.name(), sztime), fps);
         log.open(cv::format("%s_%s.txt", recognizer.name(), sztime), ios::out);
-    } 
+    }
 
     cv::namedWindow(video_file);
     int i = 1;
@@ -72,9 +72,9 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
 
         printf("iteration: %d (it took %lf seconds)\n", i++, recognizer.procTime());
         recognizer.print();
-        
+
         // draw frame number & fps
-        std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0/ recognizer.procTime());
+        std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0 / recognizer.procTime());
         cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
         cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
 
@@ -95,25 +95,16 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
         }
         if (key == cx::KEY_ESC) break;
     }
-    cv::destroyWindow(video_file); 
+    cv::destroyWindow(video_file);
 }
 
-int main()
+
+void procfunc(bool recording, int rec_fps, const char* video_path)
 {
-    bool recording = false;
-    int rec_fps = 5;
-
-    const char* video_path = "data/191115_ETRI.avi";
-    //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
-    //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
-
-    // Initialize the Python interpreter
-    init_python_environment("python3", "");
-
     // Initialize Python module
     RECOGNIZER recognizer;
-    if (!recognizer.initialize()) return -1;
-    printf("Initialization: it took %.3lf seconds\n", recognizer.procTime());
+    if (!recognizer.initialize()) return;
+    printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
 
     // Run the Python module
     test_image_run(recognizer, false, cv::format("%s_sample.png", recognizer.name()).c_str());
@@ -121,6 +112,31 @@ int main()
 
     // Clear the Python module
     recognizer.clear();
+}
+
+
+int main()
+{
+    bool recording = false;
+    int rec_fps = 5;
+    bool threaded_run = true;
+
+    const char* video_path = "data/191115_ETRI.avi";
+    //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
+    //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
+
+    // Initialize the Python interpreter
+    init_python_environment("python3", "", threaded_run);
+
+    if(threaded_run)
+    {
+		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path);
+        test_thread->join();
+    }
+    else
+    {
+        procfunc(recording, rec_fps, video_path);
+    }
 
     // Close the Python Interpreter
     close_python_environment();

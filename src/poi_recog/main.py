@@ -29,16 +29,16 @@ def test(filename, timestamp):
     Test function: runs pipeline for a small set of input images and input
     brands.
     """
-    yolo = YOLO(**{"model_path": './model/keras_yolo3/model_data/yolo_weights_logos.h5',
-                "anchors_path": './model/keras_yolo3/model_data/yolo_anchors.txt',
-                "classes_path": './data/preprocessed/classes.txt',
+    yolo = YOLO(**{"model_path": './model_poi/keras_yolo3/model_data/yolo_weights_logos.h5',
+                "anchors_path": './model_poi/keras_yolo3/model_data/yolo_anchors.txt',
+                "classes_path": './data_poi/preprocessed/classes.txt',
                 "score" : 0.05,
                 "gpu_num" : 1,
                 "model_image_size" : (416, 416),
                 })
     save_img_logo, save_img_match = True, True
     
-    test_dir = os.path.join(os.path.dirname(__file__), 'data/test')
+    test_dir = os.path.join(os.path.dirname(__file__), 'data_poi/test')
 
     # get Inception/VGG16 model and flavor from filename
     model_name, flavor = model_flavor_from_name(filename)
@@ -87,9 +87,9 @@ def initialize(filename):
    
     print('Initialization in progress...!\n')
     start = time.time()
-    yolo = YOLO(**{"model_path": './model/keras_yolo3/model_data/yolo_weights_logos.h5',
-                "anchors_path": './model/keras_yolo3/model_data/yolo_anchors.txt',
-                "classes_path": './data/preprocessed/classes.txt',
+    yolo = YOLO(**{"model_path": './model_poi/keras_yolo3/model_data/yolo_weights_logos.h5',
+                "anchors_path": './model_poi/keras_yolo3/model_data/yolo_anchors.txt',
+                "classes_path": './data_poi/preprocessed/classes.txt',
                 "score" : 0.05,
                 "gpu_num" : 1,
                 "model_image_size" : (416, 416),
@@ -103,7 +103,7 @@ def initialize(filename):
     model, preprocess_input, input_shape = load_extractor_model(model_name, flavor)
     my_preprocess = lambda x: preprocess_input(utils.pad_image(x, input_shape))
 
-    with open('./data/preprocessed/trained_brands.pkl', 'rb') as f:
+    with open('./data_poi/preprocessed/trained_brands.pkl', 'rb') as f:
         img_input, input_labels = pickle.load(f)
 
     (img_input, feat_input, sim_cutoff, (bins, cdf_list)) = load_brands_compute_cutoffs(                                    
@@ -115,10 +115,10 @@ def initialize(filename):
 
 if __name__ == '__main__':
     timestamp = 123.456
-    filename = './model/inception_logo_features_200_trunc2.hdf5'
+    filename = './model_poi/inception_logo_features_200_trunc2.hdf5'
     #test(filename, timestamp)
     model_preproc, input_preproc = initialize(filename)
-    test_path = list(Path('./data/test/input/').iterdir())
+    test_path = list(Path('./data_poi/test/input/').iterdir())
     #print(len(test_path))
     start = time.time()
     for path in test_path:
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     print('Logo detection and recognition complete! It tooks {:.2f} FPS'.format(len(test_path)/(time.time() - start)))
 
     '''
-    image = cv2.imread('./data/test/input/test_starbucks.png')
-    pred, timestamp = detect_logo_demo('./data/test/input/test_starbucks.png', timestamp)
+    image = cv2.imread('./data_poi/test/input/test_starbucks.png')
+    pred, timestamp = detect_logo_demo('./data_poi/test/input/test_starbucks.png', timestamp)
     print(pred, timestamp)
     '''
