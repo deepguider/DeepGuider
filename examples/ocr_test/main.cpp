@@ -121,7 +121,7 @@ int main()
 {
     bool recording = false;
     int rec_fps = 5;
-    bool threaded_run = false;
+    bool threaded_run = true;
 
     const char* video_path = "data/191115_ETRI.avi";
     //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
