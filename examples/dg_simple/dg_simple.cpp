@@ -294,6 +294,9 @@ bool DeepGuider::initialize(std::string config_file)
     m_ocrs.clear();
     m_intersection_image.release();
 
+    // tts
+    tts("초기화가 완료되었습니다");
+
     return true;
 }
 
@@ -499,10 +502,14 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         m_guider.applyPoseGPS(dg::LatLon(node->lat, node->lon));
     }
     printf("%s\n", cur_guide.msg.c_str());
+    
+    // tts guidance
+    if(cur_guide.announce) tts(cur_guide.msg.c_str());
 
     // check out of path
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP_DETECT || cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
     {
+        tts("경로를 이탈하여 재탐색합니다");
         printf("GUIDANCE: out of path detected!\n");
         if(node != nullptr)
         {
