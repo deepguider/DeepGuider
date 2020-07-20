@@ -1,7 +1,7 @@
 #!/bin/bash
 ##Current Directory : topdir/examples/dg_simple
 
-cd ../../../bin
+cd ../../bin
 
 ln -sf ../src/vps/data_vps
 ln -sf ../src/intersection_cls/data_intersection_cls
