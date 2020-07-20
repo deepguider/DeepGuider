@@ -1,20 +1,14 @@
 #!/bin/bash
 ##Current Directory : topdir/examples/dg_simple
-mkdir -p build
-cd build
-cmake ..
-make install
-if [ $? -ne 0 ];then # If it met error in previous step
-    #echo $?
-    cd ..
-    exit 0
-fi
 
 cd ../../../bin
+
 ln -sf ../src/vps/data_vps
 ln -sf ../src/intersection_cls/data_intersection_cls
-ln -sf ../src/poi_recog/model
-cd data
-ln -sf ../../src/poi_recog/data/test
-ln -sf ../../src/poi_recog/data/preprocessed
-ln -sf ../../src/poi_recog/data/litw_annotation.py
+ln -sf ../src/logo_recog/logo_data
+ln -sf ../src/logo_recog/model
+ln -sf ../src/ocr_recog/data_ocr
+ln -sf ../src/poi_recog/data_poi
+ln -sf ../src/poi_recog/model_poi
+
+cd ../examples/dg_simple   # return to initial directory

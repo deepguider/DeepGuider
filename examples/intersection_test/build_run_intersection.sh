@@ -13,7 +13,6 @@ fi
 
 echo "####### Run ..... #######"
 cd ../../../bin
-ln -sf ../src/intersection_cls/data_intersection_cls
 
 #gdb ./intersection_test #for debugging, you need to insert '-g' option at CXX_FLAGS in your CMakeLists.txt # in your CMakeLists.txt : set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
 #kdbg ./intersection_test #for debugging in graphic mode
