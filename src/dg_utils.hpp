@@ -5,5 +5,6 @@
 #include "utils/vvs.h"
 #include "utils/opencx.hpp"
 #include "utils/opensx.hpp"
+#include "utils/tts.hpp"
 
 #endif // End of '__DG_UTILS__'

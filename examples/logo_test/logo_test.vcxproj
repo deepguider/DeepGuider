@@ -83,11 +83,12 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib;..\..\EXTERNAL\python\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>opencv_world411.lib;python36.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -96,6 +97,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\logo_recog\logo_recognizer.hpp" />
+    <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\logo_recog\logo_recognizer.py" />

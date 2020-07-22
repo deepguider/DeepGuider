@@ -73,7 +73,7 @@ if __name__ == '__main__':
     print('Processed {} logos, transformed into feature vectors'.format(len(features)))
 
     # save inception features at default size 299*299
-    utils.save_features('./model/inception_logo_features.hdf5', features, brand_map, input_shape)
+    utils.save_features('./model_poi/inception_logo_features.hdf5', features, brand_map, input_shape)
 
     # save features for Inception with smaller input: 200 instead of 299 - last layer is 4*4 instead of 8*8
     # Extract features at last layer as well as after last 3 inception blocks (mixed9,8,7)
@@ -86,7 +86,7 @@ if __name__ == '__main__':
         features = utils.features_from_image(all_logos, model_out, new_preprocess)
 
         extra = '_trunc{}'.format(i_layer) if i_layer > 0 else ''
-        utils.save_features('./model/inception_logo_features_200{}.hdf5'.format(extra), features, brand_map, input_shape)
+        utils.save_features('./model_poi/inception_logo_features_200{}.hdf5'.format(extra), features, brand_map, input_shape)
 
 
     # save features for VGG16 at 3 different input scales
@@ -98,4 +98,4 @@ if __name__ == '__main__':
         input_shape = (n,n,3)
         new_preprocess = lambda x: preprocess_input(utils.pad_image(x, input_shape))
         features = utils.features_from_image(all_logos, model, new_preprocess)
-        utils.save_features('./model/vgg16_logo_features_{}.hdf5'.format(n), features, brand_map, input_shape)
+        utils.save_features('./model_poi/vgg16_logo_features_{}.hdf5'.format(n), features, brand_map, input_shape)

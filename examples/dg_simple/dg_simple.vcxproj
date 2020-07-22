@@ -100,6 +100,15 @@
     <ClCompile Include="..\..\src\utils\python_embedding.cpp" />
     <ClCompile Include="dg_simple.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\core\basic_type.hpp" />
+    <ClInclude Include="..\..\src\core\map.hpp" />
+    <ClInclude Include="..\..\src\core\path.hpp" />
+    <ClInclude Include="..\..\src\utils\opencx.hpp" />
+    <ClInclude Include="..\..\src\utils\opensx.hpp" />
+    <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
+    <ClInclude Include="..\..\src\utils\vvs.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -13,8 +13,6 @@ fi
 
 echo "####### Run ..... #######"
 cd ../../../bin
-ln -sf ../src/ocr_recog/data_ocr
-
 #gdb ./ocr_test #for debugging, you need to insert '-g' option at CXX_FLAGS in your CMakeLists.txt # in your CMakeLists.txt : set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
 #kdbg ./ocr_test #for debugging in graphic mode
 ./ocr_test # for running without debugging

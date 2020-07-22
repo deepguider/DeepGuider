@@ -3,6 +3,8 @@
 
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
+#include <fstream>
+#include <chrono>
 
 using namespace std;
 
@@ -26,14 +28,17 @@ namespace dg
         */
         bool initialize(const char* module_name = "intersection_cls", const char* module_path = "./../src/intersection_cls", const char* class_name = "IntersectionClassifier", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
         {
-            PyGILState_STATE state;
-            bool ret;
+            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
+            PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
+            bool ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+            m_processing_time = t2 - t1;
 
             return ret;
         }
@@ -44,29 +49,33 @@ namespace dg
         void clear()
         {
             PyGILState_STATE state;
-
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
             _clear();
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            m_timestamp = -1;
+            m_processing_time = -1;
         }
 
         /**
         * Run once the module for a given input (support thread run)
         * @return true if successful (false if failed)
         */
-        bool apply(cv::Mat image, dg::Timestamp t)
+        bool apply(cv::Mat image, dg::Timestamp ts)
         {
-            PyGILState_STATE state;
-            bool ret;
+            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
+            PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            /* Call Python/C API functions here */
-            ret = _apply(image, t);
+            bool ret = _apply(image, ts);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+            m_processing_time = t2 - t1;
 
             return ret;
         }
@@ -75,7 +84,7 @@ namespace dg
         * Run once the module for a given input
         * @return true if successful (false if failed)
         */
-        bool _apply(cv::Mat image, dg::Timestamp t)
+        bool _apply(cv::Mat image, dg::Timestamp ts)
         {
             // Set function arguments
             int arg_idx = 0;
@@ -92,7 +101,7 @@ namespace dg
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // Timestamp
-            pValue = PyFloat_FromDouble(t);
+            pValue = PyFloat_FromDouble(ts);
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // Call the method
@@ -118,7 +127,7 @@ namespace dg
             }
 
             // Update Timestamp
-            m_timestamp = t;
+            m_timestamp = ts;
 
             // Clean up
             if(pRet) Py_DECREF(pRet);
@@ -127,20 +136,53 @@ namespace dg
             return true;
         }
 
-        void get(IntersectionResult& intersect)
+        void get(IntersectionResult& intersect) const
         {
             intersect = m_intersect;
         }
 
-        void get(IntersectionResult& intersect, Timestamp& ts)
+        void get(IntersectionResult& intersect, Timestamp& ts) const
         {
             intersect = m_intersect;
             ts = m_timestamp;
         }
 
+        double procTime() const
+        {
+            return m_processing_time;
+        }
+
+        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
+        {
+            cv::Point pt(image.cols / 2 - 170, 100);
+            std::string msg = cv::format("Intersection: %d (%.2lf)", m_intersect.cls, m_intersect.confidence);
+            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 255, 0), 6);
+            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 0, 0), 2);
+        }
+
+        void print() const
+        {
+            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
+            printf("\tintersection: %d (%.2lf)\n", m_intersect.cls, m_intersect.confidence);
+
+        }
+
+        void write(std::ofstream& stream) const
+        {
+            std::string log = cv::format("%.3lf,%s,%d,%.2lf,%.3lf", m_timestamp, name(), m_intersect.cls, m_intersect.confidence, m_processing_time);
+            stream << log << std::endl;
+        }
+
+        static const char* name()
+        {
+            return "intersection";
+        }
+
+
     protected:
         IntersectionResult m_intersect;
         Timestamp m_timestamp = -1;
+        double m_processing_time = -1;
     };
 
 } // End of 'dg'

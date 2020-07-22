@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
+get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
+string(REPLACE " " "_" ProjectId ${ProjectId})
+project(${ProjectId} C CXX)
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
 set(BINDIR	"${CMAKE_SOURCE_DIR}/../../bin")
 set(SRCDIR	"${CMAKE_SOURCE_DIR}/../../src")
 set(EXTDIR	"${CMAKE_SOURCE_DIR}/../../EXTERNAL")
@@ -12,13 +15,9 @@ set(JSONCPP_LIBRARIES "-ljsoncpp")
 add_definitions(-DDG_TEST_SIMPLE)
 #add_definitions(-DVPSSERVER)
 
-get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
-string(REPLACE " " "_" ProjectId ${ProjectId})
-project(${ProjectId} C CXX)
-
 find_package( PythonInterp 3.6 REQUIRED )
 find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV 3.2 REQUIRED )
+find_package( OpenCV REQUIRED )
 find_package( CURL REQUIRED ) 
 
 INCLUDE_DIRECTORIES ( ${SRCDIR} ${RAPIDJSON_INC} ${PYTHON_INCLUDE_DIRS} )

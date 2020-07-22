@@ -39,21 +39,21 @@ if __name__ == '__main__':
     parser.add_argument("--input_brands", type=str, default='input',
         help = "path to directory with all brand logos to find in input images")
     parser.add_argument('--test', default=False, action="store_true",
-        help='Test routine: run on few images in ./data/test/ directory')
-    parser.add_argument("--output", type=str, default="./data/test/",
+        help='Test routine: run on few images in ./data_poi/test/ directory')
+    parser.add_argument("--output", type=str, default="./data_poi/test/",
         help = "output path: either directory for single/batch image, or filename for video")
     parser.add_argument("--outtxt", default=False, dest='save_to_txt', action="store_true",
         help = "save text file with inference results")
     parser.add_argument("--no_save_img", default=False, action="store_true",
         help = "do not save output images with annotated boxes")
     parser.add_argument('--yolo_model', type=str, dest='model_path', 
-        default = './model/keras_yolo3/model_data/yolo_weights_logos.h5',
+        default = './model_poi/keras_yolo3/model_data/yolo_weights_logos.h5',
         help='path to YOLO model weight file')
     parser.add_argument('--anchors', type=str, dest='anchors_path', 
-        default = './model/keras_yolo3/model_data/yolo_anchors.txt',
+        default = './model_poi/keras_yolo3/model_data/yolo_anchors.txt',
         help='path to YOLO anchors')
     parser.add_argument('--classes', type=str, dest='classes_path', 
-        default = './data/preprocessed/classes.txt',
+        default = './data_poi/preprocessed/classes.txt',
         help='path to YOLO class specifications')
     parser.add_argument('--gpu_num', type=int, default = 1,
         help='Number of GPU to use')
@@ -61,7 +61,7 @@ if __name__ == '__main__':
         help='YOLO object confidence threshold above which to show predictions')
     parser.add_argument(# good default choices: inception_logo_features_200_trunc2, vgg16_logo_features_128
         '--features', type=str, dest='features', 
-        default = './model/inception_logo_features_200_trunc2.hdf5',
+        default = './model_poi/inception_logo_features_200_trunc2.hdf5',
         help='path to LogosInTheWild logos features extracted by InceptionV3/VGG16')
     parser.add_argument('--fpr', type=float, dest = 'fpr', default = 0.95,
         help='False positive rate target to define similarity cutoffs')

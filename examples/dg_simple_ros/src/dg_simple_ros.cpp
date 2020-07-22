@@ -22,15 +22,18 @@ protected:
 
     // Thread routines
     std::thread* vps_thread = nullptr;
-    std::thread* poi_thread = nullptr;
+    std::thread* ocr_thread = nullptr;
+    std::thread* logo_thread = nullptr;
     std::thread* intersection_thread = nullptr;
     std::thread* roadtheta_thread = nullptr;
     static void threadfunc_vps(DeepGuiderROS* guider);
-    static void threadfunc_poi(DeepGuiderROS* guider);
+    static void threadfunc_ocr(DeepGuiderROS* guider);
+    static void threadfunc_logo(DeepGuiderROS* guider);
     static void threadfunc_intersection(DeepGuiderROS* guider);
     static void threadfunc_roadtheta(DeepGuiderROS* guider);    
     bool is_vps_running = false;
-    bool is_poi_running = false;
+    bool is_ocr_running = false;
+    bool is_logo_running = false;
     bool is_intersection_running = false;
     bool is_roadtheta_running = false;
     void terminateThreadFunctions();
@@ -64,8 +67,8 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
 {
     // overwrite configuable parameters of base class
     m_enable_roadtheta = false;
-    m_enable_vps = true;
-    m_enable_poi = true;
+    m_enable_vps = false;
+    m_enable_ocr = false;
     m_enable_logo = false;
     m_enable_intersection = false;
     m_enable_exploration = false;
@@ -76,6 +79,8 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_srcdir = "/work/deepguider/src";   // system path of deepguider/src (required for python embedding)
 
     m_recording = false;
+    m_recording_fps = 30;
+    m_data_logging = false;
     m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
     m_recording_header_name = "dg_ros_";
 
@@ -122,7 +127,8 @@ int DeepGuiderROS::run()
 
     // start recognizer threads
     if (m_enable_vps) vps_thread = new std::thread(threadfunc_vps, this);
-    if (m_enable_poi) poi_thread = new std::thread(threadfunc_poi, this);
+    if (m_enable_ocr) ocr_thread = new std::thread(threadfunc_ocr, this);    
+    if (m_enable_logo) logo_thread = new std::thread(threadfunc_logo, this);
     if (m_enable_intersection) intersection_thread = new std::thread(threadfunc_intersection, this);
     if (m_enable_roadtheta) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
 
@@ -173,15 +179,26 @@ void DeepGuiderROS::threadfunc_vps(DeepGuiderROS* guider)
     guider->is_vps_running = false;
 }
 
-// Thread fnuction for POI
-void DeepGuiderROS::threadfunc_poi(DeepGuiderROS* guider)
+// Thread fnuction for POI OCR
+void DeepGuiderROS::threadfunc_ocr(DeepGuiderROS* guider)
 {
-    guider->is_poi_running = true;
-    while (guider->m_enable_poi)
+    guider->is_ocr_running = true;
+    while (guider->m_enable_ocr)
     {
-        guider->procPoi();
+        guider->procOcr();
     }
-    guider->is_poi_running = false;
+    guider->is_ocr_running = false;
+}
+
+// Thread fnuction for POI Logo
+void DeepGuiderROS::threadfunc_logo(DeepGuiderROS* guider)
+{
+    guider->is_logo_running = true;
+    while (guider->m_enable_logo)
+    {
+        guider->procLogo();
+    }
+    guider->is_logo_running = false;
 }
 
 // Thread fnuction for IntersectionClassifier
@@ -209,34 +226,38 @@ void DeepGuiderROS::threadfunc_roadtheta(DeepGuiderROS* guider)
 
 void DeepGuiderROS::terminateThreadFunctions()
 {
-    if (vps_thread == nullptr && poi_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr) return;
+    if (vps_thread == nullptr && ocr_thread == nullptr && logo_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr) return;
 
     // disable all thread running
     m_enable_vps = false;
-    m_enable_poi = false;
+    m_enable_ocr = false;
+    m_enable_logo = false;
     m_enable_intersection = false;
     m_enable_roadtheta = false;
 
     // wait up to 4000 ms at maximum
     for (int i = 0; i<40; i++)
     {
-        if (!is_vps_running && !is_poi_running && !is_intersection_running && !is_roadtheta_running) break;
+        if (!is_vps_running && !is_ocr_running && !is_logo_running && !is_intersection_running && !is_roadtheta_running) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     // wait child thread to terminate
     if (is_vps_running) vps_thread->join();
-    if (is_poi_running) poi_thread->join();
+    if (is_ocr_running) ocr_thread->join();
+    if (is_logo_running) logo_thread->join();
     if (is_intersection_running) intersection_thread->join();
     if (is_roadtheta_running) roadtheta_thread->join();
 
     // clear threads
     if (vps_thread) delete vps_thread;
-    if (poi_thread) delete poi_thread;
+    if (ocr_thread) delete ocr_thread;
+    if (logo_thread) delete logo_thread;
     if (intersection_thread) delete intersection_thread;
     if (roadtheta_thread) delete roadtheta_thread;
     vps_thread = nullptr;
-    poi_thread = nullptr;
+    ocr_thread = nullptr;
+    logo_thread = nullptr;
     intersection_thread = nullptr;
     roadtheta_thread = nullptr;
 }

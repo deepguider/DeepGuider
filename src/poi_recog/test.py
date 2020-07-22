@@ -26,16 +26,16 @@ def test(filename):
     Test function: runs pipeline for a small set of input images and input
     brands.
     """
-    yolo = YOLO(**{"model_path": './model/keras_yolo3/model_data/yolo_weights_logos.h5',
-                "anchors_path": './model/keras_yolo3/model_data/yolo_anchors.txt',
-                "classes_path": './data/preprocessed/classes.txt',
+    yolo = YOLO(**{"model_path": './model_poi/keras_yolo3/model_data/yolo_weights_logos.h5',
+                "anchors_path": './model_poi/keras_yolo3/model_data/yolo_anchors.txt',
+                "classes_path": './data_poi/preprocessed/classes.txt',
                 "score" : 0.05,
                 "gpu_num" : 1,
                 "model_image_size" : (416, 416),
                 })
     save_img_logo, save_img_match = True, True
     
-    test_dir = os.path.join(os.path.dirname(__file__), 'data/test')
+    test_dir = os.path.join(os.path.dirname(__file__), 'data_poi/test')
 
     # get Inception/VGG16 model and flavor from filename
     model_name, flavor = model_flavor_from_name(filename)
@@ -95,5 +95,5 @@ def test(filename):
 
 
 if __name__ == '__main__':
-    filename = './model/inception_logo_features_200_trunc2.hdf5'
+    filename = './model_poi/inception_logo_features_200_trunc2.hdf5'
     test(filename)

@@ -8,5 +8,5 @@ def add_path(path):
 this_dir = os.path.dirname(__file__)
 
 # Add path to PYTHONPATH
-model_path = os.path.join(this_dir, 'model')
+model_path = os.path.join(this_dir, 'model_poi')
 add_path(model_path)

@@ -18,13 +18,13 @@ from keras_yolo3.yolo3.utils import get_random_data
 
 
 def _main():
-    annotation_path = './data/preprocessed/train.txt'
-    log_dir = './model/keras_yolo3/logs/0003/'
+    annotation_path = './data_poi/preprocessed/train.txt'
+    log_dir = './model_poi/keras_yolo3/logs/0003/'
     if not os.path.isdir(log_dir):
         os.mkdir(log_dir)
-    classes_path = './data/preprocessed/classes.txt'
-    anchors_path = './model/keras_yolo3/model_data/yolo_anchors.txt' # 'keras_yolo3.model_data/yolo-tiny_anchors.txt's
-    weights_path = './model/keras_yolo3/model_data/yolo_weights_logos.h5' # 'keras_yolo3/model_data/yolo-tiny.h5'
+    classes_path = './data_poi/preprocessed/classes.txt'
+    anchors_path = './model_poi/keras_yolo3/model_data/yolo_anchors.txt' # 'keras_yolo3.model_data/yolo-tiny_anchors.txt's
+    weights_path = './model_poi/keras_yolo3/model_data/yolo_weights_logos.h5' # 'keras_yolo3/model_data/yolo-tiny.h5'
 
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
@@ -114,7 +114,7 @@ def get_anchors(anchors_path):
 
 
 def create_model(input_shape, anchors, num_classes, load_pretrained=True, freeze_body=2,
-            weights_path='./model/keras_yolo3/model_data/yolo_weights.h5'):
+            weights_path='./model_poi/keras_yolo3/model_data/yolo_weights.h5'):
     '''create the training model'''
     K.clear_session() # get a new session
     image_input = Input(shape=(None, None, 3))
@@ -145,7 +145,7 @@ def create_model(input_shape, anchors, num_classes, load_pretrained=True, freeze
 
 
 def create_tiny_model(input_shape, anchors, num_classes, load_pretrained=True, freeze_body=2,
-            weights_path='./model/keras_yolo3/model_data/tiny_yolo_weights.h5'):
+            weights_path='./model_poi/keras_yolo3/model_data/tiny_yolo_weights.h5'):
     '''create the training model, for Tiny YOLOv3'''
     K.clear_session() # get a new session
     image_input = Input(shape=(None, None, 3))

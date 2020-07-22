@@ -6,6 +6,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\logo_recog\logo_recognizer.hpp" />
+    <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\logo_recog\logo_recognizer.py" />

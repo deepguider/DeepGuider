@@ -3,6 +3,9 @@
 
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
+#include <fstream>
+#include <chrono>
+
 
 using namespace std;
 
@@ -26,14 +29,17 @@ namespace dg
         */
         bool initialize(const char* module_name = "vps", const char* module_path = "./../src/vps", const char* class_name = "vps", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
         {
-            PyGILState_STATE state;
-            bool ret;
+            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
+            PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
+            bool ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+            m_processing_time = t2 - t1;
 
             return ret;
         }
@@ -44,12 +50,15 @@ namespace dg
         void clear()
         {
             PyGILState_STATE state;
-
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
             _clear();
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            m_streetviews.clear();
+            m_timestamp = -1;
+            m_processing_time = -1;
         }
 
         /**
@@ -57,17 +66,19 @@ namespace dg
         * @param N number of matched images to be returned (top-N)
         * @return true if successful (false if failed)
         */
-        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp t, const char* ipaddr)
+        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr)
         {
-            PyGILState_STATE state;
-            bool ret;
+            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
+            PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            /* Call Python/C API functions here */
-            ret = _apply(image, N, gps_lat, gps_lon, gps_accuracy, t, ipaddr);
+            bool ret = _apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, ipaddr);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+            m_processing_time = t2 - t1;
 
             return ret;
         }
@@ -77,7 +88,7 @@ namespace dg
         * @param N number of matched images to be returned (top-N)
         * @return true if successful (false if failed)
         */
-        bool _apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp t, const char* ipaddr)
+        bool _apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr)
         {
             // Set function arguments
             int arg_idx = 0;
@@ -106,7 +117,7 @@ namespace dg
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // Timestamp
-            pValue = PyFloat_FromDouble(t);
+            pValue = PyFloat_FromDouble(ts);
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // Image server's ip address
@@ -168,7 +179,7 @@ namespace dg
             }
 
             // Update Timestamp
-            m_timestamp = t;
+            m_timestamp = ts;
 
             // Clean up
             if(pRet) Py_DECREF(pRet);
@@ -177,20 +188,65 @@ namespace dg
             return true;
         }
 
-        void get(std::vector<VPSResult>& streetviews)
+        void get(std::vector<VPSResult>& streetviews) const
         {
             streetviews = m_streetviews;
         }
 
-        void get(std::vector<VPSResult>& streetviews, Timestamp& t)
+        void get(std::vector<VPSResult>& streetviews, Timestamp& ts) const
         {
             streetviews = m_streetviews;
-            t = m_timestamp;
+            ts = m_timestamp;
         }
+
+        double procTime() const
+        {
+            return m_processing_time;
+        }
+
+        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
+        {
+            if (m_streetviews.empty()) return;
+
+            cv::Point msg_offset = cv::Point(10, 30);
+            double font_scale = 0.8;
+            std::string str_confidence = cv::format("Confidence: %.2lf", m_streetviews[0].confidence);
+            cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
+            cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
+            std::string str_id = cv::format("ID: %zu", m_streetviews[0].id);
+            msg_offset.y += 30;
+            cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
+            cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
+        }
+
+        void print() const
+        {
+            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
+            for (int k = 0; k < m_streetviews.size(); k++)
+            {
+                printf("\ttop%d: id=%zu, confidence=%.2lf\n", k, m_streetviews[k].id, m_streetviews[k].confidence);
+            }
+        }
+
+        void write(std::ofstream& stream) const
+        {
+            for (int k = 0; k < m_streetviews.size(); k++)
+            {
+                std::string log = cv::format("%.3lf,%s,%d,%zu,%.2lf,%.3lf", m_timestamp, name(), k, m_streetviews[k].id, m_streetviews[k].confidence, m_processing_time);
+                stream << log << std::endl;
+            }
+        }
+
+        static const char* name()
+        {
+            return "vps";
+        }
+
 
     protected:
         std::vector<VPSResult> m_streetviews;
         Timestamp m_timestamp = -1;
+        double m_processing_time = -1;
     };
 
 } // End of 'dg'

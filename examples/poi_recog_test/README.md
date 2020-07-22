@@ -11,5 +11,6 @@ Refer to [README.md](https://github.com/deepguider/DeepGuider/blob/master/src/po
 1. Place a test video clip into _deepguider/bin/data/_ folder and name it "19115_ETR.avi" (you can change the test video name in the source code: main.cpp:59).
 2. Run the following shell script:
 ```
+$ ./setup.poi.sh
 $ ./build_run_poi.sh
 ```

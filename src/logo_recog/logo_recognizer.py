@@ -9,7 +9,7 @@ import argparse
 # added by jylee to resolve "could not create cudnn handle" issue, 2020.7.10
 # ref: https://forums.developer.nvidia.com/t/could-not-create-cudnn-handle-cudnn-status-internal-error/74253/3
 import tensorflow as tf
-cfg = tf.compat.v1.ConfigProto()
+cfg = tf.ConfigProto()
 cfg.gpu_options.allow_growth = True
 tf.keras.backend.set_session(tf.Session(config=cfg))
 # end of added by jyee
@@ -41,11 +41,6 @@ class LogoRecognizer():
             os.mkdir(self.result_path)
         self.DB_list = './logo_data/preprocessed/DB_list.txt'
         
-    def initialize_fast(self):
-        self.classes_path = './logo_data/preprocessed/trained_brands.pkl'
-        self.initialize()
-        return True
-
     def initialize(self):
 
         print('Initialization in progress...!\n')        
