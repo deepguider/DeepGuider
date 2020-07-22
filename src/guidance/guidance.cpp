@@ -3,7 +3,7 @@
 
 using namespace dg;
 
-bool dg::GuidanceManager::validatePath(dg::Path path, dg::Map map)
+bool GuidanceManager::validatePath(dg::Path path, dg::Map map)
 {
 	for (size_t i = 0; i < path.pts.size() - 2; i++)
 	{
@@ -128,7 +128,6 @@ GuidanceManager::GuideStatus GuidanceManager::getGuidanceStatus(TopometricPose p
 	{
 		if (conf >= 0.5) //out-of-path 
 		{//robot is in another path, for sure.
-			fprintf(stdout, "The node(%zu) is out-of-path!\n", nodeid);
 			if (oop_start == 0)	//start timer
 				oop_start = time(NULL);
 
@@ -136,16 +135,22 @@ GuidanceManager::GuideStatus GuidanceManager::getGuidanceStatus(TopometricPose p
 			double diff_t = difftime(oop_end, oop_start);
 			//timer is already running
 			if (diff_t > 5.0)	//after 5 seconds
+			{
+				fprintf(stdout, "The node(%zu) is out-of-path!\n", nodeid);
 				return GuideStatus::GUIDE_OOP;
+
+			}
+			fprintf(stdout, "The node(%zu) is out-of-path detected!\n", nodeid);
 			return GuideStatus::GUIDE_OOP_DETECT;
 		}
 		else 
 		{//Lost, out-of-map (confidence is low or conf == -1)
 			//localizer does not know where the robot is.
 			//It needs to go back by recovery mode
-			return GuideStatus::GUIDE_LOST;
+			//return GuideStatus::GUIDE_LOST;
 		}
 	}
+	return GuideStatus::GUIDE_NORMAL;
 	
 }
 
@@ -155,17 +160,17 @@ GuidanceManager::Guidance GuidanceManager::getGuidance(TopometricPose pose)
 	int gidx = getGuideIdxFromPose(pose);
 	if (gidx != m_guide_idx)
 	{
-		//m_guide_idx = gidx;
-		if (0.1 < pose.dist && pose.dist < 1.0)
+		if (pose.dist < 1.0)
 		{
 			curStatus = MoveStatus::ON_EDGE;	//to update guide
 		}
 		else
 		{
-			curStatus = MoveStatus::ON_NODE;	//to update guide
+			curStatus = MoveStatus::APPROACHING_NODE;	//to update guide
 		}
 	}
 
+	//[temporary use]dg_simple.cpp line 506
 	Guidance guide;
 	if (!isNodeInPath(pose.node_id))
 	{
@@ -292,7 +297,8 @@ GuidanceManager::MoveStatus GuidanceManager::applyPose(TopometricPose  pose)
 	double edgedist = curedge->length;
 	double curdist = pose.dist;
 	//double progress = curdist; //will be exchanged
-	double progress = curdist / edgedist; 
+	double progress = curdist / edgedist;
+	double remain_dist = edgedist - curdist;
 
 	/**Check progress.
 	m_edge_progress: 0.0 ~ 1.0
@@ -300,16 +306,27 @@ GuidanceManager::MoveStatus GuidanceManager::applyPose(TopometricPose  pose)
 	It also works as deciding the boundary for searching area in case of lost.
 	*/
 
-	GuidedPathElement curGP = m_guides[m_guide_idx];
+	//get current guide
+	// GuidedPathElement curGP = m_guides[m_guide_idx];
+	GuidedPathElement curGP;
+	for (size_t i = 0; i < m_guides.size(); i++)
+	{
+		if (m_guides[i].from_node_id == nodeid)
+		{
+			m_guide_idx = i;
+			curGP = m_guides[m_guide_idx];
+		}
+	}
 
 	//Check edge following status
-	if ((nodeid != curGP.from_node_id) && (progress < 0.01 ))
-	{
-		m_mvstatus = MoveStatus::ON_NODE;
-	}
-	else if (progress >= 0.9)
+	if (progress >= 0.9)
 	{
 		m_mvstatus = MoveStatus::APPROACHING_NODE;
+		if (remain_dist < 1.0)
+		//if ((nodeid != curGP.from_node_id) && (remain_dist < 1.0 ))
+		{
+			m_mvstatus = MoveStatus::ON_NODE;
+		}
 	}
 	else
 	{
@@ -365,7 +382,7 @@ GuidanceManager::Motion GuidanceManager::getMotion(int ntype, int etype, int deg
 	return motion;	
 }
 
-GuidanceManager::Action GuidanceManager::setAction(Motion cmd, int etype, int degree, Mode mode)
+GuidanceManager::Action GuidanceManager::setActionCmd(Motion cmd, int etype, int degree, Mode mode)
 {
 	Action result;
 	result.cmd = cmd;
@@ -383,7 +400,7 @@ GuidanceManager::Action GuidanceManager::setAction(ID nid, ID eid, int degree)
 	Edge* edge = m_map.findEdge(eid);
 	Motion cmd = getMotion(node->type, edge->type, degree);
 	Mode mode = getMode(edge->type);
-	result = setAction(cmd, edge->type, degree, mode);
+	result = setActionCmd(cmd, edge->type, degree, mode);
 	return result;
 }
 
@@ -413,7 +430,7 @@ GuidanceManager::Guidance GuidanceManager::getNormalGuidance(MoveStatus status)
 			guide.msg = getStringGuidance(guide, status);
 		}
 		guide.guide_status = GuideStatus::GUIDE_ARRIVED;
-		guide.actions.push_back(setAction(Motion::STOP,
+		guide.actions.push_back(setActionCmd(Motion::STOP,
 			Edge::EDGE_SIDEWALK, pastG.actions.back().degree, Mode::MOVE_NORMAL));
 		guide.distance_to_remain = 0;
 		guide.msg = guide.msg + " Arrived!";
@@ -432,7 +449,7 @@ GuidanceManager::Guidance GuidanceManager::getNormalGuidance(MoveStatus status)
 				{
 					Node* node = m_map.findNode(pastGP.to_node_id);
 					Motion cmd = getMotion(node->type, Edge::EDGE_SIDEWALK, pastGP.degree);
-					guide.actions.push_back(setAction(
+					guide.actions.push_back(setActionCmd(
 						cmd, Edge::EDGE_SIDEWALK, pastGP.degree, Mode::MOVE_NORMAL));
 				}
 				else
@@ -455,7 +472,7 @@ GuidanceManager::Guidance GuidanceManager::getNormalGuidance(MoveStatus status)
 			{
 				Node* node = m_map.findNode(curGP.from_node_id);
 				Motion cmd = getMotion(node->type, Edge::EDGE_SIDEWALK, curGP.degree);
-				guide.actions.push_back(setAction(
+				guide.actions.push_back(setActionCmd(
 					cmd, Edge::EDGE_SIDEWALK, curGP.degree, Mode::MOVE_NORMAL));
 			}
 			else
@@ -477,13 +494,12 @@ GuidanceManager::Guidance GuidanceManager::getNormalGuidance(MoveStatus status)
 	}
 	case MoveStatus::APPROACHING_NODE://add next action
 	{
-		//GO_FORWARD
 		curGP = getCurGuidedPath(m_guide_idx);
-		guide.actions.push_back(setAction(curGP.to_node_id, curGP.cur_edge_id, 0));
-
 		//if TURN exists on next node,
 		if (!isForward(curGP.degree))
 			guide.actions.push_back(setAction(curGP.to_node_id, curGP.next_edge_id, curGP.degree));
+		else //GO_FORWARD
+			guide.actions.push_back(setAction(curGP.to_node_id, curGP.cur_edge_id, 0));
 		break;
 	}
 	default:
@@ -505,7 +521,7 @@ GuidanceManager::Guidance GuidanceManager::getNormalGuidance(MoveStatus status)
 
 }
 
-std::string dg::GuidanceManager::getStringForward(Action act, int ntype, ID nid, double d)
+std::string GuidanceManager::getStringForward(Action act, int ntype, ID nid, double d)
 {
 	std::string result;
 
@@ -523,7 +539,7 @@ std::string dg::GuidanceManager::getStringForward(Action act, int ntype, ID nid,
 	return result;
 }
 
-std::string dg::GuidanceManager::getStringTurn(Action act, int ntype)
+std::string GuidanceManager::getStringTurn(Action act, int ntype)
 {
 	std::string result;
 
@@ -537,6 +553,24 @@ std::string dg::GuidanceManager::getStringTurn(Action act, int ntype)
 	std::string act_add = " on " + nodetype;
 	result = str_act + act_add;
 	return result;
+}
+
+std::string GuidanceManager::getStringTurnDist(Action act, int ntype, double dist)
+{
+	std::string result;
+
+	std::string motion = m_motions[(int)act.cmd];
+	std::string edge = m_edges[act.edge_type];
+	std::string degree = std::to_string(act.degree);
+	std::string distance = std::to_string(dist);
+	std::string str_act = "After " + distance + "m " + motion + " for " + degree + " degree";
+
+	std::string nodetype = m_nodes[ntype];
+
+	std::string act_add = " on " + nodetype;
+	result = str_act + act_add;
+	return result;
+
 }
 
 std::string GuidanceManager::getStringGuidance(Guidance guidance, MoveStatus status)
@@ -557,19 +591,22 @@ std::string GuidanceManager::getStringGuidance(Guidance guidance, MoveStatus sta
 		}
 		else
 		{
-			str_first = getStringTurn(actions[i], node->type);
+			//str_first = getStringTurn(actions[i], node->type);
+			str_first = getStringTurnDist(actions[i], node->type, guidance.distance_to_remain);
 		}
 		str.push_back(str_first);
 	}
 
-	result = "[Guide] " + str[0];
+	//result = "[Guide] " + str[0];
+	
+	result = "[Guide] [" + m_mvstring[(int) status] + "]" + str[0];
 	if (actions.size() >= 2)	//only 2 steps are shown in msg
 		result = result + " and " + str[1];
 
 	return result;
 }
 
-int dg::GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
+int GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
 {
 	ID curnodei = pose.node_id;
 	for (size_t i = 0; i < m_guides.size(); i++)
@@ -582,7 +619,7 @@ int dg::GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
 	return -1;
 }
 
-void dg::GuidanceManager::makeLostValue(double prevconf, double curconf)
+void GuidanceManager::makeLostValue(double prevconf, double curconf)
 {
 	double lowerlimit = 0.4;
 	double upperlimit = 0.85;
@@ -596,17 +633,27 @@ void dg::GuidanceManager::makeLostValue(double prevconf, double curconf)
 		m_lostvalue = 0.0;
 	else if (curconf < middlevalue)
 	{
-		if (curconf < prevconf)
+		if (middlevalue <= prevconf)
 			m_lostvalue = m_lostvalue + ((prevconf - curconf) * weight);
 		else
-			m_lostvalue = m_lostvalue + ((curconf - prevconf) * smallweight);
+		{
+			if (curconf < prevconf)
+				m_lostvalue = m_lostvalue + ((middlevalue - curconf) * weight);
+			else
+				m_lostvalue = m_lostvalue + ((middlevalue - curconf) * smallweight);
+		}
 	}
 	else
 	{
-		if (curconf < prevconf)
-			m_lostvalue = m_lostvalue - ((prevconf - curconf) * smallweight);
-		else
+		if (prevconf <= middlevalue)
 			m_lostvalue = m_lostvalue - ((curconf - prevconf) * weight);
+		else
+		{
+			if (curconf < prevconf)
+				m_lostvalue = m_lostvalue - ((curconf - middlevalue) * smallweight);
+			else
+				m_lostvalue = m_lostvalue - ((curconf - middlevalue) * weight);
+		}
 	}
 
 	if (m_lostvalue > 100.0)

@@ -108,16 +108,6 @@ public:
 		std::string msg;		// string guidance message
 		bool announce = 0;
 	};
-	//struct Guidance
-	//{
-	//	GuideStatus guide_status;	// current guidance status
-	//	MoveStatus moving_status;	// current moving status
-	//	std::vector<Action> actions;	// action command
-	//	Node heading_node;	 // heading node
-	//	double distance_to_remain; // distance to heading node (unit: meter)
-	//	std::string msg;		// string guidance message
-	//	bool announce = 0;
-	//};
 	
 private:		
 
@@ -154,38 +144,6 @@ private:
 		int degree;
 
 	};
-	//struct GuidedPathElement
-	//{
-	//	GuidedPathElement() {};
-	//	/** A constructor with path's segment
-	//	* @param _component An option whether the path segment is NODE or EDGE
-	//	* @param _id The given ID
-	//	* @param _node An element from NodeType
-	//	* @param _degree An relative orientation from past node to current node
-	//	* @param _edge And element from EdgeType
-	//	*/
-	//	GuidedPathElement(Node _fromnode, Edge _curedge, Node _tonode, 
-	//		Edge _nextedge, int _degree = 0)
-	//		: from_node (_fromnode), cur_edge(_curedge), to_node(_tonode), 
-	//		next_edge(_nextedge), degree(_degree) {}
-
-	//	/** Current NODE*/
-	//	ID from_node;
-
-	//	/** Current EDGE*/
-	//	Edge cur_edge;
-
-	//	/** Next NODE*/
-	//	Node to_node;
-
-
-	//	/** Next EDGE*/
-	//	Edge next_edge;
-
-	//	/** Rotation angle at next node. [deg] -180~180*/
-	//	int degree;
-
-	//};
 
 	//Guidance member
 	dg::Path m_path;
@@ -200,6 +158,7 @@ private:
 	std::vector<Guidance> m_past_guides;
 	time_t oop_start = 0 , oop_end = 0;
 
+	std::string m_mvstring[4] = {"ON_NODE","ON_EDGE", "APPROACHING_NODE", "ARRIVED"};
 	std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
 		"ESCALATOR", "UNKNOWN" };
 	std::string m_edges[7] = { "SIDEWALK", "ROAD", "CROSSWALK", "ELEVATOR",
@@ -230,7 +189,7 @@ private:
 	}
 	
 	bool isNodeInPath(ID nodeid);
-	Action setAction(Motion ncmd, int etype, int degree, Mode mode);
+	Action setActionCmd(Motion ncmd, int etype, int degree, Mode mode);
 	Action setAction(ID nid, ID eid, int degree);
 	bool isForward(int degree)
 	{
@@ -253,6 +212,7 @@ private:
 	std::string getStringAction(Action action);
 	std::string getStringForward(Action act, int ntype, ID nid, double d);
 	std::string getStringTurn(Action act, int ntype);
+	std::string getStringTurnDist(Action act, int ntype, double dist);
 	std::string getStringGuidance(Guidance guidance, MoveStatus status);
 	int getGuideIdxFromPose(TopometricPose pose);
 	int getDegree(dg::Node* node1, dg::Node* node2, dg::Node* node3);
