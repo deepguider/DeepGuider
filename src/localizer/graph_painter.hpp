@@ -327,6 +327,7 @@ public:
         if (thickness < 0) font_color = cv::Vec3b(255, 255, 255) - color;
         for (typename Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
         {
+            if(map.getHeadEdge(n)==map.getTailEdge(n)) continue;    // added by jylee to remove poi and streetview nodes from drawing
             const cv::Point p = cvtMeter2Pixel(n->data, info);
             cv::circle(image, p, r, color, thickness);
             if (font_scale > 0)

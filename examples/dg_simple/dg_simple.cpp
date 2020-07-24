@@ -51,9 +51,10 @@ protected:
     bool m_threaded_run_python = false;
     std::string m_srcdir = "./../src";            // path of deepguider/src (required for python embedding)
 
+    bool m_data_logging = false;
+    bool m_enable_tts = false;
     bool m_recording = false;
     int m_recording_fps = 30;
-    bool m_data_logging = false;
     std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
     std::string m_gps_input = "data/191115_ETRI_asen_fix.csv";
     std::string m_video_input = "data/191115_ETRI.avi";
@@ -182,9 +183,10 @@ bool DeepGuider::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "threaded_run_python", m_threaded_run_python);
     LOAD_PARAM_VALUE(fn, "dg_srcdir", m_srcdir);
 
-    LOAD_PARAM_VALUE(fn, "recording", m_recording);
-    LOAD_PARAM_VALUE(fn, "recording_fps", m_recording_fps);
-    LOAD_PARAM_VALUE(fn, "data_logging", m_data_logging);
+    LOAD_PARAM_VALUE(fn, "enable_data_logging", m_data_logging);
+    LOAD_PARAM_VALUE(fn, "enable_tts", m_enable_tts);
+    LOAD_PARAM_VALUE(fn, "video_recording", m_recording);
+    LOAD_PARAM_VALUE(fn, "video_recording_fps", m_recording_fps);
     LOAD_PARAM_VALUE(fn, "map_image_path", m_map_image_path);
     LOAD_PARAM_VALUE(fn, "gps_input", m_gps_input);
     LOAD_PARAM_VALUE(fn, "video_input", m_video_input);
@@ -295,7 +297,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_intersection_image.release();
 
     // tts
-    tts("초기화가 완료되었습니다");
+    if(m_enable_tts) tts("Deepguider system is initialized successfuly!");
 
     return true;
 }
@@ -504,12 +506,12 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     printf("%s\n", cur_guide.msg.c_str());
     
     // tts guidance
-    if(cur_guide.announce) tts(cur_guide.msg.c_str());
+    if(m_enable_tts && cur_guide.announce) tts(cur_guide.msg.c_str());
 
     // check out of path
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP_DETECT || cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
     {
-        tts("경로를 이탈하여 재탐색합니다");
+        if(m_enable_tts) tts("경로를 이탈하여 재탐색합니다");
         printf("GUIDANCE: out of path detected!\n");
         if(node != nullptr)
         {
