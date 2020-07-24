@@ -126,7 +126,7 @@ GuidanceManager::GuideStatus GuidanceManager::getGuidanceStatus(TopometricPose p
 	}
 	else
 	{
-		if (conf >= 0.5) //out-of-path 
+		if (conf >= 0.1) //out-of-path 
 		{//robot is in another path, for sure.
 			if (oop_start == 0)	//start timer
 				oop_start = time(NULL);
@@ -203,14 +203,14 @@ bool GuidanceManager::updateGuidance(TopometricPose pose, GuideStatus gStatus)
 	case GuideStatus::GUIDE_OOP:
 	{	//need new map and generate path from current pose
 		//take original goal and change start to current pose
-		double start_lat, start_lon, dest_lat, dest_lon;
-		LatLon curGPS = getPoseGPS();
-		start_lat = curGPS.lat;
-		start_lon = curGPS.lon;
-		Node* dest = m_map.findNode(m_path.pts.back().node_id);
-		dest_lat = dest->lat;
-		dest_lon = dest->lon;
-		regeneratePath(start_lat, start_lon, dest_lat, dest_lon);
+		//double start_lat, start_lon, dest_lat, dest_lon;
+		//LatLon curGPS = getPoseGPS();
+		//start_lat = curGPS.lat;
+		//start_lon = curGPS.lon;
+		//Node* dest = m_map.findNode(m_path.pts.back().node_id);
+		//dest_lat = dest->lat;
+		//dest_lon = dest->lon;
+		//regeneratePath(start_lat, start_lon, dest_lat, dest_lon);
 		guide = getNormalGuidance(MoveStatus::ON_NODE);
 		break;
 	}		
