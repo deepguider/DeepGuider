@@ -78,9 +78,10 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_threaded_run_python = true;
     m_srcdir = "/work/deepguider/src";   // system path of deepguider/src (required for python embedding)
 
+    m_data_logging = false;
+    m_enable_tts = false;
     m_recording = false;
     m_recording_fps = 30;
-    m_data_logging = false;
     m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
     m_recording_header_name = "dg_ros_";
 
