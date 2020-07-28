@@ -244,7 +244,7 @@ namespace dg
         Timestamp m_timestamp = -1;
         double m_processing_time = -1;
 #ifdef HAVE_OPENCV_FREETYPE
-        cv::Ptr<cv::freetype::FreeType2> m_ft2 = nullptr;
+        cv::Ptr<cv::freetype::FreeType2> m_ft2;
 #endif
     };
 

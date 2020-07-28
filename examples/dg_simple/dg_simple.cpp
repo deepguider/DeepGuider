@@ -110,7 +110,7 @@ protected:
 
     // sub modules
     dg::MapManager m_map_manager;
-    dg::SimpleLocalizer m_localizer;
+    dg::EKFLocalizerSinTrack m_localizer;
     dg::VPS m_vps;
     dg::LogoRecognizer m_logo;
     dg::OCRRecognizer m_ocr;
@@ -332,6 +332,9 @@ bool DeepGuider::initializeMapAndPath(dg::LatLon gps_start, dg::LatLon gps_dest)
     m_localizer_mutex.lock();
     VVS_CHECK_TRUE(m_localizer.setReference(ref_node));
     VVS_CHECK_TRUE(m_localizer.loadMap(map));
+    m_localizer.setParamMotionNoise(0.1, 0.1);
+    m_localizer.setParamGPSNoise(1);
+    m_localizer.setParamValue("offset_gps", {1, 0});
     m_localizer_mutex.unlock();
     printf("\tLocalizer is updated with new map and path!\n");
 
