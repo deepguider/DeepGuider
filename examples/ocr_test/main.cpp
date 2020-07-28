@@ -28,7 +28,7 @@ void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* 
         cv::Mat image_result = image.clone();
         recognizer.draw(image_result);
         cv::imshow(image_file, image_result);
-        cv::waitKey(1000);
+        cv::waitKey(100);
 
         if (recording)
         {
@@ -121,7 +121,7 @@ int main()
 {
     bool recording = false;
     int rec_fps = 5;
-    bool threaded_run = true;
+    bool threaded_run = false;
 
     const char* video_path = "data/191115_ETRI.avi";
     //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";

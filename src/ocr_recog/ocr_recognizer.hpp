@@ -3,6 +3,9 @@
 
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
+#ifdef HAVE_OPENCV_FREETYPE
+#include "opencv2/freetype.hpp"
+#endif
 #include <fstream>
 #include <chrono>
 
@@ -38,6 +41,11 @@ namespace dg
             bool ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+#ifdef HAVE_OPENCV_FREETYPE
+            m_ft2 = cv::freetype::createFreeType2();
+            m_ft2->loadFontData("font/gulim.ttf", 0);
+#endif
 
             dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
             m_processing_time = t2 - t1;
@@ -192,8 +200,18 @@ namespace dg
                 cv::rectangle(image, rc, color, width);
                 cv::Point pt(m_ocrs[i].xmin + 5, m_ocrs[i].ymin + 35);
                 std::string msg = cv::format("%s %.2lf", m_ocrs[i].label.c_str(), m_ocrs[i].confidence);
-                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
-                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
+#ifdef HAVE_OPENCV_FREETYPE
+                if(m_ft2)
+                {
+                    m_ft2->putText(image, msg, pt, 30, cv::Scalar(0, 255, 0), 2, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, 30, cv::Scalar(0, 0, 0), -1, cv::LINE_AA, true);
+                }
+#endif
+                else
+                {
+                    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
+                    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
+                }
             }
         }
 
@@ -225,6 +243,9 @@ namespace dg
         std::vector<OCRResult> m_ocrs;
         Timestamp m_timestamp = -1;
         double m_processing_time = -1;
+#ifdef HAVE_OPENCV_FREETYPE
+        cv::Ptr<cv::freetype::FreeType2> m_ft2 = nullptr;
+#endif
     };
 
 } // End of 'dg'
