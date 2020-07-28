@@ -206,8 +206,8 @@ namespace dg
                     m_ft2->putText(image, msg, pt, 30, cv::Scalar(0, 255, 0), 2, cv::LINE_AA, true);
                     m_ft2->putText(image, msg, pt, 30, cv::Scalar(0, 0, 0), -1, cv::LINE_AA, true);
                 }
-#endif
                 else
+#endif
                 {
                     cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
                     cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
