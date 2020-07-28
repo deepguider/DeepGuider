@@ -4,7 +4,7 @@
 
 # ROSDIR is the only one you have to change to your own.
 #ROSDIR="/work/dg_ros"   # path of ROS workspace
-ROSDIR="/tmp/catkin_ws"  # path of ROS workspace
+ROSDIR="/home/dg/dg_ws"  # path of ROS workspace
 
 
 
