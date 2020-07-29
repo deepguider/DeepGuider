@@ -15,8 +15,13 @@
 namespace dg
 {
 
-int tts(std::string sentence)
+int tts(std::string sentence, bool print_msg = true)
 {
+	if(print_msg)
+	{
+		printf("[TTS] %s\n", sentence.c_str());
+	}
+
 #ifndef _WIN32
 	// gtts-cli '안녕하세요' --output tmp.mp3;ffplay -nodisp -autoexit tmp.mp3 >/dev/null 2>&1
 	std::string str = "gtts-cli '";

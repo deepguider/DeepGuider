@@ -115,17 +115,6 @@ int DeepGuiderROS::run()
 {
     printf("Run deepguider system...\n");
 
-    // start & goal position
-    dg::LatLon gps_start(36.38205717, 127.3676462);
-    dg::LatLon gps_dest(36.37944417, 127.3788568);
-    VVS_CHECK_TRUE(initializeMapAndPath(gps_start, gps_dest));
-    printf("\tgps_start: lat=%lf, lon=%lf\n", gps_start.lat, gps_start.lon);
-    printf("\tgps_dest: lat=%lf, lon=%lf\n", gps_dest.lat, gps_dest.lon);
-    m_gps_start = gps_start;
-    m_gps_dest = gps_dest;
-
-    cv::namedWindow("deep_guider", cv::WINDOW_AUTOSIZE);
-
     // start recognizer threads
     if (m_enable_vps) vps_thread = new std::thread(threadfunc_vps, this);
     if (m_enable_ocr) ocr_thread = new std::thread(threadfunc_ocr, this);    
@@ -143,7 +132,7 @@ int DeepGuiderROS::run()
     }
     if(m_recording) m_video.release();
     terminateThreadFunctions();
-    cv::destroyWindow("deep_guider");
+    cv::destroyWindow(m_winname);
     printf("End deepguider system...\n");
 
     return 0;
@@ -161,9 +150,9 @@ bool DeepGuiderROS::runOnce(double timestamp)
     // recording
     if (m_recording) m_video << gui_image;
 
-    cv::imshow("deep_guider", gui_image);
+    cv::imshow(m_winname, gui_image);
     int key = cv::waitKey(1);
-    //if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+    if (key == cx::KEY_SPACE) key = cv::waitKey(0);
     if (key == cx::KEY_ESC) return false;
 
     return true;
@@ -354,7 +343,7 @@ void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
     // apply gps
     const dg::LatLon gps_datum(lat, lon);
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
-    applyGpsData(gps_datum, gps_time);
+    procGpsData(gps_datum, gps_time);
 }
 
 // A callback function for subscribing GPS Novatel
@@ -377,7 +366,9 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
 
     // draw gps history on the map
     const dg::LatLon gps_datum(lat, lon);
+    m_localizer_mutex.lock();
     dg::Point2 gps_pt = m_localizer.toMetric(gps_datum);
+    m_localizer_mutex.unlock();
     m_painter.drawNode(m_map_image, m_map_info, dg::Point2ID(0, gps_pt), 2, 0, cv::Vec3b(0, 0, 255));
 }
 
