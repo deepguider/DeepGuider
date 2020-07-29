@@ -413,12 +413,12 @@ int DeepGuider::run()
     printf("\tSample video data loaded!\n");
 
     // set initial destination
-    dg::LatLon gps_dest = gps_data.back().second;
-    VVS_CHECK_TRUE(setDeepGuiderDestination(gps_dest));
+    //dg::LatLon gps_dest = gps_data.back().second;
+    //VVS_CHECK_TRUE(setDeepGuiderDestination(gps_dest));
 
     // run iteration
     int maxItr = (int)gps_data.size();
-    int itr = 500;
+    int itr = 300;
     while (itr < maxItr)
     {
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
@@ -998,6 +998,11 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     m_map_mutex.lock();
     dg::Node* node = m_map_manager.getMap().findNode(pose_topo.node_id);
     m_map_mutex.unlock();
+    if(node==nullptr)
+    {
+        printf("[Guidance] Error - Undefined localization node: %zu!\n", pose_topo.node_id);
+        return;
+    }
     m_guider_mutex.lock();
     cur_status = m_guider.getGuidanceStatus(pose_topo, pose_confidence);
     m_guider.updateGuidance(pose_topo, cur_status);
@@ -1017,8 +1022,6 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     // check arrival
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
     {
-        m_dest_defined = false;
-        m_path_initialized = false;
         printf("Arrived to destination!\n");
         if(m_enable_tts) tts("Arrived to destination!");
     }
