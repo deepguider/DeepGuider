@@ -35,6 +35,9 @@ public:
 		GUIDE_BAD_GROUND,	//Uneven ground
 		GUIDE_ROBOT_FAIL, 	//Robot failure
 		GUIDE_FAIL_UNKNOWN,	//Unknown failure
+
+		GUIDE_INITIAL,
+		GUIDE_UNKNOWN
 	};
 
 	/** Moving status based on localization info*/
@@ -43,8 +46,7 @@ public:
 		ON_NODE = 0,		//The robot has arrived at the node
 		ON_EDGE,	//The robot is 0~90% of the edge distance
 		APPROACHING_NODE,	//The robot is 90~99% of the edge distance
-		ARRIVED
-		//STOP_WAIT	//not moving
+		STOP_WAIT	//not moving
 	};
 
 	/**A motion of robot for guidance*/
@@ -106,10 +108,10 @@ public:
 		ID heading_node_id;	 // heading node
 		double distance_to_remain; // distance to heading node (unit: meter)
 		std::string msg;		// string guidance message
-		bool announce = 0;
+		bool announce = 1;
 	};
 	
-private:		
+//private:		
 
 	/**@brief A segment of guided path
 	*/
@@ -117,11 +119,11 @@ private:
 	{
 		GuidedPathElement() {};
 		/** A constructor with path's segment
-		* @param _component An option whether the path segment is NODE or EDGE
-		* @param _id The given ID
-		* @param _node An element from NodeType
-		* @param _degree An relative orientation from past node to current node
-		* @param _edge And element from EdgeType
+		* @param _Current NODE
+		* @param _Current EDGE
+		* @param _Next NODE
+		* @param _Next EDGE
+		* @param _Degree of rotation angle at next node. [deg] -180~180
 		*/
 		GuidedPathElement(ID _fromnode, ID _curedge, ID _tonode,
 			ID _nextedge, int _degree = 0)
@@ -151,9 +153,10 @@ private:
 	dg::LatLon m_latlon;
 	std::vector <GuidedPathElement> m_guides;
 	int m_guide_idx = -1;	//starts with -1 because its pointing current guide.
-	double m_edge_progress = 0;
+	double m_edge_progress = 0.0;
+	double m_rmdistance = 0.0;
 	MoveStatus  m_mvstatus = MoveStatus::ON_EDGE;
-	GuideStatus  m_dgstatus = GuideStatus::GUIDE_NORMAL;
+	GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
 	Guidance m_curguidance;
 	std::vector<Guidance> m_past_guides;
 	time_t oop_start = 0 , oop_end = 0;
@@ -188,9 +191,6 @@ private:
 		return mode;
 	}
 	
-	bool isNodeInPath(ID nodeid);
-	Action setActionCmd(Motion ncmd, int etype, int degree, Mode mode);
-	Action setAction(ID nid, ID eid, int degree);
 	bool isForward(int degree)
 	{
 		return (degree >= -45 && degree <= 45) ? true : false;
@@ -205,61 +205,45 @@ private:
 			? true : false;
 	};
 
-	bool setGuidance();
+	bool isNodeInPath(ID nodeid);
 	Motion getMotion(int ntype, int etype, int degree);
-	GuidedPathElement getCurGuidedPath(int idx) { return m_guides[idx]; };
 	Guidance getLastGuidance() { return m_past_guides.back(); };
 	std::string getStringAction(Action action);
 	std::string getStringForward(Action act, int ntype, ID nid, double d);
 	std::string getStringTurn(Action act, int ntype);
 	std::string getStringTurnDist(Action act, int ntype, double dist);
 	std::string getStringGuidance(Guidance guidance, MoveStatus status);
+	GuidedPathElement getCurGuidedPath(int idx) { return m_guides[idx]; };
 	int getGuideIdxFromPose(TopometricPose pose);
 	int getDegree(dg::Node* node1, dg::Node* node2, dg::Node* node3);
+	Map getMap() { return m_map; };
+	MoveStatus getMoveStatus() { return m_mvstatus; };
+	LatLon getPoseGPS() { return m_latlon; };
+	bool regeneratePath(double start_lat, double start_lon, double dest_lat, double dest_lon);
+
+	//bool setGuidance(TopometricPose pose);
+	//bool setGuideStatus(GuideStatus gs) { m_gstatus = gs; };
+	bool setGuidanceStatus(TopometricPose pose, double conf);
+	bool setGuidanceWithGStatus();
+	bool setInitialGuide();
+	bool setNormalGuide();
+	bool setOOPGuide();
+	bool setArrivalGuide();
+	bool setEmptyGuide();
+	bool applyPose(TopometricPose pose);
+	Action setActionCmd(Motion ncmd, int etype, int degree, Mode mode);
+	Action setAction(ID nid, ID eid, int degree);
+	Action addTurnAction(GuidedPathElement gp);
 		
 public:
 
-	bool setPathNMap(dg::Path path, dg::Map map)
-	{
-		if (path.pts.size() < 1)
-		{
-			fprintf(stdout, "No path input!\n");
-			return false;
-		}
-		if (!validatePath(path, map))
-		{
-			fprintf(stdout, "Path id is not in map!\n");
-			return false;
-		}
-		m_path = path;
-		m_map = map;
-		return true;
-	}
-
-	bool validatePath(dg::Path path, dg::Map map);
+	bool setPathNMap(dg::Path path, dg::Map map);
 	bool initializeGuides();
-	bool regeneratePath(double start_lat, double start_lon, double dest_lat, double dest_lon);
-	GuideStatus getGuidanceStatus(TopometricPose pose, double confidence);
-
-	MoveStatus applyPose(TopometricPose pose);
-	bool applyPoseGPS(LatLon gps)
-	{
-		if (gps.lat <= 0 || gps.lon <= 0)
-			return false;
-
-		m_latlon = gps;
-		return true;
-	};
-	LatLon getPoseGPS() { return m_latlon; };
-	Map getMap() { return m_map; };
-
-	void setGuideStatus(GuideStatus gs) { m_dgstatus = gs; }; 
-	MoveStatus getMoveStatus() { return m_mvstatus; };
-	Guidance getNormalGuidance(MoveStatus status);
-	Guidance getGuidance(TopometricPose pose);
-	Guidance getGuidance(TopometricPose pose, GuideStatus gStatus);
-	bool updateGuidance(TopometricPose pose, GuideStatus gStatus);
-	Guidance getGuidance(){ return m_curguidance; };
+	bool validatePath(dg::Path path, dg::Map map);
+	bool update(TopometricPose pose, double confidence);
+	GuideStatus getGuidanceStatus() const { return m_gstatus; }; 
+	Guidance getGuidance() const { return m_curguidance; };
+	bool applyPoseGPS(LatLon gps);
 
 	//makeLostValue related variable and method
 	double m_prevconf = 1.0;
