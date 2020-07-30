@@ -813,6 +813,13 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
     cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
 
+    // print status message (localization)
+    printf("[Localizer]\n");
+    printf("\ttopo: node=%zu, edge=%d, dist=%lf\n", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
+    printf("\tmetr: x=%lf, y=%lf, theta=%lf\n", pose_metric.x, pose_metric.y, pose_metric.theta);
+    printf("\tgps : lat=%lf, lon=%lf\n", pose_gps.lat, pose_gps.lon);
+    printf("\tconfidence: %lf\n", pose_confidence);
+
     if (m_pose_initialized && m_path_initialized)
     {
         // draw guidance info
@@ -986,11 +993,6 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     dg::LatLon pose_gps = m_localizer.getPoseGPS();
     double pose_confidence = m_localizer.getPoseConfidence();
     m_localizer_mutex.unlock();
-    printf("[Localizer]\n");
-    printf("\ttopo: node=%zu, edge=%d, dist=%lf, ts=%lf\n", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist, ts);
-    printf("\tmetr: x=%lf, y=%lf, theta=%lf, ts=%lf\n", pose_metric.x, pose_metric.y, pose_metric.theta, ts);
-    printf("\tgps : lat=%lf, lon=%lf, ts=%lf\n", pose_gps.lat, pose_gps.lon, ts);
-    printf("\tconfidence: %lf\n", pose_confidence);
 
     // Guidance: generate navigation guidance
     dg::GuidanceManager::GuideStatus cur_status;
