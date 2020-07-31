@@ -820,28 +820,25 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     printf("\tgps : lat=%lf, lon=%lf\n", pose_gps.lat, pose_gps.lon);
     printf("\tconfidence: %lf\n", pose_confidence);
 
-    if (m_pose_initialized && m_path_initialized)
+    // draw guidance info
+    dg::GuidanceManager::GuideStatus cur_status;
+    dg::GuidanceManager::Guidance cur_guide;
+    m_guider_mutex.lock();
+    cur_status = m_guider.getGuidanceStatus();
+    cur_guide = m_guider.getGuidance();
+    m_guider_mutex.unlock();
+    if (!video_image.empty())
     {
-        // draw guidance info
-        dg::GuidanceManager::GuideStatus cur_status;
-        dg::GuidanceManager::Guidance cur_guide;
-        m_guider_mutex.lock();
-        cur_status = m_guider.getGuidanceStatus(pose_topo, pose_confidence);
-        cur_guide = m_guider.getGuidance(pose_topo, cur_status);
-        m_guider_mutex.unlock();
-        if (!video_image.empty())
-        {
-            drawGuidance(image, cur_guide, video_rect);
-        }
+        drawGuidance(image, cur_guide, video_rect);
+    }
 
-        // check and draw arrival
-        if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
-        {
-            std::string msg = "ARRIVED!";
-            cv::Point pt(600, 500);
-            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 255, 0), 8);
-            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 0, 0), 4);
-        }
+    // check and draw arrival
+    if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
+    {
+        std::string msg = "ARRIVED!";
+        cv::Point pt(600, 500);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 255, 0), 8);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 0, 0), 4);
     }
 }
 
@@ -1006,9 +1003,9 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         return;
     }
     m_guider_mutex.lock();
-    cur_status = m_guider.getGuidanceStatus(pose_topo, pose_confidence);
-    m_guider.updateGuidance(pose_topo, cur_status);
-    cur_guide = m_guider.getGuidance(pose_topo, cur_status);
+    m_guider.update(pose_topo, pose_confidence);
+    cur_status = m_guider.getGuidanceStatus();
+    cur_guide = m_guider.getGuidance();
     if (node != nullptr)
     {
         m_guider.applyPoseGPS(dg::LatLon(node->lat, node->lon));
