@@ -214,14 +214,15 @@ public:
 	 * @param radius The given radius of this POI (Unit: [m])
 	 * @return A value to gotten POI
 	 */
-	POI getPOI(ID poi_id, LatLon latlon, double radius);
+	//POI getPOI(ID poi_id, LatLon latlon, double radius);
 
 	/**
-	 * Get the POI corresponding to a certain POI ID
+	 * Get the POIs corresponding to a certain POI ID
 	 * @param poi_id The given POI ID of this POI
-	 * @return A value to gotten POI
+	 * @param radius The given radius of this POI (Unit: [m])
+	 * @return A vector to gotten POIs
 	 */
-	POI getPOI(ID poi_id);
+	std::vector<POI> getPOI(ID poi_id, double radius = 10.0);
 	
 	/**
 	 * Get the POIs corresponding to a certain POI name
@@ -279,14 +280,15 @@ public:
 	 * @param radius The given radius of this StreetView (Unit: [m])
 	 * @return A value to gotten StreetView
 	 */
-	StreetView getStreetView(ID sv_id, LatLon latlon, double radius);
+	//StreetView getStreetView(ID sv_id, LatLon latlon, double radius);
 
 	/**
-	 * Get the StreetView corresponding to a certain StreetView ID
+	 * Get the StreetViews corresponding to a certain StreetView ID
 	 * @param sv_id The given StreetView ID of this StreetView
-	 * @return A value to gotten StreetView
+	 * @param radius The given radius of this StreetView (Unit: [m])
+	 * @return A vector to gotten StreetViews
 	 */
-	StreetView getStreetView(ID sv_id);
+	std::vector<StreetView>& getStreetView(ID sv_id, double radius = 10.0);
 
 	/**
 	 * Download the StreetView image corresponding to a certain StreetView ID
@@ -442,6 +444,14 @@ protected:
 	bool downloadPOI(cv::Point2i tile);
 
 	/**
+	 * Request the POIs within a certain radius based on POI ID to server and receive response
+	 * @param poi_id The given POI ID of these POIs
+	 * @param radius The given radius of these POIs (Unit: [m])
+	 * @return True if successful (false if failed)
+	 */
+	bool downloadPOI_poi(ID poi_id, double radius);
+
+	/**
 	 * Parse the POIs response received
 	 * @param json A response received
 	 * @return True if successful (false if failed)
@@ -471,6 +481,14 @@ protected:
 	 * @return True if successful (false if failed)
 	 */
 	bool downloadStreetView(cv::Point2i tile);
+
+	/**
+	 * Request the StreetViews within a certain radius based on SV ID to server and receive response
+	 * @param sv_id The given SV ID of these StreetViews
+	 * @param radius The given radius of these StreetViews (Unit: [m])
+	 * @return True if successful (false if failed)
+	 */
+	bool downloadStreetView_sv(ID sv_id, double radius);
 
 	/**
 	 * Parse the StreetViews response received

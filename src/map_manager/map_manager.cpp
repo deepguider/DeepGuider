@@ -970,6 +970,14 @@ bool MapManager::downloadPOI(cv::Point2i tile)
 	return query2server(url);
 }
 
+bool MapManager::downloadPOI_poi(ID poi_id, double radius)
+{
+	const std::string url_middle = ":21502/node/";
+	std::string url = "http://" + m_ip + url_middle + std::to_string(poi_id) + "/" + std::to_string(radius);
+
+	return query2server(url);
+}
+
 bool MapManager::parsePOI(const char* json)
 {
 	Document document;
@@ -1042,7 +1050,7 @@ bool MapManager::getPOI(double lat, double lon, double radius, std::vector<POI>&
 	m_json = "";
 
 	// by communication
-	downloadPOI(node_id, radius);
+	downloadPOI_poi(node_id, radius);
 	//decodeUni();
 	const char* json = m_json.c_str();
 //#ifdef _DEBUG
@@ -1098,31 +1106,59 @@ bool MapManager::getPOI(cv::Point2i tile, std::vector<POI>& poi_vec)
 	return true;
 }
 
-POI MapManager::getPOI(ID poi_id, LatLon latlon, double radius)
+//POI MapManager::getPOI(ID poi_id, LatLon latlon, double radius)
+//{
+//	std::vector<POI> poi_vec;
+//	bool ok = getPOI(latlon.lat, latlon.lon, radius, poi_vec);
+//	if (!ok)
+//		return POI();
+//	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
+//	{
+//		if (it->id == poi_id)
+//			return *it;
+//	}
+//
+//	return POI();
+//}
+
+//POI MapManager::getPOI(ID poi_id)
+//{
+//	if(m_map->pois.size() == 0) 
+//		return POI();
+//	   	
+//	auto found = lookup_pois_id.find(poi_id);
+//	if (found == lookup_pois_id.end())
+//		return POI();
+//
+//	return getPOI(poi_id, found->second, 10.0);
+//}
+std::vector<POI> MapManager::getPOI(ID poi_id, double radius)
 {
-	std::vector<POI> poi_vec;
-	bool ok = getPOI(latlon.lat, latlon.lon, radius, poi_vec);
-	if (!ok)
-		return POI();
-	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
+	m_map->pois.clear();
+	m_json = "";
+
+	// by communication
+	downloadPOI_poi(poi_id, radius);
+	//decodeUni();
+	const char* json = m_json.c_str();
+	//#ifdef _DEBUG
+	//	fprintf(stdout, "%s\n", json);
+	//#endif
+	if (json == "[]\n" || json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
 	{
-		if (it->id == poi_id)
-			return *it;
+		std::cout << "Invalid POI IDs!!" << std::endl;
+		return std::vector<POI>();
 	}
 
-	return POI();
-}
+	bool ok = parsePOI(json);
+	if (!ok)
+	{
+		m_map->pois.clear();
 
-POI MapManager::getPOI(ID poi_id)
-{
-	if(m_map->pois.size() == 0) 
-		return POI();
-	   	
-	auto found = lookup_pois_id.find(poi_id);
-	if (found == lookup_pois_id.end())
-		return POI();
-
-	return getPOI(poi_id, found->second, 10.0);
+		return std::vector<POI>();
+	}
+	
+	return getPOI();
 }
 
 std::vector<POI> MapManager::getPOI(const std::string poi_name, LatLon latlon, double radius)
@@ -1174,6 +1210,15 @@ bool MapManager::downloadStreetView(cv::Point2i tile)
 {
 	const std::string url_middle = ":21501/tile/";
 	std::string url = "http://" + m_ip + url_middle + std::to_string(tile.x) + "/" + std::to_string(tile.y);
+
+	return query2server(url);
+}
+
+
+bool MapManager::downloadStreetView_sv(ID sv_id, double radius)
+{
+	const std::string url_middle = ":21501/node/";
+	std::string url = "http://" + m_ip + url_middle + std::to_string(sv_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
 }
@@ -1291,32 +1336,55 @@ bool MapManager::getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_vec
 	return true;
 }
 
-StreetView MapManager::getStreetView(ID sv_id, LatLon latlon, double radius)
+//StreetView MapManager::getStreetView(ID sv_id, LatLon latlon, double radius)
+//{
+//	std::vector<StreetView> sv_vec;
+//	bool ok = getStreetView(latlon.lat, latlon.lon, radius, sv_vec);
+//	if (!ok)
+//		return StreetView();
+//	for (std::vector<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
+//	{
+//		if (it->id == sv_id)
+//			return *it;
+//	}
+//
+//	return StreetView();
+//}
+
+//StreetView MapManager::getStreetView(ID sv_id)
+//{
+//	if (m_map->views.size() == 0)
+//		return StreetView();
+//
+//	auto found = lookup_svs.find(sv_id);
+//	if (found == lookup_svs.end())
+//		return StreetView();
+//
+//	return getStreetView(sv_id, found->second, 10.0);
+//}
+std::vector<StreetView>& MapManager::getStreetView(ID sv_id, double radius)
 {
-	std::vector<StreetView> sv_vec;
-	bool ok = getStreetView(latlon.lat, latlon.lon, radius, sv_vec);
+	m_map->views.clear();
+	m_json = "";
+
+	// by communication
+	downloadStreetView_sv(sv_id, radius);
+	//decodeUni();
+	const char* json = m_json.c_str();
+	//#ifdef _DEBUG
+	//	fprintf(stdout, "%s\n", json);
+	//#endif
+	bool ok = parseStreetView(json);
 	if (!ok)
-		return StreetView();
-	for (std::vector<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
 	{
-		if (it->id == sv_id)
-			return *it;
+		m_map->views.clear();
+
+		return std::vector<StreetView>();
 	}
 
-	return StreetView();
+	return getStreetView();
 }
 
-StreetView MapManager::getStreetView(ID sv_id)
-{
-	if (m_map->views.size() == 0)
-		return StreetView();
-
-	auto found = lookup_svs.find(sv_id);
-	if (found == lookup_svs.end())
-		return StreetView();
-
-	return getStreetView(sv_id, found->second, 10.0);
-}
 size_t MapManager::writeImage_callback(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
 	std::vector<uchar>* stream = (std::vector<uchar>*)userdata;
