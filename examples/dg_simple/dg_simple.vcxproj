@@ -104,6 +104,7 @@
     <ClInclude Include="..\..\src\core\basic_type.hpp" />
     <ClInclude Include="..\..\src\core\map.hpp" />
     <ClInclude Include="..\..\src\core\path.hpp" />
+    <ClInclude Include="..\..\src\utils\map_painter.hpp" />
     <ClInclude Include="..\..\src\utils\opencx.hpp" />
     <ClInclude Include="..\..\src\utils\opensx.hpp" />
     <ClInclude Include="..\..\src\utils\python_embedding.hpp" />

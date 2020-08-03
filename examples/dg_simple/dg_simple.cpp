@@ -147,8 +147,8 @@ protected:
     cv::Mutex m_log_mutex;
     cv::Mat m_map_image;
     cv::Mat m_map_image_original;
-    dg::SimpleRoadPainter m_painter;
-    dg::CanvasInfo m_map_info;
+    dg::MapPainter m_painter;
+    dg::MapCanvasInfo m_map_info;
 
     dg::ID id_invalid = 0;
     Polar2 rel_pose_defualt = Polar2(-1, CV_PI);     // default relative pose (invalid)
@@ -259,7 +259,14 @@ bool DeepGuider::initialize(std::string config_file)
     // initialize default map
     VVS_CHECK_TRUE(initializeDefaultMap());
 
+    // load background GUI image
+    m_map_image = cv::imread(m_map_image_path);
+    VVS_CHECK_TRUE(!m_map_image.empty());
+    m_map_image_original = m_map_image.clone();
+
     // prepare GUI map
+    dg::LatLon ref_node(36.383837659737, 127.367880828442);
+    m_painter.setReference(ref_node);
     m_painter.setParamValue("pixel_per_meter", 1.045);
     m_painter.setParamValue("canvas_margin", 0);
     m_painter.setParamValue("canvas_offset", { 344, 293 });
@@ -270,18 +277,11 @@ bool DeepGuider::initialize(std::string config_file)
     m_painter.setParamValue("node_color", { 255, 50, 255 });
     m_painter.setParamValue("edge_color", { 200, 100, 100 });
     //m_painter.setParamValue("edge_thickness", 2);
-
-    // load background GUI image
-    m_map_image = cv::imread(m_map_image_path);
-    VVS_CHECK_TRUE(!m_map_image.empty());
-    m_map_image_original = m_map_image.clone();
+    m_map_info = m_painter.getCanvasInfo(m_map_image);
 
     // draw topology of default map
-    m_localizer_mutex.lock();
-    dg::RoadMap road_map = m_localizer.getMap();
-    m_localizer_mutex.unlock();
-    m_map_info = m_painter.getCanvasInfo(road_map, m_map_image.size());
-    VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, road_map));
+    dg::Map& map = m_map_manager.getMap();
+    VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, m_map_info, map));
 
     // load icon images
     m_icon_forward = cv::imread("data/forward.png");
@@ -504,8 +504,7 @@ void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
     }
 
     // draw gps history on the GUI map
-    dg::Point2 gps_pt = m_localizer.toMetric(gps_datum);
-    m_painter.drawNode(m_map_image, m_map_info, dg::Point2ID(0, gps_pt), 2, 0, cv::Vec3b(0, 255, 0));
+    m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
 }
 
 
@@ -522,13 +521,8 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
     }
     else if (evt == cv::EVENT_LBUTTONDBLCLK)
     {
-        // pixel to gps
-        dg::Point2 p_metric;
-        p_metric.x = (x - m_map_info.offset.x) / m_map_info.ppm;
-        p_metric.y = -(y - m_map_info.offset.y) / m_map_info.ppm;
-        dg::LatLon p_gps = m_localizer.toLatLon(p_metric);
-
-        setDeepGuiderDestination(p_gps);
+        dg::LatLon ll = m_painter.cvtPixel2LatLon(cv::Point(x, y), m_map_info);
+        setDeepGuiderDestination(ll);
     }
     else if (evt == cv::EVENT_RBUTTONDOWN)
     {
@@ -609,25 +603,9 @@ bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
 
     // draw map
     m_map_image_original.copyTo(m_map_image);
-    m_localizer_mutex.lock();
-    dg::RoadMap road_map = m_localizer.getMap();
-    m_localizer_mutex.unlock();
-    VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, road_map));
-    m_map_info = m_painter.getCanvasInfo(road_map, m_map_image.size());
+    m_painter.drawMap(m_map_image, m_map_info, map);
+    m_painter.drawPath(m_map_image, m_map_info, map, path);
 
-    // draw path on the map
-    dg::DirectedGraph<dg::Point2ID, double>::Node* node_prev = nullptr;
-    for (int idx = 0; idx < (int)path.pts.size(); idx++)
-    {
-        dg::ID node_id = path.pts[idx].node_id;
-        dg::DirectedGraph<dg::Point2ID, double>::Node* node = road_map.getNode(node_id);
-        if (node){
-            if (node_prev) m_painter.drawEdge(m_map_image, m_map_info, node_prev->data, node->data, 0, cv::Vec3b(200, 0, 0), 2);
-            if (node_prev) m_painter.drawNode(m_map_image, m_map_info, node_prev->data, 5, 0, cv::Vec3b(50, 0, 255));
-            m_painter.drawNode(m_map_image, m_map_info, node->data, 5, 0, cv::Vec3b(50, 0, 255));
-            node_prev = node;
-        }
-    }
     printf("\tGUI map is updated with new map and path!\n");
 
     return true;    
@@ -731,8 +709,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
             dg::StreetView sv = m_map_manager.getStreetView(sv_id);
             if(sv.id == sv_id)
             {
-                dg::Point2 sv_pos = m_localizer.toMetric(dg::LatLon(sv.lat, sv.lon));
-                m_painter.drawNode(image, m_map_info, dg::Point2ID(0, sv_pos.x, sv_pos.y), 6, 0, cv::Vec3b(255, 255, 0));
+                m_painter.drawNode(image, m_map_info, dg::LatLon(sv.lat, sv.lon), 6, 0, cv::Vec3b(255, 255, 0));
             }
         }
     }
@@ -802,8 +779,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     m_localizer_mutex.unlock();
 
     // draw robot on the map
-    m_painter.drawNode(image, m_map_info, dg::Point2ID(0, pose_metric.x, pose_metric.y), 10, 0, cx::COLOR_YELLOW);
-    m_painter.drawNode(image, m_map_info, dg::Point2ID(0, pose_metric.x, pose_metric.y), 8, 0, cx::COLOR_BLUE);
+    m_painter.drawNode(image, m_map_info, pose_gps, 10, 0, cx::COLOR_YELLOW);
+    m_painter.drawNode(image, m_map_info, pose_gps, 8, 0, cx::COLOR_BLUE);
 
     // draw status message (localization)
     cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
