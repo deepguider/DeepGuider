@@ -271,7 +271,7 @@ public:
 	 * Get the current StreetViews vector
 	 * @return A reference to gotten StreetViews vector
 	 */
-	std::vector<StreetView>& getStreetView();
+	std::vector<StreetView> getStreetView();
 
 	/**
 	 * Get the StreetView corresponding to a certain StreetView ID
@@ -288,7 +288,7 @@ public:
 	 * @param radius The given radius of this StreetView (Unit: [m])
 	 * @return A vector to gotten StreetViews
 	 */
-	std::vector<StreetView>& getStreetView(ID sv_id, double radius = 10.0);
+	std::vector<StreetView> getStreetView(ID sv_id, double radius = 10.0);
 
 	/**
 	 * Download the StreetView image corresponding to a certain StreetView ID

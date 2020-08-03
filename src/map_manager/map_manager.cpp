@@ -1256,7 +1256,7 @@ bool MapManager::parseStreetView(const char* json)
 	return true;
 }
 
-std::vector<StreetView>& MapManager::getStreetView()
+std::vector<StreetView> MapManager::getStreetView()
 {
 	return m_map->views;
 }
@@ -1362,7 +1362,7 @@ bool MapManager::getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_vec
 //
 //	return getStreetView(sv_id, found->second, 10.0);
 //}
-std::vector<StreetView>& MapManager::getStreetView(ID sv_id, double radius)
+std::vector<StreetView> MapManager::getStreetView(ID sv_id, double radius)
 {
 	m_map->views.clear();
 	m_json = "";

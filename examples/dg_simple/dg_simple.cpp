@@ -706,10 +706,10 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         // show gps position of top-1 matched image on the map
         if (sv_id > 0)
         {
-            dg::StreetView sv = m_map_manager.getStreetView(sv_id);
-            if(sv.id == sv_id)
+            vector<dg::StreetView> sv = m_map_manager.getStreetView(sv_id);
+            if(!sv.empty() && sv.front().id == sv_id)
             {
-                m_painter.drawNode(image, m_map_info, dg::LatLon(sv.lat, sv.lon), 6, 0, cv::Vec3b(255, 255, 0));
+                m_painter.drawNode(image, m_map_info, dg::LatLon(sv.front().lat, sv.front().lon), 6, 0, cv::Vec3b(255, 255, 0));
             }
         }
     }
