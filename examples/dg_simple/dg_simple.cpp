@@ -568,7 +568,7 @@ bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
     // generate path to destination
     dg::Path path;
     m_map_mutex.lock();
-    bool ok = m_map_manager.getPath(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon, path);
+    bool ok = m_map_manager.getPath_expansion(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon, path);
     m_map_mutex.unlock();
     if(!ok)
     {
