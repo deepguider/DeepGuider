@@ -529,6 +529,99 @@ bool MapManager::getMap(Path path, Map& map, double alpha)
 	double max_lat = *max_element(lats.begin(), lats.end());
 	double min_lon = *min_element(lons.begin(), lons.end());
 	double max_lon = *max_element(lons.begin(), lons.end());
+	
+	UTMConverter utm_conv;
+	Point2 min_metric = utm_conv.toMetric(LatLon(min_lat, min_lon));
+	Point2 max_metric = utm_conv.toMetric(LatLon(max_lat, max_lon));
+	double dist_metric = sqrt(pow((max_metric.x - min_metric.x), 2) + pow((max_metric.y - min_metric.y), 2));
+	double center_lat = (min_lat + max_lat) / 2;
+	double center_lon = (min_lon + max_lon) / 2;
+
+
+	if (m_isMap)
+	{
+		delete m_map;
+		m_isMap = false;
+
+		//m_path.pts.clear();
+		//lookup_path.clear();
+	}
+	m_map = new Map();
+	m_isMap = true;
+	//m_map->nodes.clear();
+	m_json = "";
+
+	// by communication
+	bool ok = downloadMap(center_lat, center_lon, (dist_metric / 2) + alpha);
+	if (!ok) return false;
+
+	const char* json = m_json.c_str();
+	ok = parseMap(json);
+	if (!ok) return false;
+
+	map = getMap();
+
+	return true;
+}
+
+bool MapManager::getMap_expansion(Path path, Map& map, double alpha)
+{
+	/*double lat = 36.38;
+	double lon = 127.373;
+	double r = 1000.0;
+
+
+	loadMap(lat, lon, r);
+
+	return getMap();*/
+
+	std::vector<double> lats, lons;
+
+	if (path.pts.size() == 0) return false;
+
+	for (std::vector<PathElement>::iterator it = path.pts.begin(); it < path.pts.end(); it++)
+	{
+		auto found = lookup_path.find(it->node_id);
+		if (found == lookup_path.end()) return false;
+
+		// swapped lat and lon
+		if ((found->second.lat) > (found->second.lon))
+		{
+			lats.push_back(found->second.lon);
+			lons.push_back(found->second.lat);
+			continue;
+		}
+
+		lats.push_back(found->second.lat);
+		lons.push_back(found->second.lon);
+	}
+
+	double min_lat = *min_element(lats.begin(), lats.end());
+	double max_lat = *max_element(lats.begin(), lats.end());
+	double min_lon = *min_element(lons.begin(), lons.end());
+	double max_lon = *max_element(lons.begin(), lons.end());
+
+	// auto topological map expansion mode
+	std::vector<double> lats_map, lons_map;
+	for (std::vector<Node>::iterator it = m_map->nodes.begin(); it < m_map->nodes.end(); it++)
+	{
+		// swapped lat and lon
+		if ((it->lat) > (it->lon))
+		{
+			lats_map.push_back(it->lon);
+			lons_map.push_back(it->lat);
+			continue;
+		}
+
+		lats_map.push_back(it->lat);
+		lons_map.push_back(it->lon);
+	}
+	double min_lat_map = *min_element(lats_map.begin(), lats_map.end());
+	double max_lat_map = *max_element(lats_map.begin(), lats_map.end());
+	double min_lon_map = *min_element(lons_map.begin(), lons_map.end());
+	double max_lon_map = *max_element(lons_map.begin(), lons_map.end());
+	if (min_lat > min_lat_map&& max_lat < max_lat_map && min_lon > min_lon_map&& max_lon < max_lon_map)
+		return true;
 
 	UTMConverter utm_conv;
 	Point2 min_metric = utm_conv.toMetric(LatLon(min_lat, min_lon));
@@ -688,7 +781,7 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	bool ok = downloadPath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
 	if (!ok) return false;
 	//decodeUni();
-	if (m_json == "[]\n")
+	if (m_json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
 	{
 		ok = downloadPath(round(start_lat * 1000) / 1000, round(start_lon * 1000) / 1000, round(dest_lat * 1000) / 1000, round(dest_lon * 1000) / 1000, num_paths);
 		if (m_json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
@@ -732,6 +825,71 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	return true;
 }
 
+bool MapManager::generatePath_expansion(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
+{
+	/*UTMConverter utm_conv;
+	Point2 start_metric = utm_conv.toMetric(LatLon(start_lat, start_lon));
+	Point2 dest_metric = utm_conv.toMetric(LatLon(dest_lat, dest_lon));
+	double dist_metric = sqrt(pow((dest_metric.x - start_metric.x), 2) + pow((dest_metric.y - start_metric.y), 2));
+	double alpha = 50;*/
+
+	//double center_lat = (start_lat + dest_lat) / 2;
+	//double center_lon = (start_lon + dest_lon) / 2;
+	//bool ok = loadMap(center_lat, center_lon, 200);//(dist_metric / 2) + alpha);
+	//if (!ok) return false;
+
+	m_path.pts.clear();
+	lookup_path.clear();
+	m_json = "";
+
+	// by communication
+	bool ok = downloadPath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
+	if (!ok) return false;
+	//decodeUni();
+	if (m_json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
+	{
+		ok = downloadPath(round(start_lat * 1000) / 1000, round(start_lon * 1000) / 1000, round(dest_lat * 1000) / 1000, round(dest_lon * 1000) / 1000, num_paths);
+		if (m_json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
+		{
+			std::cout << "Invalid latitude or longitude!!" << std::endl;
+			return false;
+		}
+		if (!ok) return false;
+	}
+
+	const char* json = m_json.c_str();
+
+	//#ifdef _DEBUG
+	//	fprintf(stdout, "%s\n", json);
+	//#endif
+	ok = parsePath(json);
+	if (!ok) return false;
+
+	Path path = m_path;
+	Map map;
+	ok = getMap_expansion(path, map);	// The On of auto topological map expansion mode
+	if (!ok) return false;
+
+	/*m_path.pts.clear();
+	for (size_t i = 0; i < path.pts.size(); i++)
+	{
+		PathElement p;
+		p.node = m_map->findNode(path.pts[i].node->id);
+
+		if ((i + 1) < path.pts.size())
+		{
+			if ((i + 1) < path.pts.size()) p.edge = m_map->findEdge(path.pts[i].edge->id);
+		}
+		else p.edge = nullptr;
+		m_path.pts.push_back(p);
+
+		delete path.pts[i].node;
+		delete path.pts[i].edge;
+	}*/
+
+	return true;
+}
+
 Path MapManager::getPath()
 {
 	return m_path;
@@ -740,6 +898,16 @@ Path MapManager::getPath()
 bool MapManager::getPath(double start_lat, double start_lon, double dest_lat, double dest_lon, Path& path, int num_paths)
 {
 	bool ok = generatePath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
+	if (!ok) return false;
+
+	path = getPath();
+
+	return true;
+}
+
+bool MapManager::getPath_expansion(double start_lat, double start_lon, double dest_lat, double dest_lon, Path& path, int num_paths)
+{
+	bool ok = generatePath_expansion(start_lat, start_lon, dest_lat, dest_lon, num_paths);
 	if (!ok) return false;
 
 	path = getPath();
@@ -849,6 +1017,12 @@ bool MapManager::getPOI(double lat, double lon, double radius, std::vector<POI>&
 //#ifdef _DEBUG
 //	fprintf(stdout, "%s\n", json);
 //#endif
+	if (json == "[]\n" || json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
+	{
+		std::cout << "Invalid latitude or longitude!!" << std::endl;
+		return false;
+	}
+
 	bool ok = parsePOI(json);
 	if (!ok)
 	{
@@ -874,6 +1048,12 @@ bool MapManager::getPOI(double lat, double lon, double radius, std::vector<POI>&
 //#ifdef _DEBUG
 //	fprintf(stdout, "%s\n", json);
 //#endif
+	if (json == "[]\n" || json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
+	{
+		std::cout << "Invalid node ID!!" << std::endl;
+		return false;
+	}
+
 	bool ok = parsePOI(json);
 	if (!ok)
 	{
@@ -899,6 +1079,12 @@ bool MapManager::getPOI(cv::Point2i tile, std::vector<POI>& poi_vec)
 	//#ifdef _DEBUG
 	//	fprintf(stdout, "%s\n", json);
 	//#endif
+	if (json == "[]\n" || json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
+	{
+		std::cout << "Invalid map tile!!" << std::endl;
+		return false;
+	}
+
 	bool ok = parsePOI(json);
 	if (!ok)
 	{
