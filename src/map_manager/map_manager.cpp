@@ -233,7 +233,7 @@ bool MapManager::downloadMap(double lat, double lon, double radius)
 
 bool MapManager::downloadMap(ID node_id, double radius)
 {
-	const std::string url_middle = ":21500/node/";
+	const std::string url_middle = ":21500/routing_node/";
 	std::string url = "http://" + m_ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -956,7 +956,7 @@ bool MapManager::downloadPOI(double lat, double lon, double radius)
 
 bool MapManager::downloadPOI(ID node_id, double radius)
 {
-	const std::string url_middle = ":21502/node/";
+	const std::string url_middle = ":21502/routing_node/";
 	std::string url = "http://" + m_ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
@@ -1164,7 +1164,7 @@ bool MapManager::downloadStreetView(double lat, double lon, double radius)
 
 bool MapManager::downloadStreetView(ID node_id, double radius)
 {
-	const std::string url_middle = ":21501/node/";
+	const std::string url_middle = ":21501/routing_node/";
 	std::string url = "http://" + m_ip + url_middle + std::to_string(node_id) + "/" + std::to_string(radius);
 
 	return query2server(url);
