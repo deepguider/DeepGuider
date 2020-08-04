@@ -606,8 +606,7 @@ bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
 
     // guidance: init map and path for guidance
     m_guider_mutex.lock();
-    VVS_CHECK_TRUE(m_guider.setPathNMap(path, map));
-    VVS_CHECK_TRUE(m_guider.initializeGuides());
+    VVS_CHECK_TRUE(m_guider.initiateNewGuidance(path, map));
     m_guider_mutex.unlock();
     printf("\tGuidance is updated with new map and path!\n");
 
