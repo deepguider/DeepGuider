@@ -366,10 +366,7 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
 
     // draw gps history on the map
     const dg::LatLon gps_datum(lat, lon);
-    m_localizer_mutex.lock();
-    dg::Point2 gps_pt = m_localizer.toMetric(gps_datum);
-    m_localizer_mutex.unlock();
-    m_painter.drawNode(m_map_image, m_map_info, dg::Point2ID(0, gps_pt), 2, 0, cv::Vec3b(0, 0, 255));
+    m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 0, 255));
 }
 
 // A callback function for subscribing IMU
