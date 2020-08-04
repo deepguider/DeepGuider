@@ -130,7 +130,7 @@ int DeepGuiderROS::run()
         ros::spinOnce();
         loop.sleep();
     }
-    if(m_recording) m_video.release();
+    if(m_recording) m_video_gui.release();
     terminateThreadFunctions();
     cv::destroyWindow(m_winname);
     printf("End deepguider system...\n");
@@ -148,7 +148,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     drawGuiDisplay(gui_image);
 
     // recording
-    if (m_recording) m_video << gui_image;
+    if (m_recording) m_video_gui << gui_image;
 
     cv::imshow(m_winname, gui_image);
     int key = cv::waitKey(1);

@@ -228,11 +228,11 @@ namespace dg
             }
         }
 
-        void write(std::ofstream& stream) const
+        void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
             for (int k = 0; k < m_streetviews.size(); k++)
             {
-                std::string log = cv::format("%.3lf,%s,%d,%zu,%.2lf,%.3lf", m_timestamp, name(), k, m_streetviews[k].id, m_streetviews[k].confidence, m_processing_time);
+                std::string log = cv::format("%.3lf,%d,%s,%d,%zu,%.2lf,%.3lf", m_timestamp, cam_fnumber, name(), k, m_streetviews[k].id, m_streetviews[k].confidence, m_processing_time);
                 stream << log << std::endl;
             }
         }

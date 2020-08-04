@@ -167,9 +167,9 @@ namespace dg
 
         }
 
-        void write(std::ofstream& stream) const
+        void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
-            std::string log = cv::format("%.3lf,%s,%d,%.2lf,%.3lf", m_timestamp, name(), m_intersect.cls, m_intersect.confidence, m_processing_time);
+            std::string log = cv::format("%.3lf,%d,%s,%d,%.2lf,%.3lf", m_timestamp, cam_fnumber, name(), m_intersect.cls, m_intersect.confidence, m_processing_time);
             stream << log << std::endl;
         }
 
