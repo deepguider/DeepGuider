@@ -3,6 +3,7 @@
 
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
+#include "utils/utility.hpp"
 #include <fstream>
 #include <chrono>
 
@@ -206,6 +207,35 @@ namespace dg
             {
                 std::string log = cv::format("%.3lf,%d,%s,%s,%.2lf,%d,%d,%d,%d,%.3lf", m_timestamp, cam_fnumber, name(), m_logos[k].label.c_str(), m_logos[k].confidence, m_logos[k].xmin, m_logos[k].ymin, m_logos[k].xmax, m_logos[k].ymax, m_processing_time);
                 stream << log << std::endl;
+            }
+        }
+
+        void read(const std::vector<std::string>& stream)
+        {
+            m_logos.clear();
+            for (int k = 0; k < (int)stream.size(); k++)
+            {
+                std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
+                if (elems.size() != 10)
+                {
+                    printf("[logo] Invalid log data %s\n", stream[k].c_str());
+                    return;
+                }
+                std::string module_name = elems[2];
+                if (module_name == name())
+                {
+                    LogoResult r;
+                    r.label = elems[3];
+                    r.confidence = atof(elems[4].c_str());
+                    r.xmin = atoi(elems[5].c_str());
+                    r.ymin = atoi(elems[6].c_str());
+                    r.xmax = atoi(elems[7].c_str());
+                    r.ymax = atoi(elems[8].c_str());
+                    m_logos.push_back(r);
+
+                    m_timestamp = atof(elems[0].c_str());
+                    m_processing_time = atof(elems[9].c_str());
+                }
             }
         }
 

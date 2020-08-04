@@ -7,5 +7,6 @@
 #include "utils/opensx.hpp"
 #include "utils/tts.hpp"
 #include "utils/map_painter.hpp"
+#include "utils/utility.hpp"
 
 #endif // End of '__DG_UTILS__'

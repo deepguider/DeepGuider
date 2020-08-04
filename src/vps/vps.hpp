@@ -3,6 +3,7 @@
 
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
+#include "utils/utility.hpp"
 #include <fstream>
 #include <chrono>
 
@@ -234,6 +235,33 @@ namespace dg
             {
                 std::string log = cv::format("%.3lf,%d,%s,%d,%zu,%.2lf,%.3lf", m_timestamp, cam_fnumber, name(), k, m_streetviews[k].id, m_streetviews[k].confidence, m_processing_time);
                 stream << log << std::endl;
+            }
+        }
+
+        void read(const std::vector<std::string>& stream)
+        {
+            m_streetviews.clear();
+            m_streetviews.resize(stream.size());
+            for (int k = 0; k < (int)stream.size(); k++)
+            {
+                std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
+                if (elems.size() != 7)
+                {
+                    printf("[vps] Invalid log data %s\n", stream[k].c_str());
+                    return;
+                }
+                std::string module_name = elems[2];
+                if (module_name == name())
+                {
+                    VPSResult r;
+                    int top_k = atoi(elems[3].c_str());
+                    r.id = (dg::ID)atof(elems[4].c_str());
+                    r.confidence = atof(elems[5].c_str());
+                    m_streetviews[top_k] = r;
+
+                    m_timestamp = atof(elems[0].c_str());
+                    m_processing_time = atof(elems[6].c_str());
+                }
             }
         }
 

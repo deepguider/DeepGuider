@@ -3,6 +3,7 @@
 
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
+#include "utils/utility.hpp"
 #include <fstream>
 #include <chrono>
 
@@ -171,6 +172,27 @@ namespace dg
         {
             std::string log = cv::format("%.3lf,%d,%s,%d,%.2lf,%.3lf", m_timestamp, cam_fnumber, name(), m_intersect.cls, m_intersect.confidence, m_processing_time);
             stream << log << std::endl;
+        }
+
+        void read(const std::vector<std::string>& stream)
+        {
+            for (int k = 0; k < (int)stream.size(); k++)
+            {
+                std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
+                if (elems.size() != 6)
+                {
+                    printf("[intersection] Invalid log data %s\n", stream[k].c_str());
+                    return;
+                }
+                std::string module_name = elems[2];
+                if (module_name == name())
+                {
+                    m_intersect.cls = atoi(elems[3].c_str());
+                    m_intersect.confidence = atof(elems[4].c_str());
+                    m_timestamp = atof(elems[0].c_str());
+                    m_processing_time = atof(elems[5].c_str());
+                }
+            }
         }
 
         static const char* name()
