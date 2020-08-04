@@ -70,6 +70,7 @@ protected:
     cv::Mat m_map_image_original;
     dg::MapPainter m_painter;
     dg::MapCanvasInfo m_map_info;    
+    dg::GuidanceManager::Motion m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
 
     // global variables
     dg::LatLon m_gps_start;
@@ -1002,7 +1003,30 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     printf("%s\n", cur_guide.msg.c_str());
     
     // tts guidance message
-    if(m_enable_tts && cur_guide.announce) tts(cur_guide.msg.c_str());
+    if (m_enable_tts && cur_guide.announce && !cur_guide.actions.empty())
+    {
+        dg::GuidanceManager::Motion cmd = cur_guide.actions[0].cmd;
+        if (cmd != m_guidance_cmd)
+        {
+            std::string tts_msg;
+            if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) tts_msg = "Go forward";
+            else if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD)  tts_msg = "Cross forward";
+            else if (cmd == dg::GuidanceManager::Motion::ENTER_FORWARD) tts_msg = "Enter forward";
+            else if (cmd == dg::GuidanceManager::Motion::EXIT_FORWARD) tts_msg = "Exit forward";
+            else if (cmd == dg::GuidanceManager::Motion::TURN_LEFT) tts_msg = "Turn left";
+            else if (cmd == dg::GuidanceManager::Motion::CROSS_LEFT) tts_msg = "Cross left";
+            else if (cmd == dg::GuidanceManager::Motion::ENTER_LEFT) tts_msg = "Enter left";
+            else if (cmd == dg::GuidanceManager::Motion::EXIT_LEFT) tts_msg = "Exit left";
+            else if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT) tts_msg = "Turn right";
+            else if (cmd == dg::GuidanceManager::Motion::CROSS_RIGHT) tts_msg = "Cross right";
+            else if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) tts_msg = "Enter right";
+            else if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) tts_msg = "Exit right";
+            else if (cmd == dg::GuidanceManager::Motion::TURN_BACK) tts_msg = "Turn back";
+
+            if(!tts_msg.empty()) tts(tts_msg.c_str());
+            m_guidance_cmd = cmd;
+        }
+    }
 
     // check arrival
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
