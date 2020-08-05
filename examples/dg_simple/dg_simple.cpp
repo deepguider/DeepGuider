@@ -107,7 +107,7 @@ protected:
     cv::Mutex m_cam_mutex;
     cv::Mat m_cam_image;
     dg::Timestamp m_cam_capture_time;
-    dg::LatLon m_cam_capture_pos;
+    dg::LatLon m_cam_gps;
     int m_cam_fnumber;              // frame number
 
     cv::Mutex m_vps_mutex;
@@ -447,7 +447,7 @@ int DeepGuider::run()
         m_cam_mutex.lock();
         m_cam_image = video_image;
         m_cam_capture_time = video_time;
-        m_cam_capture_pos = gps_datum;
+        m_cam_gps = gps_datum;
         m_cam_fnumber++;
         m_cam_mutex.unlock();
 
@@ -1067,7 +1067,7 @@ bool DeepGuider::procIntersectionClassifier()
     m_cam_mutex.lock();
     cv::Mat cam_image = m_cam_image.clone();
     dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_capture_pos;
+    dg::LatLon capture_pos = m_cam_gps;
     int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
@@ -1105,7 +1105,7 @@ bool DeepGuider::procLogo()
     m_cam_mutex.lock();
     cv::Mat cam_image = m_cam_image.clone();
     dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_capture_pos;
+    dg::LatLon capture_pos = m_cam_gps;
     int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
@@ -1159,7 +1159,7 @@ bool DeepGuider::procOcr()
     m_cam_mutex.lock();
     cv::Mat cam_image = m_cam_image.clone();
     dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_capture_pos;
+    dg::LatLon capture_pos = m_cam_gps;
     int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
@@ -1214,7 +1214,7 @@ bool DeepGuider::procRoadTheta()
     m_cam_mutex.lock();
     cv::Mat cam_image = m_cam_image.clone();
     dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_capture_pos;
+    dg::LatLon capture_pos = m_cam_gps;
     int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
@@ -1426,7 +1426,7 @@ bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++
     m_cam_mutex.lock();
     cv::Mat cam_image = m_cam_image.clone();
     dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_capture_pos;
+    dg::LatLon capture_pos = m_cam_gps;
     int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 

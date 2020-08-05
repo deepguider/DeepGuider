@@ -277,11 +277,20 @@ void DeepGuiderROS::callbackImageCompressed(const sensor_msgs::CompressedImageCo
     cv_bridge::CvImagePtr image_ptr;
     try
     {
+        cv::Mat logging_image;
         m_cam_mutex.lock();
         m_cam_image = cv::imdecode(cv::Mat(msg->data), 1);//convert compressed image data to cv::Mat
         m_cam_capture_time = msg->header.stamp.toSec();
-        m_cam_capture_pos = m_localizer.getPoseGPS();
+        m_cam_gps = m_localizer.getPoseGPS();
+        m_cam_fnumber++;
+        if (m_data_logging) logging_image = m_cam_image.clone();
         m_cam_mutex.unlock();
+
+        if (m_data_logging)
+        {
+            m_video_cam << logging_image;
+        }
+
     }
     catch (cv_bridge::Exception& e)
     {
