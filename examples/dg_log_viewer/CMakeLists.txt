@@ -12,12 +12,9 @@ set(RAPIDJSON_INC "${EXTDIR}/rapidjson/include")
 set(CURL_LIBRARIES "-lcurl")
 set(JSONCPP_LIBRARIES "-ljsoncpp")
 
-add_definitions(-DDG_TEST_SIMPLE)
-#add_definitions(-DVPSSERVER)
-
 find_package( PythonInterp 3.6 REQUIRED )
 find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV REQUIRED )
+find_package( OpenCV 4.0 REQUIRED )
 find_package( CURL REQUIRED ) 
 
 INCLUDE_DIRECTORIES ( ${SRCDIR} ${RAPIDJSON_INC} ${PYTHON_INCLUDE_DIRS} )

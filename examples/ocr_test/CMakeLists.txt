@@ -10,7 +10,7 @@ set(SRCDIR	"${CMAKE_SOURCE_DIR}/../../src")
 
 find_package( PythonInterp 3.6 REQUIRED )
 find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV REQUIRED )
+find_package( OpenCV 4.0 REQUIRED )
 
 INCLUDE_DIRECTORIES ( ${SRCDIR} ${PYTHON_INCLUDE_DIRS} )
 

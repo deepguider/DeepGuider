@@ -29,6 +29,17 @@ namespace dg
     {
     public:
         /**
+        * Constructor
+        */
+        OCRRecognizer()
+        {
+#ifdef HAVE_OPENCV_FREETYPE
+            m_ft2 = cv::freetype::createFreeType2();
+            m_ft2->loadFontData("font/gulim.ttf", 0);
+#endif
+        }
+
+        /**
         * Initialize the module
         * @return true if successful (false if failed)
         */
@@ -199,19 +210,19 @@ namespace dg
             {
                 cv::Rect rc(m_ocrs[i].xmin, m_ocrs[i].ymin, m_ocrs[i].xmax - m_ocrs[i].xmin + 1, m_ocrs[i].ymax - m_ocrs[i].ymin + 1);
                 cv::rectangle(image, rc, color, width);
-                cv::Point pt(m_ocrs[i].xmin + 5, m_ocrs[i].ymin + 35);
-                std::string msg = cv::format("%s %.2lf", m_ocrs[i].label.c_str(), m_ocrs[i].confidence);
+                cv::Point pt(m_ocrs[i].xmin + 3, m_ocrs[i].ymin - 5);
+                std::string msg = cv::format("%s (%.2lf)", m_ocrs[i].label.c_str(), m_ocrs[i].confidence);
 #ifdef HAVE_OPENCV_FREETYPE
                 if(m_ft2)
                 {
-                    m_ft2->putText(image, msg, pt, 30, cv::Scalar(0, 255, 0), 2, cv::LINE_AA, true);
-                    m_ft2->putText(image, msg, pt, 30, cv::Scalar(0, 0, 0), -1, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, 28, cv::Scalar(0, 255, 255), 2, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, 28, cv::Scalar(255, 0, 0), -1, cv::LINE_AA, true);
                 }
                 else
 #endif
                 {
-                    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
-                    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
+                    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 255), 6);
+                    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255, 0, 0), 2);
                 }
             }
         }

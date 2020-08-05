@@ -1,3 +1,6 @@
+#define HAVE_OPENCV_FREETYPE
+
+
 #define VVS_NO_ASSERT
 #include "dg_core.hpp"
 #include "dg_map_manager.hpp"
@@ -66,20 +69,17 @@ public:
         sv_black = 0;
 
         cv::Mat image;
-        cv::Mat result;
-        cv::Mat display;
         int fn = -1;
         while (1)
         {
             vc >> image;
             if (image.empty()) break;
             fn++;
+            if (fn >= m_total_frames) break;
             
             // drawing
+            int disp_delay = 1;
             double fps = -1;
-            if (sel == 0) result = sv_black;
-            else result = image.clone();
-
             if (sel == 0 && !m_data[fn].vps.empty())
             {
                 vps.read(m_data[fn].vps);
@@ -91,31 +91,39 @@ public:
                     int h = image.rows;
                     int w = sv_image.cols * image.rows / sv_image.rows;
                     cv::resize(sv_image, sv_image, cv::Size(w, h));
-                    result = sv_image;
+                    disp_delay = 100;
                 }
+                else
+                {
+                    sv_image = sv_black.clone();
+                }                
 
                 if (!svs.empty() && svs[0].id > 0)
                 {
-                    vps.draw(result);
+                    vps.draw(sv_image);
                     fps = 1.0 / vps.procTime();
                 }
+                cv::hconcat(image, sv_image, image);
             }
             else if (sel == 1 && !m_data[fn].ocr.empty())
             {
                 ocr.read(m_data[fn].ocr);
-                ocr.draw(result);
+                ocr.draw(image);
                 if (!m_data[fn].ocr.empty()) fps = 1.0 / ocr.procTime();
+                disp_delay = 1000;
             }
             else if (sel == 2 && !m_data[fn].logo.empty())
             {
                 logo.read(m_data[fn].logo);
-                logo.draw(result);
+                logo.draw(image);
                 if (!m_data[fn].logo.empty()) fps = 1.0 / logo.procTime();
+                disp_delay = 1000;
             }
             else if (sel == 3 && !m_data[fn].intersection.empty())
             {
                 intersection.read(m_data[fn].intersection);
-                intersection.draw(result);
+                intersection.draw(image);
+                disp_delay = 100;
             }
 
             // fn & fps
@@ -123,14 +131,13 @@ public:
             if (fps > 0)
                 str = cv::format("#%d (FPS: %.1lf)", fn, fps);
             else
-                str = cv::format("#%d (FPS: N/A)", fn, fps);
+                str = cv::format("#%d (FPS: N/A)", fn);
             cv::putText(image, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
             cv::putText(image, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
 
             // display
-            cv::hconcat(image, result, display);
-            cv::imshow("result", display);
-            int key = cv::waitKey(100);
+            cv::imshow("result", image);
+            int key = cv::waitKey(disp_delay);
             if (key == cx::KEY_SPACE) key = cv::waitKey(0);
             if (key == 83)    // Right Key
             {
@@ -149,9 +156,10 @@ protected:
 
     bool build(ifstream& stream, cv::VideoCapture& vc)
     {
+        // in case of broken video, total_frames is zero.
+        m_data.clear();
         m_total_frames = (int)(vc.get(cv::CAP_PROP_FRAME_COUNT));
-        if (m_total_frames <= 0) return false;
-        m_data.resize(m_total_frames);
+        if(m_total_frames>0) m_data.resize(m_total_frames);
 
         // parse log data
         char buf[MAX_DATA_LEN];
@@ -171,7 +179,11 @@ protected:
             sscanf(buf, "%lf,%d,%s", &ts, &fn, buf_tmp);
             int idx = (int)string(buf_tmp).find_first_of(',');
             std::string name = string(buf_tmp).substr(0, idx);
-            //printf("ts = %.3lf, fn = %d, name = %s\n", ts, fn, name.c_str());
+            while (fn >= 0 && m_total_frames <= fn)
+            {
+                m_data.push_back(LogFrameData());
+                m_total_frames++;
+            }
             if (fn >= 0 && fn < m_total_frames)
             {
                 if (name == "vps")
@@ -192,16 +204,25 @@ protected:
 
 int main(int argc, char* argv[])
 {
-    int module_selection = 0;     // 0: vps, 1: ocr, 2: logo, 3: intersection
+    int module_selection = 2;     // 0: vps, 1: ocr, 2: logo, 3: intersection
 
-    std::string dataname = "dg_simple_200804_102346";
-    if (argc > 1)dataname = argv[1];
+    std::string dataname = "dg_ros_200805_114356";
+    if (argc > 1) dataname = argv[1];
+    if (argc > 2) 
+    {
+        std::string module_name = argv[2];
+        if(module_name == "vps") module_selection = 0;
+        if(module_name == "ocr") module_selection = 1;
+        if(module_name == "logo") module_selection = 2;
+        if(module_name == "intersection") module_selection = 3;
+    }
 
     std::string fname_log = dataname + ".txt";
     std::string fname_cam = dataname + "_cam.avi";
 
     LogViewer viewer;
     viewer.run(fname_log, fname_cam, module_selection);
+    printf("done...\n");
     return 0;
 }
 

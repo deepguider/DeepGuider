@@ -7,10 +7,10 @@
 namespace dg
 {
 
-std::vector<string> splitStr(const char* buf, int buf_len, char dlm = ',')
+std::vector<std::string> splitStr(const char* buf, int buf_len, char dlm = ',')
 {
     int i = 0;
-    std::vector<string> vstr;
+    std::vector<std::string> vstr;
 
     // parsing data
     char tmp[256];

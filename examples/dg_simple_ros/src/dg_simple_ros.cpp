@@ -130,10 +130,16 @@ int DeepGuiderROS::run()
         ros::spinOnce();
         loop.sleep();
     }
-    if(m_recording) m_video_gui.release();
-    terminateThreadFunctions();
-    cv::destroyWindow(m_winname);
     printf("End deepguider system...\n");
+    nh_dg.shutdown();
+    printf("\tros shutdowned\n");
+    terminateThreadFunctions();
+    printf("\tthread terminated\n");
+    cv::destroyWindow(m_winname);
+    printf("\tgui window destroyed\n");
+    if(m_recording) m_video_gui.release();
+    if(m_data_logging) m_video_cam.release();
+    printf("done!\n");
 
     return 0;
 }
@@ -225,13 +231,6 @@ void DeepGuiderROS::terminateThreadFunctions()
     m_enable_intersection = false;
     m_enable_roadtheta = false;
 
-    // wait up to 4000 ms at maximum
-    for (int i = 0; i<40; i++)
-    {
-        if (!is_vps_running && !is_ocr_running && !is_logo_running && !is_intersection_running && !is_roadtheta_running) break;
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-
     // wait child thread to terminate
     if (is_vps_running) vps_thread->join();
     if (is_ocr_running) ocr_thread->join();
@@ -290,7 +289,6 @@ void DeepGuiderROS::callbackImageCompressed(const sensor_msgs::CompressedImageCo
         {
             m_video_cam << logging_image;
         }
-
     }
     catch (cv_bridge::Exception& e)
     {

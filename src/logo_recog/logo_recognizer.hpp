@@ -185,10 +185,10 @@ namespace dg
             {
                 cv::Rect rc(m_logos[i].xmin, m_logos[i].ymin, m_logos[i].xmax - m_logos[i].xmin + 1, m_logos[i].ymax - m_logos[i].ymin + 1);
                 cv::rectangle(image, rc, color, width);
-                cv::Point pt(m_logos[i].xmin + 5, m_logos[i].ymin + 35);
+                cv::Point pt(m_logos[i].xmin + 3, m_logos[i].ymin - 5);
                 std::string msg = cv::format("%s %.2lf", m_logos[i].label.c_str(), m_logos[i].confidence);
-                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 0), 6);
-                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 0, 0), 2);
+                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 255), 6);
+                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255, 0, 0), 2);
             }
         }
 
