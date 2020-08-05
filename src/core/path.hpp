@@ -41,6 +41,12 @@ public:
      */
     Path() { }
 
+    /** gps position of the starting point */
+    LatLon start_pos;
+
+    /** gps position of the destination point */
+    LatLon dest_pos;
+
     /** A series of nodes and edges for a path */
     std::vector<PathElement> pts;
 };

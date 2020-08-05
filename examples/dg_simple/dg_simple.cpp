@@ -83,7 +83,7 @@ protected:
     // internal api's
     bool initializeDefaultMap();
     bool setDeepGuiderDestination(dg::LatLon gps_dest);
-    bool updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest);
+    bool updateDeepGuiderPath(dg::TopometricPose pose_topo, dg::LatLon gps_start, dg::LatLon gps_dest);
     void drawGuiDisplay(cv::Mat& gui_image);
     void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
     void drawLogo(cv::Mat target_image, std::vector<LogoResult> pois, cv::Size original_image_size);
@@ -560,10 +560,11 @@ bool DeepGuider::setDeepGuiderDestination(dg::LatLon gps_dest)
     // get current pose
     m_localizer_mutex.lock();
     dg::LatLon pose_gps = m_localizer.getPoseGPS();
+    dg::TopometricPose pose_topo = m_localizer.getPoseTopometric();
     m_localizer_mutex.unlock();
 
     // generate & apply new path
-    bool ok = updateDeepGuiderPath(pose_gps, gps_dest);
+    bool ok = updateDeepGuiderPath(pose_topo, pose_gps, gps_dest);
     if(!ok) return false;
 
     // update system status
@@ -574,13 +575,27 @@ bool DeepGuider::setDeepGuiderDestination(dg::LatLon gps_dest)
 }
 
 
-bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
+bool DeepGuider::updateDeepGuiderPath(dg::TopometricPose pose_topo, dg::LatLon gps_start, dg::LatLon gps_dest)
 {
+    // set start position to nearest node position
+    m_map_mutex.lock();
+    dg::Map& tmpmap = m_map_manager.getMap();    
+    dg::LatLon pose_gps = gps_start;
+    dg::Node* node = tmpmap.findNode(pose_topo.node_id);
+    if(node)
+    {
+        pose_gps.lat = node->lat;
+        pose_gps.lon = node->lon;
+    }
+    m_map_mutex.unlock();
+
     // generate path to destination
     dg::Path path;
     m_map_mutex.lock();
-    bool ok = m_map_manager.getPath_expansion(gps_start.lat, gps_start.lon, gps_dest.lat, gps_dest.lon, path);
+    bool ok = m_map_manager.getPath_expansion(pose_gps.lat, pose_gps.lon, gps_dest.lat, gps_dest.lon, path);
     m_map_mutex.unlock();
+    path.start_pos = gps_start;
+    path.dest_pos = gps_dest;
     if(!ok)
     {
         printf("[MapManager] fail to find path to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
@@ -1040,7 +1055,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     {
         printf("GUIDANCE: out of path detected!\n");
         if(m_enable_tts) tts("Regenerate path!");
-        VVS_CHECK_TRUE(updateDeepGuiderPath(pose_gps, m_gps_dest));
+        VVS_CHECK_TRUE(updateDeepGuiderPath(pose_topo, pose_gps, m_gps_dest));
     }
 
     // check lost
