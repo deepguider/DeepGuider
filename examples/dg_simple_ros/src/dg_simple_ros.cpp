@@ -20,24 +20,6 @@ public:
 protected:
     double m_wait_sec = 0.1;
 
-    // Thread routines
-    std::thread* vps_thread = nullptr;
-    std::thread* ocr_thread = nullptr;
-    std::thread* logo_thread = nullptr;
-    std::thread* intersection_thread = nullptr;
-    std::thread* roadtheta_thread = nullptr;
-    static void threadfunc_vps(DeepGuiderROS* guider);
-    static void threadfunc_ocr(DeepGuiderROS* guider);
-    static void threadfunc_logo(DeepGuiderROS* guider);
-    static void threadfunc_intersection(DeepGuiderROS* guider);
-    static void threadfunc_roadtheta(DeepGuiderROS* guider);    
-    bool is_vps_running = false;
-    bool is_ocr_running = false;
-    bool is_logo_running = false;
-    bool is_intersection_running = false;
-    bool is_roadtheta_running = false;
-    void terminateThreadFunctions();
-
     // Topic subscribers
     ros::Subscriber sub_image_webcam;
     ros::Subscriber sub_image_realsense_image;
@@ -122,6 +104,7 @@ int DeepGuiderROS::run()
     if (m_enable_intersection) intersection_thread = new std::thread(threadfunc_intersection, this);
     if (m_enable_roadtheta) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
 
+    // run main loop
     ros::Rate loop(1 / m_wait_sec);
     while (ros::ok())
     {
@@ -130,6 +113,8 @@ int DeepGuiderROS::run()
         ros::spinOnce();
         loop.sleep();
     }
+
+    // end system
     printf("End deepguider system...\n");
     terminateThreadFunctions();
     printf("\tthread terminated\n");
@@ -163,98 +148,6 @@ bool DeepGuiderROS::runOnce(double timestamp)
     if (key == cx::KEY_ESC) return false;
 
     return true;
-}
-
-// Thread fnuction for VPS
-void DeepGuiderROS::threadfunc_vps(DeepGuiderROS* guider)
-{
-    guider->is_vps_running = true;
-    printf("vps thread starts\n");
-    while (guider->m_enable_vps)
-    {
-        guider->procVps();
-    }
-    guider->is_vps_running = false;
-    printf("vps thread ends\n");
-}
-
-// Thread fnuction for POI OCR
-void DeepGuiderROS::threadfunc_ocr(DeepGuiderROS* guider)
-{
-    guider->is_ocr_running = true;
-    printf("ocr thread starts\n");
-    while (guider->m_enable_ocr)
-    {
-        guider->procOcr();
-    }
-    guider->is_ocr_running = false;
-    printf("ocr thread ends\n");
-}
-
-// Thread fnuction for POI Logo
-void DeepGuiderROS::threadfunc_logo(DeepGuiderROS* guider)
-{
-    guider->is_logo_running = true;
-    printf("logo thread starts\n");
-    while (guider->m_enable_logo)
-    {
-        guider->procLogo();
-    }
-    guider->is_logo_running = false;
-    printf("logo thread ends\n");
-}
-
-// Thread fnuction for IntersectionClassifier
-void DeepGuiderROS::threadfunc_intersection(DeepGuiderROS* guider)
-{
-    guider->is_intersection_running = true;
-    printf("intersection thread starts\n");
-    while (guider->m_enable_intersection)
-    {
-        guider->procIntersectionClassifier();
-    }
-    guider->is_intersection_running = false;
-    printf("intersection thread ends\n");
-}
-
-// Thread fnuction for RoadTheta
-void DeepGuiderROS::threadfunc_roadtheta(DeepGuiderROS* guider)
-{
-    guider->is_roadtheta_running = true;
-    printf("roadtheta thread starts\n");
-    while (guider->m_enable_roadtheta)
-    {
-        guider->procRoadTheta();
-    }
-    guider->is_roadtheta_running = false;
-    printf("roadtheta thread ends\n");
-}
-
-
-void DeepGuiderROS::terminateThreadFunctions()
-{
-    if (vps_thread == nullptr && ocr_thread == nullptr && logo_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr) return;
-
-    // disable all thread running
-    m_enable_vps = false;
-    m_enable_ocr = false;
-    m_enable_logo = false;
-    m_enable_intersection = false;
-    m_enable_roadtheta = false;
-
-    // wait child thread to terminate
-    if (vps_thread && is_vps_running) vps_thread->join();
-    if (ocr_thread && is_ocr_running) ocr_thread->join();
-    if (logo_thread && is_logo_running) logo_thread->join();
-    if (intersection_thread && is_intersection_running) intersection_thread->join();
-    if (roadtheta_thread && is_roadtheta_running) roadtheta_thread->join();
-
-    // clear threads
-    vps_thread = nullptr;
-    ocr_thread = nullptr;
-    logo_thread = nullptr;
-    intersection_thread = nullptr;
-    roadtheta_thread = nullptr;
 }
 
 // A callback function for subscribing a RGB image

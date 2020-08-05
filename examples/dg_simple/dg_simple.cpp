@@ -34,7 +34,9 @@ public:
 
     bool initialize(std::string config_file);
     int run();
+
     void procMouseEvent(int evt, int x, int y, int flags);
+    void procTTS();
 
 protected:
     bool loadConfig(std::string config_file);
@@ -96,6 +98,32 @@ protected:
     bool procOcr();
     bool procVps();
     bool procRoadTheta();
+
+    // tts
+    cv::Mutex m_tts_mutex;
+    std::vector<std::string> m_tts_msg;
+    std::thread* tts_thread = nullptr;
+    static void threadfunc_tts(DeepGuider* guider);
+    bool is_tts_running = false;
+    void putTTS(const char* msg);
+
+    // Thread routines
+    std::thread* vps_thread = nullptr;
+    std::thread* ocr_thread = nullptr;
+    std::thread* logo_thread = nullptr;
+    std::thread* intersection_thread = nullptr;
+    std::thread* roadtheta_thread = nullptr;
+    static void threadfunc_vps(DeepGuider* guider);
+    static void threadfunc_ocr(DeepGuider* guider);
+    static void threadfunc_logo(DeepGuider* guider);
+    static void threadfunc_intersection(DeepGuider* guider);
+    static void threadfunc_roadtheta(DeepGuider* guider);    
+    bool is_vps_running = false;
+    bool is_ocr_running = false;
+    bool is_logo_running = false;
+    bool is_intersection_running = false;
+    bool is_roadtheta_running = false;
+    void terminateThreadFunctions();
 
 #ifdef VPSSERVER
 	// curl api's
@@ -343,7 +371,11 @@ bool DeepGuider::initialize(std::string config_file)
     m_intersection_image.release();
 
     // tts
-    if(m_enable_tts) tts("System is initialized!");
+    if (m_enable_tts)
+    {
+        tts_thread = new std::thread(threadfunc_tts, this);
+        putTTS("System is initialized!");
+    } 
 
     printf("\tInitialization is done!\n\n");
 
@@ -483,12 +515,17 @@ int DeepGuider::run()
         // flush out logging data
         if (m_data_logging) m_log.flush();
     }
-    
-    if (m_recording) m_video_gui.release();
-    if (m_data_logging) m_video_cam.release();
-    
-    cv::destroyWindow(m_winname);
+
+    // end system
     printf("End deepguider system...\n");
+    terminateThreadFunctions();
+    printf("\tthread terminated\n");
+    if(m_recording) m_video_gui.release();
+    if(m_data_logging) m_video_cam.release();
+    printf("\tclose recording\n");
+    cv::destroyWindow(m_winname);
+    printf("\tgui window destroyed\n");
+    printf("all done!\n");    
 
     return 0;
 }
@@ -1038,7 +1075,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
             else if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) tts_msg = "Exit right";
             else if (cmd == dg::GuidanceManager::Motion::TURN_BACK) tts_msg = "Turn back";
 
-            if(!tts_msg.empty()) tts(tts_msg.c_str());
+            if(!tts_msg.empty()) putTTS(tts_msg.c_str());
             m_guidance_cmd = cmd;
         }
     }
@@ -1047,14 +1084,14 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
     {
         printf("Arrived to destination!\n");
-        if(m_enable_tts) tts("Arrived to destination!");
+        if(m_enable_tts) putTTS("Arrived to destination!");
     }
 
     // check out of path
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP_DETECT || cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
     {
         printf("GUIDANCE: out of path detected!\n");
-        if(m_enable_tts) tts("Regenerate path!");
+        if(m_enable_tts) putTTS("Regenerate path!");
         VVS_CHECK_TRUE(updateDeepGuiderPath(pose_topo, pose_gps, m_gps_dest));
     }
 
@@ -1508,6 +1545,133 @@ bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++
 }
 #endif // VPSSERVER
 
+
+// Thread fnuction for VPS
+void DeepGuider::threadfunc_vps(DeepGuider* guider)
+{
+    guider->is_vps_running = true;
+    printf("\tvps thread starts\n");
+    while (guider->m_enable_vps)
+    {
+        guider->procVps();
+    }
+    guider->is_vps_running = false;
+    printf("\tvps thread ends\n");
+}
+
+// Thread fnuction for POI OCR
+void DeepGuider::threadfunc_ocr(DeepGuider* guider)
+{
+    guider->is_ocr_running = true;
+    printf("\tocr thread starts\n");
+    while (guider->m_enable_ocr)
+    {
+        guider->procOcr();
+    }
+    guider->is_ocr_running = false;
+    printf("\tocr thread ends\n");
+}
+
+// Thread fnuction for POI Logo
+void DeepGuider::threadfunc_logo(DeepGuider* guider)
+{
+    guider->is_logo_running = true;
+    printf("\tlogo thread starts\n");
+    while (guider->m_enable_logo)
+    {
+        guider->procLogo();
+    }
+    guider->is_logo_running = false;
+    printf("\tlogo thread ends\n");
+}
+
+// Thread fnuction for IntersectionClassifier
+void DeepGuider::threadfunc_intersection(DeepGuider* guider)
+{
+    guider->is_intersection_running = true;
+    printf("\tintersection thread starts\n");
+    while (guider->m_enable_intersection)
+    {
+        guider->procIntersectionClassifier();
+    }
+    guider->is_intersection_running = false;
+    printf("\tintersection thread ends\n");
+}
+
+// Thread fnuction for RoadTheta
+void DeepGuider::threadfunc_roadtheta(DeepGuider* guider)
+{
+    guider->is_roadtheta_running = true;
+    printf("\troadtheta thread starts\n");
+    while (guider->m_enable_roadtheta)
+    {
+        guider->procRoadTheta();
+    }
+    guider->is_roadtheta_running = false;
+    printf("\troadtheta thread ends\n");
+}
+
+// Thread fnuction for tts
+void DeepGuider::threadfunc_tts(DeepGuider* guider)
+{
+    guider->is_tts_running = true;
+    printf("\ttts thread starts\n");
+    while (guider->m_enable_tts)
+    {
+        guider->procTTS();
+    }
+    guider->is_tts_running = false;
+    printf("\ttts thread ends\n");
+}
+
+void DeepGuider::putTTS(const char* msg)
+{
+    m_tts_mutex.lock();
+    m_tts_msg.push_back(msg);
+    m_tts_mutex.unlock();
+}
+
+void DeepGuider::procTTS()
+{
+    m_tts_mutex.lock();
+    std::vector<std::string> tts_msg = m_tts_msg;
+    m_tts_msg.clear();
+    m_tts_mutex.unlock();
+
+    for(int i=0; i<(int)tts_msg.size(); i++)
+    {
+        tts(tts_msg[i]);
+    }
+}
+
+void DeepGuider::terminateThreadFunctions()
+{
+    if (vps_thread == nullptr && ocr_thread == nullptr && logo_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr && tts_thread == nullptr) return;
+
+    // disable all thread running
+    m_enable_vps = false;
+    m_enable_ocr = false;
+    m_enable_logo = false;
+    m_enable_intersection = false;
+    m_enable_roadtheta = false;
+    m_enable_tts = false;
+
+    // wait child thread to terminate
+    if (vps_thread && is_vps_running) vps_thread->join();
+    if (ocr_thread && is_ocr_running) ocr_thread->join();
+    if (logo_thread && is_logo_running) logo_thread->join();
+    if (intersection_thread && is_intersection_running) intersection_thread->join();
+    if (roadtheta_thread && is_roadtheta_running) roadtheta_thread->join();
+    if (tts_thread && is_tts_running) tts_thread->join();
+
+    // clear threads
+    vps_thread = nullptr;
+    ocr_thread = nullptr;
+    logo_thread = nullptr;
+    intersection_thread = nullptr;
+    roadtheta_thread = nullptr;
+    tts_thread = nullptr;
+}
 
 #endif      // #ifndef __DEEPGUIDER_SIMPLE__
 
