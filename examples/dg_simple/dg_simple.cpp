@@ -843,6 +843,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     // draw robot on the map
     m_painter.drawNode(image, m_map_info, pose_gps, 10, 0, cx::COLOR_YELLOW);
     m_painter.drawNode(image, m_map_info, pose_gps, 8, 0, cx::COLOR_BLUE);
+    dg::Point2 pose_pixel = m_painter.cvtMeter2Pixel(pose_metric, m_map_info);
+    cv::line(image, pose_pixel, pose_pixel + 10 * dg::Point2(cos(pose_metric.theta), sin(pose_metric.theta)), cx::COLOR_YELLOW, 2);
 
     // draw status message (localization)
     cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
