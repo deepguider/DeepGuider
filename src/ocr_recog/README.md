@@ -25,13 +25,13 @@ python train.py --experiment_name ocr_train \
 --workers 0 --use_tb --batch_size 240 --saved_model checkpoints/best_accuracy.pth 
 ```
 
- 2. Test our best accuracy model. Download pretrained model from [recognition](https://drive.google.com/file/d/1wYzB26kyZRD6MFMNChJDQRyi2Yblwjnp/view?usp=sharing) and put it into `checkpoints/`.
+ 2. Test our best accuracy model. Download pretrained model from [recognition](https://drive.google.com/file/d/1hTjJDJNY98CZRrADNpCOOVZsbZwBE4zC/view?usp=sharing) and put it into `checkpoints/`.
 ```
 python test.py --eval_data data_lmdb_release/evaluation --benchmark_all_eval --saved_model checkpoints/best_accuracy.pth
 ```
 
 ### Run demo 
-1. Download pretrained models from [detection](https://drive.google.com/file/d/1R3hzHWwDJ_cKp__KcIvDg4V1hikT9MvU/view?usp=sharing), [recognition](https://drive.google.com/file/d/1wYzB26kyZRD6MFMNChJDQRyi2Yblwjnp/view?usp=sharing)
+1. Download pretrained models from [detection](https://drive.google.com/file/d/1R3hzHWwDJ_cKp__KcIvDg4V1hikT9MvU/view?usp=sharing), [recognition](https://drive.google.com/file/d/1hTjJDJNY98CZRrADNpCOOVZsbZwBE4zC/view?usp=sharing)
 2. set image files path 
 3. Run test_wrapper.py
 4. check ./data_ocr/result.jpg
@@ -44,4 +44,4 @@ python test_wrapper.py
 
 Model |  IC13_857 | IC13_1015 | avg 
 -- | -- | -- | -- | 
-Our best model   | 94.339 | 93.695 | 94.017 
+Our best model   | 94.749 | 93.892 | 94.284  
