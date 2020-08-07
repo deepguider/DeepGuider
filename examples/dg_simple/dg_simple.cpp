@@ -1210,11 +1210,17 @@ bool DeepGuider::procLogo()
 
 bool DeepGuider::procOcr()
 {
+    cv::Mat cam_image;
+    dg::Timestamp capture_time;
+    int cam_fnumber;
     m_cam_mutex.lock();
-    cv::Mat cam_image = m_cam_image.clone();
-    dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_gps;
-    int cam_fnumber = m_cam_fnumber;
+    if(!m_cam_image.empty())
+    {
+        cam_image = m_cam_image.clone();
+        m_cam_image.release();
+        capture_time = m_cam_capture_time;
+        cam_fnumber = m_cam_fnumber;
+    }    
     m_cam_mutex.unlock();
 
     if (!cam_image.empty() && m_ocr.apply(cam_image, capture_time))

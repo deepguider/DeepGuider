@@ -76,6 +76,7 @@ public:
             if (image.empty()) break;
             fn++;
             if (fn >= m_total_frames) break;
+            cv::Mat image_disp = image;
             
             // drawing
             int disp_delay = 1;
@@ -86,44 +87,56 @@ public:
                 std::vector<VPSResult> svs;
                 vps.get(svs);
                 cv::Mat sv_image;
-                if (!svs.empty() && map_manager.getStreetViewImage(svs[0].id, sv_image, "f") && !sv_image.empty())
+                cv::Mat sv_image_resized;
+                if (!svs.empty() && svs[0].id>0 && map_manager.getStreetViewImage(svs[0].id, sv_image, "f") && !sv_image.empty())
                 {
                     int h = image.rows;
                     int w = sv_image.cols * image.rows / sv_image.rows;
-                    cv::resize(sv_image, sv_image, cv::Size(w, h));
-                    disp_delay = 100;
+                    cv::resize(sv_image, sv_image_resized, cv::Size(w, h));
+                    disp_delay = 1000;
                 }
                 else
                 {
-                    sv_image = sv_black.clone();
+                    sv_image_resized = sv_black;
                 }                
 
                 if (!svs.empty() && svs[0].id > 0)
                 {
-                    vps.draw(sv_image);
+                    vps.draw(sv_image_resized);
                     fps = 1.0 / vps.procTime();
                 }
-                cv::hconcat(image, sv_image, image);
+                cv::hconcat(image, sv_image_resized, image_disp);
+            }
+            else if(sel == 0)
+            {
+                cv::hconcat(image, sv_black, image_disp);
             }
             else if (sel == 1 && !m_data[fn].ocr.empty())
             {
+                image_disp = image;
                 ocr.read(m_data[fn].ocr);
-                ocr.draw(image);
+                ocr.draw(image_disp);
                 if (!m_data[fn].ocr.empty()) fps = 1.0 / ocr.procTime();
                 disp_delay = 1000;
             }
             else if (sel == 2 && !m_data[fn].logo.empty())
             {
+                image_disp = image;
                 logo.read(m_data[fn].logo);
-                logo.draw(image);
+                logo.draw(image_disp);
                 if (!m_data[fn].logo.empty()) fps = 1.0 / logo.procTime();
                 disp_delay = 1000;
             }
             else if (sel == 3 && !m_data[fn].intersection.empty())
             {
+                image_disp = image;
                 intersection.read(m_data[fn].intersection);
-                intersection.draw(image);
+                intersection.draw(image_disp);
+                if (!m_data[fn].intersection.empty()) fps = 1.0 / intersection.procTime();
                 disp_delay = 100;
+                IntersectionResult intersect;
+                intersection.get(intersect);
+                if(intersect.cls>0) disp_delay = 300;
             }
 
             // fn & fps
@@ -132,11 +145,11 @@ public:
                 str = cv::format("#%d (FPS: %.1lf)", fn, fps);
             else
                 str = cv::format("#%d (FPS: N/A)", fn);
-            cv::putText(image, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
-            cv::putText(image, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
+            cv::putText(image_disp, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
+            cv::putText(image_disp, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
 
             // display
-            cv::imshow("result", image);
+            cv::imshow("result", image_disp);
             int key = cv::waitKey(disp_delay);
             if (key == cx::KEY_SPACE) key = cv::waitKey(0);
             if (key == 83)    // Right Key

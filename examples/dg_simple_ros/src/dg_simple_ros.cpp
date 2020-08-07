@@ -5,6 +5,7 @@
 #include <sensor_msgs/Imu.h>
 #include <cv_bridge/cv_bridge.h>
 #include <thread>
+#include "dg_simple_ros/ocr_info.h"
 #include "dg_simple.cpp"
 
 class DeepGuiderROS : public DeepGuider
@@ -20,7 +21,11 @@ public:
 protected:
     double m_wait_sec = 0.1;
 
-    // Topic subscribers
+    // DeepGuider Topic subscribers
+    ros::Subscriber sub_ocr;
+    void callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg);
+
+    // Topic subscribers (sensor data)
     ros::Subscriber sub_image_webcam;
     ros::Subscriber sub_image_realsense_image;
     ros::Subscriber sub_image_realsense_depth;
@@ -28,7 +33,7 @@ protected:
     ros::Subscriber sub_gps_novatel;
     ros::Subscriber sub_imu_xsense;
 
-    // Subscriber callbacks
+    // Subscriber callbacks (sensor data)    
     void callbackImage(const sensor_msgs::Image::ConstPtr& msg);
     void callbackImageCompressed(const sensor_msgs::CompressedImageConstPtr& msg);
     void callbackRealsenseImage(const sensor_msgs::CompressedImageConstPtr& msg);
@@ -38,10 +43,20 @@ protected:
     void callbackIMU(const sensor_msgs::Imu::ConstPtr& msg);
 
     // Topic publishers
-    ros::Publisher pub_image_gui;
+    //ros::Publisher pub_image_gui;
 
     // A node handler
     ros::NodeHandle& nh_dg;
+
+    // timestamp to framenumber converter (utility function)
+    int t2f_n = 0;
+    double t2f_offset_fn = 0;
+    double t2f_scale = 0;
+    double t2f_offset_ts = 0;
+    dg::Timestamp t2f_ts;
+    int t2f_fn;
+    void updateTimestamp2Framenumber(dg::Timestamp ts, int fn);
+    int timestamp2Framenumber(dg::Timestamp ts);
 };
 
 
@@ -71,7 +86,10 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_wait_sec = 0.1;
     nh_dg.param<double>("wait_sec", m_wait_sec, m_wait_sec);
 
-    // Initialize subscribers
+    // Initialize deepguider subscribers
+    sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
+
+    // Initialize sensor subscribers
     sub_image_webcam = nh_dg.subscribe("/uvc_image_raw/compressed", 1, &DeepGuiderROS::callbackImageCompressed, this);
     sub_gps_asen = nh_dg.subscribe("/asen_fix", 1, &DeepGuiderROS::callbackGPSAsen, this);
     sub_gps_novatel = nh_dg.subscribe("/novatel_fix", 1, &DeepGuiderROS::callbackGPSNovatel, this);
@@ -80,7 +98,7 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     sub_image_realsense_depth = nh_dg.subscribe("/camera/depth/image_rect_raw/compressed", 1, &DeepGuiderROS::callbackRealsenseDepth, this);
 
     // Initialize publishers
-    pub_image_gui = nh_dg.advertise<sensor_msgs::CompressedImage>("dg_image_gui", 1, true);
+    //pub_image_gui = nh_dg.advertise<sensor_msgs::CompressedImage>("dg_image_gui", 1, true);
 }
 
 DeepGuiderROS::~DeepGuiderROS()
@@ -183,6 +201,8 @@ void DeepGuiderROS::callbackImageCompressed(const sensor_msgs::CompressedImageCo
         m_cam_fnumber++;
         if (m_data_logging) logging_image = m_cam_image.clone();
         m_cam_mutex.unlock();
+
+        updateTimestamp2Framenumber(m_cam_capture_time, m_cam_fnumber);
 
         if (m_data_logging)
         {
@@ -290,6 +310,103 @@ void DeepGuiderROS::callbackIMU(const sensor_msgs::Imu::ConstPtr& msg)
     double linacc_z = msg->linear_acceleration.z;
 
     ROS_INFO_THROTTLE(1.0, "IMU: seq=%d, orientation=(%f,%f,%f), angular_veloctiy=(%f,%f,%f), linear_acceleration=(%f,%f,%f)", seq, ori_x, ori_y, ori_z, angvel_x, angvel_y, angvel_z, linacc_x, linacc_y, linacc_z);
+}
+
+// A callback function for subscribing OCR output
+void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
+{
+    std::vector<OCRResult> ocrs;
+    for(int i = 0; i<(int)msg->ocrs.size(); i++)
+    {
+        OCRResult ocr;
+        ocr.label = msg->ocrs[i].label;
+        ocr.xmin = msg->ocrs[i].xmin;
+        ocr.ymin = msg->ocrs[i].ymin;
+        ocr.xmax = msg->ocrs[i].xmax;
+        ocr.ymax = msg->ocrs[i].ymax;
+        ocr.confidence = msg->ocrs[i].confidence;
+
+        ocrs.push_back(ocr);
+    }
+    dg::Timestamp ts = msg->timestamp;
+    double proc_time = msg->processingtime;
+    int cam_fnumber = timestamp2Framenumber(ts);
+
+    if (!ocrs.empty() && cam_fnumber>=0)
+    {
+        m_ocr.set(ocrs, ts, proc_time);
+
+        if (m_data_logging)
+        {
+            m_log_mutex.lock();
+            m_ocr.write(m_log, cam_fnumber);
+            m_log_mutex.unlock();
+        }
+        m_ocr.print();
+
+        std::vector<dg::ID> ids;
+        std::vector<Polar2> obs;
+        std::vector<double> confs;
+        std::vector<OCRResult> ocrs;
+        for (int k = 0; k < (int)ocrs.size(); k++)
+        {
+            dg::ID ocr_id = 0;
+            std::vector<dg::POI> pois = m_map_manager.getPOI(ocrs[k].label);
+            if(!pois.empty()) ocr_id = pois[0].id;
+            ids.push_back(ocr_id);
+            obs.push_back(rel_pose_defualt);
+            confs.push_back(ocrs[k].confidence);
+        }
+        m_localizer_mutex.lock();
+        VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, ts, confs));
+        m_localizer_mutex.unlock();
+    }
+}
+
+void DeepGuiderROS::updateTimestamp2Framenumber(dg::Timestamp ts, int fn)
+{
+    if(t2f_n>1)
+    {
+        double scale = (fn - t2f_fn) / (ts - t2f_ts);
+        t2f_scale = t2f_scale * 0.9 + scale * 0.1;
+
+        double fn_est = (ts - t2f_offset_ts)*t2f_scale + t2f_offset_fn;
+        double est_err = fn - fn_est;
+        t2f_offset_fn = t2f_offset_fn + est_err;
+
+        t2f_ts = ts;
+        t2f_fn = fn;
+        t2f_n++;
+        //int fn_est2 = timestamp2Framenumber(ts);
+        //printf("[timestamp=%d] err=%.1lf, fn=%d, fn_est=%d", t2f_n, est_err, fn, fn_est2);
+        return;
+    }
+    if(t2f_n == 1)
+    {
+        t2f_scale = (fn - t2f_fn) / (ts - t2f_ts);
+        t2f_ts = ts;
+        t2f_fn = fn;
+        t2f_n = 2;        
+        return;
+    }
+    if(t2f_n<=0)
+    {
+        t2f_ts = ts;
+        t2f_fn = fn;        
+        t2f_offset_ts = ts;
+        t2f_offset_fn = fn;
+        t2f_scale = 1;
+        t2f_n = 1;
+        return;
+    }
+}
+
+int DeepGuiderROS::timestamp2Framenumber(dg::Timestamp ts)
+{
+    if(t2f_n<=0) return -1;
+
+    int fn = (int)((ts - t2f_offset_ts)*t2f_scale + t2f_offset_fn + 0.5);
+    return fn;
 }
 
 // The main function

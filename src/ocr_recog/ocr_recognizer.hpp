@@ -199,6 +199,13 @@ namespace dg
             ts = m_timestamp;
         }
 
+        void set(const std::vector<OCRResult>& ocrs, Timestamp ts, double proc_time)
+        {
+            m_ocrs = ocrs;
+            m_timestamp = ts;
+            m_processing_time = proc_time;
+        }
+
         double procTime() const
         {
             return m_processing_time;
@@ -215,7 +222,8 @@ namespace dg
 #ifdef HAVE_OPENCV_FREETYPE
                 if(m_ft2)
                 {
-                    m_ft2->putText(image, msg, pt, 28, cv::Scalar(0, 255, 255), 2, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, 28, cv::Scalar(0, 255, 255), 6, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, 28, cv::Scalar(255, 0, 0), 1, cv::LINE_AA, true);
                     m_ft2->putText(image, msg, pt, 28, cv::Scalar(255, 0, 0), -1, cv::LINE_AA, true);
                 }
                 else
