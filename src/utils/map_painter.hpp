@@ -276,7 +276,7 @@ public:
         return true;
     }
 
-    bool drawPath(cv::Mat& image, const MapCanvasInfo& info, dg::Map& map, const dg::Path& path, const cv::Vec3b& ecolor = cv::Vec3b(200, 0, 0), const cv::Vec3b& ncolor = cv::Vec3b(50, 0, 255), int nradius = 5, int ethickness = 2)
+    bool drawPath(cv::Mat& image, const MapCanvasInfo& info, dg::Map& map, const dg::Path& path, const cv::Vec3b& ecolor = cv::Vec3b(255, 0, 0), const cv::Vec3b& ncolor = cv::Vec3b(0, 255, 255), int nradius = 5, int ethickness = 2)
     {
         Node* node_prev = nullptr;
         for (int idx = 0; idx < (int)path.pts.size(); idx++)
@@ -285,8 +285,15 @@ public:
             Node* node = map.findNode(node_id);
             if (node) {
                 if (node_prev) drawEdge(image, info, node_prev, node, 0, ecolor, ethickness);
-                if (node_prev) drawNode(image, info, node_prev, nradius, 0, ncolor);
-                drawNode(image, info, node, nradius, 0, ncolor);
+                if (node_prev)
+                {
+                  int rdelta = (node_prev->type == Node::NODE_JUNCTION) ? 1 : 0;
+                  drawNode(image, info, node_prev, nradius + rdelta, 0, ncolor);
+                  if (node_prev->type == Node::NODE_JUNCTION) drawNode(image, info, node_prev, nradius-2, 0, ncolor/3);  
+                }
+                int rdelta = (node->type == Node::NODE_JUNCTION) ? 1 : 0;
+                drawNode(image, info, node, nradius + rdelta, 0, ncolor);
+                if (node->type == Node::NODE_JUNCTION) drawNode(image, info, node, nradius-2, 0, ncolor/3);
                 node_prev = node;
             }
         }

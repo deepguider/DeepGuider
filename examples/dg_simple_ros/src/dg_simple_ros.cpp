@@ -295,7 +295,7 @@ void DeepGuiderROS::callbackIMU(const sensor_msgs::Imu::ConstPtr& msg)
 // The main function
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "dg_test");
+    ros::init(argc, argv, "dg_simple_ros");
     ros::NodeHandle nh("~");
     DeepGuiderROS dg_node(nh);
     if (!dg_node.initialize()) return -1;
