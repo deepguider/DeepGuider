@@ -12,7 +12,9 @@ namespace dg
 		enum class GuideStatus
 		{
 			//from localizer info
+			GUIDE_INITIAL = 0,
 			GUIDE_NORMAL,
+			GUIDE_ARRIVAL,		//almost arrived 
 			GUIDE_ARRIVED,		//finally arrived 
 			GUIDE_OOP_DETECT,		//may be out of path. let's see
 			GUIDE_OOP,		//out of path, localization confidence is high
@@ -31,9 +33,11 @@ namespace dg
 			GUIDE_ROBOT_FAIL, 	//Robot failure
 			GUIDE_FAIL_UNKNOWN,	//Unknown failure
 
-			GUIDE_INITIAL,
 			GUIDE_NOPATH,
-			GUIDE_UNKNOWN
+			GUIDE_UNKNOWN,
+
+			/** The number of GuideStatus */
+			TYPE_NUM
 		};
 
 		/** Moving status based on localization info*/
@@ -42,7 +46,10 @@ namespace dg
 			ON_NODE = 0,		//The robot has arrived at the node
 			ON_EDGE,	//The robot is 0~90% of the edge distance
 			APPROACHING_NODE,	//The robot is 90~99% of the edge distance
-			STOP_WAIT	//not moving
+			STOP_WAIT,	//not moving
+			/** The number of MoveStatus 
+			*/
+			TYPE_NUM
 		};
 
 		/**A motion of robot for guidance*/
@@ -66,7 +73,10 @@ namespace dg
 			ENTER_RIGHT,
 			EXIT_FORWARD,
 			EXIT_LEFT,
-			EXIT_RIGHT
+			EXIT_RIGHT,
+
+			/** The number of Motion types */
+			TYPE_NUM
 		};
 
 		// motion mode	
@@ -76,6 +86,9 @@ namespace dg
 			MOVE_CAUTION,
 			MOVE_CAUTION_CHILDREN,
 			MOVE_CAUTION_CAR,
+
+			/** The number of Mode types */
+			TYPE_NUM
 		};
 
 		/**A realtime action of robot including motion and direction
@@ -85,11 +98,11 @@ namespace dg
 		struct Action
 		{
 			Action() {}
-			Action(Motion _cmd, int _etype, int _degree, Mode _mode, double _distance = -1)
-				: cmd(_cmd), edge_type(_etype), degree(_degree), mode(_mode), distance(_distance) {}
-			Motion cmd;	// action command
+			Action(Motion _cmd, int _ntype, int _etype, int _degree, Mode _mode, double _distance = -1)
+				: cmd(_cmd), node_type(_ntype), edge_type(_etype), degree(_degree), mode(_mode), distance(_distance) {}
+			Motion cmd = Motion::GO_FORWARD;	// action command
 			double distance = -1; //distance for active exploration (it is only used for optimal viewpoint estimation)
-			//int node_type;
+			int node_type;
 			int edge_type;	//
 			int degree = 0;	// additional action direction of turn cmd -180~180
 			Mode mode = Mode::MOVE_NORMAL;	// addition motion info
@@ -105,6 +118,7 @@ namespace dg
 			MoveStatus moving_status;	// current moving status
 			std::vector<Action> actions;	// action command
 			ID heading_node_id;	 // heading node
+			double relative_angle;
 			double distance_to_remain; // distance to heading node (unit: meter)
 			std::string msg;		// string guidance message
 			bool announce = 1;
@@ -173,8 +187,8 @@ namespace dg
 
 		bool buildGuides();
 		ExtendedPathElement getCurExtendedPath(int idx);
-		Action setActionCurrentEdge(ID nid, ID eid, int degree);
-		Action setActionNextEdge(ID nid, ID eid, int degree);
+		Action setActionTurn(ID nid_cur, ID eid_cur, int degree);
+		Action setActionGo(ID nid_next, ID eid_cur, int degree=0);
 
 
 	private:
@@ -182,14 +196,17 @@ namespace dg
 		LatLon m_latlon;
 		double m_edge_progress = 0.0;
 		double m_rmdistance = 0.0;
+		int m_cur_head_angle = 0;
 		MoveStatus  m_mvstatus = MoveStatus::ON_EDGE;
 		GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
 		Guidance m_curguidance;
 		std::vector<Guidance> m_past_guides;
 		time_t oop_start = 0, oop_end = 0;
 		int m_finalTurn = 0;
+		int m_finalEdgeId = 0;
+		double m_approachingThreshold = 5.0;
 
-		std::string m_mvstring[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "ARRIVED" };
+		std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
 		std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
 			"ESCALATOR", "UNKNOWN" };
 		std::string m_edges[7] = { "SIDEWALK", "ROAD", "CROSSWALK", "ELEVATOR",

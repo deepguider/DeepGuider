@@ -27,7 +27,9 @@ void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* 
         cv::Mat image_result = image.clone();
         recognizer.draw(image_result);
         cv::imshow(image_file, image_result);
-        cv::waitKey(1000);
+        int key = cv::waitKey(1000);
+        if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+        if (key == cx::KEY_ESC) break;        
 
         if (recording)
         {

@@ -148,6 +148,18 @@ namespace dg
             ts = m_timestamp;
         }
 
+        void set(const IntersectionResult& intersect, Timestamp ts, double proc_time)
+        {
+            m_intersect = intersect;
+            m_timestamp = ts;
+            m_processing_time = proc_time;
+        }
+
+        dg::Timestamp timestamp() const
+        {
+            return m_timestamp;
+        }
+
         double procTime() const
         {
             return m_processing_time;

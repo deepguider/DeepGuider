@@ -685,16 +685,22 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     m_cam_mutex.unlock();
 
     // draw cam image as subwindow on the GUI map image
-    cv::Rect video_rect;
+    cv::Rect win_rect;
     cv::Mat video_image;
     cv::Point video_offset(20, 542);
     if (!cam_image.empty())
     {
         cv::resize(cam_image, video_image, cv::Size(), video_resize_scale*0.8, video_resize_scale);
-        video_rect = cv::Rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
-        if (video_rect.br().x < image.cols && video_rect.br().y < image.rows) image(video_rect) = video_image * 1;
+        win_rect = cv::Rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
+        if (win_rect.br().x < image.cols && win_rect.br().y < image.rows) image(win_rect) = video_image * 1;
     }
-    cv::Rect win_rect = video_rect;
+    else
+    {
+        int win_w = (int)(1280 * video_resize_scale * 0.8);
+        int win_h = (int)(720 * video_resize_scale);
+        win_rect = cv::Rect(video_offset, video_offset + cv::Point(win_w, win_h));
+    }
+    cv::Rect video_rect = win_rect;
 
     // draw intersection result
     if (m_enable_intersection)
@@ -707,8 +713,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         {
             original_image_size.width = m_intersection_image.cols;
             original_image_size.height = m_intersection_image.rows;
-            double fy = (double)video_rect.height / m_intersection_image.rows;
-            cv::resize(m_intersection_image, intersection_image, cv::Size(video_rect.height, video_rect.height));
+            double fy = (double)win_rect.height / m_intersection_image.rows;
+            cv::resize(m_intersection_image, intersection_image, cv::Size(win_rect.height, win_rect.height));
             intersection_result = m_intersection_result;
         }
         m_intersection_mutex.unlock();
@@ -735,7 +741,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         m_vps_mutex.lock();
         if(!m_vps_image.empty())
         {
-            double fy = (double)video_rect.height / m_vps_image.rows;
+            double fy = (double)win_rect.height / m_vps_image.rows;
             cv::resize(m_vps_image, sv_image, cv::Size(), fy, fy);
             sv_id = m_vps_id;
             sv_confidence = m_vps_confidence;
@@ -787,7 +793,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         {
             original_image_size.width = m_logo_image.cols;
             original_image_size.height = m_logo_image.rows;
-            double fy = (double)video_rect.height / m_logo_image.rows;
+            double fy = (double)win_rect.height / m_logo_image.rows;
             cv::resize(m_logo_image, logo_image, cv::Size(), fy*0.9, fy);
             logos = m_logos;
         }
@@ -815,7 +821,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         {
             original_image_size.width = m_ocr_image.cols;
             original_image_size.height = m_ocr_image.rows;
-            double fy = (double)video_rect.height / m_ocr_image.rows;
+            double fy = (double)win_rect.height / m_ocr_image.rows;
             cv::resize(m_ocr_image, ocr_image, cv::Size(), fy*0.9, fy);
             ocrs = m_ocrs;
         }
@@ -1118,11 +1124,19 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
 
 bool DeepGuider::procIntersectionClassifier()
 {
+    dg::Timestamp ts_old = m_intersection_classifier.timestamp();
+    cv::Mat cam_image;
+    dg::Timestamp capture_time;
+    dg::LatLon capture_pos;
+    int cam_fnumber;
     m_cam_mutex.lock();
-    cv::Mat cam_image = m_cam_image.clone();
-    dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_gps;
-    int cam_fnumber = m_cam_fnumber;
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
+    {
+        cam_image = m_cam_image.clone();
+        capture_time = m_cam_capture_time;
+        capture_pos = m_cam_gps;
+        cam_fnumber = m_cam_fnumber;
+    }    
     m_cam_mutex.unlock();
 
     if (!cam_image.empty() && m_intersection_classifier.apply(cam_image, capture_time))
@@ -1156,11 +1170,19 @@ bool DeepGuider::procIntersectionClassifier()
 
 bool DeepGuider::procLogo()
 {
+    dg::Timestamp ts_old = m_logo.timestamp();
+    cv::Mat cam_image;
+    dg::Timestamp capture_time;
+    dg::LatLon capture_pos;
+    int cam_fnumber;
     m_cam_mutex.lock();
-    cv::Mat cam_image = m_cam_image.clone();
-    dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_gps;
-    int cam_fnumber = m_cam_fnumber;
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
+    {
+        cam_image = m_cam_image.clone();
+        capture_time = m_cam_capture_time;
+        capture_pos = m_cam_gps;
+        cam_fnumber = m_cam_fnumber;
+    }    
     m_cam_mutex.unlock();
 
     if (!cam_image.empty() && m_logo.apply(cam_image, capture_time))
@@ -1210,15 +1232,17 @@ bool DeepGuider::procLogo()
 
 bool DeepGuider::procOcr()
 {
+    dg::Timestamp ts_old = m_ocr.timestamp();
     cv::Mat cam_image;
     dg::Timestamp capture_time;
+    dg::LatLon capture_pos;
     int cam_fnumber;
     m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
     {
         cam_image = m_cam_image.clone();
-        m_cam_image.release();
         capture_time = m_cam_capture_time;
+        capture_pos = m_cam_gps;
         cam_fnumber = m_cam_fnumber;
     }    
     m_cam_mutex.unlock();
@@ -1271,11 +1295,19 @@ bool DeepGuider::procOcr()
 
 bool DeepGuider::procRoadTheta()
 {
+    dg::Timestamp ts_old = m_roadtheta.timestamp();
+    cv::Mat cam_image;
+    dg::Timestamp capture_time;
+    dg::LatLon capture_pos;
+    int cam_fnumber;
     m_cam_mutex.lock();
-    cv::Mat cam_image = m_cam_image.clone();
-    dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_gps;
-    int cam_fnumber = m_cam_fnumber;
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
+    {
+        cam_image = m_cam_image.clone();
+        capture_time = m_cam_capture_time;
+        capture_pos = m_cam_gps;
+        cam_fnumber = m_cam_fnumber;
+    }    
     m_cam_mutex.unlock();
 
     if (!cam_image.empty() && m_roadtheta.apply(cam_image, capture_time))
@@ -1372,12 +1404,21 @@ bool DeepGuider::curl_request(const std::string url, const char* CMD, const Json
 
 bool DeepGuider::procVps() // This sends query image and parameters to server using curl_request() and it receives its results (Id,conf.)
 {
+    dg::Timestamp ts_old = m_vps.timestamp();
+    cv::Mat cam_image;
+    dg::Timestamp capture_time;
+    dg::LatLon capture_pos;
+    int cam_fnumber;
     m_cam_mutex.lock();
-    cv::Mat cam_image = m_cam_image.clone();
-    dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_capture_pos;
-    int cam_fnumber = m_cam_fnumber;
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
+    {
+        cam_image = m_cam_image.clone();
+        capture_time = m_cam_capture_time;
+        capture_pos = m_cam_gps;
+        cam_fnumber = m_cam_fnumber;
+    }    
     m_cam_mutex.unlock();
+
     int N = 3;  // top-3
     double gps_accuracy = 1;   // 0: search radius = 230m ~ 1: search radius = 30m
 
@@ -1483,11 +1524,19 @@ bool DeepGuider::procVps() // This sends query image and parameters to server us
 #else // VPSSERVER
 bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++ 
 {
+    dg::Timestamp ts_old = m_vps.timestamp();
+    cv::Mat cam_image;
+    dg::Timestamp capture_time;
+    dg::LatLon capture_pos;
+    int cam_fnumber;
     m_cam_mutex.lock();
-    cv::Mat cam_image = m_cam_image.clone();
-    dg::Timestamp capture_time = m_cam_capture_time;
-    dg::LatLon capture_pos = m_cam_gps;
-    int cam_fnumber = m_cam_fnumber;
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
+    {
+        cam_image = m_cam_image.clone();
+        capture_time = m_cam_capture_time;
+        capture_pos = m_cam_gps;
+        cam_fnumber = m_cam_fnumber;
+    }    
     m_cam_mutex.unlock();
 
     int N = 3;  // top-3
