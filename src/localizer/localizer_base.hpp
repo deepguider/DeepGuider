@@ -60,7 +60,7 @@ public:
 
     }
 
-    TopometricPose findNearestTopoPose(const Pose2& pose_m, double turn_weight = 0)
+    TopometricPose findNearestTopoPose(const Pose2& pose_m, double turn_weight = 0, double search_range = -1, const Pose2& search_pt = Pose2())
     {
         cv::AutoLock lock(m_mutex);
 
@@ -68,8 +68,16 @@ public:
         std::pair<double, Point2> min_dist2 = std::make_pair(DBL_MAX, Point2());
         ID min_node_id = 0;
         int min_edge_idx = 0;
+        const double range2 = search_range * search_range;
         for (auto from = m_map.getHeadNodeConst(); from != m_map.getTailNodeConst(); from++)
         {
+            if (m_map.countEdges(from) == 0) continue;
+            if (search_range > 0)
+            {
+                double dx = pose_m.x - search_pt.x, dy = pose_m.y - search_pt.y;
+                if ((dx * dx + dy * dy) > range2) continue;
+            }
+
             int edge_idx = 0;
             for (auto edge = m_map.getHeadEdgeConst(from); edge != m_map.getTailEdgeConst(from); edge++, edge_idx++)
             {

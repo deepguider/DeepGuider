@@ -277,17 +277,19 @@ cv::Ptr<dg::BaseLocalizer> getLocalizer(const std::string localizer_name)
     else if (localizer_name == "EKFLocalizerPostOdom") localizer = cv::makePtr<dg::EKFLocalizerPostOdom>();
     else if (localizer_name == "EKFLocalizerSlowGyro") localizer = cv::makePtr<dg::EKFLocalizerSlowGyro>();
     else if (localizer_name == "EKFLocalizerHyperTan") localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
+    else if (localizer_name == "EKFLocalizerZeroRate") localizer = cv::makePtr<dg::EKFLocalizerZeroRate>();
     else if (localizer_name == "EKFLocalizerVelModel") localizer = cv::makePtr<dg::EKFLocalizerVelModel>();
     else if (localizer_name == "EKFLocalizerFreqPred") localizer = cv::makePtr<dg::EKFLocalizerFreqPred>();
     else if (localizer_name == "EKFLocalizerVTAdjust") localizer = cv::makePtr<dg::EKFLocalizerVTAdjust>();
     else if (localizer_name == "EKFLocalizerObsvFunc") localizer = cv::makePtr<dg::EKFLocalizerObsvFunc>();
+    else if (localizer_name == "EKFLocalizerSinTrack") localizer = cv::makePtr<dg::EKFLocalizerSinTrack>();
 
     cv::Ptr<dg::EKFLocalizer> localizer_ekf = localizer.dynamicCast<dg::EKFLocalizer>();
     if (!localizer_ekf.empty())
     {
-        if (!localizer_ekf->setParamGPSNoise(1)) return nullptr;
-        if (!localizer_ekf->setParamValue("offset_gps", { 1, 0 })) return nullptr;
         if (!localizer_ekf->setParamMotionNoise(0.1, 0.1)) return nullptr;
+        if (!localizer_ekf->setParamGPSNoise(0.5)) return nullptr;
+        if (!localizer_ekf->setParamValue("offset_gps", { 1, 0 })) return nullptr;
     }
     return localizer;
 }

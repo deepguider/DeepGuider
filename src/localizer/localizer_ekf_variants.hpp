@@ -336,8 +336,10 @@ public:
         {
             cv::AutoLock lock(m_mutex);
             const double turn_weight = 1;
+            const int converge_repeat = 5;
+            const double drift_radius = 50;
             Pose2 pose_m = EKFLocalizerHyperTan::getPose();
-            if (m_track_topo.node_id == 0 || m_track_converge < 5)
+            if (m_track_topo.node_id == 0 || m_track_converge < converge_repeat)
             {
                 m_track_topo = findNearestTopoPose(pose_m, turn_weight);
                 if (m_track_topo.node_id == m_track_prev.node_id && m_track_topo.edge_idx == m_track_prev.edge_idx && m_track_topo.dist > m_track_prev.dist) m_track_converge++;
@@ -351,6 +353,11 @@ public:
                 //CV_DbgAssert(edge != nullptr);
                 //double progress = m_track_topo.dist / edge->cost;
                 m_track_topo = trackTopoPose(m_track_topo, pose_m, turn_weight, m_track_topo.dist > 0);
+
+                Pose2 pose_t = cvtTopmetric2Metric(m_track_topo);
+                double dx = pose_m.x - pose_t.x, dy = pose_m.y - pose_t.y;
+                if ((dx * dx + dy * dy) > drift_radius * drift_radius)
+                    m_track_topo = findNearestTopoPose(pose_m, turn_weight, drift_radius, pose_m);
             }
             m_track_prev = m_track_topo;
             return true;
