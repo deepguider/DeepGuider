@@ -37,7 +37,7 @@ protected:
     cv::Mat m_gui_image;
     std::string m_winname;
 
-    double m_wait_sec = 0.1;
+    double m_wait_sec = 0.01;
 
     // Topic subscribers
     ros::Subscriber sub_image_webcam;
@@ -149,18 +149,18 @@ int DGRosRecognizer::run()
 
 bool DGRosRecognizer::runOnce(double timestamp)
 {
+    dg::Timestamp ts_old = m_recognizer.timestamp();
     cv::Mat cam_image;
-    dg::Timestamp cam_timestamp;
+    dg::Timestamp capture_time;
     m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
     {
         cam_image = m_cam_image.clone();
-        m_cam_image.release();
-        cam_timestamp = m_cam_capture_time;
+        capture_time = m_cam_capture_time;
     }    
     m_cam_mutex.unlock();
 
-    if (!cam_image.empty() && m_recognizer.apply(cam_image, cam_timestamp))
+    if (!cam_image.empty() && m_recognizer.apply(cam_image, capture_time))
     {
         m_recognizer.print();
         std::vector<OCRResult> ocrs;
@@ -180,7 +180,7 @@ bool DGRosRecognizer::runOnce(double timestamp)
 
                 msg.ocrs.push_back(ocr);
             }
-            msg.timestamp = cam_timestamp;
+            msg.timestamp = capture_time;
             msg.processingtime = m_recognizer.procTime();
             m_publisher.publish(msg);
 

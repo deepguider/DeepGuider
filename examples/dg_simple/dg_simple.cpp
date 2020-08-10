@@ -1124,12 +1124,13 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
 
 bool DeepGuider::procIntersectionClassifier()
 {
+    dg::Timestamp ts_old = m_intersection_classifier.timestamp();
     cv::Mat cam_image;
     dg::Timestamp capture_time;
     dg::LatLon capture_pos;
     int cam_fnumber;
     m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
     {
         cam_image = m_cam_image.clone();
         capture_time = m_cam_capture_time;
@@ -1169,12 +1170,13 @@ bool DeepGuider::procIntersectionClassifier()
 
 bool DeepGuider::procLogo()
 {
+    dg::Timestamp ts_old = m_logo.timestamp();
     cv::Mat cam_image;
     dg::Timestamp capture_time;
     dg::LatLon capture_pos;
     int cam_fnumber;
     m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
     {
         cam_image = m_cam_image.clone();
         capture_time = m_cam_capture_time;
@@ -1230,12 +1232,13 @@ bool DeepGuider::procLogo()
 
 bool DeepGuider::procOcr()
 {
+    dg::Timestamp ts_old = m_ocr.timestamp();
     cv::Mat cam_image;
     dg::Timestamp capture_time;
     dg::LatLon capture_pos;
     int cam_fnumber;
     m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
     {
         cam_image = m_cam_image.clone();
         capture_time = m_cam_capture_time;
@@ -1292,12 +1295,13 @@ bool DeepGuider::procOcr()
 
 bool DeepGuider::procRoadTheta()
 {
+    dg::Timestamp ts_old = m_roadtheta.timestamp();
     cv::Mat cam_image;
     dg::Timestamp capture_time;
     dg::LatLon capture_pos;
     int cam_fnumber;
     m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
     {
         cam_image = m_cam_image.clone();
         capture_time = m_cam_capture_time;
@@ -1400,12 +1404,13 @@ bool DeepGuider::curl_request(const std::string url, const char* CMD, const Json
 
 bool DeepGuider::procVps() // This sends query image and parameters to server using curl_request() and it receives its results (Id,conf.)
 {
+    dg::Timestamp ts_old = m_vps.timestamp();
     cv::Mat cam_image;
     dg::Timestamp capture_time;
     dg::LatLon capture_pos;
     int cam_fnumber;
     m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
     {
         cam_image = m_cam_image.clone();
         capture_time = m_cam_capture_time;
@@ -1519,12 +1524,13 @@ bool DeepGuider::procVps() // This sends query image and parameters to server us
 #else // VPSSERVER
 bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++ 
 {
+    dg::Timestamp ts_old = m_vps.timestamp();
     cv::Mat cam_image;
     dg::Timestamp capture_time;
     dg::LatLon capture_pos;
     int cam_fnumber;
     m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
     {
         cam_image = m_cam_image.clone();
         capture_time = m_cam_capture_time;

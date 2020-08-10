@@ -205,6 +205,11 @@ namespace dg
             m_processing_time = proc_time;
         }
 
+        dg::Timestamp timestamp() const
+        {
+            return m_timestamp;
+        }
+
         double procTime() const
         {
             return m_processing_time;
