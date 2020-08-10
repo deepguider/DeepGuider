@@ -2,7 +2,7 @@
 #define __OCR_RECOGNIZER__
 
 #ifndef _WIN32
-#defnie HAVE_OPENCV_FREETYPE
+#define HAVE_OPENCV_FREETYPE
 #endif
 
 #include "dg_core.hpp"
