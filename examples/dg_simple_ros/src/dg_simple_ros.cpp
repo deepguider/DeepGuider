@@ -19,7 +19,7 @@ public:
     bool runOnce(double timestamp);
 
 protected:
-    double m_wait_sec = 0.1;
+    double m_wait_sec = 0.01;
 
     // DeepGuider Topic subscribers
     ros::Subscriber sub_ocr;

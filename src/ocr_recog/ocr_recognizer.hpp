@@ -1,10 +1,6 @@
 #ifndef __OCR_RECOGNIZER__
 #define __OCR_RECOGNIZER__
 
-#ifndef _WIN32
-#define HAVE_OPENCV_FREETYPE
-#endif
-
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
 #include "utils/utility.hpp"
@@ -13,7 +9,6 @@
 #endif
 #include <fstream>
 #include <chrono>
-
 
 using namespace std;
 

@@ -223,7 +223,7 @@ protected:
 
 int main(int argc, char* argv[])
 {
-    int module_selection = 0;     // 0: vps, 1: ocr, 2: logo, 3: intersection
+    int module_selection = 1;     // 0: vps, 1: ocr, 2: logo, 3: intersection
 
     std::string dataname = "dg_simple_200804_102346";
     if (argc > 1) dataname = argv[1];
