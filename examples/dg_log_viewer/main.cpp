@@ -1,6 +1,3 @@
-#define HAVE_OPENCV_FREETYPE
-
-
 #define VVS_NO_ASSERT
 #include "dg_core.hpp"
 #include "dg_map_manager.hpp"
@@ -68,8 +65,16 @@ public:
         cv::Mat sv_black(720, 720, CV_8UC3);
         sv_black = 0;
 
+        // winname
+        std::string winname = "dg_result";
+        if (sel == 0) winname = "VPS";
+        if (sel == 1) winname = "POI-OCR";
+        if (sel == 2) winname = "POI-Logo";
+        if (sel == 3) winname = "Intersection Classifier";
+
         cv::Mat image;
-        cv::namedWindow("result", cv::WINDOW_NORMAL);
+        cv::namedWindow(winname, cv::WINDOW_NORMAL);
+        cv::setWindowProperty(winname, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
         int fn = -1;
         while (1)
         {
@@ -94,7 +99,7 @@ public:
                     int h = image.rows;
                     int w = sv_image.cols * image.rows / sv_image.rows;
                     cv::resize(sv_image, sv_image_resized, cv::Size(w, h));
-                    disp_delay = 1000;
+                    disp_delay = 2000;
                 }
                 else
                 {
@@ -150,7 +155,7 @@ public:
             cv::putText(image_disp, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
 
             // display
-            cv::imshow("result", image_disp);
+            cv::imshow(winname, image_disp);
             int key = cv::waitKey(disp_delay);
             if (key == cx::KEY_SPACE) key = cv::waitKey(0);
             if (key == 83)    // Right Key
@@ -220,7 +225,7 @@ int main(int argc, char* argv[])
 {
     int module_selection = 0;     // 0: vps, 1: ocr, 2: logo, 3: intersection
 
-    std::string dataname = "dg_ros_200805_114356";
+    std::string dataname = "dg_simple_200804_102346";
     if (argc > 1) dataname = argv[1];
     if (argc > 2) 
     {
