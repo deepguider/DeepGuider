@@ -30,10 +30,15 @@ protected:
 
     dg::OCRRecognizer m_recognizer;
     std::string m_srcdir = "/work/deepguider/src";
+    bool m_data_logging = false;
+    cx::VideoWriter m_video_cam;
+    std::ofstream m_log;
+    int m_recording_fps = 30;
 
     cv::Mutex m_cam_mutex;
     cv::Mat m_cam_image;
     dg::Timestamp m_cam_capture_time;
+    int m_cam_fnumber;              // frame number
     cv::Mat m_gui_image;
     std::string m_winname;
 
@@ -68,6 +73,8 @@ bool DGRosRecognizer::loadConfig(std::string config_file)
 
     cv::FileNode fn = fs.root();
     LOAD_PARAM_VALUE(fn, "dg_srcdir", m_srcdir);
+    LOAD_PARAM_VALUE(fn, "enable_data_logging", m_data_logging);
+    LOAD_PARAM_VALUE(fn, "video_recording_fps", m_recording_fps);
 
     return true;
 }
@@ -118,6 +125,23 @@ bool DGRosRecognizer::initialize()
     m_cam_image.release();
     m_cam_capture_time = -1;
     m_winname = cv::format("dg_%s", m_recognizer.name());
+    m_cam_fnumber = -1;
+
+    // init data logging
+    if (m_data_logging)
+    {
+        time_t start_t;
+        time(&start_t);
+        tm _tm = *localtime(&start_t);
+        char sztime[255];
+        strftime(sztime, 255, "%y%m%d_%H%M%S", &_tm);
+
+        std::string filename = std::string("ocr_") + sztime + ".txt";
+        m_log.open(filename, ios::out);
+
+        std::string filename_cam = std::string("ocr_") + sztime + "_cam.avi";
+        m_video_cam.open(filename_cam, m_recording_fps);
+    }
 
     // show GUI window
     cv::namedWindow(m_winname, cv::WINDOW_NORMAL);
@@ -142,6 +166,8 @@ int DGRosRecognizer::run()
 
     // end system
     printf("End %s...\n", m_recognizer.name());
+    if(m_data_logging) m_video_cam.release();
+    if (m_data_logging) m_log.flush();
     nh_dg.shutdown();
 
     return 0;
@@ -157,9 +183,11 @@ bool DGRosRecognizer::runOnce(double timestamp)
     {
         cam_image = m_cam_image.clone();
         capture_time = m_cam_capture_time;
+        m_cam_fnumber++;
     }    
     m_cam_mutex.unlock();
 
+    bool detected = false;
     if (!cam_image.empty() && m_recognizer.apply(cam_image, capture_time))
     {
         m_recognizer.print();
@@ -183,16 +211,31 @@ bool DGRosRecognizer::runOnce(double timestamp)
             msg.timestamp = capture_time;
             msg.processingtime = m_recognizer.procTime();
             m_publisher.publish(msg);
+            detected = true;
 
-            // draw results & fps
-            m_gui_image = cam_image;
-            std::string fn = cv::format("FPS: %.1lf", 1.0 / m_recognizer.procTime());
-            cv::putText(m_gui_image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
-            cv::putText(m_gui_image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
-            m_recognizer.draw(m_gui_image);
+            // logging result
+            if (m_data_logging)
+            {
+                m_recognizer.write(m_log, m_cam_fnumber);
+            }
         }
     }
     
+    // logging video
+    if (!cam_image.empty() && m_data_logging)
+    {
+        m_video_cam << cam_image;
+    }
+
+    // show results & fps
+    if(!cam_image.empty() && detected)
+    {
+        std::string fn = cv::format("FPS: %.1lf", 1.0 / m_recognizer.procTime());
+        cv::putText(cam_image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
+        cv::putText(cam_image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
+        m_recognizer.draw(cam_image);
+        m_gui_image = cam_image;
+    }
     if(!m_gui_image.empty())
     {
         cv::imshow(m_winname, m_gui_image);
