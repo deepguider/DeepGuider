@@ -69,6 +69,7 @@ public:
         sv_black = 0;
 
         cv::Mat image;
+        cv::namedWindow("result", cv::WINDOW_NORMAL);
         int fn = -1;
         while (1)
         {
@@ -117,7 +118,7 @@ public:
                 ocr.read(m_data[fn].ocr);
                 ocr.draw(image_disp);
                 if (!m_data[fn].ocr.empty()) fps = 1.0 / ocr.procTime();
-                disp_delay = 1000;
+                disp_delay = 2000;
             }
             else if (sel == 2 && !m_data[fn].logo.empty())
             {
@@ -125,7 +126,7 @@ public:
                 logo.read(m_data[fn].logo);
                 logo.draw(image_disp);
                 if (!m_data[fn].logo.empty()) fps = 1.0 / logo.procTime();
-                disp_delay = 1000;
+                disp_delay = 2000;
             }
             else if (sel == 3 && !m_data[fn].intersection.empty())
             {
@@ -133,10 +134,10 @@ public:
                 intersection.read(m_data[fn].intersection);
                 intersection.draw(image_disp);
                 if (!m_data[fn].intersection.empty()) fps = 1.0 / intersection.procTime();
-                disp_delay = 100;
                 IntersectionResult intersect;
                 intersection.get(intersect);
                 if(intersect.cls>0) disp_delay = 300;
+                else disp_delay = 50;
             }
 
             // fn & fps
@@ -217,7 +218,7 @@ protected:
 
 int main(int argc, char* argv[])
 {
-    int module_selection = 2;     // 0: vps, 1: ocr, 2: logo, 3: intersection
+    int module_selection = 0;     // 0: vps, 1: ocr, 2: logo, 3: intersection
 
     std::string dataname = "dg_ros_200805_114356";
     if (argc > 1) dataname = argv[1];
@@ -227,7 +228,7 @@ int main(int argc, char* argv[])
         if(module_name == "vps") module_selection = 0;
         if(module_name == "ocr") module_selection = 1;
         if(module_name == "logo") module_selection = 2;
-        if(module_name == "intersection") module_selection = 3;
+        if(module_name == "intersection" || module_name == "intersect") module_selection = 3;
     }
 
     std::string fname_log = dataname + ".txt";
