@@ -29,15 +29,7 @@ cv::Ptr<dg::EKFLocalizer> getEKFLocalizer(const string& name)
     cv::Ptr<dg::EKFLocalizer> localizer;
     if (name == "EKFLocalizer") localizer = cv::makePtr<dg::EKFLocalizer>();
     else if (name == "EKFLocalizerZeroGyro") localizer = cv::makePtr<dg::EKFLocalizerZeroGyro>();
-    else if (name == "EKFLocalizerZeroOdom") localizer = cv::makePtr<dg::EKFLocalizerZeroOdom>();
-    else if (name == "EKFLocalizerPostOdom") localizer = cv::makePtr<dg::EKFLocalizerPostOdom>();
-    else if (name == "EKFLocalizerSlowGyro") localizer = cv::makePtr<dg::EKFLocalizerSlowGyro>();
     else if (name == "EKFLocalizerHyperTan") localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
-    else if (name == "EKFLocalizerZeroRate") localizer = cv::makePtr<dg::EKFLocalizerZeroRate>();
-    else if (name == "EKFLocalizerVelModel") localizer = cv::makePtr<dg::EKFLocalizerVelModel>();
-    else if (name == "EKFLocalizerFreqPred") localizer = cv::makePtr<dg::EKFLocalizerFreqPred>();
-    else if (name == "EKFLocalizerVTAdjust") localizer = cv::makePtr<dg::EKFLocalizerVTAdjust>();
-    else if (name == "EKFLocalizerObsvFunc") localizer = cv::makePtr<dg::EKFLocalizerObsvFunc>();
     else if (name == "EKFLocalizerSinTrack") localizer = cv::makePtr<dg::EKFLocalizerSinTrack>();
     return localizer;
 }
