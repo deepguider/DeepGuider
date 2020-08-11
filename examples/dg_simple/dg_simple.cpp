@@ -1130,14 +1130,23 @@ bool DeepGuider::procIntersectionClassifier()
     dg::LatLon capture_pos;
     int cam_fnumber;
     m_cam_mutex.lock();
-    if(!m_cam_image.empty() && m_cam_capture_time > ts_old)
+    if(!m_cam_image.empty())// && m_cam_capture_time > ts_old)
     {
         cam_image = m_cam_image.clone();
         capture_time = m_cam_capture_time;
         capture_pos = m_cam_gps;
         cam_fnumber = m_cam_fnumber;
-    }    
+    }
     m_cam_mutex.unlock();
+    /*
+    dg::Timestamp ts_old = m_intersection_classifier.timestamp();
+    m_cam_mutex.lock();
+    cv::Mat cam_image = m_cam_image.clone();
+    dg::Timestamp capture_time = m_cam_capture_time;
+    dg::LatLon capture_pos = m_cam_gps;
+    int cam_fnumber = m_cam_fnumber;
+    m_cam_mutex.unlock();
+    */
 
     if (!cam_image.empty() && m_intersection_classifier.apply(cam_image, capture_time))
     {
