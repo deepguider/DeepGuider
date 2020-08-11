@@ -405,8 +405,8 @@ bool DeepGuider::initializeDefaultMap()
     dg::LatLon ref_node(36.383837659737, 127.367880828442);
     m_localizer_mutex.lock();
     m_localizer.setParamMotionNoise(0.1, 0.1);
-    m_localizer.setParamGPSNoise(1);
-    m_localizer.setParamValue("offset_gps", {1, 0});
+    m_localizer.setParamGPSNoise(0.5);
+    m_localizer.setParamValue("offset_gps", {1., 0.});
     VVS_CHECK_TRUE(m_localizer.setReference(ref_node));
     VVS_CHECK_TRUE(m_localizer.loadMap(map));
     m_localizer_mutex.unlock();
@@ -850,7 +850,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     m_painter.drawNode(image, m_map_info, pose_gps, 10, 0, cx::COLOR_YELLOW);
     m_painter.drawNode(image, m_map_info, pose_gps, 8, 0, cx::COLOR_BLUE);
     dg::Point2 pose_pixel = m_painter.cvtMeter2Pixel(pose_metric, m_map_info);
-    cv::line(image, pose_pixel, pose_pixel + 10 * dg::Point2(cos(pose_metric.theta), sin(pose_metric.theta)), cx::COLOR_YELLOW, 2);
+    cv::line(image, pose_pixel, pose_pixel + 10 * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)), cx::COLOR_YELLOW, 2);
 
     // draw status message (localization)
     cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
