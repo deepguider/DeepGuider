@@ -317,7 +317,7 @@ public:
         return true;
     }
 
-    static bool drawNodes(cv::Mat& image, const CanvasInfo& info, Point2IDGraph& map, double radius, double font_scale, const cv::Vec3b& color, int thickness = -1)
+    static bool drawNodes(cv::Mat& image, const CanvasInfo& info, Point2IDGraph& map, double radius, double font_scale, const cv::Vec3b& color, int thickness = -1, int min_n_edge = 1)
     {
         CV_DbgAssert(!image.empty());
 
@@ -327,7 +327,7 @@ public:
         if (thickness < 0) font_color = cv::Vec3b(255, 255, 255) - color;
         for (typename Point2IDGraph::NodeItr n = map.getHeadNode(); n != map.getTailNode(); n++)
         {
-            if(map.getHeadEdge(n)==map.getTailEdge(n)) continue;    // added by jylee to remove poi and streetview nodes from drawing
+            if(map.countEdges(n) < min_n_edge) continue;
             const cv::Point p = cvtMeter2Pixel(n->data, info);
             cv::circle(image, p, r, color, thickness);
             if (font_scale > 0)

@@ -57,6 +57,10 @@ namespace dg
             _clear();
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            m_pois.clear();
+            m_timestamp = -1;
+            m_processing_time = -1;
         }
 
         /**
@@ -169,6 +173,18 @@ namespace dg
         {
             pois = m_pois;
             ts = m_timestamp;
+        }
+
+        void set(const std::vector<POIResult>& pois, Timestamp ts, double proc_time)
+        {
+            m_pois = pois;
+            m_timestamp = ts;
+            m_processing_time = proc_time;
+        }
+
+        dg::Timestamp timestamp() const
+        {
+            return m_timestamp;
         }
 
         double procTime() const

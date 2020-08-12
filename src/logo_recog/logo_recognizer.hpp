@@ -174,6 +174,18 @@ namespace dg
             ts = m_timestamp;
         }
 
+        void set(const std::vector<LogoResult>& logos, Timestamp ts, double proc_time)
+        {
+            m_logos = logos;
+            m_timestamp = ts;
+            m_processing_time = proc_time;
+        }
+
+        dg::Timestamp timestamp() const
+        {
+            return m_timestamp;
+        }
+
         double procTime() const
         {
             return m_processing_time;

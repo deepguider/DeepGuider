@@ -200,9 +200,21 @@ namespace dg
             ts = m_timestamp;
         }
 
+        void set(const std::vector<VPSResult>& streetviews, Timestamp ts, double proc_time)
+        {
+            m_streetviews = streetviews;
+            m_timestamp = ts;
+            m_processing_time = proc_time;
+        }
+
         double procTime() const
         {
             return m_processing_time;
+        }
+
+        dg::Timestamp timestamp() const
+        {
+            return m_timestamp;
         }
 
         void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const

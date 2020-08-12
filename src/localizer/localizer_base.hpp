@@ -4,6 +4,7 @@
 #include "core/map.hpp"
 #include "localizer/localizer.hpp"
 #include "utils/opencx.hpp"
+#include <set>
 
 namespace dg
 {
@@ -60,7 +61,7 @@ public:
 
     }
 
-    TopometricPose findNearestTopoPose(const Pose2& pose_m, double turn_weight = 0)
+    TopometricPose findNearestTopoPose(const Pose2& pose_m, double turn_weight = 0, double search_range = -1, const Pose2& search_pt = Pose2())
     {
         cv::AutoLock lock(m_mutex);
 
@@ -68,8 +69,16 @@ public:
         std::pair<double, Point2> min_dist2 = std::make_pair(DBL_MAX, Point2());
         ID min_node_id = 0;
         int min_edge_idx = 0;
+        const double range2 = search_range * search_range;
         for (auto from = m_map.getHeadNodeConst(); from != m_map.getTailNodeConst(); from++)
         {
+            if (m_map.countEdges(from) == 0) continue;
+            if (search_range > 0)
+            {
+                double dx = pose_m.x - search_pt.x, dy = pose_m.y - search_pt.y;
+                if ((dx * dx + dy * dy) > range2) continue;
+            }
+
             int edge_idx = 0;
             for (auto edge = m_map.getHeadEdgeConst(from); edge != m_map.getTailEdgeConst(from); edge++, edge_idx++)
             {
@@ -103,7 +112,7 @@ public:
         return pose_t;
     }
 
-    TopometricPose trackTopoPose(const TopometricPose& topo_from, const Pose2& pose_m, double turn_weight = 0, bool extend2child = true)
+    TopometricPose trackTopoPose(const TopometricPose& topo_from, const Pose2& pose_m, double turn_weight = 0, int extend_depth = 1)
     {
         cv::AutoLock lock(m_mutex);
 
@@ -120,20 +129,29 @@ public:
         int min_edge_idx = topo_from.edge_idx;
 
         // Check 'pose_m' on the connected edges
-        if (extend2child)
+        std::set<ID> node_visit;
+        std::queue<RoadMap::Node*> node_queue;
+        node_queue.push(node_goal);
+        for (int depth = 0; depth < extend_depth; depth++)
         {
+            if (node_queue.empty()) break;
+            RoadMap::Node* node_pick = node_queue.front();
+            node_queue.pop();
+            node_visit.insert(node_pick->data.id);
             int edge_idx = 0;
-            for (auto edge = m_map.getHeadEdgeConst(node_goal); edge != m_map.getTailEdgeConst(node_goal); edge++, edge_idx++)
+            for (auto edge = m_map.getHeadEdgeConst(node_pick); edge != m_map.getTailEdgeConst(node_pick); edge++, edge_idx++)
             {
-                const RoadMap::Node* to = edge->to;
+                RoadMap::Node* to = edge->to;
                 if (to == nullptr) continue;
-                auto dist2 = calcDist2FromLineSeg(node_goal->data, to->data, pose_m, turn_weight);
+                auto dist2 = calcDist2FromLineSeg(node_pick->data, to->data, pose_m, turn_weight);
                 if (dist2.first < min_dist2.first)
                 {
                     min_dist2 = dist2;
                     min_node_id = node_goal->data.id;
                     min_edge_idx = edge_idx;
                 }
+                if (node_visit.find(to->data.id) == node_visit.end())
+                    node_queue.push(to);
             }
         }
 

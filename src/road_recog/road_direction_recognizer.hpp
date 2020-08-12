@@ -21,14 +21,17 @@ namespace dg
         */
         bool initialize(const char* module_name = "road_direction_recognizer", const char* module_path = "./../src/road_recog", const char* class_name = "RoadDirectionRecognizer", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
         {
-            PyGILState_STATE state;
-            bool ret;
+            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
+            PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
+            bool ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+            m_processing_time = t2 - t1;
 
             return ret;
         }
@@ -45,6 +48,11 @@ namespace dg
             _clear();
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+
+            m_angle = -1;
+            m_prob = -1;
+            m_timestamp = -1;
+            m_processing_time = -1;
         }
 
 
@@ -54,15 +62,17 @@ namespace dg
         */
         bool apply(cv::Mat image, dg::Timestamp t)
         {
-            PyGILState_STATE state;
-            bool ret;
+            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
+            PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            /* Call Python/C API functions here */
-            ret = _apply(image, t);
+            bool ret = _apply(image, t);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
+            
+            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+            m_processing_time = t2 - t1;
 
             return ret;
         }
@@ -136,10 +146,29 @@ namespace dg
             _t = m_timestamp;
         }
 
+        void set(double angle, double prob, Timestamp ts, double proc_time)
+        {
+            m_angle = angle;
+            m_prob = prob;
+            m_timestamp = ts;
+            m_processing_time = proc_time;
+        }
+
+        dg::Timestamp timestamp() const
+        {
+            return m_timestamp;
+        }
+
+        double procTime() const
+        {
+            return m_processing_time;
+        }
+
     protected:
         double m_angle = -1;
         double m_prob = -1;
         Timestamp m_timestamp = -1;
+        double m_processing_time = -1;
     };
 
 } // End of 'dg'

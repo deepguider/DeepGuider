@@ -405,8 +405,8 @@ bool DeepGuider::initializeDefaultMap()
     dg::LatLon ref_node(36.383837659737, 127.367880828442);
     m_localizer_mutex.lock();
     m_localizer.setParamMotionNoise(0.1, 0.1);
-    m_localizer.setParamGPSNoise(1);
-    m_localizer.setParamValue("offset_gps", {1, 0});
+    m_localizer.setParamGPSNoise(0.5);
+    m_localizer.setParamValue("offset_gps", {1., 0.});
     VVS_CHECK_TRUE(m_localizer.setReference(ref_node));
     VVS_CHECK_TRUE(m_localizer.loadMap(map));
     m_localizer_mutex.unlock();
@@ -850,7 +850,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     m_painter.drawNode(image, m_map_info, pose_gps, 10, 0, cx::COLOR_YELLOW);
     m_painter.drawNode(image, m_map_info, pose_gps, 8, 0, cx::COLOR_BLUE);
     dg::Point2 pose_pixel = m_painter.cvtMeter2Pixel(pose_metric, m_map_info);
-    cv::line(image, pose_pixel, pose_pixel + 10 * dg::Point2(cos(pose_metric.theta), sin(pose_metric.theta)), cx::COLOR_YELLOW, 2);
+    cv::line(image, pose_pixel, pose_pixel + 10 * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)), cx::COLOR_YELLOW, 2);
 
     // draw status message (localization)
     cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
@@ -1124,18 +1124,17 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
 
 bool DeepGuider::procIntersectionClassifier()
 {
-    cv::Mat cam_image;
-    dg::Timestamp capture_time;
-    dg::LatLon capture_pos;
-    int cam_fnumber;
-    m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    dg::Timestamp ts_old = m_intersection_classifier.timestamp();
+    m_cam_mutex.lock(); 
+    dg::Timestamp capture_time = m_cam_capture_time;
+    if(capture_time <= ts_old)
     {
-        cam_image = m_cam_image.clone();
-        capture_time = m_cam_capture_time;
-        capture_pos = m_cam_gps;
-        cam_fnumber = m_cam_fnumber;
-    }    
+        m_cam_mutex.unlock();
+        return true;
+    }
+    cv::Mat cam_image = m_cam_image.clone();
+    dg::LatLon capture_pos = m_cam_gps;
+    int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
     if (!cam_image.empty() && m_intersection_classifier.apply(cam_image, capture_time))
@@ -1169,18 +1168,17 @@ bool DeepGuider::procIntersectionClassifier()
 
 bool DeepGuider::procLogo()
 {
-    cv::Mat cam_image;
-    dg::Timestamp capture_time;
-    dg::LatLon capture_pos;
-    int cam_fnumber;
-    m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    dg::Timestamp ts_old = m_logo.timestamp();
+    m_cam_mutex.lock(); 
+    dg::Timestamp capture_time = m_cam_capture_time;
+    if(capture_time <= ts_old)
     {
-        cam_image = m_cam_image.clone();
-        capture_time = m_cam_capture_time;
-        capture_pos = m_cam_gps;
-        cam_fnumber = m_cam_fnumber;
-    }    
+        m_cam_mutex.unlock();
+        return true;
+    }
+    cv::Mat cam_image = m_cam_image.clone();
+    dg::LatLon capture_pos = m_cam_gps;
+    int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
     if (!cam_image.empty() && m_logo.apply(cam_image, capture_time))
@@ -1220,8 +1218,7 @@ bool DeepGuider::procLogo()
             m_logo_image = cv::Mat();
             m_logos.clear();
             m_logo_mutex.unlock();
-        }
-          
+        }          
     }
 
     return true;
@@ -1230,18 +1227,17 @@ bool DeepGuider::procLogo()
 
 bool DeepGuider::procOcr()
 {
-    cv::Mat cam_image;
-    dg::Timestamp capture_time;
-    dg::LatLon capture_pos;
-    int cam_fnumber;
-    m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    dg::Timestamp ts_old = m_ocr.timestamp();
+    m_cam_mutex.lock(); 
+    dg::Timestamp capture_time = m_cam_capture_time;
+    if(capture_time <= ts_old)
     {
-        cam_image = m_cam_image.clone();
-        capture_time = m_cam_capture_time;
-        capture_pos = m_cam_gps;
-        cam_fnumber = m_cam_fnumber;
-    }    
+        m_cam_mutex.unlock();
+        return true;
+    }
+    cv::Mat cam_image = m_cam_image.clone();
+    dg::LatLon capture_pos = m_cam_gps;
+    int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
     if (!cam_image.empty() && m_ocr.apply(cam_image, capture_time))
@@ -1292,20 +1288,19 @@ bool DeepGuider::procOcr()
 
 bool DeepGuider::procRoadTheta()
 {
-    cv::Mat cam_image;
-    dg::Timestamp capture_time;
-    dg::LatLon capture_pos;
-    int cam_fnumber;
-    m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    dg::Timestamp ts_old = m_roadtheta.timestamp();
+    m_cam_mutex.lock(); 
+    dg::Timestamp capture_time = m_cam_capture_time;
+    if(capture_time <= ts_old)
     {
-        cam_image = m_cam_image.clone();
-        capture_time = m_cam_capture_time;
-        capture_pos = m_cam_gps;
-        cam_fnumber = m_cam_fnumber;
-    }    
+        m_cam_mutex.unlock();
+        return true;
+    }
+    cv::Mat cam_image = m_cam_image.clone();
+    dg::LatLon capture_pos = m_cam_gps;
+    int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
-
+    
     if (!cam_image.empty() && m_roadtheta.apply(cam_image, capture_time))
     {
         double angle, confidence;
@@ -1400,18 +1395,17 @@ bool DeepGuider::curl_request(const std::string url, const char* CMD, const Json
 
 bool DeepGuider::procVps() // This sends query image and parameters to server using curl_request() and it receives its results (Id,conf.)
 {
-    cv::Mat cam_image;
-    dg::Timestamp capture_time;
-    dg::LatLon capture_pos;
-    int cam_fnumber;
-    m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    dg::Timestamp ts_old = m_vps.timestamp();
+    m_cam_mutex.lock(); 
+    dg::Timestamp capture_time = m_cam_capture_time;
+    if(capture_time <= ts_old)
     {
-        cam_image = m_cam_image.clone();
-        capture_time = m_cam_capture_time;
-        capture_pos = m_cam_gps;
-        cam_fnumber = m_cam_fnumber;
-    }    
+        m_cam_mutex.unlock();
+        return true;
+    }
+    cv::Mat cam_image = m_cam_image.clone();
+    dg::LatLon capture_pos = m_cam_gps;
+    int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
     int N = 3;  // top-3
@@ -1519,18 +1513,17 @@ bool DeepGuider::procVps() // This sends query image and parameters to server us
 #else // VPSSERVER
 bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++ 
 {
-    cv::Mat cam_image;
-    dg::Timestamp capture_time;
-    dg::LatLon capture_pos;
-    int cam_fnumber;
-    m_cam_mutex.lock();
-    if(!m_cam_image.empty())
+    dg::Timestamp ts_old = m_vps.timestamp();
+    m_cam_mutex.lock(); 
+    dg::Timestamp capture_time = m_cam_capture_time;
+    if(capture_time <= ts_old)
     {
-        cam_image = m_cam_image.clone();
-        capture_time = m_cam_capture_time;
-        capture_pos = m_cam_gps;
-        cam_fnumber = m_cam_fnumber;
-    }    
+        m_cam_mutex.unlock();
+        return true;
+    }
+    cv::Mat cam_image = m_cam_image.clone();
+    dg::LatLon capture_pos = m_cam_gps;
+    int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
     int N = 3;  // top-3

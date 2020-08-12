@@ -29,15 +29,7 @@ cv::Ptr<dg::EKFLocalizer> getEKFLocalizer(const string& name)
     cv::Ptr<dg::EKFLocalizer> localizer;
     if (name == "EKFLocalizer") localizer = cv::makePtr<dg::EKFLocalizer>();
     else if (name == "EKFLocalizerZeroGyro") localizer = cv::makePtr<dg::EKFLocalizerZeroGyro>();
-    else if (name == "EKFLocalizerZeroOdom") localizer = cv::makePtr<dg::EKFLocalizerZeroOdom>();
-    else if (name == "EKFLocalizerPostOdom") localizer = cv::makePtr<dg::EKFLocalizerPostOdom>();
-    else if (name == "EKFLocalizerSlowGyro") localizer = cv::makePtr<dg::EKFLocalizerSlowGyro>();
     else if (name == "EKFLocalizerHyperTan") localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
-    else if (name == "EKFLocalizerZeroRate") localizer = cv::makePtr<dg::EKFLocalizerZeroRate>();
-    else if (name == "EKFLocalizerVelModel") localizer = cv::makePtr<dg::EKFLocalizerVelModel>();
-    else if (name == "EKFLocalizerFreqPred") localizer = cv::makePtr<dg::EKFLocalizerFreqPred>();
-    else if (name == "EKFLocalizerVTAdjust") localizer = cv::makePtr<dg::EKFLocalizerVTAdjust>();
-    else if (name == "EKFLocalizerObsvFunc") localizer = cv::makePtr<dg::EKFLocalizerObsvFunc>();
     else if (name == "EKFLocalizerSinTrack") localizer = cv::makePtr<dg::EKFLocalizerSinTrack>();
     return localizer;
 }
@@ -336,8 +328,9 @@ int runLocalizerETRI(const string& localizer_name, const string& gps_file, const
 
 int main()
 {
-    return runLocalizerETRI("EKFLocalizer", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.1, dg::Pose2(), 1, "data/NaverLabs_ETRI(Road).csv", "data/NaverMap_ETRI(Satellite)_191127.png");
-    return runLocalizerETRI("EKFLocalizerZeroGyro", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.5, dg::Pose2(), 1, "data/NaverLabs_ETRI(Road).csv", "data/NaverMap_ETRI(Satellite)_191127.png");
-    return runLocalizerETRI("EKFLocalizerSinTrack", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.1, dg::Pose2(), 1, "data/NaverLabs_ETRI(Road).csv", "data/NaverMap_ETRI(Satellite)_191127.png");
+    //return runLocalizerETRI("EKFLocalizer", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.1, dg::Pose2(), 1, "data/NaverLabs_ETRI.csv", "data/NaverMap_ETRI(Satellite)_191127.png");
+    //return runLocalizerETRI("EKFLocalizerZeroGyro", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.5, dg::Pose2(), 1, "data/NaverLabs_ETRI.csv", "data/NaverMap_ETRI(Satellite)_191127.png");
+    //return runLocalizerETRI("EKFLocalizerHyperTan", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.5, dg::Pose2(), 1, "data/NaverLabs_ETRI.csv", "data/NaverMap_ETRI(Satellite)_191127.png");
+    return runLocalizerETRI("EKFLocalizerSinTrack", "data_localizer/real_data/ETRI_191115.gps.csv", "", 0.5, dg::Polar2(1, 0), 0.1, dg::Pose2(), 1, "data/NaverLabs_ETRI.csv", "data/NaverMap_ETRI(Satellite)_191127.png");
     return runLocalizerSynthetic("EKFLocalizerHyperTan", "data_localizer/synthetic_truth/Sine(10Hz,00s).pose.csv", "", 0.5, dg::Polar2(1, 0), 0.1);
 }
