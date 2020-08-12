@@ -1050,7 +1050,7 @@ bool MapManager::getPOI(double lat, double lon, double radius, std::vector<POI>&
 	m_json = "";
 
 	// by communication
-	downloadPOI_poi(node_id, radius);
+	downloadPOI(node_id, radius);
 	//decodeUni();
 	const char* json = m_json.c_str();
 //#ifdef _DEBUG
@@ -1166,7 +1166,7 @@ std::vector<POI> MapManager::getPOI(const std::string poi_name, LatLon latlon, d
 	std::vector<POI> poi_vec;
 	bool ok = getPOI(latlon.lat, latlon.lon, radius, poi_vec);
 	if (!ok)
-		return getPOI();
+		return std::vector<POI>();
 	poi_vec.clear();
 	std::wstring name;
 	utf8to16(poi_name.c_str(), name);
