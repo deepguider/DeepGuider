@@ -3,10 +3,7 @@
 ## Set path of deepguider and ros workspace
 
 # ROSDIR is the only one you have to change to your own.
-#ROSDIR="/work/dg_ros"   # path of ROS workspace
-ROSDIR="/home/dg/dg_ws"  # path of ROS workspace
-
-
+ROSDIR="/home/dg/dg_ws"   # path of your own ROS workspace. This script will create it when it does not exist.
 
 ############### Do not modify from here
 
@@ -56,6 +53,7 @@ function func_copy_src_to_catkin_ws(){
 	#cp -rf $DGDIR/src/core $SRCDST 
 
 	ln -sf $DGDIR/examples/dg_simple_ros $ROSDIR/src/
+	#cp $DGDIR/examples/dg_simple_ros $ROSDIR/src/. -rf
 	
 	ln -sf $DGDIR/bin/data $ROSDIR/
 	ln -sf $DGDIR/bin/data_localizer $ROSDIR/
@@ -69,8 +67,10 @@ function func_copy_src_to_catkin_ws(){
 
 	## Copy machine-specific files from template to local
 	#cp $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt $DGDIR/examples/dg_simple_ros/CMakeLists.txt
-	sed -e "s|\$ENV{HOME}/dg/DeepGuider|$DGDIR|g" $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt > $DGDIR/examples/dg_simple_ros/CMakeLists.txt
+	#sed -e "s|\$ENV{HOME}/dg/DeepGuider|$DGDIR|g" $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt > $DGDIR/examples/dg_simple_ros/CMakeLists.txt
+	sed -e "s|/work/deepguider|$DGDIR|g" $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt > $DGDIR/examples/dg_simple_ros/CMakeLists.txt
 	cp $DGDIR/examples/dg_simple_ros/dg_ros.yml $ROSDIR/
+	sed -i "s|/work/deepguider|$DGDIR|g" $ROSDIR/dg_ros.yml
 
 	## Copy example shell scripts to ROS workspace
 	cp $DGDIR/examples/dg_simple_ros/dg_run.sh $ROSDIR/

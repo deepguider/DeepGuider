@@ -13,6 +13,7 @@ set(EXTDIR  "${DGDIR}/EXTERNAL")
 set(RAPIDJSON_INC "${EXTDIR}/rapidjson/include")
 set(CURL_LIBRARIES "-lcurl")
 set(JSONCPP_LIBRARIES "-ljsoncpp")
+set(FS_LIBRARIES "-lstdc++fs")
 
 add_compile_options(-std=c++14)
 add_compile_options(-pthread)
@@ -26,7 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 #find_package( PythonInterp 3.6 REQUIRED )
 #find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV 3.3 REQUIRED )
+find_package( OpenCV 4.3 REQUIRED )
 find_package( CURL REQUIRED )
 
 ## Generate messages in the 'msg' folder
@@ -63,6 +64,7 @@ target_link_libraries(
   ${PYTHON_LIBRARIES}
   ${CURL_LIBRARIES}
   ${JSONCPP_LIBRARIES}
+  ${FS_LIBRARIES}
 )
 
 # dg_ocr
@@ -75,6 +77,7 @@ target_link_libraries(
   ${PYTHON_LIBRARIES}
   ${CURL_LIBRARIES}
   ${JSONCPP_LIBRARIES}
+  ${FS_LIBRARIES}
 )
 
 
