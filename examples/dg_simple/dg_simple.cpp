@@ -374,7 +374,7 @@ bool DeepGuider::initialize(std::string config_file)
     if (m_enable_tts)
     {
         tts_thread = new std::thread(threadfunc_tts, this);
-        putTTS("System_is_initialized!");
+        putTTS("System is initialized!");
     } 
 
     printf("\tInitialization is done!\n\n");
@@ -1069,19 +1069,19 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         if (cmd != m_guidance_cmd)
         {
             std::string tts_msg;
-            if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) tts_msg = "Go_forward";
-            else if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD)  tts_msg = "Cross_forward";
-            else if (cmd == dg::GuidanceManager::Motion::ENTER_FORWARD) tts_msg = "Enter_forward";
-            else if (cmd == dg::GuidanceManager::Motion::EXIT_FORWARD) tts_msg = "Exit_forward";
-            else if (cmd == dg::GuidanceManager::Motion::TURN_LEFT) tts_msg = "Turn_left";
-            else if (cmd == dg::GuidanceManager::Motion::CROSS_LEFT) tts_msg = "Cross_left";
-            else if (cmd == dg::GuidanceManager::Motion::ENTER_LEFT) tts_msg = "Enter_left";
-            else if (cmd == dg::GuidanceManager::Motion::EXIT_LEFT) tts_msg = "Exit_left";
-            else if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT) tts_msg = "Turn_right";
-            else if (cmd == dg::GuidanceManager::Motion::CROSS_RIGHT) tts_msg = "Cross_right";
-            else if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) tts_msg = "Enter_right";
-            else if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) tts_msg = "Exit_right";
-            else if (cmd == dg::GuidanceManager::Motion::TURN_BACK) tts_msg = "Turn_back";
+            if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) tts_msg = "Go forward";
+            else if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD)  tts_msg = "Cross forward";
+            else if (cmd == dg::GuidanceManager::Motion::ENTER_FORWARD) tts_msg = "Enter forward";
+            else if (cmd == dg::GuidanceManager::Motion::EXIT_FORWARD) tts_msg = "Exit forward";
+            else if (cmd == dg::GuidanceManager::Motion::TURN_LEFT) tts_msg = "Turn left";
+            else if (cmd == dg::GuidanceManager::Motion::CROSS_LEFT) tts_msg = "Cross left";
+            else if (cmd == dg::GuidanceManager::Motion::ENTER_LEFT) tts_msg = "Enter left";
+            else if (cmd == dg::GuidanceManager::Motion::EXIT_LEFT) tts_msg = "Exit left";
+            else if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT) tts_msg = "Turn right";
+            else if (cmd == dg::GuidanceManager::Motion::CROSS_RIGHT) tts_msg = "Cross right";
+            else if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) tts_msg = "Enter right";
+            else if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) tts_msg = "Exit right";
+            else if (cmd == dg::GuidanceManager::Motion::TURN_BACK) tts_msg = "Turn back";
 
             if(!tts_msg.empty()) putTTS(tts_msg.c_str());
             m_guidance_cmd = cmd;
@@ -1092,14 +1092,14 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
     {
         printf("Arrived to destination!\n");
-        if(m_enable_tts) putTTS("Arrived_to_destination!");
+        if(m_enable_tts) putTTS("Arrived to destination!");
     }
 
     // check out of path
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP_DETECT || cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
     {
         printf("GUIDANCE: out of path detected!\n");
-        if(m_enable_tts) putTTS("Regenerate_path!");
+        if(m_enable_tts) putTTS("Regenerate path!");
         VVS_CHECK_TRUE(updateDeepGuiderPath(pose_topo, pose_gps, m_gps_dest));
     }
 

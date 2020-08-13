@@ -32,19 +32,19 @@ namespace dg
  *	 because itself is used as a file name : [message].mp3"
  ****/
 std::string tts_msg_list_example[] = {
-	"Go_forward",
-	"Cross_forward",
-	"Enter_forward",
-	"Exit_forward",
-	"Turn_left",
-	"Cross_left",
-	"Enter_left",
-	"Exit_left",
-	"Turn_right",
-	"Cross_right",
-	"Enter_right",
-	"Exit_right",
-	"Turn_back"
+	"Go forward",
+	"Cross forward",
+	"Enter forward",
+	"Exit forward",
+	"Turn left",
+	"Cross left",
+	"Enter left",
+	"Exit left",
+	"Turn right",
+	"Cross right",
+	"Enter right",
+	"Exit right",
+	"Turn back"
 };
 
 bool check_dir_exist(void)
@@ -63,6 +63,28 @@ bool check_file_exist(std::string fname_noext)
 	fs::path p(SOUND_FILE(fname_noext));
 	return fs::exists(p);
 }
+
+
+std::string RemoveSpecials(std::string str)
+{
+	int i=0,len=str.length();
+	while(i<len)
+	{
+		char c=str[i];
+		if(((c>='0')&&(c<='9'))||((c>='A')&&(c<='Z'))||((c>='a')&&(c<='z'))) 
+		{
+			if((c>='A')&&(c<='Z')) str[i]+=32; //Assuming dictionary contains small letters only.
+			++i;
+		}
+		else
+		{
+			str.erase(i,1);
+			--len;
+		}
+	}
+	return str;
+}
+
 
 int _tts_mp3play(std::string fname_noext) // use ffmpeg to play mp3
 {
@@ -97,7 +119,8 @@ int _tts(std::string sentence) // use ffmpeg to play mp3
 {
 
 	int ret = 0;
-	std::string fname_noext = sentence;
+	std::string fname_noext;
+	fname_noext.assign(RemoveSpecials(sentence));
 
 	if(!check_dir_exist())
 	{
