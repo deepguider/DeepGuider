@@ -131,6 +131,14 @@ public:
 	bool getMap_expansion(Path path, Map& map, double alpha = 50.0);
 
 	/**
+	 * Get the junction nodes in the current topological map
+	 * @param cur_latlon The given latitude and longitude of current location (Unit: [deg])
+	 * @param top_n The number of nodes to get 
+	 * @return A vector of gotten nodes (Sort in order from current location to nearest)
+	 */
+	std::vector<Node> getMap_junction(LatLon cur_latlon, UINT top_n = 1);
+
+	/**
 	 * Get the current topological map
 	 * @return A reference to gotten topological map
 	 */
@@ -326,10 +334,10 @@ protected:
 	std::map<ID, LatLon> lookup_path;
 	/** A hash table for finding POIs by name */
 	std::map<std::wstring, LatLon> lookup_pois_name;
-	/** A hash table for finding POIs by ID */
-	std::map<ID, LatLon> lookup_pois_id;
-	/** A hash table for finding StreetViews */
-	std::map<ID, LatLon> lookup_svs;
+	///** A hash table for finding POIs by ID */
+	//std::map<ID, LatLon> lookup_pois_id;
+	///** A hash table for finding StreetViews */
+	//std::map<ID, LatLon> lookup_svs;
 
 	/*int lat2tiley(double lat, int z);
 	int lon2tilex(double lon, int z);

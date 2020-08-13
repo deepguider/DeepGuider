@@ -43,6 +43,7 @@ int testSimpleMapManager()
 		VVS_CHECK_EQUL(map2.nodes.size(), 802);
 	map1.set_union(map2);
 	VVS_CHECK_EQUL(map1.nodes.size(), 983);
+	std::vector<dg::Node> junc_node = manager.getMap_junction(dg::LatLon(36.384102, 127.374838), 3);
 
 	// Get the path
 	ok = manager.getPath("test_simple_path.json", path);

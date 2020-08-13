@@ -21,24 +21,24 @@ bool MapManager::initialize()
 	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
 	{
 		lookup_pois_name.insert(std::make_pair(it->name, LatLon(it->lat, it->lon)));
-		lookup_pois_id.insert(std::make_pair(it->id, LatLon(it->lat, it->lon)));
+		//lookup_pois_id.insert(std::make_pair(it->id, LatLon(it->lat, it->lon)));
 	}
 	m_map->pois.clear();
 
-	std::vector<StreetView> sv_vec;
-	ok = getStreetView(36.384063, 127.374733, 40000.0, sv_vec);	// Korea
-	if (!ok)
-	{
-		delete m_map;
-		m_isMap = false;
+	//std::vector<StreetView> sv_vec;
+	//ok = getStreetView(36.384063, 127.374733, 40000.0, sv_vec);	// Korea
+	//if (!ok)
+	//{
+	//	delete m_map;
+	//	m_isMap = false;
 
-		return false;
-	}
-	for (std::vector<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
-	{
-		lookup_svs.insert(std::make_pair(it->id, LatLon(it->lat, it->lon)));
-	}
-	m_map->views.clear();
+	//	return false;
+	//}
+	//for (std::vector<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
+	//{
+	//	lookup_svs.insert(std::make_pair(it->id, LatLon(it->lat, it->lon)));
+	//}
+	//m_map->views.clear();
 
 	return true;
 }
@@ -655,6 +655,40 @@ bool MapManager::getMap_expansion(Path path, Map& map, double alpha)
 	map = getMap();
 
 	return true;
+}
+
+std::vector<Node> MapManager::getMap_junction(LatLon cur_latlon, UINT top_n)
+{
+	std::vector<Node> node_vec;
+
+	UTMConverter utm_conv;
+	Point2 cur_metric = utm_conv.toMetric(cur_latlon);
+	Point2 node_metric;
+	double dist_metric;
+	/** A hash table for finding junction nodes by distance */
+	std::map<double, Node> lookup_junc_dist;
+
+	for (std::vector<Node>::iterator it = m_map->nodes.begin(); it != m_map->nodes.end(); ++it)
+	{
+		if(it->type == Node::NODE_JUNCTION)
+		{
+			node_metric = utm_conv.toMetric(LatLon(it->lat, it->lon));
+			dist_metric = sqrt(pow((cur_metric.x - node_metric.x), 2) + pow((cur_metric.y - node_metric.y), 2));
+			lookup_junc_dist.insert(std::make_pair(dist_metric, *it));
+		}
+	}
+	
+	UINT num = 0;
+	for (std::map<double, Node>::iterator it = lookup_junc_dist.begin(); it != lookup_junc_dist.end(); ++it)
+	{
+		if (num >= top_n)
+			break;		
+		num++;
+
+		node_vec.push_back(it->second);
+	}
+
+	return node_vec;
 }
 
 bool MapManager::downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
