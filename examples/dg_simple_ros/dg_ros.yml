@@ -1,9 +1,9 @@
 %YAML:1.0
 ---
 ## activate/deactivate submodules
-enable_intersection: 1
+enable_intersection: 0
 enable_vps: 1
-enable_poi_logo: 1
+enable_poi_logo: 0
 enable_poi_ocr: 0
 enable_roadtheta: 0
 enable_exploration: 0
@@ -16,7 +16,7 @@ dg_srcdir: "/work/deepguider/src"   # path of deepguider/src folder (required fo
 
 ## etc
 enable_data_logging: 0
-enable_tts: 0
+enable_tts: 1
 video_recording: 0
 video_recording_fps: 30
 map_image_path: "data/NaverMap_ETRI(Satellite)_191127.png"

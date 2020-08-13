@@ -122,4 +122,4 @@ echo "     3. [option] You can trun on/off each module modifing $ROSDIR/dg_ros.y
 echo "         ex) enable_intersection: 0"
 echo ""
 echo "Then run followings :"
-echo "    source $ROSDIR/devel/setup.bash;cd $ROSDIR;catkin_make;./dg_run.sh"
+echo "    source $ROSDIR/devel/setup.bash;cd $ROSDIR;./catkin_build.sh;./dg_run.sh"

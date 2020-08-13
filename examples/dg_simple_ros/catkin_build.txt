@@ -2,4 +2,4 @@
 source /opt/ros/melodic/setup.bash
 catkin_make install
 source install/setup.bash
-rosrun dg_simple_ros dg_simple_ros
+#rosrun dg_simple_ros dg_simple_ros
