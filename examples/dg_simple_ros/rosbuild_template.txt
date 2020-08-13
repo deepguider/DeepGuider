@@ -59,7 +59,14 @@ function func_copy_src_to_catkin_ws(){
 	
 	ln -sf $DGDIR/bin/data $ROSDIR/
 	ln -sf $DGDIR/bin/data_localizer $ROSDIR/
+
+	# setup data_vps
+	CWD=`pwd`
 	ln -sf $DGDIR/src/vps/data_vps $ROSDIR/
+	cd $DGDIR/src/vps
+	./0setup.sh
+	cd $CWD
+
 	ln -sf $DGDIR/src/intersection_cls/data_intersection_cls $ROSDIR/
 	ln -sf $DGDIR/src/logo_recog/logo_data $ROSDIR/
 	ln -sf $DGDIR/src/logo_recog/model $ROSDIR/
@@ -73,6 +80,8 @@ function func_copy_src_to_catkin_ws(){
 	sed -e "s|/work/deepguider|$DGDIR|g" $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt > $DGDIR/examples/dg_simple_ros/CMakeLists.txt
 	cp $DGDIR/examples/dg_simple_ros/dg_ros.yml $ROSDIR/
 	sed -i "s|/work/deepguider|$DGDIR|g" $ROSDIR/dg_ros.yml
+	cp $DGDIR/examples/dg_simple_ros/catkin_build.txt $ROSDIR/catkin_build.sh
+	chmod a+x $ROSDIR/catkin_build.sh
 
 	## Copy example shell scripts to ROS workspace
 	cp $DGDIR/examples/dg_simple_ros/dg_run.sh $ROSDIR/
@@ -81,6 +90,7 @@ function func_copy_src_to_catkin_ws(){
 	chmod a+x $ROSDIR/dg_databag.sh
 
 	mkdir -p $ROSDIR/recordings
+	mkdir -p $ROSDIR/font # to display OCR results in Korean.
 }
 
 
@@ -102,8 +112,14 @@ fi
 
 func_copy_src_to_catkin_ws $DGDIR $ROSDIR
 
-echo "Make valid link of ./recordings/2020-02-19-15-01-53.bag to $ROSDIR as follows :"
-echo "   ln -s yourpath/2020-02-19-15-01-53.bag $ROSDIR/recordings/2020-02-19-15-01-53.bag"
+echo "To do list :"
+echo "     1. Make valid link of $ROSDIR/recordings/2020-02-19-15-01-53.bag as follows :"
+echo "         $ ln -s yourpath/2020-02-19-15-01-53.bag $ROSDIR/recordings/2020-02-19-15-01-53.bag"
+echo ""
+echo "     2. Prepare batang.ttf gulim.ttf into $ROSDIR/font as follows :"
+echo ""
+echo "     3. [option] You can trun on/off each module modifing $ROSDIR/dg_ros.yml :"
+echo "         ex) enable_intersection: 0
 echo ""
 echo "Then run followings :"
 echo "    source $ROSDIR/devel/setup.bash;cd $ROSDIR;catkin_make;./dg_run.sh"

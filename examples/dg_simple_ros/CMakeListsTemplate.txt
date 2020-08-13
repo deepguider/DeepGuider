@@ -27,7 +27,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 #find_package( PythonInterp 3.6 REQUIRED )
 #find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV 3.3 REQUIRED )
+find_package( OpenCV 3.2 REQUIRED )
 find_package( CURL REQUIRED )
 
 ## Generate messages in the 'msg' folder

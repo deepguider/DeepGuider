@@ -250,6 +250,7 @@ bool DeepGuider::initialize(std::string config_file)
     printf("Initialize deepguider system...\n");
 
     // load config
+	printf("ddddddddddddddddddddd\n");
     bool ok = loadConfig(config_file);
     if(ok) printf("\tConfiguration %s loaded!\n", config_file.c_str());
 
@@ -374,7 +375,7 @@ bool DeepGuider::initialize(std::string config_file)
     if (m_enable_tts)
     {
         tts_thread = new std::thread(threadfunc_tts, this);
-        putTTS("System is initialized!");
+        putTTS("System_is_initialized!");
     } 
 
     printf("\tInitialization is done!\n\n");
@@ -1092,14 +1093,14 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
     {
         printf("Arrived to destination!\n");
-        if(m_enable_tts) putTTS("Arrived to destination!");
+        if(m_enable_tts) putTTS("Arrived_to_destination!");
     }
 
     // check out of path
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP_DETECT || cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
     {
         printf("GUIDANCE: out of path detected!\n");
-        if(m_enable_tts) putTTS("Regenerate path!");
+        if(m_enable_tts) putTTS("Regenerate_path!");
         VVS_CHECK_TRUE(updateDeepGuiderPath(pose_topo, pose_gps, m_gps_dest));
     }
 
