@@ -1,14 +1,13 @@
 #!/bin/bash
 
+
+############### Do not modify from here
+
 ## Set path of deepguider and ros workspace
 
 # ROSDIR is the only one you have to change to your own.
-#ROSDIR="/work/dg_ros"   # path of ROS workspace
-ROSDIR="/home/dg/dg_ws"  # path of ROS workspace
+ROSDIR="/home/dg/dg_ws"   # path of your own ROS workspace. This script will create it when it does not exist.
 
-
-
-############### Do not modify from here
 
 CWD0=`pwd`
 CWD1=`dirname $CWD0`
@@ -56,10 +55,18 @@ function func_copy_src_to_catkin_ws(){
 	#cp -rf $DGDIR/src/core $SRCDST 
 
 	ln -sf $DGDIR/examples/dg_simple_ros $ROSDIR/src/
+	#cp $DGDIR/examples/dg_simple_ros $ROSDIR/src/. -rf
 	
 	ln -sf $DGDIR/bin/data $ROSDIR/
 	ln -sf $DGDIR/bin/data_localizer $ROSDIR/
+
+	# setup data_vps
+	CWD=`pwd`
 	ln -sf $DGDIR/src/vps/data_vps $ROSDIR/
+	cd $DGDIR/src/vps
+	./0setup.sh
+	cd $CWD
+
 	ln -sf $DGDIR/src/intersection_cls/data_intersection_cls $ROSDIR/
 	ln -sf $DGDIR/src/logo_recog/logo_data $ROSDIR/
 	ln -sf $DGDIR/src/logo_recog/model $ROSDIR/
@@ -69,8 +76,12 @@ function func_copy_src_to_catkin_ws(){
 
 	## Copy machine-specific files from template to local
 	#cp $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt $DGDIR/examples/dg_simple_ros/CMakeLists.txt
-	sed -e "s|\$ENV{HOME}/dg/DeepGuider|$DGDIR|g" $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt > $DGDIR/examples/dg_simple_ros/CMakeLists.txt
+	#sed -e "s|\$ENV{HOME}/dg/DeepGuider|$DGDIR|g" $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt > $DGDIR/examples/dg_simple_ros/CMakeLists.txt
+	sed -e "s|/work/deepguider|$DGDIR|g" $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt > $DGDIR/examples/dg_simple_ros/CMakeLists.txt
 	cp $DGDIR/examples/dg_simple_ros/dg_ros.yml $ROSDIR/
+	sed -i "s|/work/deepguider|$DGDIR|g" $ROSDIR/dg_ros.yml
+	cp $DGDIR/examples/dg_simple_ros/catkin_build.txt $ROSDIR/catkin_build.sh
+	chmod a+x $ROSDIR/catkin_build.sh
 
 	## Copy example shell scripts to ROS workspace
 	cp $DGDIR/examples/dg_simple_ros/dg_run.sh $ROSDIR/
@@ -79,27 +90,36 @@ function func_copy_src_to_catkin_ws(){
 	chmod a+x $ROSDIR/dg_databag.sh
 
 	mkdir -p $ROSDIR/recordings
+	mkdir -p $ROSDIR/font # to display OCR results in Korean.
 }
 
 
 ## Check if specified DeepGuider directory exists.
 if [ ! -d $DGDIR ]; then
-    echo "Error: The specified DeepGuider directory '$DGDIR' doesn't exists." 
+    echo "Error : The specified DeepGuider directory '$DGDIR' doesn't exists." 
     echo "Modify it to valid path."
     exit
 fi
 
 ## Check if specified ROS workspace exists.
 if [ ! -d $ROSDIR ]; then
-    echo "Error: The specified ROS workspace '$ROSDIR' doesn't exists." 
+    echo "Warning : The specified ROS workspace '$ROSDIR' doesn't exists." 
     echo "Create it first or specify valid ROS workspace path."
-	echo "$ROSDIR will be created automatically."
+	echo "$ROSDIR will be created or overwritten automatically."
     #exit
 	func_caktin_ws_create $ROSDIR
 fi
 
 func_copy_src_to_catkin_ws $DGDIR $ROSDIR
 
-echo "Make link of ./recordings/2020-02-19-15-01-53.bag to $ROSDIR"
+echo "To do list :"
+echo "     1. Make valid link of $ROSDIR/recordings/2020-02-19-15-01-53.bag as follows :"
+echo "         $ ln -s yourpath/2020-02-19-15-01-53.bag $ROSDIR/recordings/2020-02-19-15-01-53.bag"
+echo ""
+echo "     2. Prepare batang.ttf gulim.ttf into $ROSDIR/font as follows :"
+echo ""
+echo "     3. [option] You can trun on/off each module modifing $ROSDIR/dg_ros.yml :"
+echo "         ex) enable_intersection: 0"
+echo ""
 echo "Then run followings :"
-echo "    source $ROSDIR/devel/setup.bash;cd $ROSDIR;catkin_make;./dg_run.sh"
+echo "    source $ROSDIR/devel/setup.bash;cd $ROSDIR;./catkin_build.sh;./dg_run.sh"

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ## Set path of deepguider and ros workspace
-DGDIR="/work/deepguider"        # path of DeepGuider source root
-ROSDIR="/work/dg_ros"           # path of ROS workspace
+DGDIR="/home/ccsmm/tmp/DeepGuider"        # path of DeepGuider source root
+ROSDIR="/home/ccsmm/catkin_ws"           # path of ROS workspace
 
 ## Check if specified DeepGuider directory exists.
 if [ ! -d $DGDIR ]; then
