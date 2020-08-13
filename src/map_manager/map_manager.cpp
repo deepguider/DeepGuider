@@ -1179,6 +1179,41 @@ std::vector<POI> MapManager::getPOI(const std::string poi_name, LatLon latlon, d
 	return poi_vec;
 }
 
+std::vector<POI> MapManager::getPOI_sorting(const std::string poi_name, LatLon latlon, double radius, LatLon cur_latlon)
+{
+	std::vector<POI> poi_vec;
+	bool ok = getPOI(latlon.lat, latlon.lon, radius, poi_vec);
+	if (!ok)
+		return std::vector<POI>();
+	poi_vec.clear();
+	std::wstring name;
+	utf8to16(poi_name.c_str(), name);
+
+	UTMConverter utm_conv;
+	Point2 cur_metric = utm_conv.toMetric(cur_latlon);
+	Point2 poi_metric;
+	double dist_metric;
+	/** A hash table for finding POIs by distance */
+	std::map<double, POI> lookup_pois_dist;
+	
+	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
+	{
+		if (it->name == name)
+		{
+			poi_metric = utm_conv.toMetric(LatLon(it->lat, it->lon));
+			dist_metric = sqrt(pow((cur_metric.x - poi_metric.x), 2) + pow((cur_metric.y - poi_metric.y), 2));
+			lookup_pois_dist.insert(std::make_pair(dist_metric, *it));
+		}
+	}
+
+	for (std::map<double, POI>::iterator it = lookup_pois_dist.begin(); it != lookup_pois_dist.end(); ++it)
+	{
+		poi_vec.push_back(it->second);
+	}
+
+	return poi_vec;
+}
+
 std::vector<POI> MapManager::getPOI(const std::string poi_name)
 {
 	std::wstring name;
@@ -1188,6 +1223,17 @@ std::vector<POI> MapManager::getPOI(const std::string poi_name)
 		return std::vector<POI>();
 
 	return getPOI(poi_name, found->second, 10.0);
+}
+
+std::vector<POI> MapManager::getPOI_sorting(const std::string poi_name, LatLon cur_latlon)
+{
+	std::wstring name;
+	utf8to16(poi_name.c_str(), name);
+	auto found = lookup_pois_name.find(name);
+	if (found == lookup_pois_name.end())
+		return std::vector<POI>();
+
+	return getPOI_sorting(poi_name, found->second, 10.0, cur_latlon);
 }
 
 bool MapManager::downloadStreetView(double lat, double lon, double radius)

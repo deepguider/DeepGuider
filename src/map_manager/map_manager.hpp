@@ -236,9 +236,27 @@ public:
 	/**
 	 * Get the POIs corresponding to a certain POI name
 	 * @param poi_name The given POI name of this POI
+	 * @param latlon The given latitude and longitude of this POI (Unit: [deg])
+	 * @param radius The given radius of this POI (Unit: [m])
+	 * @param cur_latlon The given latitude and longitude of current location (Unit: [deg])
+	 * @return A vector of gotten POIs (Sort in order from current location to nearest)
+	 */
+	std::vector<POI> getPOI_sorting(const std::string poi_name, LatLon latlon, double radius, LatLon cur_latlon);
+
+	/**
+	 * Get the POIs corresponding to a certain POI name
+	 * @param poi_name The given POI name of this POI
 	 * @return A vector of gotten POIs
 	 */
 	std::vector<POI> getPOI(const std::string poi_name);
+
+	/**
+	 * Get the POIs corresponding to a certain POI name
+	 * @param poi_name The given POI name of this POI
+	 * @param cur_latlon The given latitude and longitude of current location (Unit: [deg])
+	 * @return A vector of gotten POIs (Sort in order from current location to nearest)
+	 */
+	std::vector<POI> getPOI_sorting(const std::string poi_name, LatLon cur_latlon);
 
 	/**
 	 * Get the StreetViews within a certain radius based on latitude and longitude
