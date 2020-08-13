@@ -119,7 +119,7 @@ echo ""
 echo "     2. Prepare batang.ttf gulim.ttf into $ROSDIR/font as follows :"
 echo ""
 echo "     3. [option] You can trun on/off each module modifing $ROSDIR/dg_ros.yml :"
-echo "         ex) enable_intersection: 0
+echo "         ex) enable_intersection: 0"
 echo ""
 echo "Then run followings :"
 echo "    source $ROSDIR/devel/setup.bash;cd $ROSDIR;catkin_make;./dg_run.sh"

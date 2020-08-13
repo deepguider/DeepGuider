@@ -250,7 +250,6 @@ bool DeepGuider::initialize(std::string config_file)
     printf("Initialize deepguider system...\n");
 
     // load config
-	printf("ddddddddddddddddddddd\n");
     bool ok = loadConfig(config_file);
     if(ok) printf("\tConfiguration %s loaded!\n", config_file.c_str());
 
