@@ -197,6 +197,7 @@ namespace dg
 		double m_edge_progress = 0.0;
 		double m_rmdistance = 0.0;
 		int m_cur_head_angle = 0;
+		TopometricPose  m_curpose;
 		MoveStatus  m_mvstatus = MoveStatus::ON_EDGE;
 		GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
 		Guidance m_curguidance;
@@ -204,7 +205,7 @@ namespace dg
 		time_t oop_start = 0, oop_end = 0;
 		int m_finalTurn = 0;
 		int m_finalEdgeId = 0;
-		double m_approachingThreshold = 5.0;
+		double m_approachingThreshold = 10.0;
 
 		std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
 		std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
@@ -251,6 +252,7 @@ namespace dg
 		};
 
 		bool isNodeInPath(ID nodeid);
+		bool isNodeEdgeInExtPath(ID nodeid, ID edgeid);
 		Motion getMotion(int ntype, int etype, int degree);
 		Guidance getLastGuidance() { return m_past_guides.back(); };
 		std::string getStringAction(Action action);
