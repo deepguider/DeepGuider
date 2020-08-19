@@ -13,15 +13,27 @@
 
 #include <bits/stdc++.h> 
 #include <iostream>
-//#include <filesystem> // When g++ version is >= 8.0.
-//namespace fs = std::filesystem; // When g++ version is >= 8.0.
-#include <experimental/filesystem> // When g++ version < 8.0.
-namespace fs = std::experimental::filesystem;  // When g++ version < 8.0.
+
+/* Test for GCC > 8.1.0 */
+// #if __GNUC__ > 8 || (__GNUC__ == 8 && (__GNUC_MINOR__ > 1 || (__GNUC_MINOR__ == 1 && __GNUC_PATCHLEVEL__ > 0))
+
+/* Test for GCC > 8.0.0 */
+#if __GNUC__ >= 8 // G++ >= 8. We assume that you use same version of gcc and g++.
+
+#include <filesystem> // When g++ version is >= 8.0.
+namespace fs = std::filesystem; // When g++ version is >= 8.0.
+
+#else  // G++ < 8
+
+#include <experimental/filesystem>  // When g++ version is < 8.0.
+namespace fs = std::experimental::filesystem;  // When g++ version is < 8.0.
+
+#endif // __GNUC__
+
 #define SOUND_DIR   "./sound"
 #define SOUND_FILE(fname_noext) "./sound/"+fname_noext+".mp3"
 
 #endif	// _WIN32
-
 
 namespace dg
 {
