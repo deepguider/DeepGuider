@@ -73,6 +73,8 @@ protected:
     dg::MapPainter m_painter;
     dg::MapCanvasInfo m_map_info;    
     dg::GuidanceManager::Motion m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
+    std::list<dg::LatLon> m_gps_history_asen;
+    std::list<dg::LatLon> m_gps_history_novatel;
 
     // global variables
     dg::LatLon m_gps_start;
@@ -369,6 +371,8 @@ bool DeepGuider::initialize(std::string config_file)
     m_ocr_image.release();
     m_ocrs.clear();
     m_intersection_image.release();
+    m_gps_history_asen.clear();
+    m_gps_history_novatel.clear();
 
     // tts
     if (m_enable_tts)
@@ -505,6 +509,7 @@ int DeepGuider::run()
         int key = cv::waitKey(1);
         if (key == cx::KEY_SPACE) key = cv::waitKey(0);
         if (key == cx::KEY_ESC) break;
+        if (key == 83) itr += 30;   // Right Key
 
         dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
         printf("Iteration: %d (it took %lf seconds)\n", itr, t2 - t1);
@@ -553,6 +558,7 @@ void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
 
     // draw gps history on the GUI map
     m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
+    m_gps_history_asen.push_back(gps_datum);
 }
 
 
@@ -667,6 +673,14 @@ bool DeepGuider::updateDeepGuiderPath(dg::TopometricPose pose_topo, dg::LatLon g
     m_map_image_original.copyTo(m_map_image);
     m_painter.drawMap(m_map_image, m_map_info, map);
     m_painter.drawPath(m_map_image, m_map_info, map, path);
+    for(auto itr = m_gps_history_novatel.begin(); itr != m_gps_history_novatel.end(); itr++)
+    {
+        m_painter.drawNode(m_map_image, m_map_info, *itr, 2, 0, cv::Vec3b(0, 0, 255));
+    }
+    for(auto itr = m_gps_history_asen.begin(); itr != m_gps_history_asen.end(); itr++)
+    {
+        m_painter.drawNode(m_map_image, m_map_info, *itr, 2, 0, cv::Vec3b(0, 255, 0));
+    }
 
     printf("\tGUI map is updated with new map and path!\n");
 
@@ -813,23 +827,29 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     // draw ocr result
     if (m_enable_ocr)
     {
-        cv::Mat ocr_image;
-        std::vector<OCRResult> ocrs;
-        cv::Size original_image_size;
         m_ocr_mutex.lock();
-        if (!m_ocr_image.empty())
+        cv::Mat ocr_image = m_ocr_image.clone();
+        std::vector<OCRResult> ocrs = m_ocrs;
+        m_ocr_mutex.unlock();
+
+        cv::Size original_image_size;
+        if (!ocr_image.empty())
         {
+            OCRRecognizer recognizer;
+            recognizer.set(ocrs, 0, 0);
+            recognizer.draw(ocr_image, 40);
+
             original_image_size.width = m_ocr_image.cols;
             original_image_size.height = m_ocr_image.rows;
             double fy = (double)win_rect.height / m_ocr_image.rows;
-            cv::resize(m_ocr_image, ocr_image, cv::Size(), fy*0.9, fy);
+            cv::resize(ocr_image, ocr_image, cv::Size(), fy*0.9, fy);
             ocrs = m_ocrs;
         }
-        m_ocr_mutex.unlock();
+        //m_ocr_mutex.unlock();
 
         if (!ocr_image.empty())
         {
-            drawOcr(ocr_image, ocrs, original_image_size);
+            //drawOcr(ocr_image, ocrs, original_image_size);
             cv::Point ocr_offset = video_offset;
             ocr_offset.x = win_rect.x + win_rect.width + win_delta;
             cv::Rect rect(ocr_offset, ocr_offset + cv::Point(ocr_image.cols, ocr_image.rows));

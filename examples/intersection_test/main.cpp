@@ -1,5 +1,7 @@
 #include "dg_intersection.hpp"
-#include "dg_utils.hpp"
+#include "utils/python_embedding.hpp"
+#include "utils/vvs.h"
+#include "utils/opencx.hpp"
 #include <chrono>
 #include <thread>
 
@@ -109,7 +111,7 @@ void procfunc(bool recording, int rec_fps, const char* video_path)
     printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
 
     // Run the Python module
-    test_image_run(recognizer, false, cv::format("%s_sample.png", recognizer.name()).c_str());
+    //test_image_run(recognizer, false, cv::format("%s_sample.png", recognizer.name()).c_str());
     test_video_run(recognizer, recording, rec_fps, video_path);
 
     // Clear the Python module
@@ -121,23 +123,31 @@ int main()
 {
     bool recording = false;
     int rec_fps = 5;
-    bool threaded_run = true;
+    bool threaded_run = false;
 
-    const char* video_path = "data/191115_ETRI.avi";
-    //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
-    //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
+    int video_sel = 4;
+    const char* video_path[] = {
+        "data/191115_ETRI.avi",
+        "data/etri_cart_200219_15h01m_2fps.avi",
+        "data/etri_cart_191115_11h40m_10fps.avi",
+        "data/street-GOTOMall.mp4",
+        "data/street-Itaewon.mp4",
+        "data/street-MyeongDong.mp4",
+        "data/street-MyeongDongShoppingAlley.mp4",
+        "data/street-Shibuya.mp4"
+    };
 
     // Initialize the Python interpreter
     init_python_environment("python3", "", threaded_run);
 
     if(threaded_run)
     {
-		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path);
+		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path[video_sel]);
         test_thread->join();
     }
     else
     {
-        procfunc(recording, rec_fps, video_path);
+        procfunc(recording, rec_fps, video_path[video_sel]);
     }
 
     // Close the Python Interpreter
