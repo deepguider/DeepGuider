@@ -657,7 +657,7 @@ bool MapManager::getMap_expansion(Path path, Map& map, double alpha)
 	return true;
 }
 
-std::vector<Node> MapManager::getMap_junction(LatLon cur_latlon, UINT top_n)
+std::vector<Node> MapManager::getMap_junction(LatLon cur_latlon, int top_n)
 {
 	std::vector<Node> node_vec;
 
@@ -678,7 +678,7 @@ std::vector<Node> MapManager::getMap_junction(LatLon cur_latlon, UINT top_n)
 		}
 	}
 	
-	UINT num = 0;
+	int num = 0;
 	for (std::map<double, Node>::iterator it = lookup_junc_dist.begin(); it != lookup_junc_dist.end(); ++it)
 	{
 		if (num >= top_n)

@@ -136,7 +136,7 @@ public:
 	 * @param top_n The number of nodes to get 
 	 * @return A vector of gotten nodes (Sort in order from current location to nearest)
 	 */
-	std::vector<Node> getMap_junction(LatLon cur_latlon, UINT top_n = 1);
+	std::vector<Node> getMap_junction(LatLon cur_latlon, int top_n = 1);
 
 	/**
 	 * Get the current topological map
