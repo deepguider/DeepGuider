@@ -1119,9 +1119,9 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP_DETECT || cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
     {
         printf("GUIDANCE: out of path detected!\n");
-        if(m_enable_tts) putTTS("Regenerate path!");
+/*        if(m_enable_tts) putTTS("Regenerate path!");
         VVS_CHECK_TRUE(updateDeepGuiderPath(pose_topo, pose_gps, m_gps_dest));
-    }
+ */   }
 
     // check lost
     if (m_enable_exploration)
