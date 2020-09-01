@@ -356,11 +356,10 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 	Edge* curedge = m_map.findEdge(eid);
 	double edgedist = curedge->length;
 	double pastdist = pose.dist;
-	bool junctionGuide = false;
+	bool junctionGuide = true;
 	if (junctionGuide)
 	{
 		edgedist = curEP.remain_distance_to_next_junction;
-		pastdist = pose.dist + curEP.past_distance_from_prev_junction;
 	}
 	m_rmdistance = edgedist - pastdist;
 
