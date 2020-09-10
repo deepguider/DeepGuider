@@ -284,12 +284,17 @@ GuidanceManager::Motion GuidanceManager::getMotion(int ntype, int etype, int deg
 		{
 			motion = GuidanceManager::Motion::ENTER_RIGHT;
 		}
-		else //"BACK"
-			motion = GuidanceManager::Motion::TURN_BACK;
 	}
 	else
 	{
-		motion = GuidanceManager::Motion::GO_FORWARD;
+		if (degree > 135 || degree < -135) //"BACK"
+		{
+			motion = GuidanceManager::Motion::TURN_BACK;
+		}
+		else
+		{
+			motion = GuidanceManager::Motion::GO_FORWARD;
+		}
 	}
 
 	return motion;
