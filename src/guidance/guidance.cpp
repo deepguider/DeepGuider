@@ -140,51 +140,55 @@ bool GuidanceManager::setInitialGuide()
 
 	//update moving status
 	guide.moving_status = MoveStatus::ON_EDGE;
+	ExtendedPathElement curEP = getCurExtendedPath(0);
+	ID cureid = curEP.cur_edge_id;
+	ID targetnid = curEP.next_node_id;
 
-#if 0
-	Node* curNode = m_map.findNode(m_curpose.node_id);
-	ID curnid = curNode->id;
-	ID cureid = curNode->edge_ids[m_curpose.edge_idx];
-	//is current pose in the same edge?
-	if (isNodeEdgeInExtPath(curnid, cureid))
+	if (m_confidence > 0.5)	//when localizer is confident(used when path replanning)
 	{
-		//check degree
-		if (!isForward(m_cur_head_angle))	//if TURN exists in past node
-		{
-			guide.actions.push_back(
-				setActionTurn(curnid, cureid, m_cur_head_angle));
-		}
-	}
-	else //add the edge and move to the edge
-	{
+		//current robot's pose
+		ID curnid = m_curpose.node_id;
+		Node* curNode = m_map.findNode(curnid);
+		cureid = curNode->edge_ids[m_curpose.edge_idx];
 		Edge* curEdge = m_map.findEdge(cureid);
-		ID prevnid = (curEdge->node_id1 == curnid) ? prevnid = curEdge->node_id2 : prevnid = curEdge->node_id1;
-		Node* prevNode = m_map.findNode(prevnid);
-		ID nexnid = m_extendedPath[0].cur_node_id;
-		Node* nextNode = m_map.findNode(nexnid);
-		int angle = getDegree(prevNode, curNode, nextNode);
-		printf("angle: %d, m_cur_head_angle: %d", angle, m_cur_head_angle);
-		ExtendedPathElement tmppath(curnid, cureid, m_extendedPath[0].cur_node_id, m_extendedPath[0].cur_node_id, m_cur_head_angle);
-		m_extendedPath.push_back(tmppath);
+		ID nextnid = (curEdge->node_id1 == curnid) ? curEdge->node_id2 : curEdge->node_id1;
+		Node* nextNode = m_map.findNode(nextnid);
 
-		//check degree
-		if (!isForward(m_cur_head_angle))	//if TURN exists in past node
+		if (isNodeInPath(nextnid)) //already on right direction
 		{
-			guide.actions.push_back(
-				setActionTurn(curnid, cureid, m_cur_head_angle));
+			targetnid = nextnid;
 		}
+		else //go to the first node
+		{
+			targetnid = curEP.cur_node_id;
 
+			//check angle difference
+			double cur_global_angle = atan2((nextNode->lat - curNode->lat), (nextNode->lon - curNode->lon));
+			int cur_global_deg = (int)(cur_global_angle / PI * 180)	+ m_cur_head_degree;
+			double to_global_angle = atan2((curNode->lat - nextNode->lat), (curNode->lon - nextNode->lon));
+			int to_global_deg = (int)(to_global_angle / PI * 180);
+
+			//derive turn angle
+			int turn_degree = to_global_deg - cur_global_deg;
+
+			//check degree
+			if (!isForward(turn_degree))	//if TURN exists in past node
+			{
+				guide.actions.push_back(
+					setActionTurn(curnid, cureid, turn_degree));
+
+				//modify remain distance
+				m_rmdistance = m_curpose.dist;
+			}
+		}
 	}
 
-#endif
-	ExtendedPathElement curGP = getCurExtendedPath(0);
-	guide.actions.push_back(setActionGo(curGP.next_node_id, curGP.cur_edge_id, 0));
+	guide.actions.push_back(setActionGo(targetnid, cureid, 0));
 
 	//update heading_node
-	guide.heading_node_id = curGP.next_node_id;
+	guide.heading_node_id = targetnid;
 
 	//update distance_to_remain
-	Edge* curedge = m_map.findEdge(curGP.cur_edge_id);
 	guide.distance_to_remain = m_rmdistance;
 
 	//make guidance string
@@ -364,7 +368,7 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 	m_rmdistance = edgedist - pastdist;
 
 	//check heading
-	m_cur_head_angle = (int) (pose.head/PI*180);
+	m_cur_head_degree = (int) (pose.head/PI*180);
 
 	/**Check progress.
 	m_edge_progress: 0.0 ~ 1.0
@@ -385,6 +389,7 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 
 bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 {
+	m_confidence = conf;
 	//validate parameters
 	if (pose.node_id == 0)
 	{
@@ -411,7 +416,7 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 
 	Node* curnode = m_map.findNode(nodeid);
 	ID edgeid = curnode->edge_ids[pose.edge_idx];
-	if (isNodeInPath(nodeid))
+	if (isNodeInPath(nodeid) > 0)
 	//if (isNodeEdgeInExtPath(nodeid, edgeid))
 	{//as long as nodeid exists on path, everything is ok
 
@@ -534,7 +539,7 @@ bool GuidanceManager::setNormalGuide()
 	curEP.next_guide_node_id;
 	ExtendedPathElement nextEP = getCurExtendedPath(m_guide_idx + 1);
 	//get angle
-	int cur_angle = curEP.cur_degree - m_cur_head_angle;
+	int cur_angle = curEP.cur_degree - m_cur_head_degree;
 	printf("cur_angle: %d, ", cur_angle);
 	int next_angle = nextEP.cur_degree;
 	printf("next_angle: %d \n", next_angle);
@@ -554,7 +559,7 @@ bool GuidanceManager::setNormalGuide()
 		if (!isForward(curEP.cur_degree))	//if TURN exists in past node
 		{
 		//	int turnDeg = curEP.cur_degree;
-			int turnDeg = curEP.cur_degree - m_cur_head_angle;	//if ON_NODE, turn remain degree
+			int turnDeg = curEP.cur_degree - m_cur_head_degree;	//if ON_NODE, turn remain degree
 			guide.actions.push_back(
 				setActionTurn(curEP.cur_node_id, curEP.cur_edge_id, turnDeg));
 		}
@@ -766,11 +771,20 @@ std::string GuidanceManager::getStringTurnDist(Action act, int ntype, double dis
 	std::string motion = m_motions[(int)act.cmd];
 	std::string edge = m_edges[act.edge_type];
 	std::string degree = std::to_string(act.degree);
-	std::string distance = std::to_string(dist);
-	std::string str_act = "After " + distance + "m " + motion + " for " + degree + " degree";
-	std::string nodetype = m_nodes[ntype];
-	std::string act_add = " on " + nodetype;
-	result = str_act + act_add;
+
+	if (act.cmd == Motion::TURN_BACK)
+	{
+		result = motion + " for " + degree + " degree";
+	}
+	else
+	{
+		std::string distance = std::to_string(dist);
+		std::string str_act = "After " + distance + "m " + motion + " for " + degree + " degree";
+		std::string nodetype = m_nodes[ntype];
+		std::string act_add = " on " + nodetype;
+		result = str_act + act_add;
+	}
+	
 	return result;
 
 }
@@ -967,7 +981,7 @@ int GuidanceManager::getDegree(Node* node1, Node* node2, Node* node3)
 	double sign = asin((v1x * v2y - v1y * v2x) / (sqrt(v1x * v1x + v1y * v1y) * sqrt(v2x * v2x + v2y * v2y)));
 	double rad = acos((v1x * v2x + v1y * v2y) / (sqrt(v1x * v1x + v1y * v1y) * sqrt(v2x * v2x + v2y * v2y)));
 
-	double rad2deg = rad / 3.14 * 180.0;
+	double rad2deg = rad / PI * 180.0;
 	if (sign < 0.f) rad2deg = -rad2deg;	//this is for -180~180
 
 	int result = (int)rad2deg;

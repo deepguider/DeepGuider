@@ -196,8 +196,9 @@ namespace dg
 		LatLon m_latlon;
 		double m_edge_progress = 0.0;
 		double m_rmdistance = 0.0;
-		int m_cur_head_angle = 0;
+		int m_cur_head_degree = 0;
 		TopometricPose  m_curpose;
+		double m_confidence;
 		MoveStatus  m_mvstatus = MoveStatus::ON_EDGE;
 		GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
 		Guidance m_curguidance;
