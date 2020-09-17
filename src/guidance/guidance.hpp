@@ -207,6 +207,8 @@ namespace dg
 		int m_finalTurn = 0;
 		int m_finalEdgeId = 0;
 		double m_approachingThreshold = 10.0;
+		bool m_arrival = false;
+		bool m_juctionguide = true;
 
 		std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
 		std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"

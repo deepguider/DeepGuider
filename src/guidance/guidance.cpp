@@ -124,7 +124,6 @@ bool GuidanceManager::buildGuides()
 	}
 
 	m_guide_idx = 0;
-	//setInitialGuide();
 
 	return true;
 
@@ -148,6 +147,23 @@ bool GuidanceManager::setInitialGuide()
 	{
 		//current robot's pose
 		ID curnid = m_curpose.node_id;
+
+#if 1
+		Node* curNode = m_map.findNode(curnid);
+		cureid = curNode->edge_ids[m_curpose.edge_idx];
+		Edge* curEdge = m_map.findEdge(cureid);
+		ID nextnid = (curEdge->node_id1 == curnid) ? curEdge->node_id2 : curEdge->node_id1;
+
+		if (!isNodeInPath(nextnid)) //already on right direction
+		{
+			guide.actions.push_back(
+				setActionTurn(curnid, cureid, 180));
+
+			//modify remain distance
+			m_rmdistance = m_curpose.dist;
+
+		}
+#else
 		Node* curNode = m_map.findNode(curnid);
 		cureid = curNode->edge_ids[m_curpose.edge_idx];
 		Edge* curEdge = m_map.findEdge(cureid);
@@ -181,6 +197,7 @@ bool GuidanceManager::setInitialGuide()
 				m_rmdistance = m_curpose.dist;
 			}
 		}
+#endif
 	}
 
 	guide.actions.push_back(setActionGo(targetnid, cureid, 0));
@@ -365,8 +382,7 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 	Edge* curedge = m_map.findEdge(eid);
 	double edgedist = curedge->length;
 	double pastdist = pose.dist;
-	bool junctionGuide = true;
-	if (junctionGuide)
+	if (m_juctionguide)
 	{
 		edgedist = curEP.remain_distance_to_next_junction;
 	}
@@ -385,7 +401,13 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 	if (pastdist < 1.0)
 		m_mvstatus = MoveStatus::ON_NODE;
 	else if (m_rmdistance < m_approachingThreshold)
-		m_mvstatus = MoveStatus::APPROACHING_NODE;
+	{
+		//if the robot is on crosswalk, maintain current guide
+		if (curedge->type == Edge::EDGE_CROSSWALK)
+			m_mvstatus = MoveStatus::ON_EDGE;
+		else
+			m_mvstatus = MoveStatus::APPROACHING_NODE;
+	}
 	else
 		m_mvstatus = MoveStatus::ON_EDGE;
 
@@ -395,8 +417,9 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 {
 	m_confidence = conf;
+	ID curNId = pose.node_id; //Current robot location
 	//validate parameters
-	if (pose.node_id == 0)
+	if (curNId == 0)
 	{
 		printf("[Error] GuidanceManager::setGuideStatus - Empty pose\n");
 		m_gstatus = GuideStatus::GUIDE_UNKNOWN;
@@ -405,25 +428,31 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 
 	if (m_extendedPath.size() < 1)
 	{
-		//printf("[Error] GuidanceManager::setGuideStatus - Empty path\n");
 		m_gstatus = GuideStatus::GUIDE_NOPATH;
-		//setEmptyGuide();
 		return false;
 	}
 
-	ID nodeid = pose.node_id; //Current robot location
 	//finishing condition
-	if (nodeid == m_path.pts.back().node_id)
+	if (curNId == m_extendedPath.back().cur_node_id)
 	{
 		m_gstatus = GuideStatus::GUIDE_ARRIVED;
+		m_arrival = true;
 		return true;
 	}
 
-	Node* curnode = m_map.findNode(nodeid);
+	//after arrival, continuously moving.
+	if (m_arrival && curNId != m_extendedPath.back().cur_node_id)
+	{
+		m_arrival = false;
+		m_extendedPath.clear();
+		m_gstatus = GuideStatus::GUIDE_NOPATH;
+		return false;
+	}
+
+	Node* curnode = m_map.findNode(curNId);
 	ID edgeid = curnode->edge_ids[pose.edge_idx];
-	if (isNodeInPath(nodeid) > 0)
-	//if (isNodeEdgeInExtPath(nodeid, edgeid))
-	{//as long as nodeid exists on path, everything is ok
+	if (isNodeInPath(curNId) > 0)
+	{//as long as curNId exists on path, everything is ok
 
 		if (m_guide_idx == 0)
 		{
@@ -446,12 +475,12 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 			//timer is already running
 			if (diff_t > 5.0)	//after 5 seconds
 			{
-				printf("The node(%zu) is out-of-path!\n", nodeid);
+				printf("The node(%zu) is out-of-path!\n", curNId);
 				m_gstatus = GuideStatus::GUIDE_OOP;
 				return false;
 
 			}
-			printf("The node(%zu) is out-of-path detected!\n", nodeid);
+			printf("The node(%zu) is out-of-path detected!\n", curNId);
 			m_gstatus = GuideStatus::GUIDE_OOP_DETECT;
 			return false;
 		}
@@ -459,7 +488,7 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 		{//Lost, out-of-map (confidence is low or conf == -1)
 			//localizer does not know where the robot is.
 			//It needs to go back by recovery mode
-			printf("Now we are lost! Unknown node: (%zu)\n", nodeid);
+			printf("Now we are lost! Unknown node: (%zu)\n", curNId);
 			m_gstatus = GuideStatus::GUIDE_LOST;
 			return false;
 		}
@@ -628,20 +657,21 @@ bool GuidanceManager::setNormalGuide()
 bool GuidanceManager::setArrivalGuide()
 {
 	Guidance guide;
-	ExtendedPathElement lastguide = m_extendedPath.back();
-	Node* dest = m_map.findNode(lastguide.cur_node_id);
-
-	//update dgstatus
-	guide.guide_status = m_gstatus;
 
 	//update moving status
 	guide.moving_status = m_mvstatus;
 
-	//set actions
-	
+	//set actions	
 	//if last turn exists,
 	if (!isForward(m_finalTurn))
 	{
+		ExtendedPathElement lastguide = m_extendedPath.back();
+		Node* dest = m_map.findNode(lastguide.cur_node_id);
+		if (dest == nullptr)
+		{
+			printf("[Error] GuidanceManager::setArrivalGuide - undefined last node: %zu!\n", lastguide.cur_node_id);
+			return false;
+		}
 		Motion cmd = getMotion(dest->type, Edge::EDGE_SIDEWALK, m_finalTurn);
 		Mode mode = getMode(Edge::EDGE_SIDEWALK);
 		Action action(cmd, dest->type, Edge::EDGE_SIDEWALK, m_finalTurn, mode);
@@ -651,21 +681,9 @@ bool GuidanceManager::setArrivalGuide()
 
 	guide.guide_status = GuideStatus::GUIDE_ARRIVED;
 	guide.actions.push_back(Action(Motion::STOP, Node::NODE_BASIC, Edge::EDGE_SIDEWALK, 0, Mode::MOVE_NORMAL));
+	guide.heading_node_id = 0;
 	guide.distance_to_remain = 0;
 	guide.msg = guide.msg + "[GUIDANCE] Arrived!";
-	m_curguidance = guide;
-	m_extendedPath.clear();
-
-
-	//update heading_node
-	guide.heading_node_id = lastguide.cur_node_id;
-
-	//make string msg
-	guide.distance_to_remain = m_rmdistance;
-
-	//make guidance string
-	guide.msg = getStringGuidance(guide, m_mvstatus);
-
 	m_curguidance = guide;
 
 	return true;
@@ -808,7 +826,11 @@ std::string GuidanceManager::getStringGuidance(Guidance guidance, MoveStatus sta
 			str_first = getStringForward(actions[i], actions[i].node_type,
 				guidance.heading_node_id, guidance.distance_to_remain);
 		}
-		else
+		else if (actions[i].cmd == Motion::STOP)
+		{
+			str_first = "Stop!";
+		}
+		else 
 		{
 			if (m_mvstatus == MoveStatus::ON_NODE)
 				str_first = getStringTurn(actions[i], actions[i].node_type);
