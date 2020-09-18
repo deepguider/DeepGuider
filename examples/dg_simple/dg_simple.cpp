@@ -54,6 +54,8 @@ protected:
     bool m_threaded_run_python = false;
     std::string m_srcdir = "./../src";              // path of deepguider/src (required for python embedding)
 
+    bool m_use_high_gps = false;             // use high-precision gps (novatel)
+
     bool m_data_logging = false;
     bool m_enable_tts = false;
     bool m_recording = false;
@@ -233,6 +235,8 @@ bool DeepGuider::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "server_ip", m_server_ip);
     LOAD_PARAM_VALUE(fn, "threaded_run_python", m_threaded_run_python);
     LOAD_PARAM_VALUE(fn, "dg_srcdir", m_srcdir);
+
+    LOAD_PARAM_VALUE(fn, "use_high_gps", m_use_high_gps);
 
     LOAD_PARAM_VALUE(fn, "enable_data_logging", m_data_logging);
     LOAD_PARAM_VALUE(fn, "enable_tts", m_enable_tts);
@@ -470,6 +474,8 @@ int DeepGuider::run()
         const dg::LatLon gps_datum = gps_data[itr].second;
         const dg::Timestamp gps_time = gps_data[itr].first;
         procGpsData(gps_datum, gps_time);
+        m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
+        m_gps_history_asen.push_back(gps_datum);
         printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, gps_time);
 
         // video capture
@@ -555,10 +561,6 @@ void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
         }
         printf("[Localizer] initial pose is estimated!\n");
     }
-
-    // draw gps history on the GUI map
-    m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
-    m_gps_history_asen.push_back(gps_datum);
 }
 
 
