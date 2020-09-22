@@ -259,7 +259,8 @@ namespace dg
 		Motion getMotion(int ntype, int etype, int degree);
 		Guidance getLastGuidance() { return m_past_guides.back(); };
 		std::string getStringAction(Action action);
-		std::string getStringForward(Action act, int ntype, ID nid, double d);
+		std::string getStringFwd(Action act, int ntype, ID nid);
+		std::string getStringFwdDist(Action act, int ntype, ID nid, double d);
 		std::string getStringTurn(Action act, int ntype);
 		std::string getStringTurnDist(Action act, int ntype, double dist);
 		std::string getStringGuidance(Guidance guidance, MoveStatus status);

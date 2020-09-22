@@ -125,6 +125,11 @@ bool GuidanceManager::buildGuides()
 
 	m_guide_idx = 0;
 
+	// for (size_t i = 0; i < m_extendedPath.size(); i++)
+	// {
+	// 	printf("[%d] Node id:%zu, Deg: %d \n", i, m_extendedPath[i].cur_node_id, m_extendedPath[i].cur_degree);
+	// }
+	
 	return true;
 
 }
@@ -135,12 +140,13 @@ bool GuidanceManager::setInitialGuide()
 	Guidance guide;
 
 	//update GuideStatus
-	guide.guide_status = GuideStatus::GUIDE_INITIAL;
-
+	guide.guide_status = m_gstatus;
+	
 	//update moving status
-	guide.moving_status = MoveStatus::ON_EDGE;
+	guide.moving_status = m_mvstatus;
+
 	ExtendedPathElement curEP = getCurExtendedPath(0);
-	ID cureid = curEP.cur_edge_id;
+	ID targeteid = curEP.cur_edge_id;
 	ID targetnid = curEP.next_node_id;
 
 	if (m_confidence > 0.5)	//when localizer is confident(used when path replanning)
@@ -148,60 +154,36 @@ bool GuidanceManager::setInitialGuide()
 		//current robot's pose
 		ID curnid = m_curpose.node_id;
 
-#if 1
 		Node* curNode = m_map.findNode(curnid);
-		cureid = curNode->edge_ids[m_curpose.edge_idx];
+		ID cureid = curNode->edge_ids[m_curpose.edge_idx];
 		Edge* curEdge = m_map.findEdge(cureid);
 		ID nextnid = (curEdge->node_id1 == curnid) ? curEdge->node_id2 : curEdge->node_id1;
 
-		if (!isNodeInPath(nextnid)) //already on right direction
+		if (!isNodeInPath(nextnid)) //if wrong direction
 		{
 			guide.actions.push_back(
 				setActionTurn(curnid, cureid, 180));
 
 			//modify remain distance
 			m_rmdistance = m_curpose.dist;
-
 		}
-#else
-		Node* curNode = m_map.findNode(curnid);
-		cureid = curNode->edge_ids[m_curpose.edge_idx];
-		Edge* curEdge = m_map.findEdge(cureid);
-		ID nextnid = (curEdge->node_id1 == curnid) ? curEdge->node_id2 : curEdge->node_id1;
-		Node* nextNode = m_map.findNode(nextnid);
 
-		if (isNodeInPath(nextnid)) //already on right direction
+		if(m_mvstatus == MoveStatus::APPROACHING_NODE)//After 000m, (TURN) - GO, prepare next Node action
 		{
-			targetnid = nextnid;
-		}
-		else //go to the first node
-		{
-			targetnid = curEP.cur_node_id;
-
-			//check angle difference
-			double cur_global_angle = atan2((nextNode->lat - curNode->lat), (nextNode->lon - curNode->lon));
-			int cur_global_deg = (int)(cur_global_angle / PI * 180)	+ m_cur_head_degree;
-			double to_global_angle = atan2((curNode->lat - nextNode->lat), (curNode->lon - nextNode->lon));
-			int to_global_deg = (int)(to_global_angle / PI * 180);
-
-			//derive turn angle
-			int turn_degree = to_global_deg - cur_global_deg;
-
-			//check degree
-			if (!isForward(turn_degree))	//if TURN exists in past node
+			ExtendedPathElement nextEP = getCurExtendedPath(1);
+			if (!isForward(nextEP.cur_degree))//if TURN exists on next node,
 			{
+				printf("nextEP.cur_degree: %d \n", nextEP.cur_degree);
 				guide.actions.push_back(
-					setActionTurn(curnid, cureid, turn_degree));
-
-				//modify remain distance
-				m_rmdistance = m_curpose.dist;
+					setActionTurn(nextEP.cur_node_id, nextEP.cur_edge_id, nextEP.cur_degree));
 			}
+			guide.actions.push_back(setActionGo(nextEP.cur_node_id, nextEP.cur_edge_id, 0));
 		}
-#endif
+		
+
 	}
-
-	guide.actions.push_back(setActionGo(targetnid, cureid, 0));
-
+	guide.actions.push_back(setActionGo(targetnid, targeteid, 0));
+		
 	//update heading_node
 	guide.heading_node_id = targetnid;
 
@@ -209,13 +191,12 @@ bool GuidanceManager::setInitialGuide()
 	guide.distance_to_remain = m_rmdistance;
 
 	//make guidance string
-	guide.msg = getStringGuidance(guide, MoveStatus::ON_EDGE);
+	guide.msg = getStringGuidance(guide, m_mvstatus);
 
 	m_curguidance = guide;
 
 	return true;
 }
-
 
 /** @brief setActionTurn reguire nodeId to find nodetype 
  *	to decide motion at the node
@@ -357,18 +338,21 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 	Node* curnode = m_map.findNode(nodeid);
 	if (curnode == nullptr)
 	{
-		printf("[Error] GuidanceManager::applyPose - The node is out-of-map!\n");
+		printf("[Error] GuidanceManager::applyPose - curnode == nullptr!\n");
 		m_mvstatus = MoveStatus::ON_EDGE;
 		return false;
 	}
 
 	//update m_guide_idx
 	int gidx = getGuideIdxFromPose(pose);
-	if (gidx == -1)
-	{
-		printf("[Error] GuidanceManager::applyPose - The node is out-of-path!\n");
-		m_mvstatus = MoveStatus::ON_EDGE;
-		return false;
+	if (gidx == -1)	//cannot find the nodeid
+	{// in initial state the pose may be 
+		if (m_gstatus != GuideStatus::GUIDE_INITIAL)
+		{
+			printf("[Error] GuidanceManager::applyPose - gidx == -1!\n");
+			m_mvstatus = MoveStatus::ON_EDGE;
+			return false;
+		}
 	}
 	else if (gidx != m_guide_idx)//if new node appears
 	{
@@ -378,8 +362,8 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 
 	//check remain distance
 	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
-	ID eid = curnode->edge_ids[pose.edge_idx];
-	Edge* curedge = m_map.findEdge(eid);
+	ID cureid = curnode->edge_ids[pose.edge_idx];
+	Edge* curedge = m_map.findEdge(cureid);
 	double edgedist = curedge->length;
 	double pastdist = pose.dist;
 	if (m_juctionguide)
@@ -403,14 +387,18 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 	else if (m_rmdistance < m_approachingThreshold)
 	{
 		//if the robot is on crosswalk, maintain current guide
+		printf("curedge->type, %d\n", curedge->type);
 		if (curedge->type == Edge::EDGE_CROSSWALK)
+		{
 			m_mvstatus = MoveStatus::ON_EDGE;
-		else
+		}			
+		else if(curEP.cur_edge_id == cureid)
 			m_mvstatus = MoveStatus::APPROACHING_NODE;
 	}
 	else
 		m_mvstatus = MoveStatus::ON_EDGE;
 
+	printf("m_mvstatus: %d\n", m_mvstatus);
 	return true;
 }
 
@@ -437,6 +425,7 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 	{
 		m_gstatus = GuideStatus::GUIDE_ARRIVED;
 		m_arrival = true;
+		printf("m_gstatus: %d\n", m_gstatus);
 		return true;
 	}
 
@@ -449,18 +438,20 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 		return false;
 	}
 
+	if (m_guide_idx == 0)
+	{
+		m_gstatus = GuideStatus::GUIDE_INITIAL;
+		printf("m_gstatus: %d\n", m_gstatus);
+		return true;
+	}
+
 	Node* curnode = m_map.findNode(curNId);
 	ID edgeid = curnode->edge_ids[pose.edge_idx];
 	if (isNodeInPath(curNId) > 0)
 	{//as long as curNId exists on path, everything is ok
-
-		if (m_guide_idx == 0)
-		{
-			m_gstatus = GuideStatus::GUIDE_INITIAL;
-			return true;
-		}
 		oop_start = 0;
 		m_gstatus = GuideStatus::GUIDE_NORMAL;
+		printf("m_gstatus: %d\n", m_gstatus);
 		return true;
 	}
 	else
@@ -570,13 +561,12 @@ bool GuidanceManager::setNormalGuide()
 
 	Guidance guide;
 	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
-	curEP.next_guide_node_id;
 	ExtendedPathElement nextEP = getCurExtendedPath(m_guide_idx + 1);
 	//get angle
-	int cur_angle = curEP.cur_degree - m_cur_head_degree;
-	printf("cur_angle: %d, ", cur_angle);
-	int next_angle = nextEP.cur_degree;
-	printf("next_angle: %d \n", next_angle);
+	// int cur_angle = curEP.cur_degree - m_cur_head_degree;
+	// printf("cur_angle: %d, ", cur_angle);
+	// int next_angle = nextEP.cur_degree;
+	// printf("next_angle: %d \n", next_angle);
 
 	//update dgstatus
 	guide.guide_status = m_gstatus;
@@ -585,6 +575,7 @@ bool GuidanceManager::setNormalGuide()
 	guide.moving_status = m_mvstatus;
 
 	//set actions
+	printf("m_mvstatus: %d\n", m_mvstatus);
 	switch (m_mvstatus)
 	{
 	case MoveStatus::ON_NODE: //(TURN) - GO
@@ -736,7 +727,7 @@ bool GuidanceManager::setEmptyGuide()
 }
 
 
-std::string GuidanceManager::getStringForward(Action act, int ntype, ID nid, double d)
+std::string GuidanceManager::getStringFwdDist(Action act, int ntype, ID nid, double d)
 {
 	std::string result;
 
@@ -758,6 +749,24 @@ std::string GuidanceManager::getStringForward(Action act, int ntype, ID nid, dou
 
 	std::string act_add = " about " + distance + "m" + " until next " + nodetype + "(Node ID : " + nodeid + ")";
 	result = str_act + act_add;
+	return result;
+}
+
+std::string GuidanceManager::getStringFwd(Action act, int ntype, ID nid)
+{
+	std::string result;
+
+	//check parameter
+	if ((int)act.cmd < 0 || act.cmd >= Motion::TYPE_NUM || (int) act.edge_type < 0 || act.edge_type >= Edge::TYPE_NUM)
+	{
+		printf("[Error] GuidanceManager::getStringForward() - wrong Action!\n");
+		return result;
+	}
+
+	std::string motion = m_motions[(int)act.cmd];
+	std::string edge = m_edges[act.edge_type];
+	result = motion + " on " + edge;
+
 	return result;
 }
 
@@ -823,8 +832,18 @@ std::string GuidanceManager::getStringGuidance(Guidance guidance, MoveStatus sta
 	{
 		if (isForward(actions[i].cmd))
 		{
-			str_first = getStringForward(actions[i], actions[i].node_type,
-				guidance.heading_node_id, guidance.distance_to_remain);
+			if (i == 0)
+			{
+				str_first = getStringFwdDist(actions[i], actions[i].node_type,
+					guidance.heading_node_id, guidance.distance_to_remain);
+			}
+			else
+			{
+				str_first = getStringFwd(actions[i], actions[i].node_type,
+					guidance.heading_node_id);
+			}
+			
+			
 		}
 		else if (actions[i].cmd == Motion::STOP)
 		{
