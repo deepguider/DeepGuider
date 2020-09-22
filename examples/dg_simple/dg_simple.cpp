@@ -1111,7 +1111,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     }
 
     // check arrival
-    if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
+    if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED && cur_guide.announce)
     {
         printf("Arrived to destination!\n");
         if(m_enable_tts) putTTS("Arrived to destination!");
