@@ -14,6 +14,9 @@ server_ip: "127.0.0.1"             # localhost
 threaded_run_python: 1
 dg_srcdir: "/work/deepguider/src"   # path of deepguider/src folder (required for python embedding)
 
+## sensor selection
+use_high_gps: 0
+
 ## etc
 enable_data_logging: 0
 enable_tts: 1

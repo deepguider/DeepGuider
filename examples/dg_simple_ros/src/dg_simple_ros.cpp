@@ -266,10 +266,12 @@ void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
     double lon = fix->longitude;
     ROS_INFO_THROTTLE(1.0, "GPS Asen: lat=%f, lon=%f", lat, lon);
 
-    // apply gps
+    // apply & draw gps
     const dg::LatLon gps_datum(lat, lon);
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
-    procGpsData(gps_datum, gps_time);
+    if (!m_use_high_gps) procGpsData(gps_datum, gps_time);
+    m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
+    m_gps_history_asen.push_back(gps_datum);
 }
 
 // A callback function for subscribing GPS Novatel
@@ -290,8 +292,10 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
     double lon = fix->longitude;
     ROS_INFO_THROTTLE(1.0, "GPS Novatel: lat=%f, lon=%f", lat, lon);
 
-    // draw gps history on the map
+    // apply & draw gps
     const dg::LatLon gps_datum(lat, lon);
+    const dg::Timestamp gps_time = fix->header.stamp.toSec();
+    if (m_use_high_gps) procGpsData(gps_datum, gps_time);
     m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 0, 255));
     m_gps_history_novatel.push_back(gps_datum);
 }

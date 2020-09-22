@@ -54,6 +54,8 @@ protected:
     bool m_threaded_run_python = false;
     std::string m_srcdir = "./../src";              // path of deepguider/src (required for python embedding)
 
+    bool m_use_high_gps = false;             // use high-precision gps (novatel)
+
     bool m_data_logging = false;
     bool m_enable_tts = false;
     bool m_recording = false;
@@ -73,6 +75,7 @@ protected:
     dg::MapPainter m_painter;
     dg::MapCanvasInfo m_map_info;    
     dg::GuidanceManager::Motion m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
+    dg::GuidanceManager::GuideStatus m_guidance_status = dg::GuidanceManager::GuideStatus::GUIDE_INITIAL;
     std::list<dg::LatLon> m_gps_history_asen;
     std::list<dg::LatLon> m_gps_history_novatel;
 
@@ -234,6 +237,8 @@ bool DeepGuider::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "threaded_run_python", m_threaded_run_python);
     LOAD_PARAM_VALUE(fn, "dg_srcdir", m_srcdir);
 
+    LOAD_PARAM_VALUE(fn, "use_high_gps", m_use_high_gps);
+
     LOAD_PARAM_VALUE(fn, "enable_data_logging", m_data_logging);
     LOAD_PARAM_VALUE(fn, "enable_tts", m_enable_tts);
     LOAD_PARAM_VALUE(fn, "video_recording", m_recording);
@@ -373,6 +378,8 @@ bool DeepGuider::initialize(std::string config_file)
     m_intersection_image.release();
     m_gps_history_asen.clear();
     m_gps_history_novatel.clear();
+    m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
+    m_guidance_status = dg::GuidanceManager::GuideStatus::GUIDE_INITIAL;
 
     // tts
     if (m_enable_tts)
@@ -470,6 +477,8 @@ int DeepGuider::run()
         const dg::LatLon gps_datum = gps_data[itr].second;
         const dg::Timestamp gps_time = gps_data[itr].first;
         procGpsData(gps_datum, gps_time);
+        m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
+        m_gps_history_asen.push_back(gps_datum);
         printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, gps_time);
 
         // video capture
@@ -555,10 +564,6 @@ void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
         }
         printf("[Localizer] initial pose is estimated!\n");
     }
-
-    // draw gps history on the GUI map
-    m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
-    m_gps_history_asen.push_back(gps_datum);
 }
 
 
@@ -1108,38 +1113,41 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         }
     }
 
-    // check arrival
-    if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
+    if (cur_status != m_guidance_status)
     {
-        printf("Arrived to destination!\n");
-        if(m_enable_tts) putTTS("Arrived to destination!");
-    }
-
-    // check out of path
-    //if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP_DETECT || cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
-    if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
-    {
-        printf("GUIDANCE: out of path detected!\n");
-        if(m_enable_tts) putTTS("Regenerate path!");
-        VVS_CHECK_TRUE(updateDeepGuiderPath(pose_topo, pose_gps, m_gps_dest));
-    }
-
-    // check lost
-    if (m_enable_exploration)
-    {
-        m_guider.makeLostValue(m_guider.m_prevconf, pose_confidence);
-        m_active_nav.apply(m_cam_image, cur_guide, ts);
-        if (cur_status == dg::GuidanceManager::GuideStatus::GUIDE_LOST)
+        // check arrival
+        if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED && cur_guide.announce)
         {
-            std::vector<ExplorationGuidance> actions;
-            GuidanceManager::GuideStatus status;
-            m_active_nav.get(actions, status);
-            for (int k = 0; k < actions.size(); k++)
+            printf("Arrived to destination!\n");
+            if (m_enable_tts) putTTS("Arrived to destination!");
+        }
+
+        // check out of path
+        if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
+        {
+            printf("GUIDANCE: out of path detected!\n");
+            if (m_enable_tts) putTTS("Regenerate path!");
+            VVS_CHECK_TRUE(updateDeepGuiderPath(pose_topo, pose_gps, m_gps_dest));
+        }
+
+        // check lost
+        if (m_enable_exploration)
+        {
+            m_guider.makeLostValue(m_guider.m_prevconf, pose_confidence);
+            m_active_nav.apply(m_cam_image, cur_guide, ts);
+            if (cur_status == dg::GuidanceManager::GuideStatus::GUIDE_LOST)
             {
-                printf("\t action %d: [%lf, %lf, %lf]\n", k, actions[k].theta1, actions[k].d, actions[k].theta2);
+                std::vector<ExplorationGuidance> actions;
+                GuidanceManager::GuideStatus status;
+                m_active_nav.get(actions, status);
+                for (int k = 0; k < actions.size(); k++)
+                {
+                    printf("\t action %d: [%lf, %lf, %lf]\n", k, actions[k].theta1, actions[k].d, actions[k].theta2);
+                }
             }
         }
     }
+    m_guidance_status = cur_status;
 }
 
 
