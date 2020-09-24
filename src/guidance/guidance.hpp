@@ -35,6 +35,7 @@ namespace dg
 
 			GUIDE_NOPATH,
 			GUIDE_UNKNOWN,
+			GUIDE_TURNBACK,
 
 			/** The number of GuideStatus */
 			TYPE_NUM
@@ -261,6 +262,7 @@ namespace dg
 		std::string getStringAction(Action action);
 		std::string getStringFwd(Action act, int ntype, ID nid);
 		std::string getStringFwdDist(Action act, int ntype, ID nid, double d);
+		std::string getStringFwdDistAfter(Action act, int ntype, ID nid, double d);
 		std::string getStringTurn(Action act, int ntype);
 		std::string getStringTurnDist(Action act, int ntype, double dist);
 		std::string getStringGuidance(Guidance guidance, MoveStatus status);
@@ -275,6 +277,7 @@ namespace dg
 		bool setNormalGuide();
 		bool setArrivalGuide();
 		bool setEmptyGuide();
+		bool setTunBackGuide();
 		bool applyPose(TopometricPose pose);
 
 		//bool setOOPGuide();

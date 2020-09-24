@@ -134,6 +134,37 @@ bool GuidanceManager::buildGuides()
 
 }
 
+bool GuidanceManager::setTunBackGuide()
+{
+	Guidance guide;
+
+	//update GuideStatus
+	guide.guide_status = m_gstatus;
+	
+	//update moving status
+	guide.moving_status = m_mvstatus;
+
+	ID curnid = m_curpose.node_id;
+	Node* curnode = m_map.findNode(curnid);
+	ID cureid = curnode->edge_ids[m_curpose.edge_idx];
+
+	guide.actions.push_back(
+		setActionTurn(curnid, cureid, 180));
+	
+	//update distance_to_remain
+	m_rmdistance = m_curpose.dist;
+	guide.distance_to_remain = m_rmdistance;
+		
+	//update heading_node
+	guide.heading_node_id = curnid;
+
+	//make guidance string
+	guide.msg = getStringGuidance(guide, m_mvstatus);
+
+	m_curguidance = guide;
+
+	return true;
+}
 
 bool GuidanceManager::setInitialGuide()
 {
@@ -161,6 +192,7 @@ bool GuidanceManager::setInitialGuide()
 
 		if (!isNodeInPath(nextnid)) //if wrong direction
 		{
+			printf("[setInitialGuide]nextnid: %zu, pathnid: %zu\n", nextnid, targetnid);
 			guide.actions.push_back(
 				setActionTurn(curnid, cureid, 180));
 
@@ -179,10 +211,12 @@ bool GuidanceManager::setInitialGuide()
 			}
 			guide.actions.push_back(setActionGo(nextEP.cur_node_id, nextEP.cur_edge_id, 0));
 		}
-		
+		else
+		{			
+			guide.actions.push_back(setActionGo(targetnid, targeteid, 0));
+		}		
 
 	}
-	guide.actions.push_back(setActionGo(targetnid, targeteid, 0));
 		
 	//update heading_node
 	guide.heading_node_id = targetnid;
@@ -325,7 +359,7 @@ bool GuidanceManager::update(TopometricPose pose, double conf)
 bool GuidanceManager::applyPose(TopometricPose  pose)
 {
 	m_curpose = pose;
-	//validate parameter
+	//validate node id
 	if (pose.node_id == 0)
 	{
 		printf("[Error] GuidanceManager::applyPose - Empty pose!\n");
@@ -333,9 +367,9 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 		return false;
 	}
 
-	//validate Current robot location
-	ID nodeid = pose.node_id;
-	Node* curnode = m_map.findNode(nodeid);
+	//validate Current robot location 
+	ID curnid = pose.node_id;
+	Node* curnode = m_map.findNode(curnid);
 	if (curnode == nullptr)
 	{
 		printf("[Error] GuidanceManager::applyPose - curnode == nullptr!\n");
@@ -345,7 +379,7 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 
 	//update m_guide_idx
 	int gidx = getGuideIdxFromPose(pose);
-	if (gidx == -1)	//cannot find the nodeid
+	if (gidx == -1)	//cannot find the curnid
 	{// in initial state the pose may be 
 		if (m_gstatus != GuideStatus::GUIDE_INITIAL)
 		{
@@ -360,15 +394,18 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 		m_guide_idx = gidx;
 	}
 
-	//check remain distance
-	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
+	ExtendedPathElement curEP = getCurExtendedPath(gidx);
 	ID cureid = curnode->edge_ids[pose.edge_idx];
 	Edge* curedge = m_map.findEdge(cureid);
+
+	//check remain distance
 	double edgedist = curedge->length;
 	double pastdist = pose.dist;
 	if (m_juctionguide)
 	{
-		edgedist = curEP.remain_distance_to_next_junction;
+		// printf("[applyPose] cureid: %zu, curEP.cur_edge_id: %zu!\n", cureid, curEP.cur_edge_id);
+		if (cureid == curEP.cur_edge_id)
+			edgedist = curEP.remain_distance_to_next_junction;
 	}
 	m_rmdistance = edgedist - pastdist;
 
@@ -385,20 +422,27 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 	if (pastdist < 1.0)
 		m_mvstatus = MoveStatus::ON_NODE;
 	else if (m_rmdistance < m_approachingThreshold)
-	{
-		//if the robot is on crosswalk, maintain current guide
-		printf("curedge->type, %d\n", curedge->type);
-		if (curedge->type == Edge::EDGE_CROSSWALK)
-		{
-			m_mvstatus = MoveStatus::ON_EDGE;
-		}			
-		else if(curEP.cur_edge_id == cureid)
+	{		
+		if(curEP.cur_edge_id == cureid) //on initial stage, sometimes they are not in same edge
 			m_mvstatus = MoveStatus::APPROACHING_NODE;
+
+		//if the robot is on crosswalk, maintain current guide
+		if (curedge->type == Edge::EDGE_CROSSWALK && m_rmdistance < curedge->length/2)
+			m_mvstatus = MoveStatus::ON_EDGE;
 	}
 	else
 		m_mvstatus = MoveStatus::ON_EDGE;
 
-	printf("m_mvstatus: %d\n", m_mvstatus);
+
+	//if wrong direction
+	ID nextnid = (curedge->node_id1 == curnid) ? curedge->node_id2 : curedge->node_id1;
+	// printf("[applyPose] nextnid: %zu, curEP.next_node_id: %zu!\n", nextnid, curEP.next_node_id);
+	if (nextnid != curEP.next_node_id && (int) m_gstatus < 2)
+	{
+		// printf("[applyPose] wrong direction!\n");
+		m_gstatus = GuideStatus::GUIDE_TURNBACK;		
+	}	
+	// printf("m_mvstatus: %d\n", m_mvstatus);
 	return true;
 }
 
@@ -406,7 +450,8 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 {
 	m_confidence = conf;
 	ID curNId = pose.node_id; //Current robot location
-	//validate parameters
+	
+	//validate node id
 	if (curNId == 0)
 	{
 		printf("[Error] GuidanceManager::setGuideStatus - Empty pose\n");
@@ -414,6 +459,7 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 		return false;
 	}
 
+	//validate path
 	if (m_extendedPath.size() < 1)
 	{
 		m_gstatus = GuideStatus::GUIDE_NOPATH;
@@ -425,7 +471,7 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 	{
 		m_gstatus = GuideStatus::GUIDE_ARRIVED;
 		m_arrival = true;
-		printf("m_gstatus: %d\n", m_gstatus);
+//		printf("[setGuideStatus]finishing m_gstatus: %d\n", m_gstatus);
 		return true;
 	}
 
@@ -438,10 +484,11 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 		return false;
 	}
 
+	//check initial status
 	if (m_guide_idx == 0)
 	{
 		m_gstatus = GuideStatus::GUIDE_INITIAL;
-		printf("m_gstatus: %d\n", m_gstatus);
+//		printf("[setGuideStatus]idx == 0 m_gstatus: %d\n", m_gstatus);
 		return true;
 	}
 
@@ -451,7 +498,7 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 	{//as long as curNId exists on path, everything is ok
 		oop_start = 0;
 		m_gstatus = GuideStatus::GUIDE_NORMAL;
-		printf("m_gstatus: %d\n", m_gstatus);
+//		printf("[setGuideStatus] isNodeInPath>0 m_gstatus: %d\n", m_gstatus);
 		return true;
 	}
 	else
@@ -524,6 +571,11 @@ bool GuidanceManager::setGuidanceWithGuideStatus()
 		//setOOPGuide();
 		break;
 	}
+	case GuideStatus::GUIDE_TURNBACK:
+	{
+		setTunBackGuide();
+		break;
+	}
 	// case GuideStatus::GUIDE_LOST:
 	// 	break;
 	// case GuideStatus::GUIDE_RECOVERY:
@@ -575,7 +627,7 @@ bool GuidanceManager::setNormalGuide()
 	guide.moving_status = m_mvstatus;
 
 	//set actions
-	printf("m_mvstatus: %d\n", m_mvstatus);
+	// printf("[setNormalGuide] m_mvstatus: %d\n", m_mvstatus);
 	switch (m_mvstatus)
 	{
 	case MoveStatus::ON_NODE: //(TURN) - GO
@@ -752,6 +804,31 @@ std::string GuidanceManager::getStringFwdDist(Action act, int ntype, ID nid, dou
 	return result;
 }
 
+std::string GuidanceManager::getStringFwdDistAfter(Action act, int ntype, ID nid, double d)
+{
+	std::string result;
+
+	//check parameter
+	if ((int)act.cmd < 0 || act.cmd >= Motion::TYPE_NUM || (int) act.edge_type < 0 || act.edge_type >= Edge::TYPE_NUM)
+	{
+		printf("[Error] GuidanceManager::getStringForward() - wrong Action!\n");
+		return result;
+	}
+
+	std::string motion = m_motions[(int)act.cmd];
+	std::string edge = m_edges[act.edge_type];
+	std::string str_act = motion + " on " + edge;
+
+	std::string nodetype = m_nodes[ntype];
+
+	std::string nodeid = std::to_string(nid);
+	std::string distance = std::to_string(d).substr(0,4);
+
+	std::string act_add = " after " + distance + "m" + " on " + nodetype + "(Node ID : " + nodeid + ")";
+	result = str_act + act_add;
+	return result;
+}
+
 std::string GuidanceManager::getStringFwd(Action act, int ntype, ID nid)
 {
 	std::string result;
@@ -834,8 +911,19 @@ std::string GuidanceManager::getStringGuidance(Guidance guidance, MoveStatus sta
 		{
 			if (i == 0)
 			{
-				str_first = getStringFwdDist(actions[i], actions[i].node_type,
+				
+				if (guidance.moving_status == MoveStatus::APPROACHING_NODE)
+				{
+					str_first = getStringFwdDistAfter(actions[i], actions[i].node_type,
 					guidance.heading_node_id, guidance.distance_to_remain);
+				}
+				else
+				{
+					str_first = getStringFwdDist(actions[i], actions[i].node_type,
+					guidance.heading_node_id, guidance.distance_to_remain);
+				}
+				
+					
 			}
 			else
 			{
