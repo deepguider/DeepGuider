@@ -35,7 +35,7 @@ namespace dg
 
 			GUIDE_NOPATH,
 			GUIDE_UNKNOWN,
-			GUIDE_TURNBACK,
+		//	GUIDE_TURNBACK,
 
 			/** The number of GuideStatus */
 			TYPE_NUM
@@ -256,7 +256,7 @@ namespace dg
 		};
 
 		bool isNodeInPath(ID nodeid);
-		bool isNodeEdgeInExtPath(ID nodeid, ID edgeid);
+		bool isEdgeInPath(ID edgeid);
 		Motion getMotion(int ntype, int etype, int degree);
 		Guidance getLastGuidance() { return m_past_guides.back(); };
 		std::string getStringAction(Action action);
@@ -277,7 +277,7 @@ namespace dg
 		bool setNormalGuide();
 		bool setArrivalGuide();
 		bool setEmptyGuide();
-		bool setTunBackGuide();
+	//	bool setTunBackGuide();
 		bool applyPose(TopometricPose pose);
 
 		//bool setOOPGuide();
