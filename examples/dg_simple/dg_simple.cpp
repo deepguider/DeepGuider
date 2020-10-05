@@ -54,15 +54,19 @@ protected:
     bool m_threaded_run_python = false;
     std::string m_srcdir = "./../src";              // path of deepguider/src (required for python embedding)
 
-    bool m_use_high_gps = false;             // use high-precision gps (novatel)
+    std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
+    dg::LatLon m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
+    double m_map_pixel_per_meter = 1.045;
+    dg::Point2 m_map_canvas_offset = dg::Point2(344, 293);
+    std::string m_gps_input = "data/191115_ETRI_asen_fix.csv";
+    std::string m_video_input = "data/191115_ETRI.avi";
+
+    bool m_use_high_gps = false;                    // use high-precision gps (novatel)
 
     bool m_data_logging = false;
     bool m_enable_tts = false;
     bool m_recording = false;
     int m_recording_fps = 30;
-    std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
-    std::string m_gps_input = "data/191115_ETRI_asen_fix.csv";
-    std::string m_video_input = "data/191115_ETRI.avi";
     std::string m_recording_header_name = "dg_simple_";
 
     // local variables
@@ -244,6 +248,10 @@ bool DeepGuider::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "video_recording", m_recording);
     LOAD_PARAM_VALUE(fn, "video_recording_fps", m_recording_fps);
     LOAD_PARAM_VALUE(fn, "map_image_path", m_map_image_path);
+    LOAD_PARAM_VALUE(fn, "map_ref_point_lat", m_map_ref_point.lat);
+    LOAD_PARAM_VALUE(fn, "map_ref_point_lon", m_map_ref_point.lon);
+    LOAD_PARAM_VALUE(fn, "map_pixel_per_meter", m_map_pixel_per_meter);
+    LOAD_PARAM_VALUE(fn, "map_canvas_offset", m_map_canvas_offset);
     LOAD_PARAM_VALUE(fn, "gps_input", m_gps_input);
     LOAD_PARAM_VALUE(fn, "video_input", m_video_input);
     LOAD_PARAM_VALUE(fn, "recording_header_name", m_recording_header_name);
@@ -303,11 +311,10 @@ bool DeepGuider::initialize(std::string config_file)
     m_map_image_original = m_map_image.clone();
 
     // prepare GUI map
-    dg::LatLon ref_node(36.383837659737, 127.367880828442);
-    m_painter.setReference(ref_node);
-    m_painter.setParamValue("pixel_per_meter", 1.045);
+    m_painter.setReference(m_map_ref_point);
+    m_painter.setParamValue("pixel_per_meter", m_map_pixel_per_meter);
     m_painter.setParamValue("canvas_margin", 0);
-    m_painter.setParamValue("canvas_offset", { 344, 293 });
+    m_painter.setParamValue("canvas_offset", { m_map_canvas_offset.x, m_map_canvas_offset.y });
     m_painter.setParamValue("grid_step", 100);
     m_painter.setParamValue("grid_unit_pos", { 120, 10 });
     m_painter.setParamValue("node_radius", 4);
@@ -397,28 +404,25 @@ bool DeepGuider::initializeDefaultMap()
 {
     // load map
     dg::Map map;
-    double lat_center = 36.382517;      // center of deepgudier background map
-    double lon_center = 127.372893;     // center of deepguider background map
-    double radius = 1000;               // radius of deepguider background map
+    double radius = 2000;
     m_map_mutex.lock();
-    VVS_CHECK_TRUE(m_map_manager.getMap(lat_center, lon_center, radius, map));
+    VVS_CHECK_TRUE(m_map_manager.getMap(m_map_ref_point.lat, m_map_ref_point.lon, radius, map));
     m_map_mutex.unlock();
     printf("\tDefault map is downloaded, n_nodes=%d\n", (int)map.nodes.size());
 
     // download streetview map
     std::vector<StreetView> sv_list;
     m_map_mutex.lock();
-    m_map_manager.getStreetView(lat_center, lon_center, radius, sv_list);
+    m_map_manager.getStreetView(m_map_ref_point.lat, m_map_ref_point.lon, radius, sv_list);
     m_map_mutex.unlock();
     printf("\tStreetviews are downloaded! nViews = %d\n", (int)map.views.size());
 
     // localizer: set default map to localizer
-    dg::LatLon ref_node(36.383837659737, 127.367880828442);
     m_localizer_mutex.lock();
     m_localizer.setParamMotionNoise(0.1, 0.1);
     m_localizer.setParamGPSNoise(0.5);
     m_localizer.setParamValue("offset_gps", {1., 0.});
-    VVS_CHECK_TRUE(m_localizer.setReference(ref_node));
+    VVS_CHECK_TRUE(m_localizer.setReference(m_map_ref_point));
     VVS_CHECK_TRUE(m_localizer.loadMap(map));
     m_localizer_mutex.unlock();
     printf("\tDefault map is appyed to Localizer!\n");
@@ -427,18 +431,35 @@ bool DeepGuider::initializeDefaultMap()
 }
 
 
-std::vector<std::pair<double, dg::LatLon>> loadExampleGPSData(std::string csv_file = "data/191115_ETRI_asen_fix.csv")
+std::vector<std::pair<double, dg::LatLon>> loadExampleGPSData(std::string csv_file)
 {
+    const string ANDRO_POSTFIX = "AndroSensor.csv";
     cx::CSVReader csv;
-    VVS_CHECK_TRUE(csv.open(csv_file));
-    cx::CSVReader::Double2D csv_ext = csv.extDouble2D(1, { 2, 3, 7, 8 }); // Skip the header
-
     std::vector<std::pair<double, dg::LatLon>> data;
-    for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
+    const string postfix = csv_file.substr(csv_file.length() - ANDRO_POSTFIX.length(), ANDRO_POSTFIX.length());
+    if (postfix.compare(ANDRO_POSTFIX) == 0)
     {
-        double timestamp = row->at(0) + 1e-9 * row->at(1);
-        dg::LatLon ll(row->at(2), row->at(3));
-        data.push_back(std::make_pair(timestamp, ll));
+        VVS_CHECK_TRUE(csv.open(csv_file, ';'));
+        cx::CSVReader::Double2D csv_ext = csv.extDouble2D(2, { 31, 22, 23, 28 }); // Skip the header
+
+        for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
+        {
+            double timestamp = 1e-3 * row->at(0);
+            dg::LatLon ll(row->at(1), row->at(2));
+            data.push_back(std::make_pair(timestamp, ll));
+        }
+    }
+    else
+    {
+        VVS_CHECK_TRUE(csv.open(csv_file));
+        cx::CSVReader::Double2D csv_ext = csv.extDouble2D(1, { 2, 3, 7, 8 }); // Skip the header
+
+        for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
+        {
+            double timestamp = row->at(0) + 1e-9 * row->at(1);
+            dg::LatLon ll(row->at(2), row->at(3));
+            data.push_back(std::make_pair(timestamp, ll));
+        }
     }
     return data;
 }
@@ -706,7 +727,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     // draw cam image as subwindow on the GUI map image
     cv::Rect win_rect;
     cv::Mat video_image;
-    cv::Point video_offset(20, 542);
+    cv::Point video_offset(20, image.rows - 322);
     if (!cam_image.empty())
     {
         cv::resize(cam_image, video_image, cv::Size(), video_resize_scale*0.8, video_resize_scale);

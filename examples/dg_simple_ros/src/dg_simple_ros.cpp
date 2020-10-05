@@ -70,16 +70,22 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_enable_intersection = false;
     m_enable_exploration = false;
 
-    //m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
-    m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
+    //m_server_ip = "127.0.0.1";            // default: 127.0.0.1 (localhost)
+    m_server_ip = "129.254.87.96";          // default: 127.0.0.1 (localhost)
     m_threaded_run_python = true;
-    m_srcdir = "/work/deepguider/src";   // system path of deepguider/src (required for python embedding)
+    m_srcdir = "/work/deepguider/src";      // system path of deepguider/src (required for python embedding)
+
+    m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
+    m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
+    m_map_pixel_per_meter = 1.045;
+    m_map_canvas_offset = dg::Point2(344, 293);
+
+    m_use_high_gps = false;                 // use high-precision gps (novatel)
 
     m_data_logging = false;
     m_enable_tts = false;
     m_recording = false;
     m_recording_fps = 30;
-    m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
     m_recording_header_name = "dg_ros_";
 
     // Read ros-specific parameters
