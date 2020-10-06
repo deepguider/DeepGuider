@@ -43,6 +43,7 @@ int testSimpleMapManager()
 		VVS_CHECK_EQUL(map2.nodes.size(), 802);
 	map1.set_union(map2);
 	VVS_CHECK_EQUL(map1.nodes.size(), 983);
+	std::vector<dg::Node> junc_node = manager.getMap_junction(dg::LatLon(36.384102, 127.374838), 3);
 
 	// Get the path
 	ok = manager.getPath("test_simple_path.json", path);
@@ -68,6 +69,8 @@ int testSimpleMapManager()
 	VVS_CHECK_EQUL(poi_vec[0].lat, 36.378127999999997);
 	std::vector<dg::POI> pois = manager.getPOI("루이까스텔유성점");
 	pois = manager.getPOI("우성이비에스", dg::LatLon(36.361303, 127.33648), 100.0);
+	pois = manager.getPOI_sorting("루이까스텔유성점", dg::LatLon(36.384063, 127.374733));
+	pois = manager.getPOI_sorting("우성이비에스", dg::LatLon(36.361303, 127.33648), 100.0, dg::LatLon(36.384063, 127.374733));
 	//std::vector<cv::Point2d> poiloc = manager.getPOIloc("UST");
 	
 	// Get the StreetView

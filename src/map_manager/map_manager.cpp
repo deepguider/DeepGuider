@@ -21,24 +21,24 @@ bool MapManager::initialize()
 	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
 	{
 		lookup_pois_name.insert(std::make_pair(it->name, LatLon(it->lat, it->lon)));
-		lookup_pois_id.insert(std::make_pair(it->id, LatLon(it->lat, it->lon)));
+		//lookup_pois_id.insert(std::make_pair(it->id, LatLon(it->lat, it->lon)));
 	}
 	m_map->pois.clear();
 
-	std::vector<StreetView> sv_vec;
-	ok = getStreetView(36.384063, 127.374733, 40000.0, sv_vec);	// Korea
-	if (!ok)
-	{
-		delete m_map;
-		m_isMap = false;
+	//std::vector<StreetView> sv_vec;
+	//ok = getStreetView(36.384063, 127.374733, 40000.0, sv_vec);	// Korea
+	//if (!ok)
+	//{
+	//	delete m_map;
+	//	m_isMap = false;
 
-		return false;
-	}
-	for (std::vector<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
-	{
-		lookup_svs.insert(std::make_pair(it->id, LatLon(it->lat, it->lon)));
-	}
-	m_map->views.clear();
+	//	return false;
+	//}
+	//for (std::vector<StreetView>::iterator it = m_map->views.begin(); it != m_map->views.end(); ++it)
+	//{
+	//	lookup_svs.insert(std::make_pair(it->id, LatLon(it->lat, it->lon)));
+	//}
+	//m_map->views.clear();
 
 	return true;
 }
@@ -657,6 +657,40 @@ bool MapManager::getMap_expansion(Path path, Map& map, double alpha)
 	return true;
 }
 
+std::vector<Node> MapManager::getMap_junction(LatLon cur_latlon, int top_n)
+{
+	std::vector<Node> node_vec;
+
+	UTMConverter utm_conv;
+	Point2 cur_metric = utm_conv.toMetric(cur_latlon);
+	Point2 node_metric;
+	double dist_metric;
+	/** A hash table for finding junction nodes by distance */
+	std::map<double, Node> lookup_junc_dist;
+
+	for (std::vector<Node>::iterator it = m_map->nodes.begin(); it != m_map->nodes.end(); ++it)
+	{
+		if(it->type == Node::NODE_JUNCTION)
+		{
+			node_metric = utm_conv.toMetric(LatLon(it->lat, it->lon));
+			dist_metric = sqrt(pow((cur_metric.x - node_metric.x), 2) + pow((cur_metric.y - node_metric.y), 2));
+			lookup_junc_dist.insert(std::make_pair(dist_metric, *it));
+		}
+	}
+	
+	int num = 0;
+	for (std::map<double, Node>::iterator it = lookup_junc_dist.begin(); it != lookup_junc_dist.end(); ++it)
+	{
+		if (num >= top_n)
+			break;		
+		num++;
+
+		node_vec.push_back(it->second);
+	}
+
+	return node_vec;
+}
+
 bool MapManager::downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
 {
 	const std::string url_middle = ":20005/"; // routing server (paths)
@@ -1050,7 +1084,7 @@ bool MapManager::getPOI(double lat, double lon, double radius, std::vector<POI>&
 	m_json = "";
 
 	// by communication
-	downloadPOI_poi(node_id, radius);
+	downloadPOI(node_id, radius);
 	//decodeUni();
 	const char* json = m_json.c_str();
 //#ifdef _DEBUG
@@ -1166,7 +1200,7 @@ std::vector<POI> MapManager::getPOI(const std::string poi_name, LatLon latlon, d
 	std::vector<POI> poi_vec;
 	bool ok = getPOI(latlon.lat, latlon.lon, radius, poi_vec);
 	if (!ok)
-		return getPOI();
+		return std::vector<POI>();
 	poi_vec.clear();
 	std::wstring name;
 	utf8to16(poi_name.c_str(), name);
@@ -1175,6 +1209,41 @@ std::vector<POI> MapManager::getPOI(const std::string poi_name, LatLon latlon, d
 		if (it->name == name)
 			poi_vec.push_back(*it);
 	}	
+
+	return poi_vec;
+}
+
+std::vector<POI> MapManager::getPOI_sorting(const std::string poi_name, LatLon latlon, double radius, LatLon cur_latlon)
+{
+	std::vector<POI> poi_vec;
+	bool ok = getPOI(latlon.lat, latlon.lon, radius, poi_vec);
+	if (!ok)
+		return std::vector<POI>();
+	poi_vec.clear();
+	std::wstring name;
+	utf8to16(poi_name.c_str(), name);
+
+	UTMConverter utm_conv;
+	Point2 cur_metric = utm_conv.toMetric(cur_latlon);
+	Point2 poi_metric;
+	double dist_metric;
+	/** A hash table for finding POIs by distance */
+	std::map<double, POI> lookup_pois_dist;
+	
+	for (std::vector<POI>::iterator it = m_map->pois.begin(); it != m_map->pois.end(); ++it)
+	{
+		if (it->name == name)
+		{
+			poi_metric = utm_conv.toMetric(LatLon(it->lat, it->lon));
+			dist_metric = sqrt(pow((cur_metric.x - poi_metric.x), 2) + pow((cur_metric.y - poi_metric.y), 2));
+			lookup_pois_dist.insert(std::make_pair(dist_metric, *it));
+		}
+	}
+
+	for (std::map<double, POI>::iterator it = lookup_pois_dist.begin(); it != lookup_pois_dist.end(); ++it)
+	{
+		poi_vec.push_back(it->second);
+	}
 
 	return poi_vec;
 }
@@ -1188,6 +1257,17 @@ std::vector<POI> MapManager::getPOI(const std::string poi_name)
 		return std::vector<POI>();
 
 	return getPOI(poi_name, found->second, 10.0);
+}
+
+std::vector<POI> MapManager::getPOI_sorting(const std::string poi_name, LatLon cur_latlon)
+{
+	std::wstring name;
+	utf8to16(poi_name.c_str(), name);
+	auto found = lookup_pois_name.find(name);
+	if (found == lookup_pois_name.end())
+		return std::vector<POI>();
+
+	return getPOI_sorting(poi_name, found->second, 10.0, cur_latlon);
 }
 
 bool MapManager::downloadStreetView(double lat, double lon, double radius)

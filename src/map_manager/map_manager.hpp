@@ -131,6 +131,14 @@ public:
 	bool getMap_expansion(Path path, Map& map, double alpha = 50.0);
 
 	/**
+	 * Get the junction nodes in the current topological map
+	 * @param cur_latlon The given latitude and longitude of current location (Unit: [deg])
+	 * @param top_n The number of nodes to get 
+	 * @return A vector of gotten nodes (Sort in order from current location to nearest)
+	 */
+	std::vector<Node> getMap_junction(LatLon cur_latlon, int top_n = 1);
+
+	/**
 	 * Get the current topological map
 	 * @return A reference to gotten topological map
 	 */
@@ -236,9 +244,27 @@ public:
 	/**
 	 * Get the POIs corresponding to a certain POI name
 	 * @param poi_name The given POI name of this POI
+	 * @param latlon The given latitude and longitude of this POI (Unit: [deg])
+	 * @param radius The given radius of this POI (Unit: [m])
+	 * @param cur_latlon The given latitude and longitude of current location (Unit: [deg])
+	 * @return A vector of gotten POIs (Sort in order from current location to nearest)
+	 */
+	std::vector<POI> getPOI_sorting(const std::string poi_name, LatLon latlon, double radius, LatLon cur_latlon);
+
+	/**
+	 * Get the POIs corresponding to a certain POI name
+	 * @param poi_name The given POI name of this POI
 	 * @return A vector of gotten POIs
 	 */
 	std::vector<POI> getPOI(const std::string poi_name);
+
+	/**
+	 * Get the POIs corresponding to a certain POI name
+	 * @param poi_name The given POI name of this POI
+	 * @param cur_latlon The given latitude and longitude of current location (Unit: [deg])
+	 * @return A vector of gotten POIs (Sort in order from current location to nearest)
+	 */
+	std::vector<POI> getPOI_sorting(const std::string poi_name, LatLon cur_latlon);
 
 	/**
 	 * Get the StreetViews within a certain radius based on latitude and longitude
@@ -308,10 +334,10 @@ protected:
 	std::map<ID, LatLon> lookup_path;
 	/** A hash table for finding POIs by name */
 	std::map<std::wstring, LatLon> lookup_pois_name;
-	/** A hash table for finding POIs by ID */
-	std::map<ID, LatLon> lookup_pois_id;
-	/** A hash table for finding StreetViews */
-	std::map<ID, LatLon> lookup_svs;
+	///** A hash table for finding POIs by ID */
+	//std::map<ID, LatLon> lookup_pois_id;
+	///** A hash table for finding StreetViews */
+	//std::map<ID, LatLon> lookup_svs;
 
 	/*int lat2tiley(double lat, int z);
 	int lon2tilex(double lon, int z);

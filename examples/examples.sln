@@ -11,8 +11,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "guidance_test", "guidance_t
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "map_manager_test", "map_manager_test\map_manager_test.vcxproj", "{FB401C0A-9F85-48A5-9452-0341C0AF7D22}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "localizer_eval", "localizer_eval\localizer_eval.vcxproj", "{2476B4FE-A327-4717-A6FC-5F52631A2114}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dg_simple", "dg_simple\dg_simple.vcxproj", "{7FCCC221-F1C9-46B0-9921-A4FD9DF0EB17}"
 EndProject
 Global
@@ -37,10 +35,6 @@ Global
 		{FB401C0A-9F85-48A5-9452-0341C0AF7D22}.Debug|x64.Build.0 = Debug|x64
 		{FB401C0A-9F85-48A5-9452-0341C0AF7D22}.Release|x64.ActiveCfg = Release|x64
 		{FB401C0A-9F85-48A5-9452-0341C0AF7D22}.Release|x64.Build.0 = Release|x64
-		{2476B4FE-A327-4717-A6FC-5F52631A2114}.Debug|x64.ActiveCfg = Debug|x64
-		{2476B4FE-A327-4717-A6FC-5F52631A2114}.Debug|x64.Build.0 = Debug|x64
-		{2476B4FE-A327-4717-A6FC-5F52631A2114}.Release|x64.ActiveCfg = Release|x64
-		{2476B4FE-A327-4717-A6FC-5F52631A2114}.Release|x64.Build.0 = Release|x64
 		{7FCCC221-F1C9-46B0-9921-A4FD9DF0EB17}.Debug|x64.ActiveCfg = Debug|x64
 		{7FCCC221-F1C9-46B0-9921-A4FD9DF0EB17}.Debug|x64.Build.0 = Debug|x64
 		{7FCCC221-F1C9-46B0-9921-A4FD9DF0EB17}.Release|x64.ActiveCfg = Release|x64

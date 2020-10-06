@@ -35,6 +35,7 @@ namespace dg
 
 			GUIDE_NOPATH,
 			GUIDE_UNKNOWN,
+		//	GUIDE_TURNBACK,
 
 			/** The number of GuideStatus */
 			TYPE_NUM
@@ -196,7 +197,9 @@ namespace dg
 		LatLon m_latlon;
 		double m_edge_progress = 0.0;
 		double m_rmdistance = 0.0;
-		int m_cur_head_angle = 0;
+		int m_cur_head_degree = 0;
+		TopometricPose  m_curpose;
+		double m_confidence;
 		MoveStatus  m_mvstatus = MoveStatus::ON_EDGE;
 		GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
 		Guidance m_curguidance;
@@ -204,7 +207,9 @@ namespace dg
 		time_t oop_start = 0, oop_end = 0;
 		int m_finalTurn = 0;
 		int m_finalEdgeId = 0;
-		double m_approachingThreshold = 5.0;
+		double m_approachingThreshold = 10.0;
+		bool m_arrival = false;
+		bool m_juctionguide = true;
 
 		std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
 		std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
@@ -251,10 +256,13 @@ namespace dg
 		};
 
 		bool isNodeInPath(ID nodeid);
+		bool isEdgeInPath(ID edgeid);
 		Motion getMotion(int ntype, int etype, int degree);
 		Guidance getLastGuidance() { return m_past_guides.back(); };
 		std::string getStringAction(Action action);
-		std::string getStringForward(Action act, int ntype, ID nid, double d);
+		std::string getStringFwd(Action act, int ntype, ID nid);
+		std::string getStringFwdDist(Action act, int ntype, ID nid, double d);
+		std::string getStringFwdDistAfter(Action act, int ntype, ID nid, double d);
 		std::string getStringTurn(Action act, int ntype);
 		std::string getStringTurnDist(Action act, int ntype, double dist);
 		std::string getStringGuidance(Guidance guidance, MoveStatus status);
@@ -269,6 +277,7 @@ namespace dg
 		bool setNormalGuide();
 		bool setArrivalGuide();
 		bool setEmptyGuide();
+	//	bool setTunBackGuide();
 		bool applyPose(TopometricPose pose);
 
 		//bool setOOPGuide();

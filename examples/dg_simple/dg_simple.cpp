@@ -54,13 +54,19 @@ protected:
     bool m_threaded_run_python = false;
     std::string m_srcdir = "./../src";              // path of deepguider/src (required for python embedding)
 
+    std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
+    dg::LatLon m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
+    double m_map_pixel_per_meter = 1.045;
+    dg::Point2 m_map_canvas_offset = dg::Point2(344, 293);
+    std::string m_gps_input = "data/191115_ETRI_asen_fix.csv";
+    std::string m_video_input = "data/191115_ETRI.avi";
+
+    bool m_use_high_gps = false;                    // use high-precision gps (novatel)
+
     bool m_data_logging = false;
     bool m_enable_tts = false;
     bool m_recording = false;
     int m_recording_fps = 30;
-    std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
-    std::string m_gps_input = "data/191115_ETRI_asen_fix.csv";
-    std::string m_video_input = "data/191115_ETRI.avi";
     std::string m_recording_header_name = "dg_simple_";
 
     // local variables
@@ -73,6 +79,9 @@ protected:
     dg::MapPainter m_painter;
     dg::MapCanvasInfo m_map_info;    
     dg::GuidanceManager::Motion m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
+    dg::GuidanceManager::GuideStatus m_guidance_status = dg::GuidanceManager::GuideStatus::GUIDE_INITIAL;
+    std::list<dg::LatLon> m_gps_history_asen;
+    std::list<dg::LatLon> m_gps_history_novatel;
 
     // global variables
     dg::LatLon m_gps_start;
@@ -232,11 +241,17 @@ bool DeepGuider::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "threaded_run_python", m_threaded_run_python);
     LOAD_PARAM_VALUE(fn, "dg_srcdir", m_srcdir);
 
+    LOAD_PARAM_VALUE(fn, "use_high_gps", m_use_high_gps);
+
     LOAD_PARAM_VALUE(fn, "enable_data_logging", m_data_logging);
     LOAD_PARAM_VALUE(fn, "enable_tts", m_enable_tts);
     LOAD_PARAM_VALUE(fn, "video_recording", m_recording);
     LOAD_PARAM_VALUE(fn, "video_recording_fps", m_recording_fps);
     LOAD_PARAM_VALUE(fn, "map_image_path", m_map_image_path);
+    LOAD_PARAM_VALUE(fn, "map_ref_point_lat", m_map_ref_point.lat);
+    LOAD_PARAM_VALUE(fn, "map_ref_point_lon", m_map_ref_point.lon);
+    LOAD_PARAM_VALUE(fn, "map_pixel_per_meter", m_map_pixel_per_meter);
+    LOAD_PARAM_VALUE(fn, "map_canvas_offset", m_map_canvas_offset);
     LOAD_PARAM_VALUE(fn, "gps_input", m_gps_input);
     LOAD_PARAM_VALUE(fn, "video_input", m_video_input);
     LOAD_PARAM_VALUE(fn, "recording_header_name", m_recording_header_name);
@@ -296,11 +311,10 @@ bool DeepGuider::initialize(std::string config_file)
     m_map_image_original = m_map_image.clone();
 
     // prepare GUI map
-    dg::LatLon ref_node(36.383837659737, 127.367880828442);
-    m_painter.setReference(ref_node);
-    m_painter.setParamValue("pixel_per_meter", 1.045);
+    m_painter.setReference(m_map_ref_point);
+    m_painter.setParamValue("pixel_per_meter", m_map_pixel_per_meter);
     m_painter.setParamValue("canvas_margin", 0);
-    m_painter.setParamValue("canvas_offset", { 344, 293 });
+    m_painter.setParamValue("canvas_offset", { m_map_canvas_offset.x, m_map_canvas_offset.y });
     m_painter.setParamValue("grid_step", 100);
     m_painter.setParamValue("grid_unit_pos", { 120, 10 });
     m_painter.setParamValue("node_radius", 4);
@@ -369,6 +383,10 @@ bool DeepGuider::initialize(std::string config_file)
     m_ocr_image.release();
     m_ocrs.clear();
     m_intersection_image.release();
+    m_gps_history_asen.clear();
+    m_gps_history_novatel.clear();
+    m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
+    m_guidance_status = dg::GuidanceManager::GuideStatus::GUIDE_INITIAL;
 
     // tts
     if (m_enable_tts)
@@ -386,28 +404,25 @@ bool DeepGuider::initializeDefaultMap()
 {
     // load map
     dg::Map map;
-    double lat_center = 36.382517;      // center of deepgudier background map
-    double lon_center = 127.372893;     // center of deepguider background map
-    double radius = 1000;               // radius of deepguider background map
+    double radius = 2000;
     m_map_mutex.lock();
-    VVS_CHECK_TRUE(m_map_manager.getMap(lat_center, lon_center, radius, map));
+    VVS_CHECK_TRUE(m_map_manager.getMap(m_map_ref_point.lat, m_map_ref_point.lon, radius, map));
     m_map_mutex.unlock();
     printf("\tDefault map is downloaded, n_nodes=%d\n", (int)map.nodes.size());
 
     // download streetview map
     std::vector<StreetView> sv_list;
     m_map_mutex.lock();
-    m_map_manager.getStreetView(lat_center, lon_center, radius, sv_list);
+    m_map_manager.getStreetView(m_map_ref_point.lat, m_map_ref_point.lon, radius, sv_list);
     m_map_mutex.unlock();
     printf("\tStreetviews are downloaded! nViews = %d\n", (int)map.views.size());
 
     // localizer: set default map to localizer
-    dg::LatLon ref_node(36.383837659737, 127.367880828442);
     m_localizer_mutex.lock();
     m_localizer.setParamMotionNoise(0.1, 0.1);
     m_localizer.setParamGPSNoise(0.5);
     m_localizer.setParamValue("offset_gps", {1., 0.});
-    VVS_CHECK_TRUE(m_localizer.setReference(ref_node));
+    VVS_CHECK_TRUE(m_localizer.setReference(m_map_ref_point));
     VVS_CHECK_TRUE(m_localizer.loadMap(map));
     m_localizer_mutex.unlock();
     printf("\tDefault map is appyed to Localizer!\n");
@@ -416,18 +431,35 @@ bool DeepGuider::initializeDefaultMap()
 }
 
 
-std::vector<std::pair<double, dg::LatLon>> loadExampleGPSData(std::string csv_file = "data/191115_ETRI_asen_fix.csv")
+std::vector<std::pair<double, dg::LatLon>> loadExampleGPSData(std::string csv_file)
 {
+    const string ANDRO_POSTFIX = "AndroSensor.csv";
     cx::CSVReader csv;
-    VVS_CHECK_TRUE(csv.open(csv_file));
-    cx::CSVReader::Double2D csv_ext = csv.extDouble2D(1, { 2, 3, 7, 8 }); // Skip the header
-
     std::vector<std::pair<double, dg::LatLon>> data;
-    for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
+    const string postfix = csv_file.substr(csv_file.length() - ANDRO_POSTFIX.length(), ANDRO_POSTFIX.length());
+    if (postfix.compare(ANDRO_POSTFIX) == 0)
     {
-        double timestamp = row->at(0) + 1e-9 * row->at(1);
-        dg::LatLon ll(row->at(2), row->at(3));
-        data.push_back(std::make_pair(timestamp, ll));
+        VVS_CHECK_TRUE(csv.open(csv_file, ';'));
+        cx::CSVReader::Double2D csv_ext = csv.extDouble2D(2, { 31, 22, 23, 28 }); // Skip the header
+
+        for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
+        {
+            double timestamp = 1e-3 * row->at(0);
+            dg::LatLon ll(row->at(1), row->at(2));
+            data.push_back(std::make_pair(timestamp, ll));
+        }
+    }
+    else
+    {
+        VVS_CHECK_TRUE(csv.open(csv_file));
+        cx::CSVReader::Double2D csv_ext = csv.extDouble2D(1, { 2, 3, 7, 8 }); // Skip the header
+
+        for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
+        {
+            double timestamp = row->at(0) + 1e-9 * row->at(1);
+            dg::LatLon ll(row->at(2), row->at(3));
+            data.push_back(std::make_pair(timestamp, ll));
+        }
     }
     return data;
 }
@@ -466,6 +498,8 @@ int DeepGuider::run()
         const dg::LatLon gps_datum = gps_data[itr].second;
         const dg::Timestamp gps_time = gps_data[itr].first;
         procGpsData(gps_datum, gps_time);
+        m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
+        m_gps_history_asen.push_back(gps_datum);
         printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, gps_time);
 
         // video capture
@@ -505,6 +539,7 @@ int DeepGuider::run()
         int key = cv::waitKey(1);
         if (key == cx::KEY_SPACE) key = cv::waitKey(0);
         if (key == cx::KEY_ESC) break;
+        if (key == 83) itr += 30;   // Right Key
 
         dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
         printf("Iteration: %d (it took %lf seconds)\n", itr, t2 - t1);
@@ -550,9 +585,6 @@ void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
         }
         printf("[Localizer] initial pose is estimated!\n");
     }
-
-    // draw gps history on the GUI map
-    m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
 }
 
 
@@ -667,6 +699,14 @@ bool DeepGuider::updateDeepGuiderPath(dg::TopometricPose pose_topo, dg::LatLon g
     m_map_image_original.copyTo(m_map_image);
     m_painter.drawMap(m_map_image, m_map_info, map);
     m_painter.drawPath(m_map_image, m_map_info, map, path);
+    for(auto itr = m_gps_history_novatel.begin(); itr != m_gps_history_novatel.end(); itr++)
+    {
+        m_painter.drawNode(m_map_image, m_map_info, *itr, 2, 0, cv::Vec3b(0, 0, 255));
+    }
+    for(auto itr = m_gps_history_asen.begin(); itr != m_gps_history_asen.end(); itr++)
+    {
+        m_painter.drawNode(m_map_image, m_map_info, *itr, 2, 0, cv::Vec3b(0, 255, 0));
+    }
 
     printf("\tGUI map is updated with new map and path!\n");
 
@@ -687,7 +727,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     // draw cam image as subwindow on the GUI map image
     cv::Rect win_rect;
     cv::Mat video_image;
-    cv::Point video_offset(20, 542);
+    cv::Point video_offset(20, image.rows - 322);
     if (!cam_image.empty())
     {
         cv::resize(cam_image, video_image, cv::Size(), video_resize_scale*0.8, video_resize_scale);
@@ -813,23 +853,29 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     // draw ocr result
     if (m_enable_ocr)
     {
-        cv::Mat ocr_image;
-        std::vector<OCRResult> ocrs;
-        cv::Size original_image_size;
         m_ocr_mutex.lock();
-        if (!m_ocr_image.empty())
+        cv::Mat ocr_image = m_ocr_image.clone();
+        std::vector<OCRResult> ocrs = m_ocrs;
+        m_ocr_mutex.unlock();
+
+        cv::Size original_image_size;
+        if (!ocr_image.empty())
         {
+            OCRRecognizer recognizer;
+            recognizer.set(ocrs, 0, 0);
+            recognizer.draw(ocr_image, 40);
+
             original_image_size.width = m_ocr_image.cols;
             original_image_size.height = m_ocr_image.rows;
             double fy = (double)win_rect.height / m_ocr_image.rows;
-            cv::resize(m_ocr_image, ocr_image, cv::Size(), fy*0.9, fy);
+            cv::resize(ocr_image, ocr_image, cv::Size(), fy*0.9, fy);
             ocrs = m_ocrs;
         }
-        m_ocr_mutex.unlock();
+        //m_ocr_mutex.unlock();
 
         if (!ocr_image.empty())
         {
-            drawOcr(ocr_image, ocrs, original_image_size);
+            //drawOcr(ocr_image, ocrs, original_image_size);
             cv::Point ocr_offset = video_offset;
             ocr_offset.x = win_rect.x + win_rect.width + win_delta;
             cv::Rect rect(ocr_offset, ocr_offset + cv::Point(ocr_image.cols, ocr_image.rows));
@@ -1069,56 +1115,60 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         if (cmd != m_guidance_cmd)
         {
             std::string tts_msg;
-            if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) tts_msg = "Go_forward";
-            else if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD)  tts_msg = "Cross_forward";
-            else if (cmd == dg::GuidanceManager::Motion::ENTER_FORWARD) tts_msg = "Enter_forward";
-            else if (cmd == dg::GuidanceManager::Motion::EXIT_FORWARD) tts_msg = "Exit_forward";
-            else if (cmd == dg::GuidanceManager::Motion::TURN_LEFT) tts_msg = "Turn_left";
-            else if (cmd == dg::GuidanceManager::Motion::CROSS_LEFT) tts_msg = "Cross_left";
-            else if (cmd == dg::GuidanceManager::Motion::ENTER_LEFT) tts_msg = "Enter_left";
-            else if (cmd == dg::GuidanceManager::Motion::EXIT_LEFT) tts_msg = "Exit_left";
-            else if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT) tts_msg = "Turn_right";
-            else if (cmd == dg::GuidanceManager::Motion::CROSS_RIGHT) tts_msg = "Cross_right";
-            else if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) tts_msg = "Enter_right";
-            else if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) tts_msg = "Exit_right";
-            else if (cmd == dg::GuidanceManager::Motion::TURN_BACK) tts_msg = "Turn_back";
+            if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) tts_msg = "Go forward";
+            else if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD)  tts_msg = "Cross forward";
+            else if (cmd == dg::GuidanceManager::Motion::ENTER_FORWARD) tts_msg = "Enter forward";
+            else if (cmd == dg::GuidanceManager::Motion::EXIT_FORWARD) tts_msg = "Exit forward";
+            else if (cmd == dg::GuidanceManager::Motion::TURN_LEFT) tts_msg = "Turn left";
+            else if (cmd == dg::GuidanceManager::Motion::CROSS_LEFT) tts_msg = "Cross left";
+            else if (cmd == dg::GuidanceManager::Motion::ENTER_LEFT) tts_msg = "Enter left";
+            else if (cmd == dg::GuidanceManager::Motion::EXIT_LEFT) tts_msg = "Exit left";
+            else if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT) tts_msg = "Turn right";
+            else if (cmd == dg::GuidanceManager::Motion::CROSS_RIGHT) tts_msg = "Cross right";
+            else if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) tts_msg = "Enter right";
+            else if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) tts_msg = "Exit right";
+            else if (cmd == dg::GuidanceManager::Motion::TURN_BACK) tts_msg = "Turn back";
 
             if(!tts_msg.empty()) putTTS(tts_msg.c_str());
             m_guidance_cmd = cmd;
         }
     }
 
-    // check arrival
-    if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED)
+    if (cur_status != m_guidance_status)
     {
-        printf("Arrived to destination!\n");
-        if(m_enable_tts) putTTS("Arrived to destination!");
-    }
-
-    // check out of path
-    if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP_DETECT || cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
-    {
-        printf("GUIDANCE: out of path detected!\n");
-        if(m_enable_tts) putTTS("Regenerate path!");
-        VVS_CHECK_TRUE(updateDeepGuiderPath(pose_topo, pose_gps, m_gps_dest));
-    }
-
-    // check lost
-    if (m_enable_exploration)
-    {
-        m_guider.makeLostValue(m_guider.m_prevconf, pose_confidence);
-        m_active_nav.apply(m_cam_image, cur_guide, ts);
-        if (cur_status == dg::GuidanceManager::GuideStatus::GUIDE_LOST)
+        // check arrival
+        if (cur_status == GuidanceManager::GuideStatus::GUIDE_ARRIVED && cur_guide.announce)
         {
-            std::vector<ExplorationGuidance> actions;
-            GuidanceManager::GuideStatus status;
-            m_active_nav.get(actions, status);
-            for (int k = 0; k < actions.size(); k++)
+            printf("Arrived to destination!\n");
+            if (m_enable_tts) putTTS("Arrived to destination!");
+        }
+
+        // check out of path
+        if (cur_status == GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == GuidanceManager::GuideStatus::GUIDE_LOST)
+        {
+            printf("GUIDANCE: out of path detected!\n");
+            if (m_enable_tts) putTTS("Regenerate path!");
+            VVS_CHECK_TRUE(updateDeepGuiderPath(pose_topo, pose_gps, m_gps_dest));
+        }
+
+        // check lost
+        if (m_enable_exploration)
+        {
+            m_guider.makeLostValue(m_guider.m_prevconf, pose_confidence);
+            m_active_nav.apply(m_cam_image, cur_guide, ts);
+            if (cur_status == dg::GuidanceManager::GuideStatus::GUIDE_LOST)
             {
-                printf("\t action %d: [%lf, %lf, %lf]\n", k, actions[k].theta1, actions[k].d, actions[k].theta2);
+                std::vector<ExplorationGuidance> actions;
+                GuidanceManager::GuideStatus status;
+                m_active_nav.get(actions, status);
+                for (int k = 0; k < actions.size(); k++)
+                {
+                    printf("\t action %d: [%lf, %lf, %lf]\n", k, actions[k].theta1, actions[k].d, actions[k].theta2);
+                }
             }
         }
     }
+    m_guidance_status = cur_status;
 }
 
 

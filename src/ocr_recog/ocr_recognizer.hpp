@@ -215,23 +215,29 @@ namespace dg
             return m_processing_time;
         }
 
-        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
+        void draw(cv::Mat& image, int font_sz = 28, double xscale = 1, double yscale = 1, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
         {
             for (size_t i = 0; i < m_ocrs.size(); i++)
             {
-                cv::Rect rc(m_ocrs[i].xmin, m_ocrs[i].ymin, m_ocrs[i].xmax - m_ocrs[i].xmin + 1, m_ocrs[i].ymax - m_ocrs[i].ymin + 1);
+                // bbox
+                int xmin = (int)(xscale * m_ocrs[i].xmin + 0.5);
+                int ymin = (int)(yscale * m_ocrs[i].ymin + 0.5);
+                int xmax = (int)(xscale * m_ocrs[i].xmax + 0.5);
+                int ymax = (int)(yscale * m_ocrs[i].ymax + 0.5);
+                cv::Rect rc(xmin, ymin, xmax - xmin + 1, ymax - ymin + 1);
                 cv::rectangle(image, rc, color, width);
+
+                // label
                 int sz = (rc.width < rc.height) ? rc.width : rc.height;
-                int ft_size = 28;
-                if(sz<10) ft_size = 10;
-                cv::Point pt(m_ocrs[i].xmin + 3, m_ocrs[i].ymin - 5);
+                if(sz<10) font_sz = 10;
+                cv::Point pt(xmin + 3, ymin - 5);
                 std::string msg = cv::format("%s (%.2lf)", m_ocrs[i].label.c_str(), m_ocrs[i].confidence);
 #ifdef HAVE_OPENCV_FREETYPE
                 if(m_ft2)
                 {
-                    m_ft2->putText(image, msg, pt, ft_size, cv::Scalar(255, 0, 0), 2, cv::LINE_AA, true);
-                    m_ft2->putText(image, msg, pt, ft_size, cv::Scalar(0, 255, 255), 1, cv::LINE_AA, true);
-                    m_ft2->putText(image, msg, pt, ft_size, cv::Scalar(0, 255, 255), -1, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, font_sz, cv::Scalar(255, 0, 0), 2, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, font_sz, cv::Scalar(0, 255, 255), 1, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, font_sz, cv::Scalar(0, 255, 255), -1, cv::LINE_AA, true);
                 }
                 else
 #endif
