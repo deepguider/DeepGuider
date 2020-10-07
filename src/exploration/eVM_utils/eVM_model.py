@@ -106,9 +106,7 @@ class encodeVisualMemoryRelatedPath(nn.Module):
         self.rel_path_weight_fc = FCN_2layer((self.feature_dim + 5), 512, 1)
         self.visual_memory_fc = FCN_2layer((self.feature_dim + self.action_dim), 512, 256, activation='relu')
 
-    def forward(self, feat, act, features=None, rel_pose=None):   
-        weights = []
-        path_length = len(features)
+    def forward(self, feat, act, features, rel_pose):
         features = torch.cat(features, 0)
         weight_gen_input = torch.unsqueeze(torch.cat([features, rel_pose], -1), 0)
         weights = self.rel_path_weight_fc(weight_gen_input).squeeze(-1)
