@@ -109,18 +109,13 @@ class encodeVisualMemoryRelatedPath(nn.Module):
     def forward(self, feat, act, features=None, rel_pose=None):   
         weights = []
         path_length = len(features)
-        for i in range(path_length):
-            weight_gen_input = torch.cat([features[i], rel_pose[i].reshape((-1,5))], -1)
-            w = self.rel_path_weight_fc(weight_gen_input)
-            weights.append(w)
-        features = torch.cat(features, 0) 
-        weights = torch.cat(weights, 1)
+        features = torch.cat(features, 0)
+        weight_gen_input = torch.unsqueeze(torch.cat([features, rel_pose], -1), 0)
+        weights = self.rel_path_weight_fc(weight_gen_input).squeeze(-1)
         weights = nn.functional.softmax(weights, 1)
         weights_diag = torch.diag(weights[0])
         weighted_feats = torch.matmul(weights_diag, features)
-        synthesized_feat = torch.sum(weighted_feats, 0)
-            
+        synthesized_feat = torch.sum(weighted_feats, 0)            
         memory_input = torch.cat([synthesized_feat.view(-1, self.feature_dim), act.view(-1, self.action_dim)], -1)
         mem = self.visual_memory_fc(memory_input)
-
         return mem, synthesized_feat

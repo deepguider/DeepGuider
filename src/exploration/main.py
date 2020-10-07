@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--path_direction', default='homing', type=str)    # following / homing
-parser.add_argument('enable_recovery', default=False, type=bool)
-parser.add_argument('enable_ove', default=False, type=bool)
+parser.add_argument('--enable_recovery', default=False, type=bool)
+parser.add_argument('--enable_ove', default=False, type=bool)
 parser.add_argument('--cuda', default=True, type=bool)
 args = parser.parse_args('')
 
