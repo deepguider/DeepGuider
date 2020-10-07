@@ -5,7 +5,7 @@ from ov_utils.myutils import make_mask, template_matching, get_surfacenormal, ge
 from ov_utils.config import normal_vector
 import ov_utils.file_utils as file_utils
 import eVM_utils.utils as eVM_utils
-from eVM_utils.eVM_model import encodeVisualMemory
+from eVM_utils.eVM_model import CNN, encodeVisualMemory, encodeVisualMemoryRelatedPath
 from recovery_policy import Recovery
 import torch
 import sys
@@ -21,7 +21,6 @@ import ov_utils.file_utils as file_utils
 Active Navigation Module:
 A module that maintains visual memory and provides three kinds of active navgitation guidance;
 (1) recovery guidance, (2) exploration guidance, (3) optimal viewpoint guidance.
-
 Author
 ------
 Yunho Choi, Obin Kwon, Nuri Kim, Hwiyeon Yoo
@@ -29,14 +28,23 @@ Yunho Choi, Obin Kwon, Nuri Kim, Hwiyeon Yoo
 
 class ActiveNavigationModule():
     """Active Navigation Module"""
-    def __init__(self):
+    def __init__(self, args):
         # map_manager = MapManager()
         # self.map = map_manager.getMap()
         # self.args = args
+        self.action_dim = 3
         self.list2encode = []
         self.vis_mem = []
-        self.vis_mem_encoder = encodeVisualMemory()
-        self.vis_mem_encoder_model = None
+        self.feats_along_path = []
+        self.rel_pose = None
+        self.path_direction = args.path_direction
+        self.cuda = args.cuda
+        self.encode_im = CNN()
+        if self.path_direction=='following':
+            self.vis_mem_encoder = encodeVisualMemory()
+        if self.path_direction=='homing':
+            self.vis_mem_encoder = encodeVisualMemoryRelatedPath()
+        self.vis_mem_encoder_model = './data_exp/model/{}/best.pth'.format(self.path_direction)
         
         self.enable_recovery = False
         self.recovery_policy = Recovery()
@@ -49,18 +57,35 @@ class ActiveNavigationModule():
         self.enable_ove = False
         self.optimal_viewpoint_guidance = [0, 0, 0]
 
-        data_list = [os.path.join('./data_exp/img_trajectory', x) for x in os.listdir('./data_exp/img_trajectory')]
+        data_list = [os.path.join('./data_exp/img_trajectory/{}'.format(self.path_direction), x) for x in os.listdir('./data_exp/img_trajectory/{}'.format(self.path_direction))]
         data = joblib.load(np.random.choice(data_list))
         self.img_list = data['rgb']
         self.guidance_list = data['action']
+        self.position_list = data['position']
+        rotation_quat = data['rotation']
+        self.rotation_list = []
+        for quat in rotation_quat:
+            self.rotation_list.append(2*np.arctan2(np.linalg.norm(quat[1:]), quat[0]))
+        if self.enable_ove:
+            self.ove_data_folder = './data_exp/optimal_viewpoint/'
+            image_list, sf_list, bbox_list, depth_list = file_utils.get_files(self.ove_data_folder)
+            self.im_paths, self.target_pois = file_utils.get_annos(self.ove_data_folder + 'anno/')
 
-        self.ove_data_folder = './data_exp/optimal_viewpoint/'
-        image_list, sf_list, bbox_list, depth_list = file_utils.get_files(self.ove_data_folder)
-        self.im_paths, self.target_pois = file_utils.get_annos(self.ove_data_folder + 'anno/')
+        self.initialize()
 
     def initialize(self):
         try:
-            self.vis_mem_encoder.load_state_dict(torch.load(self.vis_mem_encoder_model))
+            model_dict = torch.load(self.vis_mem_encoder_model)
+            im_encoder_model_dict = {}
+            vis_mem_encoder_model_dict = {}
+            for k, v in model_dict.items():
+                if 'encode_im' in k:
+                    name = k.replace('encode_im.', '')
+                    im_encoder_model_dict[name] = v
+                if 'rel_path_weight_fc' in k or 'visual_memory_fc' in k:
+                    vis_mem_encoder_model_dict[k] = v
+            self.encode_im.load_state_dict(im_encoder_model_dict)
+            self.vis_mem_encoder.load_state_dict(vis_mem_encoder_model_dict)
         except:
             print("Cannot load pretrained encodeVisualMemory model")
             pass
@@ -68,34 +93,68 @@ class ActiveNavigationModule():
         self.enable_recovery = True
         self.enable_ove = True
 
-        return True        
+        return True
 
-    def encodeVisualMemory(self, img, guidance, random_action=False, flush=False, exp_active=False):
+    def getAllFeaturesAndRelPose(self, img_list, position_list, rotation_list):
+        path_length = len(img_list)
+        for im in img_list:
+            im = eVM_utils.img_transform(im).unsqueeze(0)
+            if self.cuda:
+                im = im.cuda().float()
+            feat = self.encode_im(im)
+            self.feats_along_path.append(feat)
+
+        positions = torch.from_numpy(np.stack(position_list)[:,[2,0]])
+        rotations = torch.from_numpy(np.stack(rotation_list).reshape((-1,1)))
+
+        if self.cuda:
+            positions = positions.cuda().float()
+            rotations = rotations.cuda().float()
+
+        rel_pos = torch.unsqueeze(positions, 0) - torch.unsqueeze(positions, 1)
+        rel_pos_dist = torch.norm(rel_pos, dim=-1)  
+        rel_pos_theta = torch.atan2(rel_pos[...,1], rel_pos[...,0]) - rotations.repeat(1,path_length)
+        rel_pos_theta_cos = torch.cos(rel_pos_theta)
+        rel_pos_theta_sin = torch.sin(rel_pos_theta)
+        rel_pos_dt = torch.stack([rel_pos_dist, rel_pos_theta_cos, rel_pos_theta_sin], -1)
+
+        rel_rot = rotations.permute(1, 0) - rotations          
+        rel_rot_cos = torch.cos(rel_pos_theta)
+        rel_rot_sin = torch.sin(rel_pos_theta)
+        rel_orn = torch.stack([rel_rot_cos, rel_rot_sin], -1)
+
+        self.rel_pose = torch.cat([rel_pos_dt, rel_orn], -1)            
+
+    def encodeVisualMemory(self, img, guidance, index=-1, random_action=False, flush=False, exp_active=False):
         """
         Visual Memory Encoder Submodule:
         A module running consistently which encodes visual trajectory information from the previous node to the current location.
         When reaching new node, flush the memory
-
         Input:
         - topometric_pose: node_id, edge_idx, dist
         - guidance from previous node 
         - img
-
         Output:
         - visual memory: publish with message type VisMem
-
         Dependency:
         - Localizer
         """
-
         if random_action: # For test
-            test_act = np.random.randint(0, 3)
-            onehot_test_act = np.zeros(4)
+            test_act = np.random.randint(0, self.action_dim)
+            onehot_test_act = np.zeros(self.action_dim)
             onehot_test_act[test_act] = 1
-            tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
-            tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
             self.list2encode.append([img, onehot_test_act])
-            vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action.float())
+            tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
+            tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
+            if self.cuda:
+                tensor_img = tensor_img.cuda()
+                tensor_action = tensor_action.cuda()
+            if index < 0:
+                feat = self.encode_im(tensor_img)
+                vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float())
+            else:
+                feat = self.feats_along_path[index]
+                vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float(), self.feats_along_path, self.rel_pose[index,:,:])
             self.vis_mem.append(vis_mem_seg)
 
         else:
@@ -105,13 +164,21 @@ class ActiveNavigationModule():
                 self.vis_mem = []
 
             elif exp_active is False:
-                action = np.zeros(4)
-                action[guidance] = 1
+                action = np.zeros(self.action_dim)
+                action[guidance-1] = 1
                 self.list2encode.append([img,action])
                 # try:
                 tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
                 tensor_action = torch.tensor(action).unsqueeze(0)
-                vis_mem_seg, _ = self.vis_mem_encoder(tensor_img, tensor_action.float())
+                if self.cuda:
+                    tensor_action = tensor_action.cuda()
+                    tensor_img = tensor_img.cuda()
+                if index < 0:
+                    feat = self.encode_im(tensor_img)
+                    vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float())
+                else:
+                    feat = self.feats_along_path[index]
+                    vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float(), self.feats_along_path, self.rel_pose[index,...])
                 self.vis_mem.append(vis_mem_seg)
                 # except:
                     # print("NotImplementedError")
@@ -123,7 +190,6 @@ class ActiveNavigationModule():
         A module that guides a robot to return to the previous node, when StateDeterminant module
         determines that the robot is lost.
         If matching the retrieved image with the visual memory fails, call Exploration Guidance Module instead.
-
         Input:
         # - state: state from StateDeterminant Module
         - img: curreunt image input (doesn't need if visual memory contains the current input image)
@@ -148,7 +214,11 @@ class ActiveNavigationModule():
                 onehot_test_act[test_act] = 1
                 tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
                 tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
-                _, img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
+                if self.cuda:
+                    tensor_img = tensor_img.cuda()
+                    tensor_action = tensor_action.cuda()
+                img_feature = self.encode_im(tensor_img)
+                #_, img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
                 # done: is back home, info: whether visual memory matching succeeded or not
                 actions, done, info = self.recovery_policy(torch.cat(self.vis_mem), img_feature)
             except:
@@ -174,17 +244,14 @@ class ActiveNavigationModule():
         A module that guides the robot to reach nearby POI using nearby visual information and visual memory.
         This module is triggered when the POI Recovery Guidance Module judges that it is hard to 
         return to a node associated with the previous POI, based on the visual memory matching result.
-
         Input:
         # - state: state from StateDeterminant Module
         ---(topometric_pose_conf: confidence of topometric pose)
         - (tentative) POI detection result
         - img: curreunt image input
         - visual memory
-
         Output:
         - action(s) guides to reach nearby POI
-
         Dependency:
         - Localizer module
         """
@@ -235,11 +302,9 @@ class ActiveNavigationModule():
         """
         Optimal Viewpoint Guidance Provider Submodule:
         A module that provides an optimal viewpoint guidance for enhancing POI detection.
-
         Input:
         - img: current image input
         - target_poi: target PoI (searching object)
-
         Output:
         - Action(s) guides to find an optimal viewpoint
         """

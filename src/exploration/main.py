@@ -10,21 +10,43 @@ from PIL import Image
 import torch
 import matplotlib.pyplot as plt
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--path_direction', default='homing', type=str)    # following / homing
+parser.add_argument('enable_recovery', default=False, type=bool)
+parser.add_argument('enable_ove', default=False, type=bool)
+parser.add_argument('--cuda', default=True, type=bool)
+args = parser.parse_args('')
 
-anm = ActiveNavigationModule()
+if torch.cuda.is_available():
+    if args.cuda:
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    if not args.cuda:
+        torch.set_default_tensor_type('torch.FloatTensor')
+
+path_direction = args.path_direction
+anm = ActiveNavigationModule(args)
 
 # Test recovery module
 # load img + action trajectory
-data_list = [os.path.join('./data_exp/img_trajectory', x) for x in os.listdir('./data_exp/img_trajectory')]
+data_list = [os.path.join('./data_exp/img_trajectory/{}'.format(path_direction), x) for x in os.listdir('./data_exp/img_trajectory/{}'.format(path_direction))]
 data = joblib.load(np.random.choice(data_list))
 
 img_list = data['rgb']
 guidance_list = data['action']
+position_list = data['position']
+rotation_quat = data['rotation']
+rotation_list = []
+for quat in rotation_quat:
+    rotation_list.append(2*np.arctan2(np.linalg.norm(quat[1:]), quat[0]))
 
 for i in range(len(img_list)):
-    anm.encodeVisualMemory(Image.fromarray(img_list[i]), guidance_list[i]) 
- 
-anm.enable_recovery = True
+    img_list[i] = Image.fromarray(img_list[i])
+
+anm.getAllFeaturesAndRelPose(img_list, position_list, rotation_list)
+for i in range(len(img_list)):
+    anm.encodeVisualMemory(img_list[i], guidance_list[i], i)
+
+anm.enable_recovery = args.enable_recovery
 # anm.vis_mem = torch.cat(anm.vis_mem, 0)
 if anm.isRecoveryGuidanceEnabled():
     curr_img = Image.fromarray(img_list[np.random.randint(len(img_list))])
@@ -38,7 +60,7 @@ if anm.isRecoveryGuidanceEnabled():
 
 # Test ove module
 ove_data_folder = './data_exp/optimal_viewpoint/'
-anm.enable_ove = True
+anm.enable_ove = args.enable_ove
 if anm.isOptimalViewpointGuidanceEnabled():
     image_list, sf_list, bbox_list, depth_list = file_utils.get_files(ove_data_folder)
     im_paths, target_pois = file_utils.get_annos(ove_data_folder + 'anno/')

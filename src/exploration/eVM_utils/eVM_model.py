@@ -46,13 +46,13 @@ class BasicConv(nn.Module):
             x = self.relu(x)
         return x
 
-class encodeVisualMemory(nn.Module):
+class CNN(nn.Module):
     def __init__(self):
-        super(encodeVisualMemory, self).__init__()
+        super(CNN, self).__init__()
 
         self.img_size = 224
-        self.out_size = 7 # int(self.img_size / 2 ** 5)
-        self.action_dim = 4
+        self.out_size = int(self.img_size / 2 ** 5)
+        self.feature_dim = 512
 
         self.conv1 = BasicConv(3, 32, kernel_size=3, padding=1)
         self.conv2 = BasicConv(32, 64, kernel_size=3, padding=1)
@@ -63,12 +63,10 @@ class encodeVisualMemory(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        self.fc1 = nn.Linear(512 * self.out_size * self.out_size, 512 * 2, bias=True)
-        self.fc2 = nn.Linear(512 * 2, 256, bias=True)
+        self.fc1 = nn.Linear(512 * self.out_size * self.out_size, self.feature_dim * 2, bias=True)
+        self.fc2 = nn.Linear(self.feature_dim * 2, self.feature_dim, bias=True)
 
-        self.visual_memory_fc = FCN_2layer((256 + self.action_dim), 512, 256, activation='relu')
-
-    def forward(self, x, act):
+    def forward(self, x):
         x = self.conv1(x)
         x = self.maxpool(x)
         x = self.conv2(x)
@@ -85,7 +83,44 @@ class encodeVisualMemory(nn.Module):
         x = self.relu(self.fc1(x))
         x = self.fc2(x)
 
-        mem = torch.cat([x, act], -1)
+        return x
+
+class encodeVisualMemory(nn.Module):
+    def __init__(self):
+        super(encodeVisualMemory, self).__init__()
+        self.action_dim = 4
+        self.feature_dim = 256
+        self.visual_memory_fc = FCN_2layer((self.feature_dim + self.action_dim), 512, 256, activation='relu')
+
+    def forward(self, feat, act, features=None, rel_pos=None):
+        mem = torch.cat([feat.view(-1, self.feature_dim), act.view(-1, self.action_dim)], -1)
         mem = self.visual_memory_fc(mem)
 
-        return mem, x 
+        return mem, feat
+
+class encodeVisualMemoryRelatedPath(nn.Module):
+    def __init__(self):
+        super(encodeVisualMemoryRelatedPath, self).__init__()
+        self.feature_dim = 512
+        self.action_dim = 3
+        self.rel_path_weight_fc = FCN_2layer((self.feature_dim + 5), 512, 1)
+        self.visual_memory_fc = FCN_2layer((self.feature_dim + self.action_dim), 512, 256, activation='relu')
+
+    def forward(self, feat, act, features=None, rel_pose=None):   
+        weights = []
+        path_length = len(features)
+        for i in range(path_length):
+            weight_gen_input = torch.cat([features[i], rel_pose[i].reshape((-1,5))], -1)
+            w = self.rel_path_weight_fc(weight_gen_input)
+            weights.append(w)
+        features = torch.cat(features, 0) 
+        weights = torch.cat(weights, 1)
+        weights = nn.functional.softmax(weights, 1)
+        weights_diag = torch.diag(weights[0])
+        weighted_feats = torch.matmul(weights_diag, features)
+        synthesized_feat = torch.sum(weighted_feats, 0)
+            
+        memory_input = torch.cat([synthesized_feat.view(-1, self.feature_dim), act.view(-1, self.action_dim)], -1)
+        mem = self.visual_memory_fc(memory_input)
+
+        return mem, synthesized_feat
