@@ -4,6 +4,85 @@ import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
 import numpy as np
 
+class FCN_2layer(nn.Module):
+    def __init__(self, input_ch, hidden_ch, output_ch, activation=None):
+        super(FCN_2layer, self).__init__()
+        self.layer1 = nn.Linear(input_ch, hidden_ch, bias=True)
+        self.layer2 = nn.Linear(hidden_ch, output_ch, bias=True)
+        self.relu = nn.ReLU(inplace=True)
+
+        if activation == 'tanh':
+            self.activation = nn.Tanh()
+        elif activation == 'sigmoid':
+            self.activation = nn.Sigmoid()
+        elif activation == 'softmax':
+            self.activation = nn.Softmax()
+        elif activation == 'relu':
+            self.activation = nn.ReLU()
+        elif activation == None:
+            self.activation = None
+
+    def forward(self, x):
+        x = self.layer1(x)
+        x = self.relu(x)
+        x = self.layer2(x)
+        if self.activation == None:
+            return x
+        else:
+            return self.activation(x)
+
+class GRUNet(nn.Module):
+    def __init__(self, input_dim, hidden_dim, n_layers):
+        super(GRUNet, self).__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
+        self.gru = nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True)
+
+    def forward(self, x, h):
+        out, h = self.gru(x.view(-1, self.n_layers, self.input_dim), h)
+        return h
+
+    def init_hidden(self, batch_size):
+        weight = next(self.parameters()).data
+        hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().cuda()
+        return hidden
+
+class Recovery(nn.Module):
+    def __init__(self, path_length, action_dim, memory_dim, feature_dim, GRU_size):
+        super(Recovery, self).__init__()
+        self.path_length = path_length
+        self.memory_dim = memory_dim
+        self.feature_dim = feature_dim
+        self.GRU_size = GRU_size
+        self.action_dim = action_dim
+        self.eta = torch.Tensor([0.])
+        self.max_eta = torch.Tensor([self.path_length-1])
+        self.GRU = GRUNet(self.memory_dim+self.feature_dim, self.GRU_size, 1)
+        self.GRU_attention_fc = FCN_2layer(self.GRU_size, 256, 1, activation='tanh')
+        self.GRU_out_fc = FCN_2layer(self.GRU_size, 256, self.action_dim)
+        self.h = self.GRU.init_hidden(1)
+    def forward(self, memories_list, curr_feat):
+        attention = torch.stack([torch.exp(-torch.abs(self.eta - j)) for j in range(self.path_length)], 0)
+        mu = torch.sum(torch.mul(memories_list, attention), dim=0)
+        gru_in = torch.cat([curr_feat, mu.view(-1, self.memory_dim)], -1)
+        self.h = self.GRU(gru_in, self.h)
+        b = 1 + self.GRU_attention_fc(self.h.view(-1, self.GRU_size)).squeeze(0)
+        self.eta = torch.min(self.eta + b, self.max_eta)
+        action_pred = self.GRU_out_fc(self.h.view(-1, self.GRU_size))
+        action = int(torch.argmax(action_pred).cpu().numpy())
+        if action == 0 : # go straight
+            return_action = [0., 0.40, 0.] # ['forward'] * 3
+        elif action == 1 : # turn left
+            return_action = [-30., 0., 0.] # ['turn_left'] * 3
+        elif action == 2 : # turn right
+            return_action = [30., 0., 0.] # ['right'] * 3
+        return return_action
+
+
+
+
+"""
 def attention(q,k,v):
     score = F.softmax(torch.matmul(q, k.transpose(2,3)))
     output = torch.matmul(score, v)
@@ -91,3 +170,4 @@ if __name__=='__main__':
     img_feature = torch.rand([1,512])
     action, done, info = policy(vis_mem, img_feature)
     print(action, done, info)
+"""

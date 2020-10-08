@@ -47,12 +47,12 @@ class BasicConv(nn.Module):
         return x
 
 class CNN(nn.Module):
-    def __init__(self):
+    def __init__(self, feature_dim, img_size):
         super(CNN, self).__init__()
 
-        self.img_size = 224
+        self.img_size = img_size
         self.out_size = int(self.img_size / 2 ** 5)
-        self.feature_dim = 512
+        self.feature_dim = feature_dim
 
         self.conv1 = BasicConv(3, 32, kernel_size=3, padding=1)
         self.conv2 = BasicConv(32, 64, kernel_size=3, padding=1)
@@ -86,11 +86,12 @@ class CNN(nn.Module):
         return x
 
 class encodeVisualMemory(nn.Module):
-    def __init__(self):
+    def __init__(self, action_dim, memory_dim, feature_dim):
         super(encodeVisualMemory, self).__init__()
-        self.action_dim = 4
-        self.feature_dim = 256
-        self.visual_memory_fc = FCN_2layer((self.feature_dim + self.action_dim), 512, 256, activation='relu')
+        self.action_dim = action_dim
+        self.memory_dim = memory_dim
+        self.feature_dim = feature_dim
+        self.visual_memory_fc = FCN_2layer((self.feature_dim + self.action_dim), 512, memory_dim, activation='relu')
 
     def forward(self, feat, act, features=None, rel_pos=None):
         mem = torch.cat([feat.view(-1, self.feature_dim), act.view(-1, self.action_dim)], -1)
@@ -99,20 +100,20 @@ class encodeVisualMemory(nn.Module):
         return mem, feat
 
 class encodeVisualMemoryRelatedPath(nn.Module):
-    def __init__(self):
+    def __init__(self, action_dim, memory_dim, feature_dim):
         super(encodeVisualMemoryRelatedPath, self).__init__()
-        self.feature_dim = 512
-        self.action_dim = 3
+        self.feature_dim = feature_dim
+        self.action_dim = action_dim
+        self.memory_dim = memory_dim
         self.rel_path_weight_fc = FCN_2layer((self.feature_dim + 5), 512, 1)
-        self.visual_memory_fc = FCN_2layer((self.feature_dim + self.action_dim), 512, 256, activation='relu')
+        self.visual_memory_fc = FCN_2layer((self.feature_dim + self.action_dim), 512, self.memory_dim, activation='relu')
 
     def forward(self, feat, act, features, rel_pose):
         features = torch.cat(features, 0)
-        weight_gen_input = torch.unsqueeze(torch.cat([features, rel_pose], -1), 0)
-        weights = self.rel_path_weight_fc(weight_gen_input).squeeze(-1)
-        weights = nn.functional.softmax(weights, 1)
-        weights_diag = torch.diag(weights[0])
-        weighted_feats = torch.matmul(weights_diag, features)
+        weight_gen_input = torch.cat([features, rel_pose], -1)
+        weights = self.rel_path_weight_fc(weight_gen_input)
+        weights = nn.functional.softmax(weights, 0)
+        weighted_feats = torch.mul(features, weights)
         synthesized_feat = torch.sum(weighted_feats, 0)            
         memory_input = torch.cat([synthesized_feat.view(-1, self.feature_dim), act.view(-1, self.action_dim)], -1)
         mem = self.visual_memory_fc(memory_input)

@@ -28,26 +28,31 @@ Yunho Choi, Obin Kwon, Nuri Kim, Hwiyeon Yoo
 
 class ActiveNavigationModule():
     """Active Navigation Module"""
-    def __init__(self, args):
+    def __init__(self, args, path_length):
         # map_manager = MapManager()
         # self.map = map_manager.getMap()
         # self.args = args
         self.action_dim = 3
+        self.memory_dim = 256
+        self.feature_dim = 512
+        self.GRU_size = 512
+        self.img_size = 224
         self.list2encode = []
         self.vis_mem = []
         self.feats_along_path = []
         self.rel_pose = None
+        self.path_length = path_length
         self.path_direction = args.path_direction
         self.cuda = args.cuda
-        self.encode_im = CNN()
+        self.encode_im = CNN(self.feature_dim, self.img_size)
         if self.path_direction=='following':
-            self.vis_mem_encoder = encodeVisualMemory()
+            self.vis_mem_encoder = encodeVisualMemory(self.action_dim, self.memory_dim, self.feature_dim)
         if self.path_direction=='homing':
-            self.vis_mem_encoder = encodeVisualMemoryRelatedPath()
+            self.vis_mem_encoder = encodeVisualMemoryRelatedPath(self.action_dim, self.memory_dim, self.feature_dim)
         self.vis_mem_encoder_model = './data_exp/model/{}/best.pth'.format(self.path_direction)
         
         self.enable_recovery = False
-        self.recovery_policy = Recovery()
+        self.recovery_policy = Recovery(self.path_length, self.action_dim, self.memory_dim, self.feature_dim, self.GRU_size)
         self.recovery_guidance = None
         
         self.enable_exploration = False
@@ -78,14 +83,18 @@ class ActiveNavigationModule():
             model_dict = torch.load(self.vis_mem_encoder_model)
             im_encoder_model_dict = {}
             vis_mem_encoder_model_dict = {}
+            recovery_policy_model_dict = {}
             for k, v in model_dict.items():
                 if 'encode_im' in k:
                     name = k.replace('encode_im.', '')
                     im_encoder_model_dict[name] = v
                 if 'rel_path_weight_fc' in k or 'visual_memory_fc' in k:
                     vis_mem_encoder_model_dict[k] = v
+                if 'GRU' in k:
+                    recovery_policy_model_dict[k] = v
             self.encode_im.load_state_dict(im_encoder_model_dict)
             self.vis_mem_encoder.load_state_dict(vis_mem_encoder_model_dict)
+            self.recovery_policy.load_state_dict(recovery_policy_model_dict)
         except:
             print("Cannot load pretrained encodeVisualMemory model")
             pass
@@ -96,7 +105,6 @@ class ActiveNavigationModule():
         return True
 
     def getAllFeaturesAndRelPose(self, img_list, position_list, rotation_list):
-        path_length = len(img_list)
         for im in img_list:
             im = eVM_utils.img_transform(im).unsqueeze(0)
             if self.cuda:
@@ -113,7 +121,7 @@ class ActiveNavigationModule():
 
         rel_pos = torch.unsqueeze(positions, 0) - torch.unsqueeze(positions, 1)
         rel_pos_dist = torch.norm(rel_pos, dim=-1)  
-        rel_pos_theta = torch.atan2(rel_pos[...,1], rel_pos[...,0]) - rotations.repeat(1,path_length)
+        rel_pos_theta = torch.atan2(rel_pos[...,1], rel_pos[...,0]) - rotations.repeat(1,self.path_length)
         rel_pos_theta_cos = torch.cos(rel_pos_theta)
         rel_pos_theta_sin = torch.sin(rel_pos_theta)
         rel_pos_dt = torch.stack([rel_pos_dist, rel_pos_theta_cos, rel_pos_theta_sin], -1)
@@ -125,7 +133,7 @@ class ActiveNavigationModule():
 
         self.rel_pose = torch.cat([rel_pos_dt, rel_orn], -1)            
 
-    def encodeVisualMemory(self, img, guidance, index=-1, random_action=False, flush=False, exp_active=False):
+    def encodeVisualMemory(self, img, guidance, random_action=False, flush=False, exp_active=False):
         """
         Visual Memory Encoder Submodule:
         A module running consistently which encodes visual trajectory information from the previous node to the current location.
@@ -149,12 +157,9 @@ class ActiveNavigationModule():
             if self.cuda:
                 tensor_img = tensor_img.cuda()
                 tensor_action = tensor_action.cuda()
-            if index < 0:
-                feat = self.encode_im(tensor_img)
-                vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float())
-            else:
-                feat = self.feats_along_path[index]
-                vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float(), self.feats_along_path, self.rel_pose[index,:,:])
+            path_pointer = len(self.vis_mem)
+            feat = self.feats_along_path[path_pointer]
+            vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float(), self.feats_along_path, self.rel_pose[path_pointer,...])
             self.vis_mem.append(vis_mem_seg)
 
         else:
@@ -167,22 +172,15 @@ class ActiveNavigationModule():
                 action = np.zeros(self.action_dim)
                 action[guidance-1] = 1
                 self.list2encode.append([img,action])
-                # try:
                 tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
                 tensor_action = torch.tensor(action).unsqueeze(0)
                 if self.cuda:
                     tensor_action = tensor_action.cuda()
                     tensor_img = tensor_img.cuda()
-                if index < 0:
-                    feat = self.encode_im(tensor_img)
-                    vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float())
-                else:
-                    feat = self.feats_along_path[index]
-                    vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float(), self.feats_along_path, self.rel_pose[index,...])
+                path_pointer = len(self.vis_mem)
+                feat = self.feats_along_path[path_pointer]
+                vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float(), self.feats_along_path, self.rel_pose[path_pointer,...])
                 self.vis_mem.append(vis_mem_seg)
-                # except:
-                    # print("NotImplementedError")
-                    # self.vis_mem = None
 
     def calcRecoveryGuidance(self, img=None):
         """
@@ -192,7 +190,7 @@ class ActiveNavigationModule():
         If matching the retrieved image with the visual memory fails, call Exploration Guidance Module instead.
         Input:
         # - state: state from StateDeterminant Module
-        - img: curreunt image input (doesn't need if visual memory contains the current input image)
+        - img: current image input (doesn't need if visual memory contains the current input image)
         Output:
         - action(s) guides to reach previous POI
         """
@@ -201,42 +199,28 @@ class ActiveNavigationModule():
             self.enable_recovery = True
 
         if self.enable_recovery is True:
-            try:
-                # calculate the actions to return to the starting point of visual memory # doesn't need pose
-                if img is None and len(self.list2encode) > 0:
-                    img = self.list2encode[-1][0]
-                elif img is None:
-                    print('Nothing to encode or calculate because there was no input at all')
-                    raise Exception
-                # encode the input image
-                test_act = np.random.randint(0, 4)
-                onehot_test_act = np.zeros(4)
-                onehot_test_act[test_act] = 1
-                tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
-                tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
-                if self.cuda:
-                    tensor_img = tensor_img.cuda()
-                    tensor_action = tensor_action.cuda()
-                img_feature = self.encode_im(tensor_img)
-                #_, img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
-                # done: is back home, info: whether visual memory matching succeeded or not
-                actions, done, info = self.recovery_policy(torch.cat(self.vis_mem), img_feature)
-            except:
-                raise
-                # TODO: if recovery_policy fails to calculate the recovery actions,
-                #       just reverse the actions in the visual memory (using self.list2encode)
-                #       - can't implement now due to the ambiguity of the action space
-                print("NotImplementedError")
-                actions, done, info = [0., -0.40, 0.], False, False
-
-            self.recovery_guidance = actions
-
+            # calculate the actions to return to the starting point of visual memory # doesn't need pose
+            if img is None and len(self.list2encode) > 0:
+                img = self.list2encode[-1][0]
+            elif img is None:
+                print('Nothing to encode or calculate because there was no input at all')
+                raise Exception
+            # encode the input image
+            tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
+            if self.cuda:
+                tensor_img = tensor_img.cuda()
+            img_feature = self.encode_im(tensor_img)
+            #_, img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
+            # done: is back home, info: whether visual memory matching succeeded or not
+            action = self.recovery_policy(torch.cat(self.vis_mem, 0), img_feature)
+            self.recovery_guidance = action
+        """
         if info is False:
             self.enable_recovery, self.enable_exploration = False, True
 
         if done is True:
             self.enable_recovery, self.enable_exploration = True, False
-
+        """
 
     def calcExplorationGuidance(self, img):
         """
