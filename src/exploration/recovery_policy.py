@@ -49,26 +49,28 @@ class GRUNet(nn.Module):
         return hidden
 
 class Recovery(nn.Module):
-    def __init__(self, path_length, action_dim, memory_dim, feature_dim, GRU_size):
+    def __init__(self, action_dim, memory_dim, feature_dim, GRU_size):
         super(Recovery, self).__init__()
-        self.path_length = path_length
         self.memory_dim = memory_dim
         self.feature_dim = feature_dim
         self.GRU_size = GRU_size
         self.action_dim = action_dim
         self.eta = torch.Tensor([0.])
-        self.max_eta = torch.Tensor([self.path_length-1])
         self.GRU = GRUNet(self.memory_dim+self.feature_dim, self.GRU_size, 1)
         self.GRU_attention_fc = FCN_2layer(self.GRU_size, 256, 1, activation='tanh')
         self.GRU_out_fc = FCN_2layer(self.GRU_size, 256, self.action_dim)
         self.h = self.GRU.init_hidden(1)
+        
     def forward(self, memories_list, curr_feat):
-        attention = torch.stack([torch.exp(-torch.abs(self.eta - j)) for j in range(self.path_length)], 0)
+        path_length = len(memories_list)
+        memories_list = torch.cat(memories_list, 0)
+        max_eta = torch.Tensor([path_length-1])
+        attention = torch.stack([torch.exp(-torch.abs(self.eta - j)) for j in range(path_length)], 0)
         mu = torch.sum(torch.mul(memories_list, attention), dim=0)
         gru_in = torch.cat([curr_feat, mu.view(-1, self.memory_dim)], -1)
         self.h = self.GRU(gru_in, self.h)
         b = 1 + self.GRU_attention_fc(self.h.view(-1, self.GRU_size)).squeeze(0)
-        self.eta = torch.min(self.eta + b, self.max_eta)
+        self.eta = torch.min(self.eta + b, max_eta)
         action_pred = self.GRU_out_fc(self.h.view(-1, self.GRU_size))
         action = int(torch.argmax(action_pred).cpu().numpy())
         if action == 0 : # go straight

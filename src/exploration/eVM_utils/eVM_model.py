@@ -93,11 +93,13 @@ class encodeVisualMemory(nn.Module):
         self.feature_dim = feature_dim
         self.visual_memory_fc = FCN_2layer((self.feature_dim + self.action_dim), 512, memory_dim, activation='relu')
 
-    def forward(self, feat, act, features=None, rel_pos=None):
-        mem = torch.cat([feat.view(-1, self.feature_dim), act.view(-1, self.action_dim)], -1)
+    def forward(self, act, features, rel_pos=None):
+        if isinstance(features, list):
+            features = features[0]
+        mem = torch.cat([features.view(-1, self.feature_dim), act.view(-1, self.action_dim)], -1)
         mem = self.visual_memory_fc(mem)
 
-        return mem, feat
+        return mem, features
 
 class encodeVisualMemoryRelatedPath(nn.Module):
     def __init__(self, action_dim, memory_dim, feature_dim):
@@ -108,7 +110,7 @@ class encodeVisualMemoryRelatedPath(nn.Module):
         self.rel_path_weight_fc = FCN_2layer((self.feature_dim + 5), 512, 1)
         self.visual_memory_fc = FCN_2layer((self.feature_dim + self.action_dim), 512, self.memory_dim, activation='relu')
 
-    def forward(self, feat, act, features, rel_pose):
+    def forward(self, act, features, rel_pose):
         features = torch.cat(features, 0)
         weight_gen_input = torch.cat([features, rel_pose], -1)
         weights = self.rel_path_weight_fc(weight_gen_input)

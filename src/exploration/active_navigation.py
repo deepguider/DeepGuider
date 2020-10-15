@@ -28,7 +28,7 @@ Yunho Choi, Obin Kwon, Nuri Kim, Hwiyeon Yoo
 
 class ActiveNavigationModule():
     """Active Navigation Module"""
-    def __init__(self, args, path_length):
+    def __init__(self, args):
         # map_manager = MapManager()
         # self.map = map_manager.getMap()
         # self.args = args
@@ -37,11 +37,11 @@ class ActiveNavigationModule():
         self.feature_dim = 512
         self.GRU_size = 512
         self.img_size = 224
+        self.path_length = 0
         self.list2encode = []
         self.vis_mem = []
         self.feats_along_path = []
         self.rel_pose = None
-        self.path_length = path_length
         self.path_direction = args.path_direction
         self.cuda = args.cuda
         self.encode_im = CNN(self.feature_dim, self.img_size)
@@ -52,7 +52,7 @@ class ActiveNavigationModule():
         self.vis_mem_encoder_model = './data_exp/model/{}/best.pth'.format(self.path_direction)
         
         self.enable_recovery = False
-        self.recovery_policy = Recovery(self.path_length, self.action_dim, self.memory_dim, self.feature_dim, self.GRU_size)
+        self.recovery_policy = Recovery(self.action_dim, self.memory_dim, self.feature_dim, self.GRU_size)
         self.recovery_guidance = None
         
         self.enable_exploration = False
@@ -102,36 +102,7 @@ class ActiveNavigationModule():
         self.enable_recovery = True
         self.enable_ove = True
 
-        return True
-
-    def getAllFeaturesAndRelPose(self, img_list, position_list, rotation_list):
-        for im in img_list:
-            im = eVM_utils.img_transform(im).unsqueeze(0)
-            if self.cuda:
-                im = im.cuda().float()
-            feat = self.encode_im(im)
-            self.feats_along_path.append(feat)
-
-        positions = torch.from_numpy(np.stack(position_list)[:,[2,0]])
-        rotations = torch.from_numpy(np.stack(rotation_list).reshape((-1,1)))
-
-        if self.cuda:
-            positions = positions.cuda().float()
-            rotations = rotations.cuda().float()
-
-        rel_pos = torch.unsqueeze(positions, 0) - torch.unsqueeze(positions, 1)
-        rel_pos_dist = torch.norm(rel_pos, dim=-1)  
-        rel_pos_theta = torch.atan2(rel_pos[...,1], rel_pos[...,0]) - rotations.repeat(1,self.path_length)
-        rel_pos_theta_cos = torch.cos(rel_pos_theta)
-        rel_pos_theta_sin = torch.sin(rel_pos_theta)
-        rel_pos_dt = torch.stack([rel_pos_dist, rel_pos_theta_cos, rel_pos_theta_sin], -1)
-
-        rel_rot = rotations.permute(1, 0) - rotations          
-        rel_rot_cos = torch.cos(rel_pos_theta)
-        rel_rot_sin = torch.sin(rel_pos_theta)
-        rel_orn = torch.stack([rel_rot_cos, rel_rot_sin], -1)
-
-        self.rel_pose = torch.cat([rel_pos_dt, rel_orn], -1)            
+        return True           
 
     def encodeVisualMemory(self, img, guidance, random_action=False, flush=False, exp_active=False):
         """
@@ -151,36 +122,32 @@ class ActiveNavigationModule():
             test_act = np.random.randint(0, self.action_dim)
             onehot_test_act = np.zeros(self.action_dim)
             onehot_test_act[test_act] = 1
-            self.list2encode.append([img, onehot_test_act])
-            tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32).unsqueeze(0)
+            tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32)
             tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
             if self.cuda:
                 tensor_img = tensor_img.cuda()
                 tensor_action = tensor_action.cuda()
-            path_pointer = len(self.vis_mem)
-            feat = self.feats_along_path[path_pointer]
-            vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float(), self.feats_along_path, self.rel_pose[path_pointer,...])
-            self.vis_mem.append(vis_mem_seg)
+            feat = self.encode_im(tensor_img)
+            self.list2encode.append([feat, tensor_action])
 
         else:
             # flush when reaching new node
             if flush is True: # topometric_pose.dist < 0.1:
                 self.list2encode = []
-                self.vis_mem = []
+                #self.vis_mem = []
 
             elif exp_active is False:
                 action = np.zeros(self.action_dim)
                 action[guidance-1] = 1
-                self.list2encode.append([img,action])
                 tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
-                tensor_action = torch.tensor(action).unsqueeze(0)
+                tensor_action = torch.tensor(action, dtype=torch.float32)
                 if self.cuda:
                     tensor_action = tensor_action.cuda()
                     tensor_img = tensor_img.cuda()
-                path_pointer = len(self.vis_mem)
-                feat = self.feats_along_path[path_pointer]
-                vis_mem_seg, _ = self.vis_mem_encoder(feat, tensor_action.float(), self.feats_along_path, self.rel_pose[path_pointer,...])
-                self.vis_mem.append(vis_mem_seg)
+                feat = self.encode_im(tensor_img)
+                self.list2encode.append([feat, tensor_action])
+
+        self.path_length = len(self.list2encode)
 
     def calcRecoveryGuidance(self, img=None):
         """
@@ -200,19 +167,62 @@ class ActiveNavigationModule():
 
         if self.enable_recovery is True:
             # calculate the actions to return to the starting point of visual memory # doesn't need pose
-            if img is None and len(self.list2encode) > 0:
+            if img is None and self.path_length > 0:
                 img = self.list2encode[-1][0]
             elif img is None:
                 print('Nothing to encode or calculate because there was no input at all')
                 raise Exception
-            # encode the input image
+            # encode the input image            
             tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
             if self.cuda:
                 tensor_img = tensor_img.cuda()
             img_feature = self.encode_im(tensor_img)
             #_, img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
-            # done: is back home, info: whether visual memory matching succeeded or not
-            action = self.recovery_policy(torch.cat(self.vis_mem, 0), img_feature)
+
+            if len(self.vis_mem) == 0:
+                positions = [np.array([0., 0.])]
+                rotations = [np.array([0.])]
+
+                for ts in range(self.path_length-1):
+                    guid = self.list2encode[ts][1]
+                    if guid[0] == 1:
+                        pos = positions[ts] + 0.4 * np.concatenate([np.cos(rotations[ts]), np.sin(rotations[ts])])
+                        rot = rotations[ts]
+                    if guid[1] == 1:
+                        pos = positions[ts]
+                        rot = rotations[ts] + np.pi/6 * (-1. if self.path_direction == 'homing' else 1.)
+                    if guid[2] == 1:
+                        pos = positions[ts]
+                        rot = rotations[ts] - np.pi/6 * (-1. if self.path_direction == 'homing' else 1.)
+                    positions.append(pos)
+                    rotations.append(rot)
+
+                positions = torch.from_numpy(np.stack(positions))
+                rotations = torch.from_numpy(np.stack(rotations))
+
+                if self.cuda:
+                    positions = positions.cuda().float()
+                    rotations = rotations.cuda().float()
+
+                rel_pos = torch.unsqueeze(positions, 0) - torch.unsqueeze(positions, 1)
+                rel_pos_dist = torch.norm(rel_pos, dim=-1)  
+                rel_pos_theta = torch.atan2(rel_pos[...,1], rel_pos[...,0]) - rotations.repeat(1,self.path_length)
+                rel_pos_theta_cos = torch.cos(rel_pos_theta)
+                rel_pos_theta_sin = torch.sin(rel_pos_theta)
+                rel_pos_dt = torch.stack([rel_pos_dist, rel_pos_theta_cos, rel_pos_theta_sin], -1)
+
+                rel_rot = rotations.permute(1, 0) - rotations + (np.pi if self.path_direction == 'homing' else 0.)         
+                rel_rot_cos = torch.cos(rel_pos_theta)
+                rel_rot_sin = torch.sin(rel_pos_theta)
+                rel_orn = torch.stack([rel_rot_cos, rel_rot_sin], -1)
+
+                self.rel_pose = torch.cat([rel_pos_dt, rel_orn], -1)
+
+                for ts in range(self.path_length): 
+                    vis_mem_seg, _ = self.vis_mem_encoder(self.list2encode[ts][1], [self.list2encode[t][0] for t in range(self.path_length)], self.rel_pose[ts,...])
+                    self.vis_mem.append(vis_mem_seg)
+
+            action = self.recovery_policy(self.vis_mem, img_feature)
             self.recovery_guidance = action
         """
         if info is False:

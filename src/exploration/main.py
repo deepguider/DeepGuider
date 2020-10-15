@@ -9,6 +9,7 @@ import os
 from PIL import Image
 import torch
 import matplotlib.pyplot as plt
+import random
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--path_direction', default='homing', type=str)    # following / homing
@@ -32,26 +33,23 @@ data = joblib.load(np.random.choice(data_list))
 
 img_list = data['rgb']
 guidance_list = data['action']
-position_list = data['position']
-rotation_quat = data['rotation']
-rotation_list = []
-for quat in rotation_quat:
-    rotation_list.append(2*np.arctan2(np.linalg.norm(quat[1:]), quat[0]))
-path_length = len(img_list)
-anm = ActiveNavigationModule(args, path_length)
+
+if path_direction == 'homing':
+    img_list = img_list[::1]
+    guidance_list = guidance_list[:-1][::-1]
+    guidance_list.append(random.randrange(1,4))
+#Note that the last action in guidance_list is dummy action
+
+anm = ActiveNavigationModule(args)
 
 for i in range(len(img_list)):
     img_list[i] = Image.fromarray(img_list[i])
-
-anm.getAllFeaturesAndRelPose(img_list, position_list, rotation_list)
-for i in range(len(img_list)):
     anm.encodeVisualMemory(img_list[i], guidance_list[i])
 
 anm.enable_recovery = args.enable_recovery
 # anm.vis_mem = torch.cat(anm.vis_mem, 0)
 if anm.isRecoveryGuidanceEnabled():
-    #curr_img = Image.fromarray(img_list[np.random.randint(len(img_list))])       #No follower data for now, just use guidance img for test
-    curr_img = img_list[np.random.randint(len(img_list))]
+    curr_img = img_list[np.random.randint(len(img_list))] #No follower data for now, just use guidance img for test
     anm.calcRecoveryGuidance(img=curr_img)
     recovery_guidance = anm.recovery_guidance
     print('Recovery guidance from the last inserted visual memory : ', recovery_guidance)
