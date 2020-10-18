@@ -60,7 +60,8 @@ def detect_and_match(img_path, model_preproc, params, save_img=False, save_img_p
         except:
             return 0, 0, 0
     else:
-        image = cv2.cvtColor(img_path, cv2.COLOR_BGR2RGB)
+        image = cv2.imread(img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = Image.fromarray(image)
         image_array = np.array(image)
     
