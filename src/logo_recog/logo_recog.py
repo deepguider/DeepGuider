@@ -12,7 +12,7 @@ from utils import draw_matches, extract_features
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-def detect_logo_only(img_path, yolo, save_img=False, save_img_path='./data/test'):
+def detect_logo_only(img_path, yolo, save_img=False, save_img_path='./data/test', crop=False):
     '''Detect logos from image.'''
 
     start = time.time()
@@ -22,9 +22,23 @@ def detect_logo_only(img_path, yolo, save_img=False, save_img_path='./data/test'
             image = image.convert('RGB')
     except:
         return 0, 0, 0
+    image_array = np.array(image)
 
     prediction, new_image = yolo.detect_image(image)
     elapsed_t = time.time() - start
+    
+    if crop:
+        for i, (xmin, ymin, xmax, ymax, *_) in enumerate(prediction):
+            if xmin > image_array.shape[0] or ymin > image_array.shape[1]:
+                continue
+            xmin, ymin = int(xmin//1.), int(ymin//1.)
+            xmax, ymax = int(np.round(xmax//1.)), int(np.round(ymax//1.))
+
+            if xmax - xmin > 10 and ymax - ymin > 10:
+                new = image_array[ymin:ymax, xmin:xmax]
+                new = Image.fromarray(new)
+                new.save(os.path.join(save_img_path, 'crop_' + str(i) + '_' + os.path.basename(img_path)))
+        
     print("Complete the logo detection: {:.3f} secs".format(elapsed_t))
 
     if save_img:
@@ -46,7 +60,8 @@ def detect_and_match(img_path, model_preproc, params, save_img=False, save_img_p
         except:
             return 0, 0, 0
     else:
-        image = cv2.cvtColor(img_path, cv2.COLOR_BGR2RGB)
+        image = cv2.imread(img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = Image.fromarray(image)
         image_array = np.array(image)
     

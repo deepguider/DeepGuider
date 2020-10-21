@@ -40,6 +40,7 @@ class LogoRecognizer():
         if not os.path.exists(self.result_path):
             os.mkdir(self.result_path)
         self.DB_list = './logo_data/preprocessed/DB_list.txt'
+        self.sim_cutoff = './logo_data/preprocessed/sim_cutoff.pkl'
         
     def initialize(self):
 
@@ -55,17 +56,20 @@ class LogoRecognizer():
             })
         
         # load pre-processed features database
-        features, _, _ = load_features(self.recog_model)
+        #features, _, _ = load_features(self.recog_model)
+        features = load_features(self.recog_model)
         with open(self.classes_path, 'rb') as f:
             #img_input, input_labels = pickle.load(f)
             input_feats, input_labels = pickle.load(f)
+        with open(self.sim_cutoff, 'rb') as f:
+            sim_cutoff, bins, cdf_list = pickle.load(f)
 
         # load pre-trained recognition model
         model, preprocessed, input_shape = load_extractor_model(self.recog_model)
         my_preprocess = lambda x: preprocessed(pad_image(x, input_shape))
 
         #input_feat = extract_features(img_input, model, my_preprocess)
-        sim_cutoff, (bins, cdf_list) = similarity_cutoff(input_feats, features, 0.95)
+        #sim_cutoff, (bins, cdf_list) = similarity_cutoff(input_feats, features, 0.95)
 
         print("Done...! It tooks {:.3f} mins\n".format((time.time() - start)/60))
         

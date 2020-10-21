@@ -41,7 +41,9 @@ def main(args):
         img_cnt = 0
         for img_path in img_list:
             pred, _, t = detect_logo_only(str(img_path), yolo,
-                                 save_img=args.save_img, save_img_path=args.result_path)
+                                 save_img=args.save_img, 
+                                 save_img_path=args.result_path,
+                                 crop=args.crop)
             '''
             for p in pred:
                 x1 = p[0]
@@ -57,7 +59,8 @@ def main(args):
         print('\nDetecting Logos from images completed! It tooks {:.3f} FPS'.format(img_cnt/elapsed_t))
 
     elif args.mode.lower() == 'recog':
-        model_preproc, params = initialize(yolo, args.recog_model, args.DB_path)
+        model_preproc, params = initialize(yolo, args.recog_model,
+                                           args.DB_path)
         img_list = list(Path(args.input_path).iterdir())
 
         elapsed_t = 0
@@ -82,17 +85,20 @@ def initialize(yolo, model_name, DB_path):
     start = time.time()
     
     # load pre-processed features database
-    features, _, _ = load_features(model_name)
+    #features, _, _ = load_features(model_name)
+    features = load_features(model_name)
     with open(args.classes_path, 'rb') as f:
         #img_input, input_labels = pickle.load(f)
         input_feats, input_labels = pickle.load(f)
+    with open(args.sim_cutoff, 'rb') as f:
+        sim_cutoff, bins, cdf_list = pickle.load(f)
 
     # load pre-trained recognition model
     model, preprocessed, input_shape = load_extractor_model(model_name)
     my_preprocess = lambda x: preprocessed(pad_image(x, input_shape))
 
     #input_feats = extract_features(img_input, model, my_preprocess)
-    sim_cutoff, (bins, cdf_list) = similarity_cutoff(input_feats, features, 0.95)
+    #sim_cutoff, (bins, cdf_list) = similarity_cutoff(input_feats, features, 0.95)
 
     print("Done...! It tooks {:.3f} mins\n".format((time.time() - start)/60))
 
@@ -126,10 +132,15 @@ if __name__ == '__main__':
     parser.add_argument('--classes_path', type=str,
             default='./logo_data/preprocessed/trained_brands.pkl',
             help = 'Path to load the brandROIs with labels')
+    parser.add_argument('--sim_cutoff', type=str,
+            default='./logo_data/preprocessed/sim_cutoff.pkl',
+            help = 'Path to load the similarity cutoff file')
     parser.add_argument('--recog_model', type=str, default='InceptionV3',
             help = 'Select the recognition model', choices = ['InceptionV3', 'VGG16'])
-    parser.add_argument('--save_img', type=bool, default=True,
+    parser.add_argument('--save_img', type=bool, default=False,
             help = 'Do you want to save the annotated image?')
+    parser.add_argument('--crop', type=bool, default=True,
+            help = 'Do you want to save the cropped image?')
     parser.add_argument('--gpu_num', type=int, default=1,
             help = 'Number of GPU to use')
     parser.add_argument('--confidence', type=float, dest='score', default=0.05,

@@ -158,14 +158,14 @@ def load_features(model_name):
         
     # get database features
     with  h5py.File(filename, 'r') as hf:
-        brand_map = list(hf.get('brand_map'))
-        input_shape = list(hf.get('input_shape'))
+        #brand_map = list(hf.get('brand_map'))
+        #input_shape = list(hf.get('input_shape'))
         features = hf.get('features')
         features = np.array(features)
     
     print('Loaded {} features from {} in {:.2f}sec'.format(features.shape, filename, time.time()-start))
 
-    return features, brand_map, input_shape
+    return features#, brand_map, input_shape
 
 
 def save_features(filename, features, brand_map, input_shape):
