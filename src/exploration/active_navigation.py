@@ -4,7 +4,8 @@ import numpy as np
 from ov_utils.myutils import make_mask, template_matching, get_surfacenormal, get_bbox, get_depth, get_img
 from ov_utils.config import normal_vector
 import ov_utils.file_utils as file_utils
-import eVM_utils.utils as eVM_utils
+#import eVM_utils.utils as eVM_utils
+import eVM_utils.augmentations as eVM_utils
 from eVM_utils.eVM_model import CNN, encodeVisualMemory, encodeVisualMemoryRelatedPath
 from recovery_policy import Recovery
 import torch
@@ -123,7 +124,7 @@ class ActiveNavigationModule():
             onehot_test_act = np.zeros(self.action_dim)
             onehot_test_act[test_act] = 1
             tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32)
-            tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
+            tensor_img = torch.tensor(eVM_utils.img_transform(img)).unsqueeze(0)
             if self.cuda:
                 tensor_img = tensor_img.cuda()
                 tensor_action = tensor_action.cuda()
@@ -139,7 +140,7 @@ class ActiveNavigationModule():
             elif exp_active is False:
                 action = np.zeros(self.action_dim)
                 action[guidance-1] = 1
-                tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
+                tensor_img = torch.tensor(eVM_utils.img_transform(img)).unsqueeze(0)
                 tensor_action = torch.tensor(action, dtype=torch.float32)
                 if self.cuda:
                     tensor_action = tensor_action.cuda()
@@ -173,7 +174,7 @@ class ActiveNavigationModule():
                 print('Nothing to encode or calculate because there was no input at all')
                 raise Exception
             # encode the input image            
-            tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
+            tensor_img = torch.tensor(eVM_utils.img_transform(img)).unsqueeze(0)
             if self.cuda:
                 tensor_img = tensor_img.cuda()
             img_feature = self.encode_im(tensor_img)
