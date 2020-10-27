@@ -366,6 +366,7 @@ bool GuidanceManager::update(TopometricPose pose, double conf)
 bool GuidanceManager::applyPose(TopometricPose  pose)
 {
 	m_curpose = pose;
+	MoveStatus mvstatus = MoveStatus::ON_EDGE;
 	//validate node id
 	if (pose.node_id == 0)
 	{
@@ -386,14 +387,19 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 
 	//update m_guide_idx
 	int gidx = getGuideIdxFromPose(pose);
-	if (gidx == -1)	//cannot find the curnid
+	if (gidx == -1)	//cannot find the curnids. initial or oop statu
 	{// in initial state the pose may be 
-		if (m_gstatus != GuideStatus::GUIDE_INITIAL)
-		{
-			printf("[Error] GuidanceManager::applyPose - gidx == -1!\n");
-			m_mvstatus = MoveStatus::ON_EDGE;
-			return false;
-		}
+		// if (m_gstatus == GuideStatus::GUIDE_INITIAL) //if initial state
+		// {
+		// 	m_mvstatus = MoveStatus::ON_EDGE;
+		// }
+		// else //if oop
+		// {
+		// 	printf("[Error] GuidanceManager::applyPose - gidx == -1!\n");
+		// 	m_mvstatus = MoveStatus::ON_EDGE;
+		// }
+		m_mvstatus = MoveStatus::ON_EDGE;
+		return true;		
 	}
 	else if (gidx != m_guide_idx)//if new node appears
 	{
@@ -436,7 +442,7 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 		//if the robot is on crosswalk, maintain current guide
 		if (curedge->type == Edge::EDGE_CROSSWALK && m_rmdistance > curedge->length/2)
 			m_mvstatus = MoveStatus::ON_EDGE;
-		printf("curedge->type: %d, m_rmdistance: %.2f, curedge->length/2: %.2f\n",(int) curedge->type, m_rmdistance, curedge->length/2);
+		printf("mvstatus %d, curedge->type: %d, m_rmdistance: %.2f, curedge->length/2: %.2f\n",(int)m_mvstatus, (int) curedge->type, m_rmdistance, curedge->length/2);
 	}
 	else
 		m_mvstatus = MoveStatus::ON_EDGE;
@@ -483,16 +489,36 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 	}
 
 	//check initial status
-	if (m_guide_idx == 0)
+	//current robot's pose
+	ID curnid = pose.node_id;
+	Node* curNode = m_map.findNode(curnid);
+	if (curNode == nullptr)
+	{
+		printf("[Error] GuidanceManager::setGuideStatus - curNode%zu == nullptr!\n", curnid);
+		return false;
+	}
+	ID cureid = curNode->edge_ids[pose.edge_idx];
+	Edge* curEdge = m_map.findEdge(cureid);
+	if (curEdge == nullptr)
+	{
+		printf("[Error] GuidanceManager::setGuideStatus - curEdge%zu == nullptr!\n", cureid);
+		return false;
+	}
+	ID nextnid = (curEdge->node_id1 == curnid) ? curEdge->node_id2 : curEdge->node_id1;
+	
+   	// printf("[setGuideStatus]isNodeInPath(curnid) %s!\n", isNodeInPath(curnid) ? "T" : "F");
+  	// printf("[setGuideStatus]isNodeInPath(nextnid) %s!\n", isNodeInPath(nextnid) ? "T" : "F");
+	
+	if (m_guide_idx == 0 && (isNodeInPath(curnid) || isNodeInPath(nextnid)))
 	{
 		m_gstatus = GuideStatus::GUIDE_INITIAL;
-//		printf("[setGuideStatus]idx == 0 m_gstatus: %d\n", m_gstatus);
+		// printf("[setGuideStatus]idx == 0 m_gstatus: %d\n", m_gstatus);
 		return true;
 	}
 
 	Node* curnode = m_map.findNode(curNId);
 	ID edgeid = curnode->edge_ids[pose.edge_idx];
-	if (isNodeInPath(curNId) > 0)
+	if (isNodeInPath(curNId))
 	{//as long as curNId exists on path, everything is ok
 		oop_start = 0;
 		m_gstatus = GuideStatus::GUIDE_NORMAL;
@@ -976,10 +1002,10 @@ bool GuidanceManager::isEdgeInPath(ID edgeid)
 
 int GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
 {
-	ID curnodei = pose.node_id;
+	ID nodeid = pose.node_id;
 	for (size_t i = 0; i < m_extendedPath.size(); i++)
 	{
-		if (m_extendedPath[i].cur_node_id == curnodei)
+		if (nodeid == m_extendedPath[i].cur_node_id)
 		{
 			return (int)i;
 		}
