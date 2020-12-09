@@ -19,18 +19,21 @@
     - Dropblock 0.3.0
     
 - Download weight file from this 
-[link](https://drive.google.com/file/d/15zZC16vN7oavhX-dx3oAth39loJp31Ay/view?usp=sharing) 
+[link](https://drive.google.com/file/d/1gA2z28QPA0W0UbtC7J2kX3QXLOYCKIvz/view?usp=sharing) 
 , put it inside *data_intersection_cls* folder and rename it as *weight.pth*
-    - Old model [link](https://drive.google.com/file/d/1sX411P95LHE6kB7yzgmHq537uvZRUcA-/view?usp=sharing)
+
+Older models
+- v1: [link](https://drive.google.com/file/d/15zZC16vN7oavhX-dx3oAth39loJp31Ay/view?usp=sharing) 
+- v0: [link](https://drive.google.com/file/d/1sX411P95LHE6kB7yzgmHq537uvZRUcA-/view?usp=sharing)
     
 ### Run demo
 - Run demo from this current folder `python intersection_cls.py`
 - Output should be 
 ```
-processing time: 0.0885 seconds
-nonintersection_img demo: class  0  confidence  0.9880973696708679
-processing time: 0.0814 seconds
-intersection_img demo: class  1  confidence  0.9951642751693726
+processing time: 0.0662 seconds
+nonintersection_img demo: class  0  confidence  0.9951779842376709
+processing time: 0.0478 seconds
+intersection_img demo: class  1  confidence  0.9140893220901489
 ```
 
 ### Outputs
