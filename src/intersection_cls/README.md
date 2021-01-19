@@ -30,10 +30,25 @@ Older models
 - Run demo from this current folder `python intersection_cls.py`
 - Output should be 
 ```
-processing time: 0.0662 seconds
+processing time: 0.0557 seconds
 nonintersection_img demo: class  0  confidence  0.9951779842376709
-processing time: 0.0478 seconds
+processing time: 0.0392 seconds
 intersection_img demo: class  1  confidence  0.9140893220901489
+processing time: 0.0317 seconds
+nonintersection_img2 demo: class  0  confidence  0.9989577531814575
+processing time: 0.0603 seconds
+nonintersection_img3 demo: class  0  confidence  0.9921876192092896
+```
+- Output of older models (v1)
+```
+processing time: 0.0526 seconds
+nonintersection_img demo: class  0  confidence  0.9880973696708679
+processing time: 0.0377 seconds
+intersection_img demo: class  1  confidence  0.9951642751693726
+processing time: 0.0314 seconds
+nonintersection_img2 demo: class  0  confidence  0.8869904279708862
+processing time: 0.0604 seconds
+nonintersection_img3 demo: class  1  confidence  0.5098475217819214
 ```
 
 ### Outputs

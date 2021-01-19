@@ -71,6 +71,8 @@ class IntersectionClassifier:
 if __name__ == "__main__":
     nonintersection_img = cv2.imread("data_intersection_cls/nonintersection_demoimg.jpg")
     intersection_img = cv2.imread("data_intersection_cls/intersection_demoimg.jpg")
+    nonintersection_img2 = cv2.imread("data_intersection_cls/nonintersection_demoimg2.jpg")
+    nonintersection_img3 = cv2.imread("data_intersection_cls/nonintersection_demoimg3.jpg")
 
     # initialize classifier
     classifier = IntersectionClassifier()
@@ -93,6 +95,20 @@ if __name__ == "__main__":
     toc = time.perf_counter()
     print(f'processing time: {toc - tic:0.4f} seconds')
     print('intersection_img demo: class ', cls, ' confidence ', prob)
+
+
+    tic = time.perf_counter()
+    cls, prob = classifier.apply(nonintersection_img2, 1)
+    toc = time.perf_counter()
+    print(f'processing time: {toc - tic:0.4f} seconds')
+    print('nonintersection_img2 demo: class ', cls, ' confidence ', prob)
+
+
+    tic = time.perf_counter()
+    cls, prob = classifier.apply(nonintersection_img3, 1)
+    toc = time.perf_counter()
+    print(f'processing time: {toc - tic:0.4f} seconds')
+    print('nonintersection_img3 demo: class ', cls, ' confidence ', prob)
 
     #     total_time += (toc-tic)
     #
