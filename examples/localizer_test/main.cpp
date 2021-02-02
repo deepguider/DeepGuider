@@ -5,8 +5,9 @@
 #include "test_localizer_simple.hpp"
 #include "test_localizer_ekf.hpp"
 #include "test_localizer_etri.hpp"
+#include "run_localizer.hpp"
 
-int main()
+int runUnitTest()
 {
     // Test 'core' module
     // 1. Test basic data structures
@@ -40,8 +41,6 @@ int main()
 
     // 4. Test localizers
     VVS_RUN_TEST(testLocBaseDist2());
-    VVS_RUN_TEST(testLocBaseNearest());
-    VVS_RUN_TEST(testLocBaseTrack());
     VVS_RUN_TEST(testLocSimple());
 
     VVS_RUN_TEST(testLocEKFGPS());
@@ -52,9 +51,12 @@ int main()
     VVS_RUN_TEST(testLocETRISyntheticMap());
     VVS_RUN_TEST(testLocETRIRealMap());
     VVS_RUN_TEST(testLocCOEXRealMap());
-    VVS_RUN_TEST(testLocETRISyntheticMap("EKFLocalizerZeroGyro"));
-    VVS_RUN_TEST(testLocETRIRealMap("EKFLocalizerZeroGyro"));
-    VVS_RUN_TEST(testLocCOEXRealMap("EKFLocalizerZeroGyro"));
 
     return 0;
+}
+
+int main()
+{
+    //return runUnitTest();
+    return runLocalizer();
 }

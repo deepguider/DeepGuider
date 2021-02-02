@@ -117,7 +117,7 @@ namespace cx
          * @param invalid_val The value to represent invalid (e.g. non-numeric) elements
          * @return The selected columns as a 2D vector of strings
          */
-        String2D extString2D(int row_start = 0, const std::vector<size_t> columns = std::vector<size_t>(), const std::string& invalid_val = "None")
+        String2D extString2D(size_t row_start = 0, const std::vector<size_t> columns = std::vector<size_t>(), const std::string& invalid_val = "None")
         {
             String2D data;
             if (!this->empty())
@@ -150,7 +150,7 @@ namespace cx
          * @param invalid_val The value to represent invalid (e.g. non-numeric) elements
          * @return The selected columns as a 2D vector of doubles
          */
-        Double2D extDouble2D(int row_start = 0, const std::vector<size_t> columns = std::vector<size_t>(), double invalid_val = std::numeric_limits<double>::quiet_NaN())
+        Double2D extDouble2D(size_t row_start = 0, const std::vector<size_t> columns = std::vector<size_t>(), double invalid_val = std::numeric_limits<double>::quiet_NaN())
         {
             Double2D data;
             if (!this->empty())
@@ -189,7 +189,7 @@ namespace cx
          * @param invalid_val The value to represent invalid (e.g. non-numeric) elements
          * @return The selected columns as a 2D vector of integers
          */
-        Int2D extInt2D(int row_start = 0, const std::vector<size_t> columns = std::vector<size_t>(), int invalid_val = -1)
+        Int2D extInt2D(size_t row_start = 0, const std::vector<size_t> columns = std::vector<size_t>(), int invalid_val = -1)
         {
             Int2D data;
             if (!this->empty())
@@ -236,6 +236,62 @@ namespace cx
             return permutation;
         }
     }; // End of 'CSVReader'
+
+    /**
+     * @brief The range of numeric values
+     *
+     * The range of numeric values is described in its lower and upper values.
+     */
+    template <typename T>
+    class Range_
+    {
+    public:
+        /**
+         * A constructor with initialization
+         * @param _min The lower bound of the given range
+         * @param _min The upper bound of the given range
+         */
+        Range_(T _min = 0, T _max = 0)
+        {
+            if (_min < _max)
+            {
+                min = _min;
+                max = _max;
+            }
+            else
+            {
+                min = _max;
+                max = _min;
+            }
+        }
+
+        /**
+         * Get the length of the range
+         * @return The length of the range
+         */
+        T length() const { return max - min; }
+
+        /**
+         * Get the middle value of the range
+         * @return The middle value of the range
+         */
+        double center() const { return (max + min) / 2.; }
+
+        /** The lower bound of the range */
+        T min;
+
+        /** The upper bound of the range */
+        T max;
+    };
+
+    /** The predefined range for the integer type */
+    typedef Range_<int> Range;
+
+    /** The predefined range for the integer type */
+    typedef Range_<int> RangeInt;
+
+    /** The predefined range for the double (a.k.a. float64) type */
+    typedef Range_<double> RangeDbl;
 
 } // End of 'cx'
 

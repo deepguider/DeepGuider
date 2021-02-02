@@ -204,16 +204,16 @@ int testLocETRIMap2RoadMap(int wait_msec = 1, const char* background_file = "dat
     return 0;
 }
 
-int runLocalizerETRIGPS(dg::BaseLocalizer* localizer, dg::SimpleRoadPainter* painter, const std::vector<std::pair<double, dg::LatLon>>& gps_data, int wait_msec = 1, const char* video_file = "data/191115_ETRI.avi", const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
+int runLocalizerGPS(dg::BaseLocalizer* localizer, dg::SimpleRoadPainter* painter, const std::vector<std::pair<double, dg::LatLon>>& gps_data, int wait_msec = 1, const char* video_file = "data/191115_ETRI.avi", const char* background_file = "data/NaverMap_ETRI(Satellite)_191127.png")
 {
     if (localizer == nullptr || painter == nullptr) return -1;
 
     // Prepare visualization
     cv::Mat map_image = cv::imread(background_file);
     VVS_CHECK_TRUE(!map_image.empty());
-    dg::RoadMap road_map = localizer->getMap();
-    VVS_CHECK_TRUE(painter->drawMap(map_image, road_map));
-    dg::CanvasInfo map_info = painter->getCanvasInfo(road_map, map_image.size());
+    dg::RoadMap* road_map = localizer->getMap();
+    VVS_CHECK_TRUE(painter->drawMap(map_image, *road_map));
+    dg::CanvasInfo map_info = painter->getCanvasInfo(*road_map, map_image.size());
 
     // Prepare the ETRI dataset
     VVS_CHECK_TRUE(!gps_data.empty());
@@ -272,7 +272,7 @@ int runLocalizerETRIGPS(dg::BaseLocalizer* localizer, dg::SimpleRoadPainter* pai
             }
             cv::putText(image, info_topo, cv::Point(5, 15), cv::FONT_HERSHEY_PLAIN, 1, cx::COLOR_MAGENTA);
 
-            cv::imshow("runLocalizerETRIGPS", image);
+            cv::imshow("runLocalizerGPS", image);
             int key = cv::waitKey(wait_msec);
             if (key == cx::KEY_SPACE) key = cv::waitKey(0);
             if (key == cx::KEY_ESC) return -1;
@@ -323,7 +323,7 @@ int testLocETRISyntheticMap(const std::string localizer_name = "SimpleLocalizer"
     VVS_CHECK_TRUE(painter.setParamValue("node_color", { 255, 0, 255 }));
     VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 100, 0, 0 }));
 
-    return runLocalizerETRIGPS(localizer, &painter, getGPSDataROSFix("data/191115_ETRI_asen_fix.csv"), wait_msec);
+    return runLocalizerGPS(localizer, &painter, getGPSDataROSFix("data/191115_ETRI_asen_fix.csv"), wait_msec);
 }
 
 int testLocETRIRealMap(const std::string localizer_name = "SimpleLocalizer", int wait_msec = 1, const char* map_file = "data/NaverLabs_ETRI.csv", const dg::LatLon& ref_gps = dg::LatLon(36.383837659737, 127.367880828442))
@@ -351,7 +351,7 @@ int testLocETRIRealMap(const std::string localizer_name = "SimpleLocalizer", int
     VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 150, 100, 100}));
     VVS_CHECK_TRUE(painter.setParamValue("edge_thickness", 1));
 
-    return runLocalizerETRIGPS(localizer, &painter, getGPSDataROSFix("data/191115_ETRI_asen_fix.csv"), wait_msec);
+    return runLocalizerGPS(localizer, &painter, getGPSDataROSFix("data/191115_ETRI_asen_fix.csv"), wait_msec);
 }
 
 int testLocCOEXRealMap(const std::string localizer_name = "SimpleLocalizer", int wait_msec = 1, const char* map_file = "data/NaverLabs_COEX.csv", const dg::LatLon& ref_gps = dg::LatLon(37.506207, 127.05482))
@@ -379,7 +379,7 @@ int testLocCOEXRealMap(const std::string localizer_name = "SimpleLocalizer", int
     VVS_CHECK_TRUE(painter.setParamValue("edge_color", { 150, 100, 100 }));
     VVS_CHECK_TRUE(painter.setParamValue("edge_thickness", 1));
 
-    return runLocalizerETRIGPS(localizer, &painter, getGPSDataAndroSen("data/200925_153949_AndroSensor.csv"), wait_msec, "", "data/NaverMap_COEX(Satellite)_200929.png");
+    return runLocalizerGPS(localizer, &painter, getGPSDataAndroSen("data/200925_153949_AndroSensor.csv"), wait_msec, "", "data/NaverMap_COEX(Satellite)_200929.png");
 }
 
 #endif // End of '__TEST_LOCALIZER_ETRI__'

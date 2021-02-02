@@ -19,13 +19,19 @@ public:
         m_noise_gps_deadzone = 10 * cv::Mat::eye(2, 2, CV_64F);
         m_noise_gps = m_noise_gps_normal;
         m_noise_loc_clue = cv::Mat::eye(4, 4, CV_64F);
-        m_offset_gps = cv::Vec2d(0, 0);
+        m_gps_offset = cv::Vec2d(0, 0);
+        m_gps_reverse_vel = 0;
+        m_gps_init_first = true;
+        m_compass_noise = (cv::Mat_<double>(1, 1) << cx::cvtDeg2Rad(1));
+        m_compass_offset = 0;
+        m_compass_as_gyro = false;
         m_norm_conf_a = 1;
         m_norm_conf_b = 2;
 
         // Internal variables
         m_time_last_update = -1;
-        m_time_last_delta = -1;
+        m_compass_prev_angle = 0;
+        m_compass_prev_time = -1;
 
         initialize(cv::Mat::zeros(5, 1, CV_64F), cv::Mat::eye(5, 5, CV_64F));
     }
@@ -39,9 +45,15 @@ public:
         CX_LOAD_PARAM_COUNT(fn, "noise_gps_normal", m_noise_gps_normal, n_read);
         CX_LOAD_PARAM_COUNT(fn, "noise_gps_deadzone", m_noise_gps_deadzone, n_read);
         CX_LOAD_PARAM_COUNT(fn, "noise_loc_clue", m_noise_loc_clue, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "offset_gps", m_offset_gps, n_read);
         CX_LOAD_PARAM_COUNT(fn, "gps_dead_zones", m_gps_dead_zones, n_read);
-        return n_read;
+        CX_LOAD_PARAM_COUNT(fn, "gps_offset", m_gps_offset, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "gps_reverse_vel", m_gps_reverse_vel, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "gps_init_first", m_gps_init_first, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "compass_noise", m_compass_noise, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "compass_offset", m_compass_offset, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "compass_as_gyro", m_compass_as_gyro, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "norm_conf_a", m_norm_conf_a, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "norm_conf_b", m_norm_conf_b, n_read);        return n_read;
     }
 
     bool setParamMotionNoise(double vv, double ww, double vw = 0)
@@ -94,7 +106,10 @@ public:
 
     virtual TopometricPose getPoseTopometric()
     {
-        return findNearestTopoPose(getPose());
+        Pose2 pose_m = getPose();
+        cv::AutoLock lock(m_mutex);
+        std::vector<RoadMap::Node*> near_nodes = findNearNodes(pose_m, 100);
+        return findNearestTopoPose(pose_m, near_nodes, 1);
     }
 
     virtual double getPoseConfidence()
@@ -113,7 +128,8 @@ public:
             double dx = pose_curr.x - pose_prev.x, dy = pose_curr.y - pose_prev.y;
             double v = sqrt(dx * dx + dy * dy) / dt, w = cx::trimRad(pose_curr.theta - pose_prev.theta) / dt;
             cv::AutoLock lock(m_mutex);
-            double interval = time_curr - m_time_last_update;
+            double interval = 0;
+            if (m_time_last_update > 0) interval = time_curr - m_time_last_update;
             if (interval > DBL_EPSILON && predict(cv::Vec3d(interval, v, w)))
             {
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
@@ -128,8 +144,7 @@ public:
     {
         double dt = 0;
         cv::AutoLock lock(m_mutex);
-        if (m_time_last_delta > 0) dt = time - m_time_last_delta;
-        m_time_last_delta = time;
+        if (m_time_last_update > 0) dt = time - m_time_last_update;
         if (dt > DBL_EPSILON)
         {
             double interval = time - m_time_last_update;
@@ -150,7 +165,8 @@ public:
         {
             double w = cx::trimRad(theta_curr - theta_prev) / dt;
             cv::AutoLock lock(m_mutex);
-            double interval = time_curr - m_time_last_update;
+            double interval = 0;
+            if (m_time_last_update > 0) interval = time_curr - m_time_last_update;
             if (interval > DBL_EPSILON && predict(cv::Vec2d(interval, w)))
             {
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
@@ -164,16 +180,29 @@ public:
     virtual bool applyPose(const Pose2& pose, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        // TODO: Consider pose observation
+        // TODO: Consider pose observation if available
         return false;
     }
 
     virtual bool applyPosition(const Point2& xy, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
+        if (m_gps_init_first)
+        {
+            m_state_vec.at<double>(0) = xy.x;
+            m_state_vec.at<double>(1) = xy.y;
+            m_time_last_update = time;
+            m_gps_init_first = false;
+            return true;
+        }
+
         double interval = 0;
         if (m_time_last_update > 0) interval = time - m_time_last_update;
-        if (interval > m_threshold_time) predict(interval);
+        if (interval > m_threshold_time)
+        {
+            predict(interval);
+            m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
+        }
 
         bool is_normal = true;
         for (auto zone = m_gps_dead_zones.begin(); zone != m_gps_dead_zones.end(); zone++)
@@ -188,6 +217,14 @@ public:
         if (is_normal) m_noise_gps = m_noise_gps_normal;
         if (correct(cv::Vec2d(xy.x, xy.y)))
         {
+            if (m_gps_reverse_vel < 0 && m_state_vec.at<double>(3) < m_gps_reverse_vel)
+            {
+                // Fix the reversed robot
+                m_state_vec.at<double>(0) += 2 * m_gps_offset(0) * cos(m_state_vec.at<double>(2) + m_gps_offset(1));
+                m_state_vec.at<double>(1) += 2 * m_gps_offset(0) * sin(m_state_vec.at<double>(2) + m_gps_offset(1));
+                m_state_vec.at<double>(2) += CV_PI;
+                m_state_vec.at<double>(3) *= -1;
+            }
             m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
             m_time_last_update = time;
             return true;
@@ -204,7 +241,29 @@ public:
     virtual bool applyOrientation(double theta, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        // TODO: Consider orientation observation
+        if (m_compass_as_gyro)
+        {
+            double theta_prev = m_compass_prev_angle, time_prev = m_compass_prev_time;
+            m_compass_prev_angle = theta;
+            m_compass_prev_time = time;
+            return applyOdometry(theta, theta_prev, time, time_prev, confidence);
+        }
+
+        double interval = 0;
+        if (m_time_last_update > 0) interval = time - m_time_last_update;
+        if (interval > m_threshold_time)
+        {
+            predict(interval);
+            m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
+        }
+
+        theta = m_state_vec.at<double>(2) + cx::trimRad(theta - cx::trimRad(m_state_vec.at<double>(2)));
+        if (correct(theta))
+        {
+            m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
+            m_time_last_update = time;
+            return true;
+        }
         return false;
     }
 
@@ -332,16 +391,23 @@ protected:
     {
         const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
         cv::Mat func;
-        if (measure.rows == 2)
+        if (measure.rows == 1)
+        {
+            // Measurement: [ theta_{compass} ]
+            func = (cv::Mat_<double>(1, 1) << theta + m_compass_offset);
+            jacobian = (cv::Mat_<double>(1, 5) << 0, 0, 1, 0, 0);
+            noise = m_compass_noise;
+        }
+        else if (measure.rows == 2)
         {
             // Measurement: [ x_{GPS}, y_{GPS} ]
-            const double c = cos(theta + m_offset_gps(1)), s = sin(theta + m_offset_gps(1));
+            const double c = cos(theta + m_gps_offset(1)), s = sin(theta + m_gps_offset(1));
             func = (cv::Mat_<double>(2, 1) <<
-                x + m_offset_gps(0) * c,
-                y + m_offset_gps(0) * s);
+                x + m_gps_offset(0) * c,
+                y + m_gps_offset(0) * s);
             jacobian = (cv::Mat_<double>(2, 5) <<
-                1, 0, -m_offset_gps(0) * s, 0, 0,
-                0, 1,  m_offset_gps(0) * c, 0, 0);
+                1, 0, -m_gps_offset(0) * s, 0, 0,
+                0, 1,  m_gps_offset(0) * c, 0, 0);
             noise = m_noise_gps;
         }
         else if (measure.rows >= 4)
@@ -379,7 +445,17 @@ protected:
 
     cv::Mat m_noise_loc_clue;
 
-    cv::Vec2d m_offset_gps;
+    cv::Vec2d m_gps_offset;
+
+    double m_gps_reverse_vel;
+
+    bool m_gps_init_first;
+
+    bool m_compass_as_gyro;
+
+    cv::Mat m_compass_noise;
+
+    double m_compass_offset;
 
     double m_norm_conf_a;
 
@@ -387,7 +463,9 @@ protected:
 
     double m_time_last_update;
 
-    double m_time_last_delta;
+    double m_compass_prev_angle;
+
+    double m_compass_prev_time;
 
     std::vector<cv::Rect2d> m_gps_dead_zones;
 

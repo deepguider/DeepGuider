@@ -22,10 +22,19 @@ protected:
 
 class EKFLocalizerHyperTan : public EKFLocalizer
 {
+public:
+    EKFLocalizerHyperTan() : m_max_ang_vel(1) { }
+
+    virtual int readParam(const cv::FileNode& fn)
+    {
+        int n_read = EKFLocalizer::readParam(fn);
+        CX_LOAD_PARAM_COUNT(fn, "max_ang_vel", m_max_ang_vel, n_read);
+        return n_read;
+    }
+
 protected:
     virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
     {
-        const double w_op = 1;
         if (control.rows == 1)
         {
             // The control input: [ dt ]
@@ -33,7 +42,7 @@ protected:
             const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
             const double v = state.at<double>(3), w = state.at<double>(4);
             const double vt = v * dt, wt = w * dt;
-            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2), th = w_op * tanh(w / w_op);
+            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2), th = m_max_ang_vel * tanh(w / m_max_ang_vel);
             cv::Mat func = (cv::Mat_<double>(5, 1) <<
                 x + vt * c,
                 y + vt * s,
@@ -57,6 +66,8 @@ protected:
         }
         return EKFLocalizer::transitFunc(state, control, jacobian, noise);
     }
+
+    double m_max_ang_vel;
 };
 
 class EKFLocalizerSinTrack : public EKFLocalizerHyperTan
@@ -64,7 +75,26 @@ class EKFLocalizerSinTrack : public EKFLocalizerHyperTan
 public:
     EKFLocalizerSinTrack()
     {
-        m_track_converge = 0;
+        m_search_radius = 50;
+        m_search_turn_weight = 1;
+        m_track_converge_threshold = 10;
+        m_track_transit_dist = 10;
+        m_track_drift_radius = 100;
+        m_track_near_radius = 0;
+
+        m_track_converge_count = 0;
+    }
+
+    virtual int readParam(const cv::FileNode& fn)
+    {
+        int n_read = EKFLocalizerHyperTan::readParam(fn);
+        CX_LOAD_PARAM_COUNT(fn, "search_radius", m_search_radius, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "search_turn_weight", m_search_turn_weight, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "track_converge_threshold", m_track_converge_threshold, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "track_transit_dist", m_track_transit_dist, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "track_drift_radius", m_track_drift_radius, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "track_near_radius", m_track_near_radius, n_read);
+        return n_read;
     }
 
     virtual Pose2 getPose()
@@ -76,7 +106,7 @@ public:
     virtual TopometricPose getPoseTopometric()
     {
         cv::AutoLock lock(m_mutex);
-        return m_track_topo;
+        return m_pose_topo;
     }
 
     virtual bool applyPosition(const Point2& xy, Timestamp time = -1, double confidence = -1)
@@ -84,45 +114,173 @@ public:
         if (EKFLocalizerHyperTan::applyPosition(xy, time, confidence))
         {
             cv::AutoLock lock(m_mutex);
-            const double turn_weight = 1;
-            const int converge_repeat = 5;
-            const double drift_radius = 50;
-            Pose2 pose_m = EKFLocalizerHyperTan::getPose();
-            if (m_track_topo.node_id == 0 || m_track_converge < converge_repeat)
-            {
-                m_track_topo = findNearestTopoPose(pose_m, turn_weight);
-                if (m_track_topo.node_id == m_track_prev.node_id && m_track_topo.edge_idx == m_track_prev.edge_idx && m_track_topo.dist > m_track_prev.dist) m_track_converge++;
-                else m_track_converge = 0;
-            }
-            else
-            {
-                //auto node = m_map.getNode(m_track_topo.node_id);
-                //CV_DbgAssert(node != nullptr);
-                //auto edge = m_map.getEdge(node, m_track_topo.edge_idx);
-                //CV_DbgAssert(edge != nullptr);
-                //double progress = m_track_topo.dist / edge->cost;
-                m_track_topo = trackTopoPose(m_track_topo, pose_m, turn_weight, m_track_topo.dist > 0 ? 1 : 0);
+            return applyRoadMap();
+        }
+        return false;
+    }
 
-                Pose2 pose_t = cvtTopmetric2Metric(m_track_topo);
-                double dx = pose_m.x - pose_t.x, dy = pose_m.y - pose_t.y;
-                if ((dx * dx + dy * dy) > drift_radius * drift_radius)
+    virtual std::vector<RoadMap::Node*> getSearchNodes() const
+    {
+        cv::AutoLock lock(m_mutex);
+        return m_search_nodes;
+    }
+
+protected:
+    bool applyRoadMap()
+    {
+        Pose2 pose_m = EKFLocalizer::getPose();
+
+        if (m_pose_topo.node_id == 0 || m_track_converge_count < m_track_converge_threshold)
+        {
+            // Initialize (before convergence; same with 'TopoLocalizerProjNear')
+            m_search_nodes = findNearNodes(pose_m, m_search_radius);
+            m_pose_topo = findNearestTopoPose(pose_m, m_search_nodes, m_search_turn_weight);
+            if (m_pose_topo.node_id == m_track_prev.node_id && m_pose_topo.edge_idx == m_track_prev.edge_idx && m_pose_topo.dist > m_track_prev.dist) m_track_converge_count++;
+            else m_track_converge_count = 0;
+        }
+        else
+        {
+            // Project only on the connected edges (after convergence)
+            m_search_nodes.clear();
+            RoadMap::Node* refer_node = m_map.getNode(m_track_prev.node_id);
+            m_search_nodes.push_back(refer_node);
+            RoadMap::Edge* track_edge = m_map.getEdge(refer_node, m_track_prev.edge_idx);
+            if (track_edge != nullptr && track_edge->to != nullptr)
+            {
+                RoadMap::Node* arrival_node = track_edge->to;
+                Point2 d = arrival_node->data - refer_node->data;
+                double remain = /*track_edge->cost*/ sqrt(d.x * d.x + d.y * d.y) - m_track_prev.dist;
+                if (remain < m_track_transit_dist)
                 {
-                    //m_track_topo = trackTopoPose(m_track_topo, pose_m, turn_weight, 100);
-                    m_track_topo = findNearestTopoPose(pose_m, turn_weight, drift_radius, pose_m);
+                    m_search_nodes.push_back(arrival_node);
+                    if (m_track_near_radius > 0)
+                    {
+                        std::vector<RoadMap::Node*> near_nodes = findNearNodes(arrival_node->data, m_track_near_radius);
+                        for (auto n = near_nodes.begin(); n != near_nodes.end(); n++)
+                        {
+                            if (std::find(m_search_nodes.begin(), m_search_nodes.end(), *n) == m_search_nodes.end())
+                                m_search_nodes.push_back(*n);
+                        }
+                    }
                 }
             }
-            m_track_prev = m_track_topo;
+            m_pose_topo = findNearestTopoPose(pose_m, m_search_nodes, m_search_turn_weight);
+
+            Pose2 pose_t = cvtTopmetric2Metric(m_pose_topo);
+            double dx = pose_m.x - pose_t.x, dy = pose_m.y - pose_t.y;
+            if ((dx * dx + dy * dy) > m_track_drift_radius * m_track_drift_radius) m_track_converge_count = 0;
+        }
+        m_track_prev = m_pose_topo;
+        return true;
+    }
+
+    TopometricPose m_pose_topo;
+
+    std::vector<RoadMap::Node*> m_search_nodes;
+
+    double m_search_radius;
+
+    double m_search_turn_weight;
+
+    int m_track_converge_threshold;
+
+    int m_track_converge_count;
+
+    double m_track_transit_dist;
+
+    double m_track_drift_radius;
+
+    double m_track_near_radius;
+
+    TopometricPose m_track_prev;
+
+    int m_track_converge;
+};
+
+class EKFLocalizerInterSec : public EKFLocalizerSinTrack
+{
+public:
+    EKFLocalizerInterSec()
+    {
+        m_inter_appear_threshold = 5;
+        m_inter_disappear_time = 2;
+
+        m_inter_appear_count = 0;
+        m_inter_appear_time = 0;
+    }
+
+    virtual int readParam(const cv::FileNode& fn)
+    {
+        int n_read = EKFLocalizerSinTrack::readParam(fn);
+        CX_LOAD_PARAM_COUNT(fn, "inter_appear_threshold", m_inter_appear_threshold, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "inter_disappear_time", m_inter_disappear_time, n_read);
+        return n_read;
+    }
+
+    virtual bool applyLocClue(ID node_id, const Polar2& obs = Polar2(-1, CV_PI), double time = -1, double confidence = -1)
+    {
+        if (node_id == 0)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (m_inter_appear_threshold > 0)
+            {
+                m_inter_appear_count++;
+                m_inter_appear_time = time;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    virtual bool applyPosition(const Point2& xy, double time = -1, double confidence = -1)
+    {
+        if (EKFLocalizerHyperTan::applyPosition(xy, time, confidence))
+        {
+            cv::AutoLock lock(m_mutex);
+            return applyRoadMap() && applyIntersection(time);
+        }
+        return false;
+    }
+
+    virtual bool applyOrientation(double theta, double time, double confidence = -1)
+    {
+        if (EKFLocalizerHyperTan::applyOrientation(theta, time, confidence))
+        {
+            cv::AutoLock lock(m_mutex);
+            applyIntersection(time);
             return true;
         }
         return false;
     }
 
 protected:
-    TopometricPose m_track_topo;
+    bool applyIntersection(double time)
+    {
+        bool update = false;
+        if (m_inter_appear_time > 0)
+        {
+            double interval = time - m_inter_appear_time;
+            if (interval >= m_inter_disappear_time)
+            {
+                if (m_inter_appear_count > m_inter_appear_threshold)
+                {
+                    m_pose_topo.dist = m_state_vec.at<double>(3) * interval;
+                    update = true;
+                }
+                m_inter_appear_count = 0;
+                m_inter_appear_time = 0;
+            }
+        }
+        return update;
+    }
 
-    TopometricPose m_track_prev;
+    int m_inter_appear_threshold;
 
-    int m_track_converge;
+    int m_inter_appear_count;
+
+    double m_inter_appear_time;
+
+    double m_inter_disappear_time;
 };
 
 } // End of 'dg'

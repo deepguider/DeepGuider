@@ -25,7 +25,7 @@ public:
      *  The data usually come from other pose estimators.
      * @param pose The observed pose (Unit: [m] and [rad])
      * @param time The observed time (Unit: [sec])
-     * @param The observation confidence
+     * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
     virtual bool applyPose(const Pose2& pose, Timestamp time = -1, double confidence = -1) = 0;
@@ -35,7 +35,7 @@ public:
      *  The data usually come from other position estimators.
      * @param xy The observed position (Unit: [m])
      * @param time The observed time (Unit: [sec])
-     * @param The observation confidence
+     * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
     virtual bool applyPosition(const Point2& xy, Timestamp time = -1, double confidence = -1) = 0;
@@ -45,7 +45,7 @@ public:
      *  The data usually come from GPS and other position estimators.
      * @param xy The observed geodesic position (Unit: [deg])
      * @param time The observed time (Unit: [sec])
-     * @param The observation confidence
+     * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
     virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1) = 0;
@@ -55,7 +55,7 @@ public:
      *  The data usually come from (magnetic or visual) compasses and AHRSs.
      * @param theta The observed orientation (Unit: [rad])
      * @param time The observed time (Unit: [sec])
-     * @param The observation confidence
+     * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
     virtual bool applyOrientation(double theta, Timestamp time = -1, double confidence = -1) = 0;
@@ -67,7 +67,7 @@ public:
      * @param pose_prev The previous pose (Unit: [m] and [rad])
      * @param time_curr The observed time (Unit: [sec])
      * @param time_prev The previous time (Unit: [sec])
-     * @param The observation confidence
+     * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
     virtual bool applyOdometry(const Pose2& pose_curr, const Pose2& pose_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1) = 0;
@@ -78,7 +78,7 @@ public:
      * @param delta The observed displacement (Unit: [m] and [rad])<br>
      *  If delta.lin < 0, the linear displacement is invalid. If delta.ang >= CV_PI, the angular displacement is invalid.
      * @param time The observed time (Unit: [sec])
-     * @param The observation confidence
+     * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
     virtual bool applyOdometry(const Polar2& delta, Timestamp time = -1, double confidence = -1) = 0;
@@ -91,7 +91,7 @@ public:
      * @param time_curr The observed time (Unit: [sec])
      * @param time_prev The previous time (Unit: [sec])
      * @param time The observed time (Unit: [sec])
-     * @param The observation confidence
+     * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
     virtual bool applyOdometry(double theta_curr, double theta_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1) = 0;
@@ -103,7 +103,7 @@ public:
      * @param obs The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
      *  If obs.lin < 0, the relative distance is invalid. If obs.ang >= CV_PI, the relative angle is invalid.
      * @param time The observed time (Unit: [sec])
-     * @param The observation confidence
+     * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
     virtual bool applyLocClue(ID id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
@@ -114,7 +114,7 @@ public:
      * @param ids The IDs of observed clues
      * @param obs The relative observation from each clue (Unit: [m] and [rad])
      * @param time The observed time (Unit: [sec])
-     * @param The observation confidence
+     * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
     virtual bool applyLocClue(const std::vector<ID>& ids, const std::vector<Polar2>& obs, Timestamp time = -1, const std::vector<double>& confidence = std::vector<double>()) = 0;

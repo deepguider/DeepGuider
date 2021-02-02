@@ -6,6 +6,7 @@
 #include "localizer/directed_graph.hpp"
 #include "localizer/graph_painter.hpp"
 #include "localizer/road_map.hpp"
+#include "localizer/road_painter.hpp"
 #include "localizer/localizer_base.hpp"
 #include "localizer/localizer_simple.hpp"
 #include "localizer/localizer_ekf.hpp"

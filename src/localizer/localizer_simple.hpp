@@ -22,7 +22,9 @@ public:
 
     virtual TopometricPose getPoseTopometric()
     {
-        return findNearestTopoPose(getPose());
+        cv::AutoLock lock(m_mutex);
+        std::vector<RoadMap::Node*> near_nodes = findNearNodes(m_pose, 100);
+        return findNearestTopoPose(m_pose, near_nodes, 1);
     }
 
     virtual double getPoseConfidence()
