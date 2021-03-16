@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="..\..\src\utils\python_embedding.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\pose_recog\pose_recognizer.hpp" />
+    <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\pose_recog\pose_recog.py" />
+  </ItemGroup>
+</Project>
