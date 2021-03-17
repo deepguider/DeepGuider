@@ -35,6 +35,3 @@ $ cd examples/lrpose_test
 $ ./setup_pose_recog.sh   # Once at first
 $ ./build_lrpose_test.sh  # build and run
 ```
-
-
-new test
