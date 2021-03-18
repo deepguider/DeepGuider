@@ -5,15 +5,11 @@ cd data_vps
 ln -sf ../netvlad
 
 ## Make and mount ramdisk as a temporary disk
-tmpdir="/media/ramdisk_dg"
+tmpdir="./.tmp"
+if [ ! -f $tmpdir ];then
+	mkdir $tmpdir
+fi
 datasetdir="netvlad_etri_datasets"
-[ -d $tmpdir ] && echo "$tmpdir exists" || sudo mkdir $tmpdir
-
-## Mount ramdisk
-mount |grep $tmpdir || sudo mount -t tmpfs -o size=512M tmpfs $tmpdir
-
-## Add auto mount information for valid after rebooting your PC
-cat /etc/fstab | grep "/media/ramdisk_dg" || echo "none /media/ramdisk_dg tmpfs defaults,size=512M 0 0" | sudo tee -a /etc/fstab
 
 ## Install content of mount directory
 rm -rf $tmpdir/* # clear ramdisk

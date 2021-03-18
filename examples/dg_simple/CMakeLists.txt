@@ -12,13 +12,16 @@ set(RAPIDJSON_INC "${EXTDIR}/rapidjson/include")
 set(CURL_LIBRARIES "-lcurl")
 set(JSONCPP_LIBRARIES "-ljsoncpp")
 set(FS_LIBRARIES "-lstdc++fs")
+## Install in bash shell manually:
+#$ sudo apt install -y libcurl4-openssl-dev
+#$ sudo apt install -y libjsoncpp-dev
 
 add_definitions(-DDG_TEST_SIMPLE)
 #add_definitions(-DVPSSERVER)
 
 find_package( PythonInterp 3.6 REQUIRED )
 find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV 3.2 REQUIRED )
+find_package( OpenCV REQUIRED )
 find_package( CURL REQUIRED ) 
 
 INCLUDE_DIRECTORIES ( ${SRCDIR} ${RAPIDJSON_INC} ${PYTHON_INCLUDE_DIRS} )

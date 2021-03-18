@@ -84,9 +84,6 @@ class vps:
         self.parser.add_argument('--runsPath', type=str, default='netvlad/checkpoints/runs/', help='Path to save runs to.')
         self.parser.add_argument('--savePath', type=str, default='checkpoints', 
                 help='Path to save checkpoints to in logdir. Default=netvlad/checkpoints/')
-#        self.parser.add_argument('--cachePath', type=str, default=environ['TMPDIR'], help='Path to save cache to.')
-        self.parser.add_argument('--cachePath', type=str, default='/tmp', help='Path to save cache to.')
-#        self.parser.add_argument('--resume', type=str, default='netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint_gpu4', help='Path to load checkpoint from, for resuming training or testing.')
         self.parser.add_argument('--ckpt', type=str, default='latest', 
                 help='Resume from latest or best checkpoint.', choices=['latest', 'best'])
         self.parser.add_argument('--evalEvery', type=int, default=1, 
