@@ -24,9 +24,7 @@ import torchvision.models as models
 import h5py
 import faiss
 
-from visdom import Visdom
-
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
 import numpy as np
 from netvlad import netvlad
 
@@ -772,6 +770,7 @@ class vps:
 if __name__ == "__main__":
     from netvlad import etri_dbloader
     from PIL import Image
+    from visdom import Visdom
     streetview_server_ipaddr = "localhost"
     visdom_server = True
     try:

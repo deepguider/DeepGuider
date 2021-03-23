@@ -80,7 +80,7 @@ namespace dg
             dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
             m_processing_time = t2 - t1;
 
-            return ret;
+            return true;
         }
 
         /**

@@ -430,6 +430,20 @@ int main()
 
     bool enable_recording = false;
 
+    int video_sel = 0;
+
+    const char* video_path[] = {
+        "data/191115_ETRI.avi",
+        "data/etri_cart_200219_15h01m_2fps.avi",
+        "data/etri_cart_191115_11h40m_10fps.avi",
+        "data/street-GOTOMall.mp4",
+        "data/street-Itaewon.mp4",
+        "data/street-MyeongDong.mp4",
+        "data/street-MyeongDongShoppingAlley.mp4",
+        "data/street-Shibuya.mp4"
+    };
+
+
 	if (test_image || test_video || test_query || test_thread_run) /** Python Embedded Version **/
 	{
 
@@ -447,8 +461,8 @@ int main()
 
 	    // Run the Python module
 	    if(test_image) test_image_run(recognizer, enable_recording);
-	    if(test_video) test_video_run(recognizer, enable_recording);
-	    if(test_query) test_query_run(recognizer, enable_recording);
+	    if(test_video) test_video_run(recognizer, enable_recording, 10, video_path[video_sel]);
+		if(test_query) test_query_run(recognizer, enable_recording);
 	
 	    if(test_thread_run)
 	    {

@@ -49,8 +49,8 @@ protected:
     bool m_enable_intersection = false;
     bool m_enable_exploration = false;
 
-    //std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
-    std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
+    std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
+    //std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
     bool m_threaded_run_python = false;
     std::string m_srcdir = "./../src";              // path of deepguider/src (required for python embedding)
 

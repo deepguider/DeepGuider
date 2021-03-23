@@ -10,13 +10,13 @@ set(SRCDIR	"${CMAKE_SOURCE_DIR}/../../src")
 
 find_package( PythonInterp 3.6 REQUIRED )
 find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV 4.0 REQUIRED )
+find_package( OpenCV REQUIRED )
 
 INCLUDE_DIRECTORIES ( ${SRCDIR} ${PYTHON_INCLUDE_DIRS} )
 
 file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/utils/*.cpp *.cpp)
  
 add_executable( ${PROJECT_NAME} ${SOURCES} )
-target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} -ljsoncpp -lcurl )
+target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} -ljsoncpp -lcurl -lstdc++fs )
 
 install( TARGETS ${PROJECT_NAME} DESTINATION ${BINDIR} )
