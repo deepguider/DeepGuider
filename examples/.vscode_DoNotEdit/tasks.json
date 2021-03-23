@@ -1,0 +1,56 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "g++ build active file",
+            "command": "cd ${fileDirname}/build && make install",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "echo": false,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "group": "build"
+        },
+        {
+            "type": "shell",
+            "label": "g++ rebuild active file",
+            "command": "rm -rf ${fileDirname}/build && mkdir ${fileDirname}/build && cd ${fileDirname}/build && cmake .. && make install",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "echo": false,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "group": "build"
+        },
+        {
+            "type": "shell",
+            "label": "execute",
+            "command": "cd ${fileDirname}/../../bin && ./${relativeFileDirname}",
+            "presentation": {
+                "echo": false,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": false
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/work/deepguider/src",
+                "/work/deepguider/EXTERNAL",
+                "/work/deepguider/EXTERNAL/rapidjson/include",
+                "/work/deepguider/EXTERNAL/curl/include",
+                "/opt/ros/melodic/include/**",
+                "/usr/local/include/opencv4",
+                "/usr/include/python3"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
