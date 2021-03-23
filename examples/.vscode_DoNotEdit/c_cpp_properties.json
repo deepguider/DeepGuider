@@ -9,7 +9,7 @@
                 "/work/deepguider/EXTERNAL/curl/include",
                 "/opt/ros/melodic/include/**",
                 "/usr/local/include/opencv4",
-                "/usr/include/python3"
+                "/usr/include/python3.6m"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
