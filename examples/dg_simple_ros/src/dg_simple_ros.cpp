@@ -7,6 +7,10 @@
 #include <thread>
 #include "dg_simple_ros/ocr_info.h"
 #include "dg_simple.cpp"
+#include <dg_simple_ros/guidance.h>
+#include <dg_simple_ros/action.h>
+#include <dg_simple_ros/path_element.h>
+#include <dg_simple_ros/path_info.h>
 
 class DeepGuiderROS : public DeepGuider
 {
@@ -44,6 +48,10 @@ protected:
 
     // Topic publishers
     //ros::Publisher pub_image_gui;
+    ros::Publisher pub_guide;
+    ros::Publisher pub_path;
+    void publishGuidance();
+    void publishPath();
 
     // A node handler
     ros::NodeHandle& nh_dg;
@@ -57,8 +65,7 @@ protected:
     int t2f_fn;
     void updateTimestamp2Framenumber(dg::Timestamp ts, int fn);
     int timestamp2Framenumber(dg::Timestamp ts);
-};
-
+};   
 
 DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
 {
@@ -105,6 +112,8 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
 
     // Initialize publishers
     //pub_image_gui = nh_dg.advertise<sensor_msgs::CompressedImage>("dg_image_gui", 1, true);
+    pub_guide = nh_dg.advertise<dg_simple_ros::guidance>("guide", 1, true);
+    pub_path = nh_dg.advertise<dg_simple_ros::path_info>("path", 1, true);
 }
 
 DeepGuiderROS::~DeepGuiderROS()
@@ -158,7 +167,11 @@ bool DeepGuiderROS::runOnce(double timestamp)
 {
     // process Guidance
     procGuidance(timestamp);
-
+    
+    // get guidance messages
+    publishGuidance();
+    publishPath();
+    
     // draw GUI display
     cv::Mat gui_image = m_map_image.clone();
     drawGuiDisplay(gui_image);
@@ -372,6 +385,66 @@ void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
         VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, ts, confs));
         m_localizer_mutex.unlock();
     }
+}
+
+void DeepGuiderROS::publishGuidance()
+{    
+    GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
+
+    // make action messages
+    dg_simple_ros::action msg_action;
+    std::vector<dg_simple_ros::action> msg_actions;
+    for (int i = 0; i < cur_guide.actions.size(); i++) 
+    {
+        msg_action.motion = (int)cur_guide.actions[i].cmd;
+        msg_action.move_distance = cur_guide.actions[i].distance;
+        msg_action.node_type = (int)cur_guide.actions[i].node_type;
+        msg_action.edge_type = (int)cur_guide.actions[i].edge_type;
+        msg_action.degree = cur_guide.actions[i].degree;
+        msg_action.mode = (int)cur_guide.actions[i].mode;
+
+        msg_actions.push_back(msg_action);
+    }    
+
+    // make guidance messages
+    dg_simple_ros::guidance msg_guide;
+    msg_guide.guide_status = (int)cur_guide.guide_status;
+    msg_guide.moving_status = (int)cur_guide.moving_status;
+    msg_guide.actions = msg_actions;
+    msg_guide.heading_node_id = cur_guide.heading_node_id;
+    msg_guide.relative_angle = cur_guide.relative_angle;
+    msg_guide.distance_to_remain = cur_guide.distance_to_remain;
+    msg_guide.msg = cur_guide.msg;    
+    
+    pub_guide.publish(msg_guide);
+}
+
+void DeepGuiderROS::publishPath()
+{    
+    Path path = m_map_manager.getPath();
+
+    // make path points messages
+    dg_simple_ros::path_element path_pt;
+    std::vector<dg_simple_ros::path_element> msg_pts;
+    for (int i = 0; i < path.pts.size(); i++) 
+    {
+        path_pt.node_id = path.pts[i].node_id;
+        path_pt.edge_id = path.pts[i].edge_id;
+
+        msg_pts.push_back(path_pt);
+    }    
+
+    // make path message
+    dg_simple_ros::path_info msg_path;
+    msg_path.start_lat = path.start_pos.lat;
+    msg_path.start_lon = path.start_pos.lon;
+    msg_path.dest_lat = path.dest_pos.lat;
+    msg_path.dest_lon = path.dest_pos.lon;
+    msg_path.pts = msg_pts;
+
+    // printf("start_lat: %f, start_lon: %f, dest_lat: %f, dest_lon: %f", path.start_pos.lat, path.start_pos.lon, path.dest_pos.lat, path.dest_pos.lon);
+
+    pub_path.publish(msg_path);
 }
 
 void DeepGuiderROS::updateTimestamp2Framenumber(dg::Timestamp ts, int fn)
