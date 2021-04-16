@@ -9,8 +9,7 @@
 #include "dg_simple.cpp"
 #include <dg_simple_ros/guidance.h>
 #include <dg_simple_ros/action.h>
-#include <dg_simple_ros/path_element.h>
-#include <dg_simple_ros/path_info.h>
+#include <nav_msgs/Path.h>
 
 class DeepGuiderROS : public DeepGuider
 {
@@ -110,10 +109,17 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     sub_image_realsense_image = nh_dg.subscribe("/camera/color/image_raw/compressed", 1, &DeepGuiderROS::callbackRealsenseImage, this);
     sub_image_realsense_depth = nh_dg.subscribe("/camera/depth/image_rect_raw/compressed", 1, &DeepGuiderROS::callbackRealsenseDepth, this);
 
+    // sub_image_webcam = nh_dg.subscribe("/usb_cam_1/image_raw/compressed", 1, &DeepGuiderROS::callbackImageCompressed, this);
+    // sub_gps_asen = nh_dg.subscribe("/fix", 1, &DeepGuiderROS::callbackGPSAsen, this);
+    // sub_imu_xsense = nh_dg.subscribe("/gx5/imu/data", 1, &DeepGuiderROS::callbackIMU, this);
+    // sub_image_realsense_image = nh_dg.subscribe("/rs_front_camera1/color/image_raw/compressed", 1, &DeepGuiderROS::callbackRealsenseImage, this);
+    // sub_image_realsense_depth = nh_dg.subscribe("/rs_front_camera1/aligned_depth_to_color/image_raw/compressed", 1, &DeepGuiderROS::callbackRealsenseDepth, this);
+
     // Initialize publishers
     //pub_image_gui = nh_dg.advertise<sensor_msgs::CompressedImage>("dg_image_gui", 1, true);
     pub_guide = nh_dg.advertise<dg_simple_ros::guidance>("guide", 1, true);
-    pub_path = nh_dg.advertise<dg_simple_ros::path_info>("path", 1, true);
+    pub_path = nh_dg.advertise<nav_msgs::Path>("path", 1, true);
+     
 }
 
 DeepGuiderROS::~DeepGuiderROS()
@@ -424,27 +430,24 @@ void DeepGuiderROS::publishPath()
     Path path = m_map_manager.getPath();
 
     // make path points messages
-    dg_simple_ros::path_element path_pt;
-    std::vector<dg_simple_ros::path_element> msg_pts;
+    nav_msgs::Path rospath;
     for (int i = 0; i < path.pts.size(); i++) 
     {
-        path_pt.node_id = path.pts[i].node_id;
-        path_pt.edge_id = path.pts[i].edge_id;
+        ID curnid = path.pts[i].node_id;
+        Node* pNode = m_map_manager.getMap().findNode(curnid);
+        dg::LatLon ll(pNode->lat, pNode->lon);
+        Point2 xy = m_localizer.toMetric(ll);
 
-        msg_pts.push_back(path_pt);
+        geometry_msgs::PoseStamped rospstamped;
+        rospstamped.pose.position.x = xy.x;
+        rospstamped.pose.position.y = xy.y;
+
+        rospath.poses.push_back(rospstamped);
     }    
-
-    // make path message
-    dg_simple_ros::path_info msg_path;
-    msg_path.start_lat = path.start_pos.lat;
-    msg_path.start_lon = path.start_pos.lon;
-    msg_path.dest_lat = path.dest_pos.lat;
-    msg_path.dest_lon = path.dest_pos.lon;
-    msg_path.pts = msg_pts;
 
     // printf("start_lat: %f, start_lon: %f, dest_lat: %f, dest_lon: %f", path.start_pos.lat, path.start_pos.lon, path.dest_pos.lat, path.dest_pos.lon);
 
-    pub_path.publish(msg_path);
+    pub_path.publish(rospath);
 }
 
 void DeepGuiderROS::updateTimestamp2Framenumber(dg::Timestamp ts, int fn)
