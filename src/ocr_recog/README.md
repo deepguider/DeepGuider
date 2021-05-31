@@ -10,9 +10,9 @@ We train text recognition(OCR) classifier based on [CRAFT](https://github.com/cl
 - requirements : lmdb, pillow, torchvision, nltk, natsort
 
 ### Download dataset for traininig and evaluation from [here](https://drive.google.com/open?id=1hywOh26U5BrX6a9depZ2JbEsUktlDbbM) 
-data_lmdb_releas.zip contains below. <br>
+data_lmdb_release.zip contains below. <br>
 training datasets : [MJSynth (MJ)](http://www.robots.ox.ac.uk/~vgg/data/text/), [SynthText (ST)](http://www.robots.ox.ac.uk/~vgg/data/scenetext/), SynthText (Kr) from [IC19](https://rrc.cvc.uab.es/?ch=15&com=tasks) and the union of the training sets [IC13](http://rrc.cvc.uab.es/?ch=2), [IC15](http://rrc.cvc.uab.es/?ch=4), [IIIT](http://cvit.iiit.ac.in/projects/SceneTextUnderstanding/IIIT5K.html), [SVT](http://www.iapr-tc11.org/mediawiki/index.php/The_Street_View_Text_Dataset) and Korean from [IC19](https://rrc.cvc.uab.es/?ch=15&com=tasks).\
-validation/evaluation datasets : benchmark evaluation datasets, [IC13](http://rrc.cvc.uab.es/?ch=2) and Korean from [IC19](https://rrc.cvc.uab.es/?ch=15&com=tasks)
+validation/evaluation datasets : benchmark evaluation datasets, [IC13](http://rrc.cvc.uab.es/?ch=2) and Korean from [IC19](https://rrc.cvc.uab.es/?ch=15&com=tasks).
 
 
 ### For training and testing
