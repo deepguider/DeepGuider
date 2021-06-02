@@ -9,8 +9,8 @@ enable_roadtheta: 0
 enable_exploration: 0
 
 ## other main settings
-#server_ip: "127.0.0.1"                 # localhost
-server_ip: "129.254.87.96"              # ETRI map server
+server_ip: "127.0.0.1"                 # localhost
+#server_ip: "129.254.81.204"              # ETRI map server
 threaded_run_python: 0
 dg_srcdir: "./../src"                   # path of deepguider/src folder (required for python embedding)
 
@@ -30,6 +30,15 @@ video_input: "data/191115_ETRI.avi"
 #map_pixel_per_meter: 1.045             # default
 #map_canvas_offset: [ 1073, 1011 ]
 #gps_input: "data/200925_153949_AndroSensor.csv"
+#video_input: ""
+
+## place settings for Bucheon
+#map_image_path: "data/NaverMap_Bucheon(Satellite).png" 
+#map_ref_point_lat: 37.510928     # default 
+#map_ref_point_lon: 126.764344    # default
+#map_pixel_per_meter: 1.056            # default
+#map_canvas_offset: [ 1535, 1157 ]        # default 
+#gps_input: "data/Sensor_record_20210513_Bucheon_AndroSensor.csv"
 #video_input: ""
 
 ## etc
