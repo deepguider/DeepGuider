@@ -124,16 +124,16 @@ int main()
     int rec_fps = 15;
     bool threaded_run = false;
 
-    int video_sel = 0;
+    int video_sel = 1;
     const char* video_path[] = {
-        "data/etri_cart_200219_15h01m_2fps.avi",
-        "data/191115_ETRI.avi",
-        "data/201007_taeheran1.avi",
-        "data/street-GOTOMall.mp4",
-        "data/street-Itaewon.mp4",
-        "data/street-MyeongDong.mp4",
-        "data/street-MyeongDongShoppingAlley.mp4",
-        "data/street-Shibuya.mp4"
+        "video/191115_ETRI.avi",
+        "video/etri_cart_200219_15h01m_2fps.avi",
+        "video/201007_taeheran1.avi",
+        "video/street-GOTOMall.mp4",
+        "video/street-Itaewon.mp4",
+        "video/street-MyeongDong.mp4",
+        "video/street-MyeongDongShoppingAlley.mp4",
+        "video/street-Shibuya.mp4"
     };
 
     if(threaded_run)

@@ -76,8 +76,8 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_enable_intersection = false;
     m_enable_exploration = false;
 
-    //m_server_ip = "127.0.0.1";            // default: 127.0.0.1 (localhost)
-    m_server_ip = "129.254.87.96";          // default: 127.0.0.1 (localhost)
+    m_server_ip = "127.0.0.1";            // default: 127.0.0.1 (localhost)
+    //m_server_ip = "129.254.81.204";          // default: 127.0.0.1 (localhost)
     m_threaded_run_python = true;
     m_srcdir = "/work/deepguider/src";      // system path of deepguider/src (required for python embedding)
 

@@ -58,8 +58,8 @@ public:
         IntersectionClassifier intersection;
 
         MapManager map_manager;
-        //std::string server_ip = "127.0.0.1";
-        std::string server_ip = "129.254.87.96";
+        std::string server_ip = "127.0.0.1";
+        //std::string server_ip = "129.254.81.204";
         map_manager.setIP(server_ip);
         map_manager.initialize();
         cv::Mat sv_black(720, 720, CV_8UC3);

@@ -127,14 +127,14 @@ int main()
 
     int video_sel = 0;
     const char* video_path[] = {
-        "data/191115_ETRI.avi",
-        "data/etri_cart_200219_15h01m_2fps.avi",
-        "data/etri_cart_191115_11h40m_10fps.avi",
-        "data/street-GOTOMall.mp4",
-        "data/street-Itaewon.mp4",
-        "data/street-MyeongDong.mp4",
-        "data/street-MyeongDongShoppingAlley.mp4",
-        "data/street-Shibuya.mp4"
+        "video/191115_ETRI.avi",
+        "video/etri_cart_200219_15h01m_2fps.avi",
+        "video/201007_taeheran1.avi",
+        "video/street-GOTOMall.mp4",
+        "video/street-Itaewon.mp4",
+        "video/street-MyeongDong.mp4",
+        "video/street-MyeongDongShoppingAlley.mp4",
+        "video/street-Shibuya.mp4"
     };
 
     // Initialize the Python interpreter

@@ -126,21 +126,29 @@ int main()
     int rec_fps = 5;
     bool threaded_run = true;
 
-    const char* video_path = "data/191115_ETRI.avi";
-    //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
-    //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
+    int video_sel = 0;
+    const char* video_path[] = {
+        "video/191115_ETRI.avi",
+        "video/etri_cart_200219_15h01m_2fps.avi",
+        "video/201007_taeheran1.avi",
+        "video/street-GOTOMall.mp4",
+        "video/street-Itaewon.mp4",
+        "video/street-MyeongDong.mp4",
+        "video/street-MyeongDongShoppingAlley.mp4",
+        "video/street-Shibuya.mp4"
+    }; 
 
     // Initialize the Python interpreter
     init_python_environment("python3", "", threaded_run);
 
     if(threaded_run)
     {
-		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path);
+		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path[video_sel]);
         test_thread->join();
     }
     else
     {
-        procfunc(recording, rec_fps, video_path);
+        procfunc(recording, rec_fps, video_path[video_sel]);
     }
 
     // Close the Python Interpreter

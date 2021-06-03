@@ -50,7 +50,7 @@ protected:
     bool m_enable_exploration = false;
 
     std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
-    //std::string m_server_ip = "129.254.87.96";      // default: 127.0.0.1 (localhost)
+    //std::string m_server_ip = "129.254.81.204";      // default: 127.0.0.1 (localhost)
     bool m_threaded_run_python = false;
     std::string m_srcdir = "./../src";              // path of deepguider/src (required for python embedding)
 
@@ -59,7 +59,7 @@ protected:
     double m_map_pixel_per_meter = 1.045;
     dg::Point2 m_map_canvas_offset = dg::Point2(344, 293);
     std::string m_gps_input = "data/191115_ETRI_asen_fix.csv";
-    std::string m_video_input = "data/191115_ETRI.avi";
+    std::string m_video_input = "video/191115_ETRI.avi";
 
     bool m_use_high_gps = false;                    // use high-precision gps (novatel)
 
