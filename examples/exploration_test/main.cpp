@@ -15,7 +15,7 @@ void test_image_run(ActiveNavigation& active_nav, GuidanceManager::Guidance guid
     for (int i = 1; i <= nItr; i++)
     {
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        VVS_CHECK_TRUE(active_nav.apply(image, guidance, t1));
+        bool ok = active_nav.apply(image, guidance, t1);
 
         std::vector<ExplorationGuidance> actions;
         GuidanceManager::GuideStatus status;

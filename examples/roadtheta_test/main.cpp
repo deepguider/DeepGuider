@@ -19,7 +19,7 @@ void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* 
     for (int i = 1; i <= nItr; i++)
     {
         dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        VVS_CHECK_TRUE(recognizer.apply(image, ts));
+        bool ok = recognizer.apply(image, ts);
 
         printf("iteration: %d (it took %lf seconds)\n", i, recognizer.procTime());
         recognizer.print();
@@ -71,7 +71,7 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
         if (image.empty()) break;
 
         dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        VVS_CHECK_TRUE(recognizer.apply(image, ts));
+        bool ok = recognizer.apply(image, ts);
 
         printf("iteration: %d (it took %lf seconds)\n", i++, recognizer.procTime());
         recognizer.print();
@@ -128,6 +128,7 @@ int main()
     const char* video_path[] = {
         "data/etri_cart_200219_15h01m_2fps.avi",
         "data/191115_ETRI.avi",
+        "data/201007_taeheran1.avi",
         "data/street-GOTOMall.mp4",
         "data/street-Itaewon.mp4",
         "data/street-MyeongDong.mp4",

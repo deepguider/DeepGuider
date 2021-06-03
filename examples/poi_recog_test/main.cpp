@@ -1,5 +1,7 @@
 #include "dg_poi_recog.hpp"
-#include "dg_utils.hpp"
+#include "utils/python_embedding.hpp"
+#include "utils/vvs.h"
+#include "utils/opencx.hpp"
 #include <chrono>
 #include <thread>
 

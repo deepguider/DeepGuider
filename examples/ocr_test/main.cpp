@@ -1,6 +1,7 @@
-#include "dg_core.hpp"
 #include "dg_ocr.hpp"
-#include "dg_utils.hpp"
+#include "utils/python_embedding.hpp"
+#include "utils/vvs.h"
+#include "utils/opencx.hpp"
 #include <chrono>
 #include <thread>
 
@@ -20,7 +21,7 @@ void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* 
     for (int i = 1; i <= nItr; i++)
     {
         dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        VVS_CHECK_TRUE(recognizer.apply(image, ts));
+        bool ok = recognizer.apply(image, ts);
 
         printf("iteration: %d (it took %lf seconds)\n", i, recognizer.procTime());
         recognizer.print();
@@ -72,7 +73,7 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
         if (image.empty()) break;
 
         dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        VVS_CHECK_TRUE(recognizer.apply(image, ts));
+        bool ok = recognizer.apply(image, ts);
 
         printf("iteration: %d (it took %lf seconds)\n", i++, recognizer.procTime());
         recognizer.print();
@@ -125,21 +126,29 @@ int main()
     int rec_fps = 5;
     bool threaded_run = false;
 
-    const char* video_path = "data/191115_ETRI.avi";
-    //const char* video_path = "data/etri_cart_200219_15h01m_2fps.avi";
-    //const char* video_path = "data/etri_cart_191115_11h40m_10fps.avi";
+    int video_sel = 0;
+    const char* video_path[] = {
+        "data/etri_cart_200219_15h01m_2fps.avi",
+        "data/191115_ETRI.avi",
+        "data/201007_taeheran1.avi",
+        "data/street-GOTOMall.mp4",
+        "data/street-Itaewon.mp4",
+        "data/street-MyeongDong.mp4",
+        "data/street-MyeongDongShoppingAlley.mp4",
+        "data/street-Shibuya.mp4"
+    }; 
 
     // Initialize the Python interpreter
     init_python_environment("python3", "", threaded_run);
 
     if(threaded_run)
     {
-		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path);
+		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path[video_sel]);
         test_thread->join();
     }
     else
     {
-        procfunc(recording, rec_fps, video_path);
+        procfunc(recording, rec_fps, video_path[video_sel]);
     }
 
     // Close the Python Interpreter

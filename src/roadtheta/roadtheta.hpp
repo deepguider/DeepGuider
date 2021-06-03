@@ -2,6 +2,7 @@
 #define __ROAD_THETA__
 
 #include "dg_core.hpp"
+#include "utils/utility.hpp"
 #include <fstream>
 #include <chrono>
 
@@ -59,7 +60,7 @@ namespace dg
 
         // grouping
         bool connect_segmented_lines = true;
-        double connect_dist_thr = 3;        // pixels (µÎ Á÷¼± »çÀÌÀÇ ¼öÁ÷ °Å¸®)
+        double connect_dist_thr = 3;        // pixels (ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Å¸ï¿½)
         double max_connect_gap = 20;        // pixels
         double min_connect_gap = -5;        // pixels
         bool group_duplicated_lines = false;
@@ -81,11 +82,11 @@ namespace dg
         double tracking_filter_sy = 180;
 
         // check valid line
-        bool check_vanishing_condition = true;  // ¶óÀÎ ¼¼±×¸ÕÆ®°¡ ÇØ´ç ¼Ò½ÇÁ¡À¸·Î ¼ö·ÅÇÏ´ÂÁö Ã¼Å©
+        bool check_vanishing_condition = true;  // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½×¸ï¿½Æ®ï¿½ï¿½ ï¿½Ø´ï¿½ ï¿½Ò½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ï¿½ï¿½ Ã¼Å©
         double max_vanishing_error = 10;        // pixels
-        bool check_horizontal_distance = true;  // Á÷¼±°úÀÇ ¼öÆò°Å¸®¸¦ ÀÌ¿ëÇÏ¿© vanishing ¿¡·¯ Ã¼Å©
+        bool check_horizontal_distance = true;  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Å¸ï¿½ï¿½ï¿½ ï¿½Ì¿ï¿½ï¿½Ï¿ï¿½ vanishing ï¿½ï¿½ï¿½ï¿½ Ã¼Å©
         double horizontal_distance_thr = 20;
-        bool check_ground_condition = true;     // ¼Ò½ÇÁ¡ À§ÂÊÀÇ ¶óÀÎµéÀº ¼Ò½ÇÁ¡ »êÃâ¿¡¼­ Á¦¿ÜÇÒÁö ¿©ºÎ
+        bool check_ground_condition = true;     // ï¿½Ò½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Îµï¿½ï¿½ï¿½ ï¿½Ò½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½â¿¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         int max_upperline_deg = 70;
 
         // ransac parameters
@@ -93,7 +94,7 @@ namespace dg
         int max_itr = 2000;
         double inlier_thr = 10;     // perpendicular pixel distance
         int lscore_method = 2;      // 0: count, 1: length, 2: length^1.5, 3: lenth^2
-        bool use_weighted_lscore = false;   // ¼Ò½ÇÁ¡°ú °Å¸®¿¡ µû¸¥ ÆÐÅÐÆ¼ Àû¿ë ¿©ºÎ
+        bool use_weighted_lscore = false;   // ï¿½Ò½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Å¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ¼ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         int refinement_method = 2;          // 0: none, 1: ls, 2: weighted ls, 3: m-estimator, 4: weighted m-estimator
         int weight_lscore_method = 1;       // 0: count, 1: length, 2: length^1.5, 3: lenth^2
         int refine_iteration_n = 1;
@@ -158,7 +159,7 @@ namespace dg
 
         /**
         * Run once the module for a given input (support thread run)
-        * @return evaluation score if successful (-1 if failed)
+        * @return true if successful (false if failed)
         */
         bool apply(cv::Mat& image, dg::Timestamp ts)
         {
@@ -216,6 +217,31 @@ namespace dg
             std::string log = cv::format("%.3lf,%d,%s,%lf,%.2lf,%.1lf,%.1lf,%.1lf,%.3lf", m_timestamp, cam_fnumber, name(), m_result.theta, m_result.confidence, m_result.vx, m_result.vy, m_result.score, m_processing_time);
             stream << log << std::endl;
         }
+
+        void read(const std::vector<std::string>& stream)
+        {
+            for (int k = 0; k < (int)stream.size(); k++)
+            {
+                std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
+                if (elems.size() != 9)
+                {
+                    printf("[%s] Invalid log data %s\n", name(), stream[k].c_str());
+                    return;
+                }
+                std::string module_name = elems[2];
+                if (module_name == name())
+                {
+                    m_result.theta = atof(elems[3].c_str());
+                    m_result.confidence = atof(elems[4].c_str());
+                    m_result.vx = atof(elems[5].c_str());
+                    m_result.vy = atof(elems[6].c_str());
+                    m_result.score = atof(elems[7].c_str());
+
+                    m_timestamp = atof(elems[0].c_str());
+                    m_processing_time = atof(elems[9].c_str());
+                }
+            }
+        } 
 
         static const char* name()
         {

@@ -5,7 +5,7 @@
 #include "dg_core.hpp"
 #include "dg_map_manager.hpp"
 #include "dg_localizer.hpp"
-#include "dg_road_recog.hpp"
+#include "dg_roadtheta.hpp"
 #include "dg_logo.hpp"
 #include "dg_ocr.hpp"
 #include "dg_intersection.hpp"
@@ -176,7 +176,7 @@ protected:
     dg::LogoRecognizer m_logo;
     dg::OCRRecognizer m_ocr;
     dg::IntersectionClassifier m_intersection_classifier;
-    dg::RoadDirectionRecognizer m_roadtheta;
+    dg::RoadTheta m_roadtheta;
     dg::GuidanceManager m_guider;
     dg::ActiveNavigation m_active_nav;
 
@@ -535,14 +535,15 @@ int DeepGuider::run()
         if (m_recording) m_video_gui << gui_image;
         if (m_data_logging) m_video_cam << m_cam_image;
 
+        dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        printf("Iteration: %d (it took %lf seconds)\n", itr, t2 - t1);
+ 
+        // gui display
         cv::imshow(m_winname, gui_image);
         int key = cv::waitKey(1);
         if (key == cx::KEY_SPACE) key = cv::waitKey(0);
         if (key == cx::KEY_ESC) break;
         if (key == 83) itr += 30;   // Right Key
-
-        dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        printf("Iteration: %d (it took %lf seconds)\n", itr, t2 - t1);
 
         // update iteration
         itr++;
@@ -1353,9 +1354,13 @@ bool DeepGuider::procRoadTheta()
     
     if (!cam_image.empty() && m_roadtheta.apply(cam_image, capture_time))
     {
+        RoadThetaResult res;
+        m_roadtheta.get(res);
+
         double angle, confidence;
-        m_roadtheta.get(angle, confidence);
-        VVS_CHECK_TRUE(m_localizer.applyLocClue(id_invalid, Polar2(-1, angle), capture_time, confidence));
+        angle = res.theta;
+        confidence = res.confidence;
+        if(res.valid) VVS_CHECK_TRUE(m_localizer.applyLocClue(id_invalid, Polar2(-1, angle), capture_time, confidence));
     }
 
     return true;

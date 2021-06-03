@@ -1,5 +1,7 @@
 #include "dg_logo.hpp"
-#include "dg_utils.hpp"
+#include "utils/python_embedding.hpp"
+#include "utils/vvs.h"
+#include "utils/opencx.hpp"
 #include <thread>
 #include <chrono>
 
@@ -19,7 +21,7 @@ void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* 
     for (int i = 1; i <= nItr; i++)
     {
         dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        VVS_CHECK_TRUE(recognizer.apply(image, ts));
+        bool ok = recognizer.apply(image, ts);
 
         printf("iteration: %d (it took %lf seconds)\n", i, recognizer.procTime());
         recognizer.print();
@@ -71,7 +73,7 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
         if (image.empty()) break;
 
         dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        VVS_CHECK_TRUE(recognizer.apply(image, ts));
+        bool ok = recognizer.apply(image, ts);
 
         printf("iteration: %d (it took %lf seconds)\n", i++, recognizer.procTime());
         recognizer.print();

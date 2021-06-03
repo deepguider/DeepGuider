@@ -32,7 +32,7 @@ void test_image_run(VPS& recognizer, bool recording = false, const char* image_f
     for (int i = 1; i <= nItr; i++)
     {
         dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        VVS_CHECK_TRUE(recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str()));
+        bool ok = recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str());
         gps_lat += gps_lat_d;
 
 		printf("iteration: %d (it took %lf seconds)\n", i, recognizer.procTime());
@@ -93,7 +93,7 @@ void test_video_run(VPS& recognizer, bool recording = false, int fps = 10, const
 		if (image.empty()) break;
 
 		dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-		VVS_CHECK_TRUE(recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str()));
+		bool ok = recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str());
 		if (int(i/300)*300 == i)
 		{
 			gps_lat_d *= -1.0;
