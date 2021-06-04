@@ -11,7 +11,7 @@ using namespace std;
 #define RECOGNIZER LogoRecognizer
 
 
-void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* image_file = "sample.png", int nItr = 5)
+void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* image_file = "poi_sample.jpg", int nItr = 5)
 {
     printf("#### Test Image Run ####################\n");
     cv::Mat image = cv::imread(image_file);

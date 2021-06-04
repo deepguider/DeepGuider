@@ -121,7 +121,7 @@ void procfunc(bool recording, int rec_fps, const char* video_path)
 
 int main()
 {
-    bool recording = true;
+    bool recording = false;
     int rec_fps = 15;
     bool threaded_run = false;
 
