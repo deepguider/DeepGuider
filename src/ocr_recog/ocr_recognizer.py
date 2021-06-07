@@ -1,4 +1,6 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"]="0"  #CUDA_VISIBLE_DEVICES=0 (always use the first GPU only)
+
 import time
 import string
 import argparse
@@ -14,6 +16,24 @@ from demo import detect_ocr
 from craft.craft import CRAFT
 from collections import OrderedDict
 
+#####################################
+# 21.06.04 Astrid
+# https://github.com/googleapis/oauth2client/issues/642#issuecomment-279643203
+'''
+Solving this error 
+File "./../src/ocr_recog/ocr_recognizer.py", line 41, in __init__
+    self.opt_craft, self.opt_recog = self.setup_parser()
+  File "./../src/ocr_recog/ocr_recognizer.py", line 120, in setup_parser
+    parser_craft = argparse.ArgumentParser(description='CRAFT Text Detection')
+  File "/usr/lib/python3.6/argparse.py", line 1635, in __init__
+    prog = _os.path.basename(_sys.argv[0])
+AttributeError: module 'sys' has no attribute 'argv'
+'''
+import sys
+
+if not hasattr(sys, 'argv'):
+    sys.argv  = ['']
+#####################################
 
 def str2bool(v):
     return v.lower() in ("yes", "y", "true", "t", "1")

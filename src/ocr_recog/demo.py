@@ -1,3 +1,5 @@
+import os
+
 import string
 
 import torch
@@ -53,6 +55,7 @@ def detect_ocr(config, image, timestamp,save_img):
     t = time.time()
 
     device = config.device
+    print("config device", device)
     model = config.model
     converter = config.converter
 
