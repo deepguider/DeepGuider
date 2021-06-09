@@ -16,10 +16,11 @@ dg_srcdir: "./../src"                   # path of deepguider/src folder (require
 
 ## place settings for ETRI
 map_image_path: "data/NaverMap_ETRI(Satellite)_191127.png"
-#map_ref_point_lat: 36.383837659737     # default
-#map_ref_point_lon: 127.367880828442    # default
-#map_pixel_per_meter: 1.045             # default
-#map_canvas_offset: [ 344, 293 ]        # default
+map_ref_point_lat: 36.383837659737     # default
+map_ref_point_lon: 127.367880828442    # default
+map_pixel_per_meter: 1.039             # default
+map_image_rotation: 1.0                 # degree
+map_canvas_offset: [ 347, 297 ]        # default
 gps_input: "data/191115_ETRI_asen_fix.csv"
 video_input: "data/191115_ETRI.avi"
 
@@ -27,8 +28,9 @@ video_input: "data/191115_ETRI.avi"
 #map_image_path: "data/NaverMap_COEX(Satellite)_200929.png"
 #map_ref_point_lat: 37.506207
 #map_ref_point_lon: 127.05482
-#map_pixel_per_meter: 1.045             # default
-#map_canvas_offset: [ 1073, 1011 ]
+#map_pixel_per_meter: 1.055             # default
+#map_image_rotation: 1.2                 # degree
+#map_canvas_offset: [ 1090, 1018 ]
 #gps_input: "data/200925_153949_AndroSensor.csv"
 #video_input: ""
 
@@ -37,6 +39,7 @@ video_input: "data/191115_ETRI.avi"
 #map_ref_point_lat: 37.510928     # default 
 #map_ref_point_lon: 126.764344    # default
 #map_pixel_per_meter: 1.056            # default
+#map_image_rotation: 0                 # degree
 #map_canvas_offset: [ 1535, 1157 ]        # default 
 #gps_input: "data/Sensor_record_20210513_Bucheon_AndroSensor.csv"
 #video_input: ""

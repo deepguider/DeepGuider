@@ -341,11 +341,27 @@ namespace cx
             return true;
         }
 
+        void setImageRotation(double rad)
+        {
+            m_img_rotation = rad;
+        }
+
+        double getImageRotation()
+        {
+            return m_img_rotation;
+        }
+
         cv::Point2d cvtValue2Pixel(const cv::Point2d& val) const
         {
             cv::Point2d px;
-            px.x = val.x * m_px_per_val.x + m_img_offset.x;
-            px.y = m_img_offset.y - val.y * m_px_per_val.y;
+            //px.x = val.x * m_px_per_val.x + m_img_offset.x;
+            //px.y = m_img_offset.y - val.y * m_px_per_val.y;
+
+            double cost = cos(-m_img_rotation);
+            double sint = sin(-m_img_rotation);
+            px.x = (val.x * m_px_per_val.x) * cost - (-val.y * m_px_per_val.y) * sint + m_img_offset.x;
+            px.y = (val.x * m_px_per_val.x) * sint + (-val.y * m_px_per_val.y) * cost + m_img_offset.y;
+
             return px;
         }
 
@@ -354,8 +370,14 @@ namespace cx
             CV_DbgAssert(m_px_per_val.x > 0 && m_px_per_val.y > 0);
 
             cv::Point2d val;
-            val.x = (px.x - m_img_offset.x) / m_px_per_val.x;
-            val.y = (m_img_offset.y - px.y) / m_px_per_val.y;
+            //val.x = (px.x - m_img_offset.x) / m_px_per_val.x;
+            //val.y = (m_img_offset.y - px.y) / m_px_per_val.y;
+
+            double cost = cos(-m_img_rotation);
+            double sint = sin(-m_img_rotation);
+            val.x = ((px.x - m_img_offset.x) * cost + (px.y - m_img_offset.y) * sint) / m_px_per_val.x;
+            val.y = -(-(px.x - m_img_offset.x) * sint + (px.y - m_img_offset.y) * cost) / m_px_per_val.y;
+
             return val;
         }
 
@@ -553,6 +575,8 @@ namespace cx
         cv::Point2d m_min_val;
 
         cv::Point2d m_px_per_val;
+
+        double m_img_rotation = 0;  // radian
     };
 
     /**

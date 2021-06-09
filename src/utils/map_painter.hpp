@@ -33,6 +33,7 @@ public:
     MapPainter()
     {
         m_pixel_per_meter = 100;
+        m_image_rotation = 0;  // radian
 
         m_canvas_margin = 0.2;
         m_canvas_color = cx::COLOR_WHITE;
@@ -69,6 +70,7 @@ public:
         int n_read = cx::Algorithm::readParam(fn);
 
         CX_LOAD_PARAM_COUNT(fn, "pixel_per_meter", m_pixel_per_meter, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "image_rotation", m_image_rotation, n_read);
 
         CX_LOAD_PARAM_COUNT(fn, "canvas_margin", m_canvas_margin, n_read);
         CX_LOAD_PARAM_COUNT(fn, "canvas_color", m_canvas_color, n_read);
@@ -106,6 +108,7 @@ public:
         if (cx::Algorithm::writeParam(fs))
         {
             fs << "pixel_per_meter" << m_pixel_per_meter;
+            fs << "image_rotation" << m_image_rotation;
 
             fs << "canvas_margin" << m_canvas_margin;
             fs << "canvas_color" << m_canvas_color;
@@ -425,16 +428,36 @@ public:
     Point2 cvtMeter2Pixel(const Point2& mt, const MapCanvasInfo& info)
     {
         Point2 px;
-        px.x = mt.x * info.ppm + info.offset.x;
-        px.y = info.offset.y - mt.y * info.ppm;
+        if (m_image_rotation == 0)
+        {
+            px.x = mt.x * info.ppm + info.offset.x;
+            px.y = info.offset.y - mt.y * info.ppm;
+        }
+        else
+        {
+            double cost = cos(-m_image_rotation);
+            double sint = sin(-m_image_rotation);
+            px.x = (mt.x * info.ppm) * cost - (-mt.y * info.ppm) * sint + info.offset.x;
+            px.y = (mt.x * info.ppm) * sint + (-mt.y * info.ppm) * cost + info.offset.y;
+        }
         return px;
     }
 
     Point2 cvtPixel2Meter(const Point2& px, const MapCanvasInfo& info)
     {
         Point2 mt;
-        mt.x = (px.x - info.offset.x) / info.ppm;
-        mt.y = -(px.y - info.offset.y) / info.ppm;
+        if (m_image_rotation == 0)
+        {
+            mt.x = (px.x - info.offset.x) / info.ppm;
+            mt.y = -(px.y - info.offset.y) / info.ppm;
+        }
+        else
+        {
+            double cost = cos(-m_image_rotation);
+            double sint = sin(-m_image_rotation);
+            mt.x = ((px.x - info.offset.x) * cost + (px.y - info.offset.y) * sint) / info.ppm;
+            mt.y = -(-(px.x - info.offset.x) * sint + (px.y - info.offset.y) * cost) / info.ppm;
+        }
         return mt;
     }
 
@@ -452,6 +475,8 @@ public:
 
 protected:
     double m_pixel_per_meter;
+
+    double m_image_rotation = 0;  // radian
 
     double m_canvas_margin;
 

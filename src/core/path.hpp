@@ -49,6 +49,47 @@ public:
 
     /** A series of nodes and edges for a path */
     std::vector<PathElement> pts;
+
+    /** Save data to file */
+    bool save(const char* filename)
+    {
+        if (pts.empty()) return false;
+
+        FILE* file = fopen(filename, "wt");
+        if (file == nullptr) return false;
+
+        for(size_t i=0; i<pts.size(); i++)
+            fprintf(file, "%zd, %zd\n", pts[i].node_id, pts[i].edge_id);
+
+        fclose(file);
+        return true;
+    }
+
+    /** Load data from file */
+    bool load(const char* filename)
+    {
+        FILE* fid = fopen(filename, "rt");
+        if (fid == nullptr) return false;
+
+        pts.clear();
+
+        const int BUF_SIZE = 512;
+        char buffer[BUF_SIZE];
+        while (!feof(fid))
+        {
+            if (fgets(buffer, BUF_SIZE, fid) == nullptr) break;
+            char* token;
+            if ((token = strtok(buffer, ",")) == nullptr) break;
+            ID nid = strtoll(token, nullptr, 10);
+            if ((token = strtok(nullptr, ",")) == nullptr) break;
+            ID eid = strtoll(token, nullptr, 10);
+
+            pts.push_back(PathElement(nid, eid));
+        }
+        fclose(fid);
+        return true;
+    }
+
 };
 
 } // End of 'dg'

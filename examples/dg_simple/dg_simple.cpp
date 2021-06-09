@@ -56,10 +56,11 @@ protected:
 
     std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
     dg::LatLon m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
-    double m_map_pixel_per_meter = 1.045;
-    dg::Point2 m_map_canvas_offset = dg::Point2(344, 293);
+    double m_map_pixel_per_meter = 1.039;
+    double m_map_image_rotation = cx::cvtDeg2Rad(1.0);
+    dg::Point2 m_map_canvas_offset = dg::Point2(347, 297);
     std::string m_gps_input = "data/191115_ETRI_asen_fix.csv";
-    std::string m_video_input = "video/191115_ETRI.avi";
+    std::string m_video_input = "data/191115_ETRI.avi";
 
     bool m_use_high_gps = false;                    // use high-precision gps (novatel)
 
@@ -251,6 +252,8 @@ bool DeepGuider::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "map_ref_point_lat", m_map_ref_point.lat);
     LOAD_PARAM_VALUE(fn, "map_ref_point_lon", m_map_ref_point.lon);
     LOAD_PARAM_VALUE(fn, "map_pixel_per_meter", m_map_pixel_per_meter);
+    LOAD_PARAM_VALUE(fn, "map_image_rotation", m_map_image_rotation);
+    m_map_image_rotation = cx::cvtDeg2Rad(m_map_image_rotation);
     LOAD_PARAM_VALUE(fn, "map_canvas_offset", m_map_canvas_offset);
     LOAD_PARAM_VALUE(fn, "gps_input", m_gps_input);
     LOAD_PARAM_VALUE(fn, "video_input", m_video_input);
@@ -313,6 +316,7 @@ bool DeepGuider::initialize(std::string config_file)
     // prepare GUI map
     m_painter.setReference(m_map_ref_point);
     m_painter.setParamValue("pixel_per_meter", m_map_pixel_per_meter);
+    m_painter.setParamValue("image_rotation", m_map_image_rotation);
     m_painter.setParamValue("canvas_margin", 0);
     m_painter.setParamValue("canvas_offset", { m_map_canvas_offset.x, m_map_canvas_offset.y });
     m_painter.setParamValue("grid_step", 100);
