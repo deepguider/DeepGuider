@@ -3,6 +3,7 @@
 
 #include "core/map.hpp"
 #include "localizer/localizer.hpp"
+#include "localizer/road_map.hpp"
 #include "utils/opencx.hpp"
 #include <set>
 

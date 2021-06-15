@@ -2,6 +2,7 @@
 #define __SIMPLE_ROAD_MAP__
 
 #include "core/basic_type.hpp"
+#include "core/path.hpp"
 #include "localizer/directed_graph.hpp"
 #include "localizer/graph_painter.hpp"
 #include <map>
@@ -208,6 +209,15 @@ public:
     Edge* getEdge(Node* from, int edge_idx);
 
     /**
+     * Find a shortest path using Dijkstra's shortest path algorithm (time complexity: O(|N|^2))
+     * @param from Start position
+     * @param to Destination position
+     * @output path The found path
+     * @return True if successful (false if failed)
+     */
+    bool getPath(Point2 from, Point2 to, Path& path);
+
+    /**
      * Remove a node (time complexity: O(|V| |E|))<br>
      * This removes all edges connected from the node
      * @param node A node pointer to remove
@@ -251,6 +261,16 @@ public:
 protected:
     /** A node lookup table whose key is 'ID' and value is the corresponding pointer to the node */
     std::map<ID, Node*> m_node_lookup;
+
+    /** Internal variables and api's for path finding */
+    Node* m_dest_node = nullptr;
+    std::vector<double> m_distance;
+    std::vector<bool> m_found;
+    std::vector<int> m_next_idx;
+    std::vector<Node*> m_indexed_node_lookup;
+    bool initRoutingVariables(Node* dest_node, int dest_node_idx);
+    Node* getNearestNode(const Point2& p, int& node_idx);
+    int choose_best_unvisited(const std::vector<double>& distance, const std::vector<bool>& found);
 };
 
 /** A map visualizer for dg::RoadMap */

@@ -147,4 +147,120 @@ bool RoadMap::copyTo(RoadMap* dest) const
     return true;
 }
 
+bool RoadMap::getPath(Point2 p1, Point2 p2, Path& path)
+{
+    // reset path
+    path.pts.clear();
+
+    // get nearest node
+    int from_idx, to_idx;
+    Node* from = getNearestNode(p1, from_idx);
+    Node* to = getNearestNode(p2, to_idx);
+    if (from == nullptr || to == nullptr) return false;
+
+    // initlize temporal variables
+    initRoutingVariables(to, to_idx);
+
+    // bread-first search
+    int nNodes = (int)countNodes();
+    while (!m_found[from_idx])
+    {
+        int best_ni = choose_best_unvisited(m_distance, m_found);
+        if (best_ni < 0) break;
+        m_found[best_ni] = true;
+        Node* best = m_indexed_node_lookup[best_ni];
+        if (best == nullptr) break;
+
+        int j = 0;
+        for (auto n = getHeadNode(); n != getTailNode(); j++, n++)
+        {
+            if (m_found[j] == false)
+            {
+                Edge* edge = getEdge(n->data.id, best->data.id);
+                if (edge && (m_distance[best_ni] + edge->cost < m_distance[j]))
+                {
+                    m_distance[j] = m_distance[best_ni] + edge->cost;
+                    m_next_idx[j] = best_ni;
+                }
+            }
+        }
+    }
+    if (!m_found[from_idx] || m_next_idx[from_idx] < 0) return false;
+
+    // build path
+    for (auto idx = from_idx; idx != -1; idx = m_next_idx[idx])
+    {
+        Node* node = m_indexed_node_lookup[idx];
+        if (node == nullptr) break;
+        path.pts.push_back(PathElement(node->data.id, 0));
+        if (idx == to_idx) break;
+    }
+    if (path.pts.front().node_id != from->data.id || path.pts.back().node_id != to->data.id) return false;
+
+    return true;
+}
+
+bool RoadMap::initRoutingVariables(Node* dest_node, int dest_node_idx)
+{
+    if (!dest_node) return false;
+    if (dest_node == m_dest_node) return true;
+
+    int nNodes = (int)countNodes();
+    m_distance.resize(nNodes);
+    m_found.resize(nNodes);
+    m_next_idx.resize(nNodes);
+    m_indexed_node_lookup.resize(nNodes);
+
+    int i = 0;
+    for (auto n = getHeadNode(); n != getTailNode(); i++, n++)
+    {
+        Edge* edge = getEdge(n->data.id, dest_node->data.id);
+        m_distance[i] = (edge) ? edge->cost : DBL_MAX;
+        m_found[i] = false;
+        m_next_idx[i] = (edge) ? dest_node_idx : -1;
+        m_indexed_node_lookup[i] = &(*n);
+    }
+
+    m_distance[dest_node_idx] = 0;
+    m_found[dest_node_idx] = true;
+    m_next_idx[dest_node_idx] = -1;
+    return true;
+}
+
+RoadMap::Node* RoadMap::getNearestNode(const Point2& p, int& node_idx)
+{
+    Node* node = nullptr;
+    double min_d2 = DBL_MAX;
+    node_idx = -1;
+    int i = 0;
+    for (auto n = getHeadNode(); n != getTailNode(); n++, i++)
+    {
+        double d2 = (p.x - n->data.x) * (p.x - n->data.x) + (p.y - n->data.y) * (p.y - n->data.y);
+        if (d2 < min_d2)
+        {
+            min_d2 = d2;
+            node_idx = i;
+            node = &(*n);
+        }
+    }
+    return node;
+}
+
+int RoadMap::choose_best_unvisited(const std::vector<double>& distance, const std::vector<bool>& found)
+{
+    int n = (int)distance.size();
+    double min_d = DBL_MAX;
+    int min_i = -1;
+    for (int i = 0; i < n; i++)
+    {
+        if (distance[i] < min_d && found[i] == false)
+        {
+            min_d = distance[i];
+            min_i = i;
+        }
+    }
+    return min_i;
+}
+
+
 } // End of 'dg'
