@@ -50,6 +50,23 @@ public:
         return pose_m;
     }
 
+    RoadMap::Node* findNearestNode(const Pose2& pose_m)
+    {
+        RoadMap::Node* node = nullptr;
+        double min_d2 = DBL_MAX;
+        for (auto n = m_map.getHeadNode(); n != m_map.getTailNode(); n++)
+        {
+            if (m_map.countEdges(n) == 0) continue;
+            double d2 = (pose_m.x - n->data.x)*(pose_m.x - n->data.x) + (pose_m.y - n->data.y)* (pose_m.y - n->data.y);
+            if (d2 < min_d2)
+            {
+                min_d2 = d2;
+                node = &(*n);
+            }
+        }
+        return node;
+    }
+
     std::vector<RoadMap::Node*> findNearNodes(const Pose2& pose_m, double search_radius)
     {
         std::vector<RoadMap::Node*> nodes;
@@ -73,6 +90,68 @@ public:
                 if ((dx * dx + dy * dy) < radius2) nodes.push_back(&(*n));
             }
         }
+        return nodes;
+    }
+
+    /** jylee - 2021.6.16 */
+    std::vector<RoadMap::Node*> findConnectedNearNodes(RoadMap::Node* node, double search_radius)
+    {
+        std::vector<RoadMap::Node*> nodes;
+        if (node == nullptr) return nodes;
+
+        if (search_radius <= 0) search_radius = DBL_MAX;
+
+        std::vector<RoadMap::Node*> open;
+        std::vector<double> distance;
+
+        // initial
+        open.push_back(node);
+        distance.push_back(0);
+
+        while (1)
+        {
+            // popup best node from open list
+            double min_d = DBL_MAX;
+            RoadMap::Node* best_node = nullptr;
+            int best_k = -1;
+            for (int k = 0; k < (int)open.size(); k++)
+            {
+                if (distance[k] < min_d && distance[k] <= search_radius)
+                {
+                    min_d = distance[k];
+                    best_k = k;
+                    best_node = open[k];
+                }
+            }
+            if (best_k < 0) break;
+            open.erase(open.begin() + best_k);
+            distance.erase(distance.begin() + best_k);
+
+            // add best to node list
+            nodes.push_back(best_node);
+
+            // add descendants of best to open list
+            for (dg::RoadMap::EdgeItr edge_itr = m_map.getHeadEdge(best_node); edge_itr != m_map.getTailEdge(best_node); edge_itr++)
+            {
+                RoadMap::Node* candidate_node = edge_itr->to;
+                double candidate_distance = distance[best_k] + edge_itr->cost;
+                for (int k = 0; k < (int)open.size(); k++)
+                {
+                    if (candidate_node == open[k])
+                    {
+                        if (distance[best_k] + edge_itr->cost < distance[k]) distance[k] = distance[best_k] + edge_itr->cost;
+                        candidate_node = nullptr;
+                        break;
+                    }
+                }
+                if (candidate_node)
+                {
+                    open.push_back(candidate_node);
+                    distance.push_back(candidate_distance);
+                }
+            }
+        }
+
         return nodes;
     }
 

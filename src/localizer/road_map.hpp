@@ -270,7 +270,11 @@ protected:
     std::vector<Node*> m_indexed_node_lookup;
     bool initRoutingVariables(Node* dest_node, int dest_node_idx);
     Node* getNearestNode(const Point2& p, int& node_idx);
+    int getNodeIndex(ID node_id);
     int choose_best_unvisited(const std::vector<double>& distance, const std::vector<bool>& found);
+    Point2 getNearestEdgePoint(const Point2& p, ID& node1, ID& node2);
+    static std::pair<double, Point2> calcDist2FromLineSeg(const Point2& from, const Point2& to, const Point2& p);
+
 };
 
 /** A map visualizer for dg::RoadMap */

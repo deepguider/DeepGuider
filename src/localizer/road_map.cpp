@@ -152,11 +152,37 @@ bool RoadMap::getPath(Point2 p1, Point2 p2, Path& path)
     // reset path
     path.pts.clear();
 
-    // get nearest node
-    int from_idx, to_idx;
-    Node* from = getNearestNode(p1, from_idx);
-    Node* to = getNearestNode(p2, to_idx);
+    // get nearest edge
+    ID p1_nid1, p1_nid2;
+    Point2 p1_ep = getNearestEdgePoint(p1, p1_nid1, p1_nid2);
+    if (p1_nid1 == 0 || p1_nid2 == 0) return false;
+    Edge* edge1 = getEdge(p1_nid1, p1_nid2);
+
+    ID p2_nid1, p2_nid2;
+    Point2 p2_ep = getNearestEdgePoint(p2, p2_nid1, p2_nid2);
+    if (p2_nid1 == 0 || p2_nid2 == 0) return false;
+    Edge* edge2 = getEdge(p2_nid1, p2_nid2);
+
+    // select close node on each edge as the start & end path node
+    Node* from = getNode(p1_nid1);
+    double d1 = norm(p1_ep - from->data);
+    if (d1 > edge1->cost / 2)
+    {
+        from = getNode(p1_nid2);
+        d1 = edge1->cost - d1;
+    }
+
+    Node* to = getNode(p2_nid1);
+    double d2 = norm(p2_ep - to->data);
+    if (d2 > edge2->cost / 2)
+    {
+        to = getNode(p2_nid2);
+        d2 = edge2->cost - d2;
+    }
+
     if (from == nullptr || to == nullptr) return false;
+    int from_idx = getNodeIndex(from->data.id);
+    int to_idx = getNodeIndex(to->data.id);
 
     // initlize temporal variables
     initRoutingVariables(to, to_idx);
@@ -196,6 +222,17 @@ bool RoadMap::getPath(Point2 p1, Point2 p2, Path& path)
         if (idx == to_idx) break;
     }
     if (path.pts.front().node_id != from->data.id || path.pts.back().node_id != to->data.id) return false;
+
+    // remove abnormal turn-around path
+    if ((int)path.pts.size() > 1 && d1 > DBL_EPSILON)
+    {
+        if (path.pts[1].node_id == p1_nid1 || path.pts[1].node_id == p1_nid2) path.pts.erase(path.pts.begin());            
+    }
+    if ((int)path.pts.size() > 1 && d2 > DBL_EPSILON)
+    {
+        int npath = (int)path.pts.size();
+        if (path.pts[npath - 2].node_id == p2_nid1 || path.pts[npath - 2].node_id == p2_nid2) path.pts.pop_back();
+    }
 
     return true;
 }
@@ -246,6 +283,16 @@ RoadMap::Node* RoadMap::getNearestNode(const Point2& p, int& node_idx)
     return node;
 }
 
+int RoadMap::getNodeIndex(ID node_id)
+{
+    int idx = 0;
+    for (auto n = getHeadNode(); n != getTailNode(); n++, idx++)
+    {
+        if (n->data.id == node_id) return idx;
+    }
+    return -1;
+}
+
 int RoadMap::choose_best_unvisited(const std::vector<double>& distance, const std::vector<bool>& found)
 {
     int n = (int)distance.size();
@@ -262,5 +309,46 @@ int RoadMap::choose_best_unvisited(const std::vector<double>& distance, const st
     return min_i;
 }
 
+Point2 RoadMap::getNearestEdgePoint(const Point2& p, ID& node1, ID& node2)
+{
+    std::pair<double, Point2> min_dist2 = std::make_pair(DBL_MAX, Point2());
+    Point2 nearest_p;
+    node1 = 0;
+    node2 = 0;
+    for (auto from = getHeadNodeConst(); from != getTailNodeConst(); from++)
+    {
+        for (auto edge = getHeadEdgeConst(from); edge != getTailEdgeConst(from); edge++)
+        {
+            const RoadMap::Node* to = edge->to;
+            if (to == nullptr) continue;
+            auto dist2 = calcDist2FromLineSeg(from->data, to->data, p);
+            if (dist2.first < min_dist2.first)
+            {
+                min_dist2 = dist2;
+                node1 = from->data.id;
+                node2 = to->data.id;
+                nearest_p = dist2.second;
+            }
+        }
+    }
+    return nearest_p;
+}
+
+std::pair<double, Point2> RoadMap::calcDist2FromLineSeg(const Point2& from, const Point2& to, const Point2& p)
+{
+    // Ref. https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
+    Point2 delta = to - from;
+    double l2 = delta.x * delta.x + delta.y * delta.y;
+    if (l2 < DBL_EPSILON)
+    {
+        Point2 dp = p - from;
+        return std::make_pair(dp.x * dp.x + dp.y * dp.y, from);
+    }
+    double t = std::max(0., std::min(1., (p - from).dot(to - from) / l2));
+    Point2 projection = from + t * (to - from);
+    Point2 dp = p - projection;
+    double dist2 = dp.x * dp.x + dp.y * dp.y;
+    return std::make_pair(dist2, projection);
+}
 
 } // End of 'dg'
