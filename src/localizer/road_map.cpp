@@ -211,7 +211,7 @@ bool RoadMap::getPath(Point2 p1, Point2 p2, Path& path)
             }
         }
     }
-    if (!m_found[from_idx] || m_next_idx[from_idx] < 0) return false;
+    if (!m_found[from_idx]) return false;
 
     // build path
     for (auto idx = from_idx; idx != -1; idx = m_next_idx[idx])
@@ -223,7 +223,7 @@ bool RoadMap::getPath(Point2 p1, Point2 p2, Path& path)
     }
     if (path.pts.front().node_id != from->data.id || path.pts.back().node_id != to->data.id) return false;
 
-    // remove abnormal turn-around path
+    // check & remove abnormal turn-around path (in case projected edge point is not node point)
     if ((int)path.pts.size() > 1 && d1 > DBL_EPSILON)
     {
         if (path.pts[1].node_id == p1_nid1 || path.pts[1].node_id == p1_nid2) path.pts.erase(path.pts.begin());            
@@ -233,6 +233,111 @@ bool RoadMap::getPath(Point2 p1, Point2 p2, Path& path)
         int npath = (int)path.pts.size();
         if (path.pts[npath - 2].node_id == p2_nid1 || path.pts[npath - 2].node_id == p2_nid2) path.pts.pop_back();
     }
+
+    return true;
+}
+
+bool RoadMap::getRoadPath(Point2 p1, Point2 p2, RoadPath& path)
+{
+    // reset path
+    path.pts.clear();
+
+    // get nearest edge
+    ID p1_nid1, p1_nid2;
+    Point2 p1_ep = getNearestEdgePoint(p1, p1_nid1, p1_nid2);
+    if (p1_nid1 == 0 || p1_nid2 == 0) return false;
+    Edge* edge1 = getEdge(p1_nid1, p1_nid2);
+
+    ID p2_nid1, p2_nid2;
+    Point2 p2_ep = getNearestEdgePoint(p2, p2_nid1, p2_nid2);
+    if (p2_nid1 == 0 || p2_nid2 == 0) return false;
+    Edge* edge2 = getEdge(p2_nid1, p2_nid2);
+
+    // select close node on each edge as the start & end path node
+    Node* from = getNode(p1_nid1);
+    double ed1 = norm(p1_ep - from->data);
+    if (ed1 > edge1->cost / 2)
+    {
+        from = getNode(p1_nid2);
+        ed1 = norm(p1_ep - from->data);
+    }
+
+    Node* to = getNode(p2_nid1);
+    double ed2 = norm(p2_ep - to->data);
+    if (ed2 > edge2->cost / 2)
+    {
+        to = getNode(p2_nid2);
+        ed2 = norm(p2_ep - to->data);
+    }
+
+    if (from == nullptr || to == nullptr) return false;
+    int from_idx = getNodeIndex(from->data.id);
+    int to_idx = getNodeIndex(to->data.id);
+
+    // when p1 and p2 are projected on the same edge
+    if (p1_nid1 == p2_nid1 && p1_nid2 == p2_nid2 || p1_nid1 == p2_nid2 && p1_nid2 == p2_nid1)
+    {
+        path.pts.push_back(Point2ID(0, p1));
+        path.pts.push_back(Point2ID(0, p2));
+
+        return true;
+    }
+
+    // initlize temporal variables
+    initRoutingVariables(to, to_idx);
+
+    // bread-first search
+    int nNodes = (int)countNodes();
+    while (!m_found[from_idx])
+    {
+        int best_ni = choose_best_unvisited(m_distance, m_found);
+        if (best_ni < 0) break;
+        m_found[best_ni] = true;
+        Node* best = m_indexed_node_lookup[best_ni];
+        if (best == nullptr) break;
+
+        int j = 0;
+        for (auto n = getHeadNode(); n != getTailNode(); j++, n++)
+        {
+            if (m_found[j] == false)
+            {
+                Edge* edge = getEdge(n->data.id, best->data.id);
+                if (edge && (m_distance[best_ni] + edge->cost < m_distance[j]))
+                {
+                    m_distance[j] = m_distance[best_ni] + edge->cost;
+                    m_next_idx[j] = best_ni;
+                }
+            }
+        }
+    }
+    if (!m_found[from_idx]) return false;
+
+    // build path
+    for (auto idx = from_idx; idx != -1; idx = m_next_idx[idx])
+    {
+        Node* node = m_indexed_node_lookup[idx];
+        if (node == nullptr) break;
+        path.pts.push_back(node->data);
+        if (idx == to_idx) break;
+    }
+    if (path.pts.front().id != from->data.id || path.pts.back().id != to->data.id) return false;
+
+    // check & remove abnormal turn-around path (in case projected edge point is not node point)
+    if ((int)path.pts.size() > 1 && ed1 > DBL_EPSILON)
+    {
+        if (path.pts[1].id == p1_nid1 || path.pts[1].id == p1_nid2) path.pts.erase(path.pts.begin());
+    }
+    if ((int)path.pts.size() > 1 && ed2 > DBL_EPSILON)
+    {
+        int npath = (int)path.pts.size();
+        if (path.pts[npath - 2].id == p2_nid1 || path.pts[npath - 2].id == p2_nid2) path.pts.pop_back();
+    }
+
+    // add start_pos and dest_pos in path (in case they are not node point)
+    double nd1 = norm(p1 - from->data);
+    double nd2 = norm(p2 - to->data);
+    if (nd1 > DBL_EPSILON) path.pts.insert(path.pts.begin(), Point2ID(0, p1));
+    if (nd2 > DBL_EPSILON) path.pts.push_back(Point2ID(0, p2));
 
     return true;
 }
@@ -261,6 +366,9 @@ bool RoadMap::initRoutingVariables(Node* dest_node, int dest_node_idx)
     m_distance[dest_node_idx] = 0;
     m_found[dest_node_idx] = true;
     m_next_idx[dest_node_idx] = -1;
+
+    m_dest_node = dest_node;
+
     return true;
 }
 

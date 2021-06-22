@@ -5,6 +5,7 @@
 #include "core/path.hpp"
 #include "localizer/directed_graph.hpp"
 #include "localizer/graph_painter.hpp"
+#include "localizer/road_path.hpp"
 #include <map>
 
 namespace dg
@@ -216,6 +217,15 @@ public:
      * @return True if successful (false if failed)
      */
     bool getPath(Point2 from, Point2 to, Path& path);
+
+    /**
+     * Find a shortest road path using Dijkstra's shortest path algorithm (time complexity: O(|N|^2))
+     * @param from Start position
+     * @param to Destination position
+     * @output path The found road path
+     * @return True if successful (false if failed)
+     */
+    bool getRoadPath(Point2 from, Point2 to, RoadPath& path);
 
     /**
      * Remove a node (time complexity: O(|V| |E|))<br>
