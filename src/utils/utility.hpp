@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <assert.h>
 
 namespace dg
 {
@@ -206,14 +207,14 @@ namespace dg
 
     template<class T>
     RingBufferNumeric<T>::RingBufferNumeric()
-        : RingBuffer()
+        : RingBuffer<T>()
     {
         m_sum = 0;
     }
 
     template<class T>
     RingBufferNumeric<T>::RingBufferNumeric(int size)
-        : RingBuffer(size)
+        : RingBuffer<T>(size)
     {
         m_sum = 0;
     }
@@ -221,9 +222,9 @@ namespace dg
     template<class T>
     void RingBufferNumeric<T>::push_back(const T& data)
     {
-        if (m_data_count == m_buf_size) m_sum -= m_buf[m_next_index];
+        if (RingBuffer<T>::m_data_count == RingBuffer<T>::m_buf_size) m_sum -= RingBuffer<T>::m_buf[RingBuffer<T>::m_next_index];
         m_sum += data;
-        RingBuffer::push_back(data);
+        RingBuffer<T>::push_back(data);
     }
 
     template<class T>
@@ -235,8 +236,8 @@ namespace dg
     template<class T>
     double RingBufferNumeric<T>::average()
     {
-        if (m_data_count > 0)
-            return m_sum / (double)m_data_count;
+        if (RingBuffer<T>::m_data_count > 0)
+            return m_sum / (double)RingBuffer<T>::m_data_count;
         else
             return 0;
     }
