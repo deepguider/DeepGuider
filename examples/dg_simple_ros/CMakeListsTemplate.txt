@@ -52,7 +52,7 @@ catkin_package(
 
 include_directories( ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${SRCDIR} ${RAPIDJSON_INC} ${PYTHON_INCLUDE_DIRS} ${DGDIR}/examples/dg_simple)
 
-file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/exploration/*.cpp ${SRCDIR}/guidance/*.cpp ${SRCDIR}/localizer/*.cpp ${SRCDIR}/intersection_cls/*.cpp ${SRCDIR}/logo_recog/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/ocr_recog/*.cpp ${SRCDIR}/poi_recog/*.cpp ${SRCDIR}/road_recog/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp *.cpp)
+file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/exploration/*.cpp ${SRCDIR}/guidance/*.cpp ${SRCDIR}/localizer/*.cpp ${SRCDIR}/intersection_cls/*.cpp ${SRCDIR}/logo_recog/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/ocr_recog/*.cpp ${SRCDIR}/roadtheta/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp *.cpp)
 
 # dg_simple_ros
 add_executable(${PROJECT_NAME} src/dg_simple_ros.cpp ${SOURCES})

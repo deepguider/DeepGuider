@@ -124,7 +124,7 @@ int main()
     int rec_fps = 15;
     bool threaded_run = false;
 
-    int video_sel = 1;
+    int video_sel = 0;
     const char* video_path[] = {
         "video/191115_ETRI.avi",
         "video/etri_cart_200219_15h01m_2fps.avi",
