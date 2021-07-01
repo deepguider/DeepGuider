@@ -79,7 +79,7 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_server_ip = "127.0.0.1";            // default: 127.0.0.1 (localhost)
     //m_server_ip = "129.254.81.204";          // default: 127.0.0.1 (localhost)
     m_threaded_run_python = true;
-    m_srcdir = "/work/deepguider/src";      // system path of deepguider/src (required for python embedding)
+    m_srcdir = "/home/dgtest/deepguider/src";      // system path of deepguider/src (required for python embedding)
 
     m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
     m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);

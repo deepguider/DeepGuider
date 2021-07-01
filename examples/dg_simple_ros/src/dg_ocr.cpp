@@ -29,7 +29,7 @@ protected:
     bool loadConfig(std::string config_file);
 
     dg::OCRRecognizer m_recognizer;
-    std::string m_srcdir = "/work/deepguider/src";
+    std::string m_srcdir = "/home/dgtest/deepguider/src";
     bool m_data_logging = false;
     cx::VideoWriter m_video_cam;
     std::ofstream m_log;
@@ -83,7 +83,7 @@ bool DGRosRecognizer::loadConfig(std::string config_file)
 DGRosRecognizer::DGRosRecognizer(ros::NodeHandle& nh) : nh_dg(nh)
 {
     // overwrite configuable parameters of base class
-    m_srcdir = "/work/deepguider/src";   // system path of deepguider/src (required for python embedding)
+    m_srcdir = "/home/dgtest/deepguider/src";   // system path of deepguider/src (required for python embedding)
 
     // Read ros-specific parameters
     m_wait_sec = 0.01;

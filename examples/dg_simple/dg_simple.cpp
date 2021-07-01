@@ -426,6 +426,10 @@ bool DeepGuider::initializeDefaultMap()
     m_localizer.setParamMotionNoise(0.1, 0.1);
     m_localizer.setParamGPSNoise(0.5);
     m_localizer.setParamValue("offset_gps", {1., 0.});
+    m_localizer.setParamValue("gps_reverse_vel", -1);
+    m_localizer.setParamValue("compass_as_gyro", true);
+    m_localizer.setParamValue("search_turn_weight", 100);
+    m_localizer.setParamValue("track_near_radius", 20);
     VVS_CHECK_TRUE(m_localizer.setReference(m_map_ref_point));
     VVS_CHECK_TRUE(m_localizer.loadMap(map));
     m_localizer_mutex.unlock();

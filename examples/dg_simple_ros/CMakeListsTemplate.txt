@@ -35,6 +35,8 @@ add_message_files(
   FILES
   ocr.msg
   ocr_info.msg
+  guidance.msg
+  action.msg  
 )
 
 ## Generate added messages and services with any dependencies listed here
