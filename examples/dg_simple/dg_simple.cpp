@@ -48,6 +48,7 @@ protected:
     bool m_enable_ocr = false;
     bool m_enable_intersection = false;
     bool m_enable_exploration = false;
+    bool m_enable_mapserver = true;
 
     std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
     //std::string m_server_ip = "129.254.81.204";      // default: 127.0.0.1 (localhost)
@@ -237,6 +238,7 @@ bool DeepGuider::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "enable_poi_ocr", m_enable_ocr);
     LOAD_PARAM_VALUE(fn, "enable_roadtheta", m_enable_roadtheta);
     LOAD_PARAM_VALUE(fn, "enable_exploration", m_enable_exploration);
+    LOAD_PARAM_VALUE(fn, "enable_mapserver", m_enable_mapserver);
 
     LOAD_PARAM_VALUE(fn, "server_ip", m_server_ip);
     LOAD_PARAM_VALUE(fn, "threaded_run_python", m_threaded_run_python);
@@ -277,9 +279,9 @@ bool DeepGuider::initialize(std::string config_file)
     if(enable_python) printf("\tPython environment initialized!\n");
 
     // initialize map manager
-    m_map_manager.setIP(m_server_ip);
-    if (!m_map_manager.initialize()) return false;
-    printf("\tMapManager initialized!\n");
+    if (m_enable_mapserver) m_map_manager.setIP(m_server_ip);
+    if (m_enable_mapserver && !m_map_manager.initialize()) return false;
+    if (m_enable_mapserver) printf("\tMapManager initialized!\n");
 
     // initialize VPS
     std::string module_path = m_srcdir + "/vps";
@@ -305,8 +307,15 @@ bool DeepGuider::initialize(std::string config_file)
     if (m_enable_exploration && !m_active_nav.initialize()) return false;
     if (m_enable_exploration) printf("\tExploation initialized!\n");
 
+    // initialize localizer
+    m_localizer.setParamMotionNoise(0.1, 0.1);
+    m_localizer.setParamGPSNoise(0.5);
+    m_localizer.setParamValue("offset_gps", { 1., 0. });
+    m_localizer.setReference(m_map_ref_point);
+    printf("\tLocalizer initialized!\n");
+
     // initialize default map
-    VVS_CHECK_TRUE(initializeDefaultMap());
+    if (m_enable_mapserver) VVS_CHECK_TRUE(initializeDefaultMap());
 
     // load background GUI image
     m_map_image = cv::imread(m_map_image_path);
@@ -329,7 +338,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_map_info = m_painter.getCanvasInfo(m_map_image);
 
     // draw topology of default map
-    dg::Map& map = m_map_manager.getMap();
+    dg::Map& map = (m_enable_mapserver) ? m_map_manager.getMap() : Map();
     VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, m_map_info, map));
 
     // load icon images
@@ -423,14 +432,6 @@ bool DeepGuider::initializeDefaultMap()
 
     // localizer: set default map to localizer
     m_localizer_mutex.lock();
-    m_localizer.setParamMotionNoise(0.1, 0.1);
-    m_localizer.setParamGPSNoise(0.5);
-    m_localizer.setParamValue("offset_gps", {1., 0.});
-    m_localizer.setParamValue("gps_reverse_vel", -1);
-    m_localizer.setParamValue("compass_as_gyro", true);
-    m_localizer.setParamValue("search_turn_weight", 100);
-    m_localizer.setParamValue("track_near_radius", 20);
-    VVS_CHECK_TRUE(m_localizer.setReference(m_map_ref_point));
     VVS_CHECK_TRUE(m_localizer.loadMap(map));
     m_localizer_mutex.unlock();
     printf("\tDefault map is appyed to Localizer!\n");
@@ -498,6 +499,17 @@ int DeepGuider::run()
     // run iteration
     int maxItr = (int)gps_data.size();
     int itr = 300;
+
+    // skip video frames captured before gps start time
+    if (video_data.isOpened())
+    {
+        const dg::Timestamp first_time = gps_data[0].first;
+        const dg::Timestamp start_time = gps_data[itr].first;
+        double fps = video_data.get(cv::VideoCaptureProperties::CAP_PROP_FPS);
+        int frame_i = (int)((start_time - first_time) * fps / video_time_scale);
+        video_data.set(cv::VideoCaptureProperties::CAP_PROP_POS_FRAMES, frame_i);
+    }
+
     while (itr < maxItr)
     {
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
@@ -518,6 +530,7 @@ int DeepGuider::run()
             if (video_image.empty()) break;
             video_time = video_time_scale * video_data.get(cv::VideoCaptureProperties::CAP_PROP_POS_MSEC) / 1000 + video_time_offset;
         }
+
         m_cam_mutex.lock();
         m_cam_image = video_image;
         m_cam_capture_time = video_time;

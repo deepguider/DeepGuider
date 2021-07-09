@@ -381,7 +381,7 @@ void MapXYToLatLon (double x, double y, double lambda0, double& phi, double& lam
 //   The UTM zone used for calculating the values of x and y.
 int LatLonToUTMXY (double lat, double lon, int zone, double& x, double& y) {
   if ( (zone < 1) || (zone > 60) )
-    zone = floor((lon + 180.0) / 6) + 1;
+    zone = (int)floor((lon + 180.0) / 6) + 1;
   
   MapLatLonToXY (DegToRad(lat), DegToRad(lon), UTMCentralMeridian(zone), x, y);
   

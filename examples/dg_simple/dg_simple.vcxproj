@@ -97,6 +97,7 @@
     <ClCompile Include="..\..\src\localizer\road_map.cpp" />
     <ClCompile Include="..\..\src\localizer\utm_converter.cpp" />
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
+    <ClCompile Include="..\..\src\roadtheta\roadtheta.cpp" />
     <ClCompile Include="..\..\src\utils\python_embedding.cpp" />
     <ClCompile Include="dg_simple.cpp" />
   </ItemGroup>
