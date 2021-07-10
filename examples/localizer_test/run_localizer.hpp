@@ -93,8 +93,10 @@ struct MapGUIProp
 public:
     string      image_file;
     cv::Point2d image_scale;
-    dg::LatLon  origin_latlon;
-    cv::Point2d origin_px;
+    double      image_rotation = 0; // radian
+    dg::LatLon  origin_latlon;      // origin of UTM
+    cv::Point2d origin_px;          // pixel coordinte of UTM origin at map image
+    double      map_radius;         // topomap coverage from the origin (unit: meter)
     cv::Point   grid_unit_pos;
     string      map_file;
     int         wnd_flag = cv::WindowFlags::WINDOW_AUTOSIZE;
@@ -249,6 +251,7 @@ int runLocalizerReal(const MapGUIProp& gui, const string& localizer_name, const 
     // Prepare a painter for visualization
     dg::RoadPainter painter;
     painter.configCanvas(gui.origin_px, gui.image_scale, bg_image.size(), 0, 0);
+    painter.setImageRotation(gui.image_rotation);
     painter.drawGrid(bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, gui.grid_unit_pos);
     painter.drawOrigin(bg_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
     painter.setParamValue("node_radius", 3);
@@ -263,6 +266,7 @@ int runLocalizerReal(const MapGUIProp& gui, const string& localizer_name, const 
     if (gui.zoom_level > 0)
     {
         zoom_painter.configCanvas(gui.origin_px * gui.zoom_level, gui.image_scale * gui.zoom_level, zoom_bg_image.size(), 0, 0);
+        zoom_painter.setImageRotation(gui.image_rotation);
         zoom_painter.drawGrid(zoom_bg_image, cv::Point2d(10, 10), cv::Vec3b(200, 200, 200), 1, 0);
         zoom_painter.drawGrid(zoom_bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 3, 0);
         zoom_painter.drawOrigin(zoom_bg_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
@@ -302,12 +306,15 @@ int runLocalizer()
 {
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
-    ETRI.image_file = "data/ETRI/NaverMap_ETRI_191127.png";
-    ETRI.image_scale = cv::Point2d(1.045, 1.045);
+    ETRI.image_file = "data/NaverMap_ETRI(Satellite)_191127.png";
+    ETRI.image_scale = cv::Point2d(1.039, 1.039);
+    ETRI.image_rotation = cx::cvtDeg2Rad(1.);
     ETRI.origin_latlon = dg::LatLon(36.383837659737, 127.367880828442);
-    ETRI.origin_px = cv::Point2d(344, 293);
+    ETRI.origin_px = cv::Point2d(347, 297);
+    ETRI.map_radius = 1500; // meter
     ETRI.grid_unit_pos = cv::Point(-215, -6);
-    ETRI.map_file = "data/ETRI/NaverLabs_ETRI_200929.csv";
+    ETRI.map_file = "data/ETRI/TopoMap_ETRI_210607_autocost.csv";
+    ETRI.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
     ETRI.video_resize = 0.25;
     ETRI.video_offset = cv::Point(270, 638);
     ETRI.zoom_level = 5;
@@ -315,12 +322,14 @@ int runLocalizer()
     ETRI.zoom_offset = cv::Point(620, 400);
 
     MapGUIProp COEX;
-    COEX.image_file = "data/COEX/NaverMap_COEX_200929.png";
-    COEX.image_scale = cv::Point2d(1.045, 1.045);
+    COEX.image_file = "data/NaverMap_COEX(Satellite)_200929.png";
+    COEX.image_scale = cv::Point2d(1.055, 1.055);
+    COEX.image_rotation = cx::cvtDeg2Rad(1.2);
     COEX.origin_latlon = dg::LatLon(37.506207, 127.05482);
-    COEX.origin_px = cv::Point2d(1073, 1011);
+    COEX.origin_px = cv::Point2d(1090, 1018);
+    COEX.map_radius = 1500; // meter
     COEX.grid_unit_pos = cv::Point(-230, -16);
-    COEX.map_file = "data/COEX/NaverLabs_COEX_200929.csv";
+    COEX.map_file = "data/COEX/TopoMap_COEX_210607.csv";
     COEX.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
     COEX.video_resize = 0.4;
     COEX.video_offset = cv::Point(10, 50);
@@ -351,9 +360,19 @@ int runLocalizer()
     // Run localizers
     const dg::Polar2 gps_offset(1, 0);
     const double ascen_noise = 1, novatel_noise = 1, motion_noise = 1;
+
+    //const string localizer = "EKFLocalizer";
+    //const string localizer = "EKFLocalizerHyperTan";
     const string localizer = "EKFLocalizerSinTrack";
 
-    return runLocalizerReal(ETRI, localizer, "data/ETRI/191115_ETRI_ascen_fix.csv", "", "data/ETRI/191115_ETRI_201126.txt", "data/ETRI/191115_ETRI.avi", ascen_noise, gps_offset, motion_noise, "", "", 200, { 1.75, -1 });
+    const string gps_file = "data/ETRI/191115_151140_ascen_fix.csv";
+    const string ahrs_file = "data/ETRI/191115_151140_imu_data.csv";
+    const string clue_file = "";
+    const string video_file = "data/ETRI/191115_151140_images.avi";
+
+    return runLocalizerReal(ETRI, localizer, gps_file, ahrs_file, clue_file, video_file, ascen_noise, gps_offset, motion_noise, "", "", 200, { 1.75, -1 });
+
+    //return runLocalizerReal(ETRI, localizer, "data/ETRI/191115_ETRI_ascen_fix.csv", "", "data/ETRI/191115_ETRI_201126.txt", "data/ETRI/191115_ETRI.avi", ascen_noise, gps_offset, motion_noise, "", "", 200, { 1.75, -1 });
     //return runLocalizerReal(ETRI, localizer, "data/ETRI/200901_ETRI_ascen_gps-fix.csv", "", "", "data/ETRI/200901_ETRI.mkv", ascen_noise, gps_offset, 1);
     //return runLocalizerReal(ETRI, localizer, "data/ETRI/200901_ETRI_ascen_gps-fix.csv", "data/ETRI/200901_ETRI_xsens_imu-imu-data.csv", "", "data/ETRI/200901_ETRI.mkv", ascen_noise, gps_offset, motion_noise);
     //return runLocalizerReal(ETRI, localizer, "data/ETRI/200901_DDMS_ascen_gps-fix.csv", "", "", "data/ETRI/200901_DDMS.mkv", ascen_noise, gps_offset, 1);

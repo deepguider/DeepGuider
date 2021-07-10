@@ -80,5 +80,11 @@
     <ClInclude Include="..\..\src\localizer\localizer_ekf_variants.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="localizer_runner.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="run_localizer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
