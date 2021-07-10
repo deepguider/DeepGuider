@@ -752,6 +752,12 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     cv::Point video_offset(20, image.rows - 322);
     if (!cam_image.empty())
     {
+        // adjust video scale not to outfit gui_image
+        if (video_offset.y + cam_image.rows * video_resize_scale > image.rows - win_delta)
+            video_resize_scale = (double)(image.rows - win_delta - video_offset.y) / cam_image.rows;
+        if (video_offset.x + cam_image.cols * video_resize_scale > image.cols - win_delta)
+            video_resize_scale = (double)(image.cols - win_delta - video_offset.x) / cam_image.cols;
+
         cv::resize(cam_image, video_image, cv::Size(), video_resize_scale*0.8, video_resize_scale);
         win_rect = cv::Rect(video_offset, video_offset + cv::Point(video_image.cols, video_image.rows));
         if (win_rect.br().x < image.cols && win_rect.br().y < image.rows) image(win_rect) = video_image * 1;
