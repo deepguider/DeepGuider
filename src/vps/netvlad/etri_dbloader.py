@@ -10,7 +10,6 @@ from collections import namedtuple
 from PIL import Image
 
 from sklearn.neighbors import NearestNeighbors
-import h5py
 
 from ipdb import set_trace as bp
 

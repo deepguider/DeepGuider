@@ -21,7 +21,7 @@ from PIL import Image
 from datetime import datetime
 import torchvision.datasets as datasets
 import torchvision.models as models
-import h5py
+#import h5py
 import faiss
 
 #from tensorboardX import SummaryWriter
@@ -213,7 +213,7 @@ class vps:
         if opt.mode.lower() != 'cluster':
             if opt.pooling.lower() == 'netvlad':
                 net_vlad = netvlad.NetVLAD(num_clusters=opt.num_clusters, dim=self.encoder_dim, vladv2=opt.vladv2)
-                if not opt.resume: 
+                if False and (not opt.resume):   # Do not use this in test/apply mode due to version mismatching between h5py and HDF5.
                     if opt.mode.lower() == 'train':
                         initcache = join(opt.dataPath, 'centroids', opt.arch + '_' + train_set.dataset + '_' + str(opt.num_clusters) +'_desc_cen.hdf5')
                     else:
