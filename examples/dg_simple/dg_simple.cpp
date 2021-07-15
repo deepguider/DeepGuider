@@ -338,8 +338,16 @@ bool DeepGuider::initialize(std::string config_file)
     m_map_info = m_painter.getCanvasInfo(m_map_image);
 
     // draw topology of default map
-    dg::Map& map = (m_enable_mapserver) ? m_map_manager.getMap() : Map();
-    VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, m_map_info, map));
+    if (m_enable_mapserver)
+    {
+        dg::Map& map = m_map_manager.getMap();
+        VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, m_map_info, map));
+    }
+    else
+    {
+        dg::Map map;
+        VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, m_map_info, map));
+    }
 
     // load icon images
     m_icon_forward = cv::imread("data/forward.png");
