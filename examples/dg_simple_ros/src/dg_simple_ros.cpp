@@ -17,14 +17,23 @@ public:
     DeepGuiderROS(ros::NodeHandle& nh);
     virtual ~DeepGuiderROS();
 
-    bool initialize();
+    bool initialize(std::string config_file);
     int run();
     bool runOnce(double timestamp);
 
 protected:
+    bool loadRosConfig(std::string config_file);
     double m_wait_sec = 0.01;
 
-    // DeepGuider Topic subscribers
+    // Topic names
+    std::string m_topic_cam;
+    std::string m_topic_gps;
+    std::string m_topic_dgps;
+    std::string m_topic_imu;
+    std::string m_topic_rgbd_image;
+    std::string m_topic_rgbd_depth;
+
+    // Topic subscribers (sub modules)
     ros::Subscriber sub_ocr;
     void callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg);
 
@@ -46,7 +55,6 @@ protected:
     void callbackIMU(const sensor_msgs::Imu::ConstPtr& msg);
 
     // Topic publishers
-    //ros::Publisher pub_image_gui;
     ros::Publisher pub_guide;
     ros::Publisher pub_path;
     void publishGuidance();
@@ -94,42 +102,63 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_recording_fps = 30;
     m_recording_header_name = "dg_ros_";
 
-    // Read ros-specific parameters
+    // ros-specific parameters
     m_wait_sec = 0.1;
-    nh_dg.param<double>("wait_sec", m_wait_sec, m_wait_sec);
-
-    // Initialize deepguider subscribers
-    sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
-
-    // Initialize sensor subscribers
-    sub_image_webcam = nh_dg.subscribe("/uvc_image_raw/compressed", 1, &DeepGuiderROS::callbackImageCompressed, this);
-    sub_gps_asen = nh_dg.subscribe("/asen_fix", 1, &DeepGuiderROS::callbackGPSAsen, this);
-    sub_gps_novatel = nh_dg.subscribe("/novatel_fix", 1, &DeepGuiderROS::callbackGPSNovatel, this);
-    sub_imu_xsense = nh_dg.subscribe("/imu/data", 1, &DeepGuiderROS::callbackIMU, this);
-    sub_image_realsense_image = nh_dg.subscribe("/camera/color/image_raw/compressed", 1, &DeepGuiderROS::callbackRealsenseImage, this);
-    sub_image_realsense_depth = nh_dg.subscribe("/camera/depth/image_rect_raw/compressed", 1, &DeepGuiderROS::callbackRealsenseDepth, this);
-
-    // sub_image_webcam = nh_dg.subscribe("/usb_cam_1/image_raw/compressed", 1, &DeepGuiderROS::callbackImageCompressed, this);
-    // sub_gps_asen = nh_dg.subscribe("/fix", 1, &DeepGuiderROS::callbackGPSAsen, this);
-    // sub_imu_xsense = nh_dg.subscribe("/gx5/imu/data", 1, &DeepGuiderROS::callbackIMU, this);
-    // sub_image_realsense_image = nh_dg.subscribe("/rs_front_camera1/color/image_raw/compressed", 1, &DeepGuiderROS::callbackRealsenseImage, this);
-    // sub_image_realsense_depth = nh_dg.subscribe("/rs_front_camera1/aligned_depth_to_color/image_raw/compressed", 1, &DeepGuiderROS::callbackRealsenseDepth, this);
-
-    // Initialize publishers
-    //pub_image_gui = nh_dg.advertise<sensor_msgs::CompressedImage>("dg_image_gui", 1, true);
-    pub_guide = nh_dg.advertise<dg_simple_ros::guidance>("guide", 1, true);
-    pub_path = nh_dg.advertise<nav_msgs::Path>("path", 1, true);
-     
 }
 
 DeepGuiderROS::~DeepGuiderROS()
 {    
 }
 
-bool DeepGuiderROS::initialize()
+bool DeepGuiderROS::loadRosConfig(std::string config_file)
 {
-    bool ok = DeepGuider::initialize("dg_ros.yml");
-    return ok;
+    if (config_file.empty())
+    {
+        return false;
+    }
+
+    cv::FileStorage fs(config_file, cv::FileStorage::READ);
+    if (!fs.isOpened())
+    {
+        return false;
+    }
+
+    cv::FileNode fn = fs.root();
+    LOAD_PARAM_VALUE(fn, "topic_cam", m_topic_cam);
+    LOAD_PARAM_VALUE(fn, "topic_gps", m_topic_gps);
+    LOAD_PARAM_VALUE(fn, "topic_dgps", m_topic_dgps);
+    LOAD_PARAM_VALUE(fn, "topic_imu", m_topic_imu);
+    LOAD_PARAM_VALUE(fn, "topic_rgbd_image", m_topic_rgbd_image);
+    LOAD_PARAM_VALUE(fn, "topic_rgbd_depth", m_topic_rgbd_depth);
+
+    return true;
+}
+
+bool DeepGuiderROS::initialize(std::string config_file)
+{
+    // Initialize main system
+    bool ok = DeepGuider::initialize(config_file);
+    if(!ok) return false;
+
+    // Read ROS config
+    loadRosConfig(config_file);
+
+    // Initialize module subscribers
+    sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
+
+    // Initialize sensor subscribers
+    if(!m_topic_cam.empty()) sub_image_webcam = nh_dg.subscribe(m_topic_cam, 1, &DeepGuiderROS::callbackImageCompressed, this);
+    if(!m_topic_gps.empty()) sub_gps_asen = nh_dg.subscribe(m_topic_gps, 1, &DeepGuiderROS::callbackGPSAsen, this);
+    if(!m_topic_dgps.empty()) sub_gps_novatel = nh_dg.subscribe(m_topic_dgps, 1, &DeepGuiderROS::callbackGPSNovatel, this);
+    if(!m_topic_imu.empty()) sub_imu_xsense = nh_dg.subscribe(m_topic_imu, 1, &DeepGuiderROS::callbackIMU, this);
+    if(!m_topic_rgbd_image.empty()) sub_image_realsense_image = nh_dg.subscribe(m_topic_rgbd_image, 1, &DeepGuiderROS::callbackRealsenseImage, this);
+    if(!m_topic_rgbd_depth.empty()) sub_image_realsense_depth = nh_dg.subscribe(m_topic_rgbd_depth, 1, &DeepGuiderROS::callbackRealsenseDepth, this);
+
+    // Initialize publishers
+    pub_guide = nh_dg.advertise<dg_simple_ros::guidance>("guide", 1, true);
+    pub_path = nh_dg.advertise<nav_msgs::Path>("path", 1, true);
+
+    return true;
 }
 
 int DeepGuiderROS::run()
@@ -502,7 +531,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "dg_simple_ros");
     ros::NodeHandle nh("~");
     DeepGuiderROS dg_node(nh);
-    if (!dg_node.initialize()) return -1;
+    if (!dg_node.initialize("dg_ros.yml")) return -1;
     dg_node.run();
     return 0;
 }

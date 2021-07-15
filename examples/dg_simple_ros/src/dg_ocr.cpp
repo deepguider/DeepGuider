@@ -21,7 +21,7 @@ public:
     DGRosRecognizer(ros::NodeHandle& nh);
     virtual ~DGRosRecognizer();
 
-    bool initialize();
+    bool initialize(std::string config_file);
     int run();
     bool runOnce(double timestamp);
 
@@ -43,6 +43,9 @@ protected:
     std::string m_winname;
 
     double m_wait_sec = 0.01;
+
+    // Topic names
+    std::string m_topic_cam;
 
     // Topic subscribers
     ros::Subscriber sub_image_webcam;
@@ -76,6 +79,9 @@ bool DGRosRecognizer::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "enable_data_logging", m_data_logging);
     LOAD_PARAM_VALUE(fn, "video_recording_fps", m_recording_fps);
 
+    // ros-specific parameters
+    LOAD_PARAM_VALUE(fn, "topic_cam", m_topic_cam);
+
     return true;
 }
 
@@ -87,13 +93,6 @@ DGRosRecognizer::DGRosRecognizer(ros::NodeHandle& nh) : nh_dg(nh)
 
     // Read ros-specific parameters
     m_wait_sec = 0.01;
-    nh_dg.param<double>("wait_sec", m_wait_sec, m_wait_sec);
-
-    // Initialize subscribers
-    sub_image_webcam = nh_dg.subscribe("/uvc_image_raw/compressed", 1, &DGRosRecognizer::callbackImageCompressed, this);
-
-    // Initialize publishers
-    m_publisher = nh_dg.advertise<dg_simple_ros::ocr_info>("output", 1, true);
 }
 
 DGRosRecognizer::~DGRosRecognizer()
@@ -102,14 +101,24 @@ DGRosRecognizer::~DGRosRecognizer()
     close_python_environment();
 }
 
-bool DGRosRecognizer::initialize()
+bool DGRosRecognizer::initialize(std::string config_file)
 {
     printf("Initialize %s...\n", m_recognizer.name());
 
     // load config
-    std::string config_file = "dg_ros.yml";
     bool ok = loadConfig(config_file);
     if(ok) printf("\tConfiguration %s loaded!\n", config_file.c_str());
+
+    // Initialize subscribers
+    if(m_topic_cam.empty())
+    {
+        printf("\tTopic name for camera input is not specified!\n");
+        return false;
+    }
+    sub_image_webcam = nh_dg.subscribe(m_topic_cam, 1, &DGRosRecognizer::callbackImageCompressed, this);
+
+    // Initialize publishers
+    m_publisher = nh_dg.advertise<dg_simple_ros::ocr_info>("output", 1, true);
 
     // initialize python
     bool threaded_run = false;
@@ -272,7 +281,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "dg_ocr");
     ros::NodeHandle nh("~");
     DGRosRecognizer dg_node(nh);
-    if (!dg_node.initialize()) return -1;
+    if (!dg_node.initialize("dg_ros.yml")) return -1;
     dg_node.run();
     return 0;
 }
