@@ -459,4 +459,14 @@ std::pair<double, Point2> RoadMap::calcDist2FromLineSeg(const Point2& from, cons
     return std::make_pair(dist2, projection);
 }
 
+void RoadMap::removeRoutingVariables()
+{
+    m_dest_node = nullptr;
+    m_distance.clear();
+    m_found.clear();
+    m_next_idx.clear();
+    m_indexed_node_lookup.clear();
+}
+
+
 } // End of 'dg'

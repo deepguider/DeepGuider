@@ -246,6 +246,7 @@ public:
      */
     bool removeAll()
     {
+        removeRoutingVariables();
         m_node_lookup.clear();
         return DirectedGraph<Point2ID, double>::removeAll();
     }
@@ -284,7 +285,7 @@ protected:
     int choose_best_unvisited(const std::vector<double>& distance, const std::vector<bool>& found);
     Point2 getNearestEdgePoint(const Point2& p, ID& node1, ID& node2);
     static std::pair<double, Point2> calcDist2FromLineSeg(const Point2& from, const Point2& to, const Point2& p);
-
+    void removeRoutingVariables();
 };
 
 /** A map visualizer for dg::RoadMap */
