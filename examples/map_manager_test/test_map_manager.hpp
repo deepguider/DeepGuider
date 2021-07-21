@@ -13,20 +13,20 @@ int testSimpleMapManager()
 	bool ok;
 
 	// Change the server IP address
-	manager.setIP("129.254.87.96");
+	manager.setIP("129.254.81.204");
 	std::string ip = manager.getIP();
 	manager.setIP("localhost");
 	ip = manager.getIP();
 		
 	// Get the path & map
 	dg::Path path;
-	ok = manager.getPath(36.381873, 127.36803, 36.384063, 127.374733, path);
+	ok = manager.getPath(36.381873, 127.36803, 0, 36.384063, 127.374733, 0, path);
 	if (ok)
 	{
 		VVS_CHECK_EQUL(manager.getPath().pts.size(), 37);
 		VVS_CHECK_EQUL(manager.getMap().nodes.size(), 236);
 	}
-	ok = manager.getPath_expansion(36.382423, 127.367433, 36.379444, 127.378857, path);
+	ok = manager.getPath_expansion(36.382423, 127.367433, 0, 36.379444, 127.378857, 0, path);
 	if (ok)
 	{
 		VVS_CHECK_EQUL(manager.getPath().pts.size(), 65);
@@ -67,10 +67,10 @@ int testSimpleMapManager()
 	//	VVS_CHECK_EQUL(poi_vec.size(), 86);
 	poi_vec = manager.getPOI(16099168);
 	VVS_CHECK_EQUL(poi_vec[0].lat, 36.378127999999997);
-	std::vector<dg::POI> pois = manager.getPOI("·çÀÌ±î½ºÅÚÀ¯¼ºÁ¡");
-	pois = manager.getPOI("¿ì¼ºÀÌºñ¿¡½º", dg::LatLon(36.361303, 127.33648), 100.0);
-	pois = manager.getPOI_sorting("·çÀÌ±î½ºÅÚÀ¯¼ºÁ¡", dg::LatLon(36.384063, 127.374733));
-	pois = manager.getPOI_sorting("¿ì¼ºÀÌºñ¿¡½º", dg::LatLon(36.361303, 127.33648), 100.0, dg::LatLon(36.384063, 127.374733));
+	std::vector<dg::POI> pois = manager.getPOI("ï¿½ï¿½ï¿½Ì±î½ºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
+	pois = manager.getPOI("ï¿½ì¼ºï¿½Ìºñ¿¡½ï¿½", dg::LatLon(36.361303, 127.33648), 100.0);
+	pois = manager.getPOI_sorting("ï¿½ï¿½ï¿½Ì±î½ºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½", dg::LatLon(36.384063, 127.374733));
+	pois = manager.getPOI_sorting("ï¿½ì¼ºï¿½Ìºñ¿¡½ï¿½", dg::LatLon(36.361303, 127.33648), 100.0, dg::LatLon(36.384063, 127.374733));
 	//std::vector<cv::Point2d> poiloc = manager.getPOIloc("UST");
 	
 	// Get the StreetView

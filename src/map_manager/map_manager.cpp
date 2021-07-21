@@ -691,10 +691,10 @@ std::vector<Node> MapManager::getMap_junction(LatLon cur_latlon, int top_n)
 	return node_vec;
 }
 
-bool MapManager::downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
+bool MapManager::downloadPath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, int num_paths)
 {
 	const std::string url_middle = ":20005/"; // routing server (paths)
-	std::string url = "http://" + m_ip + url_middle + std::to_string(start_lat) + "/" + std::to_string(start_lon) + "/" + std::to_string(dest_lat) + "/" + std::to_string(dest_lon) + "/" + std::to_string(num_paths);
+	std::string url = "http://" + m_ip + url_middle + std::to_string(start_lat) + "/" + std::to_string(start_lon) + "/" + std::to_string(start_floor) + "/" + std::to_string(dest_lat) + "/" + std::to_string(dest_lon) + "/" + std::to_string(dest_floor) + "/" + std::to_string(num_paths);
 
 	return query2server(url);
 }
@@ -794,7 +794,7 @@ bool MapManager::parsePath(const char* json)
 	return true;
 }
 
-bool MapManager::generatePath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
+bool MapManager::generatePath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, int num_paths)
 {
 	/*UTMConverter utm_conv;
 	Point2 start_metric = utm_conv.toMetric(LatLon(start_lat, start_lon));
@@ -812,12 +812,12 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	m_json = "";
 
 	// by communication
-	bool ok = downloadPath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
+	bool ok = downloadPath(start_lat, start_lon, start_floor, dest_lat, dest_lon, dest_floor, num_paths);
 	if (!ok) return false;
 	//decodeUni();
 	if (m_json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
 	{
-		ok = downloadPath(round(start_lat * 1000) / 1000, round(start_lon * 1000) / 1000, round(dest_lat * 1000) / 1000, round(dest_lon * 1000) / 1000, num_paths);
+		ok = downloadPath(round(start_lat * 1000) / 1000, round(start_lon * 1000) / 1000, start_floor, round(dest_lat * 1000) / 1000, round(dest_lon * 1000) / 1000, dest_floor, num_paths);
 		if (m_json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
 		{
 			std::cout << "Invalid latitude or longitude!!" << std::endl;
@@ -859,7 +859,7 @@ bool MapManager::generatePath(double start_lat, double start_lon, double dest_la
 	return true;
 }
 
-bool MapManager::generatePath_expansion(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths)
+bool MapManager::generatePath_expansion(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, int num_paths)
 {
 	/*UTMConverter utm_conv;
 	Point2 start_metric = utm_conv.toMetric(LatLon(start_lat, start_lon));
@@ -877,12 +877,12 @@ bool MapManager::generatePath_expansion(double start_lat, double start_lon, doub
 	m_json = "";
 
 	// by communication
-	bool ok = downloadPath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
+	bool ok = downloadPath(start_lat, start_lon, start_floor, dest_lat, dest_lon, dest_floor, num_paths);
 	if (!ok) return false;
 	//decodeUni();
 	if (m_json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
 	{
-		ok = downloadPath(round(start_lat * 1000) / 1000, round(start_lon * 1000) / 1000, round(dest_lat * 1000) / 1000, round(dest_lon * 1000) / 1000, num_paths);
+		ok = downloadPath(round(start_lat * 1000) / 1000, round(start_lon * 1000) / 1000, start_floor, round(dest_lat * 1000) / 1000, round(dest_lon * 1000) / 1000, dest_floor, num_paths);
 		if (m_json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n")
 		{
 			std::cout << "Invalid latitude or longitude!!" << std::endl;
@@ -929,9 +929,9 @@ Path MapManager::getPath()
 	return m_path;
 }
 
-bool MapManager::getPath(double start_lat, double start_lon, double dest_lat, double dest_lon, Path& path, int num_paths)
+bool MapManager::getPath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, Path& path, int num_paths)
 {
-	bool ok = generatePath(start_lat, start_lon, dest_lat, dest_lon, num_paths);
+	bool ok = generatePath(start_lat, start_lon, start_floor, dest_lat, dest_lon, dest_floor, num_paths);
 	if (!ok) return false;
 
 	path = getPath();
@@ -939,9 +939,9 @@ bool MapManager::getPath(double start_lat, double start_lon, double dest_lat, do
 	return true;
 }
 
-bool MapManager::getPath_expansion(double start_lat, double start_lon, double dest_lat, double dest_lon, Path& path, int num_paths)
+bool MapManager::getPath_expansion(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, Path& path, int num_paths)
 {
-	bool ok = generatePath_expansion(start_lat, start_lon, dest_lat, dest_lon, num_paths);
+	bool ok = generatePath_expansion(start_lat, start_lon, start_floor, dest_lat, dest_lon, dest_floor, num_paths);
 	if (!ok) return false;
 
 	path = getPath();

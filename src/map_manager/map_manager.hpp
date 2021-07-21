@@ -146,27 +146,31 @@ public:
 
 	/**
 	 * Get the path from the origin to the destination
-	 * @param start_lat The given origin latitude of this path (Unit: [deg])
-	 * @param start_lon The given origin longitude of this path (Unit: [deg])
-	 * @param dest_lat The given destination latitude of this path (Unit: [deg])
-	 * @param dest_lon The given destination longitude of this path (Unit: [deg])
-	 * @param path A reference to gotten path
-	 * @param num_paths The number of paths requested (default: 2)
-	 * @return True if successful (false if failed)
+	 * @param start_lat		The given origin latitude of this path (Unit: [deg])
+	 * @param start_lon 	The given origin longitude of this path (Unit: [deg])
+	 * @param start_floor	The given origin floor of this path  (Unit: [floor])
+	 * @param dest_lat		The given destination latitude of this path (Unit: [deg])
+	 * @param dest_lon		The given destination longitude of this path (Unit: [deg])
+	 * @param dest_floor	The given destination floor of this path  (Unit: [floor])
+	 * @param path			A reference to gotten path
+	 * @param num_paths		The number of paths requested (default: 2)
+	 * @return				True if successful (false if failed)
 	 */
-	bool getPath(double start_lat, double start_lon, double dest_lat, double dest_lon, Path& path, int num_paths = 2);
+	bool getPath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, Path& path, int num_paths = 2);
 
 	/**
 	 * Get the path(auto expansion topological map) from the origin to the destination
-	 * @param start_lat The given origin latitude of this path (Unit: [deg])
-	 * @param start_lon The given origin longitude of this path (Unit: [deg])
-	 * @param dest_lat The given destination latitude of this path (Unit: [deg])
-	 * @param dest_lon The given destination longitude of this path (Unit: [deg])
-	 * @param path A reference to gotten path
-	 * @param num_paths The number of paths requested (default: 2)
-	 * @return True if successful (false if failed)
+	 * @param start_lat		The given origin latitude of this path (Unit: [deg])
+	 * @param start_lon 	The given origin longitude of this path (Unit: [deg])
+	 * @param start_floor	The given origin floor of this path  (Unit: [floor])
+	 * @param dest_lat		The given destination latitude of this path (Unit: [deg])
+	 * @param dest_lon		The given destination longitude of this path (Unit: [deg])
+	 * @param dest_floor	The given destination floor of this path  (Unit: [floor])
+	 * @param path			A reference to gotten path
+	 * @param num_paths		The number of paths requested (default: 2)
+	 * @return				True if successful (false if failed)
 	 */
-	bool getPath_expansion(double start_lat, double start_lon, double dest_lat, double dest_lon, Path& path, int num_paths = 2);
+	bool getPath_expansion(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, Path& path, int num_paths = 2);
 	
 	/**
 	 * Read the path from the given file
@@ -406,14 +410,16 @@ protected:
 
 	/**
 	 * Request the path from the origin to the destination to server and receive response
-	 * @param start_lat The given origin latitude of this path (Unit: [deg])
-	 * @param start_lon The given origin longitude of this path (Unit: [deg])
-	 * @param dest_lat The given destination latitude of this path (Unit: [deg])
-	 * @param dest_lon The given destination longitude of this path (Unit: [deg])
-	 * @param num_paths The number of paths requested (default: 2)
-	 * @return True if successful (false if failed)
+	 * @param start_lat		The given origin latitude of this path (Unit: [deg])
+	 * @param start_lon 	The given origin longitude of this path (Unit: [deg])
+	 * @param start_floor	The given origin floor of this path  (Unit: [floor])
+	 * @param dest_lat		The given destination latitude of this path (Unit: [deg])
+	 * @param dest_lon		The given destination longitude of this path (Unit: [deg])
+	 * @param dest_floor	The given destination floor of this path  (Unit: [floor])
+	 * @param num_paths 	The number of paths requested (default: 2)
+	 * @return 				True if successful (false if failed)
 	 */
-	bool downloadPath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths = 2);
+	bool downloadPath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, int num_paths = 2);
 
 	/**
 	 * Parse the path response received
@@ -425,25 +431,29 @@ protected:
 
 	/**
 	 * Receive the topological map including an incomplete path and completely rebuild the path
-	 * @param start_lat The given origin latitude of this path (Unit: [deg])
-	 * @param start_lon The given origin longitude of this path (Unit: [deg])
-	 * @param dest_lat The given destination latitude of this path (Unit: [deg])
-	 * @param dest_lon The given destination longitude of this path (Unit: [deg])
-	 * @param num_paths The number of paths requested (default: 2)
-	 * @return True if successful (false if failed)
+	 * @param start_lat		The given origin latitude of this path (Unit: [deg])
+	 * @param start_lon 	The given origin longitude of this path (Unit: [deg])
+	 * @param start_floor	The given origin floor of this path  (Unit: [floor])
+	 * @param dest_lat		The given destination latitude of this path (Unit: [deg])
+	 * @param dest_lon		The given destination longitude of this path (Unit: [deg])
+	 * @param dest_floor	The given destination floor of this path  (Unit: [floor])
+	 * @param num_paths 	The number of paths requested (default: 2)
+	 * @return 				True if successful (false if failed)
 	 */
-	bool generatePath(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths = 2);
+	bool generatePath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, int num_paths = 2);
 
 	/**
 	 * Receive the topological map(auto expansion) including an incomplete path and completely rebuild the path
-	 * @param start_lat The given origin latitude of this path (Unit: [deg])
-	 * @param start_lon The given origin longitude of this path (Unit: [deg])
-	 * @param dest_lat The given destination latitude of this path (Unit: [deg])
-	 * @param dest_lon The given destination longitude of this path (Unit: [deg])
-	 * @param num_paths The number of paths requested (default: 2)
-	 * @return True if successful (false if failed)
+	 * @param start_lat		The given origin latitude of this path (Unit: [deg])
+	 * @param start_lon 	The given origin longitude of this path (Unit: [deg])
+	 * @param start_floor	The given origin floor of this path  (Unit: [floor])
+	 * @param dest_lat		The given destination latitude of this path (Unit: [deg])
+	 * @param dest_lon		The given destination longitude of this path (Unit: [deg])
+	 * @param dest_floor	The given destination floor of this path  (Unit: [floor])
+	 * @param num_paths 	The number of paths requested (default: 2)
+	 * @return 				True if successful (false if failed)
 	 */
-	bool generatePath_expansion(double start_lat, double start_lon, double dest_lat, double dest_lon, int num_paths = 2);
+	bool generatePath_expansion(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, int num_paths = 2);
 
 	/**
 	 * Request the POIs within a certain radius based on latitude and longitude to server and receive response

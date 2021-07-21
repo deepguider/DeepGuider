@@ -690,8 +690,10 @@ bool DeepGuider::updateDeepGuiderPath(dg::TopometricPose pose_topo, dg::LatLon g
 
     // generate path to destination
     dg::Path path;
+    int start_floor = 0;
+    int dest_floor = 0;
     m_map_mutex.lock();
-    bool ok = m_map_manager.getPath_expansion(pose_gps.lat, pose_gps.lon, gps_dest.lat, gps_dest.lon, path);
+    bool ok = m_map_manager.getPath_expansion(pose_gps.lat, pose_gps.lon, start_floor, gps_dest.lat, gps_dest.lon, dest_floor, path);
     m_map_mutex.unlock();
     path.start_pos = gps_start;
     path.dest_pos = gps_dest;
