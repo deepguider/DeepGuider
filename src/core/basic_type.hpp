@@ -27,9 +27,14 @@ typedef uint64_t ID;
  * @see Point2 2D vector in the rectangular coordinate
  * @see Polar2 2D vector in the polar coordinate
  */
-class LatLon
+struct LatLon
 {
-public:
+    /** Latitude (Unit: [deg]) */
+    double lat;
+
+    /** Longitude (Unit: [deg]) */
+    double lon;
+
     /**
      * The default constructor
      */
@@ -55,12 +60,6 @@ public:
      * @return The assigned instance
      */
     bool operator!=(const LatLon& rhs) const { return (lat != rhs.lat) || (lon != rhs.lon); }
-
-    /** Latitude (Unit: [deg]) */
-    double lat;
-
-    /** Longitude (Unit: [deg]) */
-    double lon;
 };
 
 /**
@@ -81,9 +80,14 @@ typedef cv::Point2d Point2;
  *
  * @see Point2 2D point in the rectangular coordinate
  */
-class Polar2
+struct Polar2
 {
-public:
+    /** The linear component (Unit: [m]) */
+    double lin;
+
+    /** The angular component (Unit: [rad]) */
+    double ang;
+
     /**
      * The default constructor
      */
@@ -109,12 +113,6 @@ public:
      * @return The assigned instance
      */
     bool operator!=(const Polar2& rhs) const { return (lin != rhs.lin) || (ang != rhs.ang); }
-
-    /** The linear component (Unit: [m]) */
-    double lin;
-
-    /** The angular component (Unit: [rad]) */
-    double ang;
 };
 
 /**
@@ -123,9 +121,11 @@ public:
  * 2D pose is represented in the rectangular coordinate.
  * Its member variables includes 2D position (x, y) and orientation (theta).
  */
-class Pose2 : public Point2
+struct Pose2 : public Point2
 {
-public:
+    /** Orientation (Unit: [rad]) */
+    double theta;
+
     /**
      * The default constructor
      */
@@ -165,9 +165,6 @@ public:
      * @return The assigned instance
      */
     bool operator!=(const Pose2& rhs) const { return (x != rhs.x) || (y != rhs.y) || (theta != rhs.theta); }
-
-    /** Orientation (Unit: [rad]) */
-    double theta;
 };
 
 /**
@@ -175,9 +172,11 @@ public:
  *
  * A 2D point is defined with the identifier (shortly ID).
  */
-class Point2ID : public Point2
+struct Point2ID : public Point2
 {
-public:
+    /** The given identifier */
+    ID id;
+
     /**
      * A constructor with ID assignment
      * @param _id The given ID
@@ -212,9 +211,36 @@ public:
      * @return Inequality of two operands
      */
     bool operator!=(const Point2ID& rhs) const { return (id != rhs.id); }
+};
 
-    /** The given identifier */
-    ID id;
+/**
+ * @brief 2D point with Timestamp
+ */
+struct Point2T : public Point2
+{
+    /** The timestamp */
+    Timestamp timestamp;
+
+    /** A default constructor */
+    Point2T() : Point2(0, 0), timestamp(0) { }
+
+    /** A constructor with a 2D point and timestamp */
+    Point2T(Point2 p, Timestamp t = 0) : Point2(p), timestamp(t) { }
+};
+
+/**
+ * @brief 2D pose with Timestamp
+ */
+struct Pose2T : public Pose2
+{
+    /** The timestamp */
+    Timestamp timestamp;
+
+    /** A default constructor */
+    Pose2T() : Pose2(0, 0), timestamp(0) { }
+
+    /** A constructor with a 2D point and timestamp */
+    Pose2T(Pose2 p, Timestamp t = 0) : Pose2(p), timestamp(t) { }
 };
 
 /**
@@ -225,29 +251,28 @@ public:
  * A member variable dist is the distance from the reference node, which presents more exact location of the robot on the edge.
  * Since the robot is not exactly on the edge, more information such as the heading angle and lateral offset is given for further usages.
  */
-class TopometricPose
+struct TopometricPose
 {
-public:
+    /** ID of the reference node (also defined as the previously departed node) */
+    ID node_id;
+
+    /** Index of the currently moving edge */
+    int edge_idx;
+
+    /** The traveled distance from the reference node (Unit: [m]) */
+    double dist;
+
+    /** The heading angle with respect to the direction of the currently moving edge (Unit: [rad]). CCW is positive. */
+    double head;
+
     /**
      * A constructor with assignment
      * @param _node_id ID of the reference node
      * @param _edge_idx Index of the currently moving edge
      * @param _dist The traveled distance from the reference node (Unit: [m])
-     * @param _head The heading angle with respect to the direction of the currently moving edge (Unit: [rad])
+     * @param _head The heading angle with respect to the direction of the currently moving edge (Unit: [rad]). CCW is positive.
      */
     TopometricPose(ID _node_id = 0, int _edge_idx = 0, double _dist = 0, double _head = 0) : node_id(_node_id), edge_idx(_edge_idx), dist(_dist), head(_head) { }
-
-    /** ID of the reference node (also defined as the previously departed node) */
-    ID node_id;
-
-    /** Index of the currently moving edge */
-	int edge_idx;
-
-    /** The traveled distance from the reference node (Unit: [m]) */
-    double dist;
-
-    /** The heading angle with respect to the direction of the currently moving edge (Unit: [rad]) */
-    double head;
 };
 
 } // End of 'dg'

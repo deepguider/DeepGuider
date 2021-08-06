@@ -2,7 +2,7 @@
 #define __TEST_LOCALIZER_GPS2UTM__
 
 #include "dg_core.hpp"
-#include "localizer/utm_converter.hpp"
+#include "utils/utm_converter.hpp"
 
 #ifndef UTM_H
     extern int  LatLonToUTMXY(double lat, double lon, int zone, double& x, double& y);

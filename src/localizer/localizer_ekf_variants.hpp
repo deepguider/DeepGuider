@@ -61,7 +61,7 @@ protected:
                 0, dt,
                 1, 0,
                 0, 1 - th * th);
-            if (!W.empty()) noise = W * m_noise_motion * W.t();
+            if (!W.empty()) noise = W * m_motion_noise * W.t();
             return func;
         }
         return EKFLocalizer::transitFunc(state, control, jacobian, noise);
@@ -119,7 +119,7 @@ public:
         return false;
     }
 
-    virtual std::vector<RoadMap::Node*> getSearchNodes() const
+    virtual std::vector<Node*> getSearchNodes() const
     {
         cv::AutoLock lock(m_mutex);
         return m_search_nodes;
@@ -128,12 +128,16 @@ public:
 protected:
     bool applyRoadMap()
     {
+        cv::AutoLock lock(m_mutex);
+        Map* map = getMap();
+        if (map == nullptr) return false;
+
         Pose2 pose_m = EKFLocalizer::getPose();
 
         if (m_pose_topo.node_id == 0 || m_track_converge_count < m_track_converge_threshold)
         {
             // Initialize (before convergence; same with 'TopoLocalizerProjNear')
-            m_search_nodes = findNearNodes(pose_m, m_search_radius);
+            m_search_nodes = map->getNearNodes(pose_m, m_search_radius);
             m_pose_topo = findNearestTopoPose(pose_m, m_search_nodes, m_search_turn_weight);
             if (m_pose_topo.node_id == m_track_prev.node_id && m_pose_topo.edge_idx == m_track_prev.edge_idx && m_pose_topo.dist > m_track_prev.dist) m_track_converge_count++;
             else m_track_converge_count = 0;
@@ -142,20 +146,20 @@ protected:
         {
             // Project only on the connected edges (after convergence)
             m_search_nodes.clear();
-            RoadMap::Node* refer_node = m_map.getNode(m_track_prev.node_id);
+            Node* refer_node = map->getNode(m_track_prev.node_id);
             m_search_nodes.push_back(refer_node);
-            RoadMap::Edge* track_edge = m_map.getEdge(refer_node, m_track_prev.edge_idx);
-            if (track_edge != nullptr && track_edge->to != nullptr)
+            Edge* track_edge = map->getEdge(refer_node, m_track_prev.edge_idx);
+            if (track_edge != nullptr)
             {
-                RoadMap::Node* arrival_node = track_edge->to;
-                Point2 d = arrival_node->data - refer_node->data;
+                Node* arrival_node = map->getConnectedNode(refer_node, track_edge->id);
+                Point2 d = *arrival_node - *refer_node;
                 double remain = /*track_edge->cost*/ sqrt(d.x * d.x + d.y * d.y) - m_track_prev.dist;
                 if (remain < m_track_transit_dist)
                 {
                     m_search_nodes.push_back(arrival_node);
                     if (m_track_near_radius > 0)
                     {
-                        std::vector<RoadMap::Node*> near_nodes = findNearNodes(arrival_node->data, m_track_near_radius);
+                        std::vector<Node*> near_nodes = map->getNearNodes(*arrival_node, m_track_near_radius);
                         for (auto n = near_nodes.begin(); n != near_nodes.end(); n++)
                         {
                             if (std::find(m_search_nodes.begin(), m_search_nodes.end(), *n) == m_search_nodes.end())
@@ -176,7 +180,7 @@ protected:
 
     TopometricPose m_pose_topo;
 
-    std::vector<RoadMap::Node*> m_search_nodes;
+    std::vector<Node*> m_search_nodes;
 
     double m_search_radius;
 

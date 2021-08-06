@@ -1,11 +1,204 @@
 #include "test_core_type.hpp"
-#include "test_localizer_graph.hpp"
 #include "test_localizer_gps2utm.hpp"
-#include "test_localizer_road.hpp"
-#include "test_localizer_simple.hpp"
+#include "test_localizer_map.hpp"
 #include "test_localizer_ekf.hpp"
 #include "test_localizer_etri.hpp"
-#include "run_localizer.hpp"
+#include "test_utility.hpp"
+#include "localizer_runner.hpp"
+
+int runLocalizerReal(const MapGUIProp& gui, const std::string& localizer_name, const std::string& gps_file, const std::string& ahrs_file = "", const std::string& clue_file = "", const std::string& video_file = "",
+    double gps_noise = 0.5, dg::Polar2 gps_offset = dg::Polar2(1, 0), double motion_noise_lin = 1, double motion_noise_deg = 10, const std::string& rec_traj_file = "", const std::string& rec_video_file = "", double skip_time = -1, cv::Vec2d video_time = cv::Vec2d(1, -1), int gps_smoothing_n = 0)
+{
+    // Prepare a localizer
+    cv::Ptr<dg::BaseLocalizer> localizer = LocalizerRunner::getLocalizer(localizer_name);
+    if (localizer.empty()) return -1;
+    if (!localizer->setParamMotionNoise(motion_noise_lin, motion_noise_deg)) return -1;
+    if (!localizer->setParamGPSNoise(gps_noise)) return -1;
+    if (!localizer->setParamGPSOffset(gps_offset.lin, gps_offset.ang)) return -1;
+    if (!localizer->setParamValue("gps_reverse_vel", -1)) return -1;
+    localizer->setParamValue("search_turn_weight", 100);
+    localizer->setParamValue("track_near_radius", 20);
+    localizer->setParamValue("enable_path_projection", true);
+    localizer->setParamValue("enable_map_projection", false);
+
+    // Prepare a map if given
+    dg::Map map;
+    map.setReference(gui.origin_latlon);
+    if (!gui.map_file.empty())
+    {
+        if (!map.load(gui.map_file.c_str())) return -1;
+    }
+
+    // Read GPS, AHRS, and location clue data
+    cx::CSVReader::Double2D gps_data = readROSGPSFix(gps_file, gui.origin_latlon);
+    if (gps_data.empty()) return -1;
+    if (gps_smoothing_n > 0)
+    {
+        std::vector<std::vector<double>> tmp = gps_data;
+        for (int k = 0; k < gps_smoothing_n; k++)
+        {
+            int n = (int)gps_data.size();
+            for (int i = 1; i < n - 1; i++)
+            {
+                tmp[i][1] = (2 * gps_data[i][1] + gps_data[i - 1][1] + gps_data[i + 1][1]) / 4;
+                tmp[i][2] = (2 * gps_data[i][2] + gps_data[i - 1][2] + gps_data[i + 1][2]) / 4;
+            }
+            tmp[0][1] = (1.5 * gps_data[0][1] + 2 * gps_data[1][1] - gps_data[2][1]) / 2.5;
+            tmp[0][2] = (1.5 * gps_data[0][2] + 2 * gps_data[1][2] - gps_data[2][2]) / 2.5;
+            tmp[n - 1][1] = (1.5 * gps_data[n - 1][1] + 2 * gps_data[n - 2][1] - gps_data[n - 3][1]) / 2.5;
+            tmp[n - 1][2] = (1.5 * gps_data[n - 1][2] + 2 * gps_data[n - 2][2] - gps_data[n - 3][2]) / 2.5;
+            gps_data = tmp;
+        }
+    }
+    cx::CSVReader::Double2D ahrs_data, clue_data;
+    if (!ahrs_file.empty())
+    {
+        ahrs_data = readROSAHRS(ahrs_file);
+        if (ahrs_data.empty()) return -1;
+    }
+    if (!clue_file.empty())
+    {
+        clue_data = readLocClues(clue_file);
+        if (clue_data.empty()) return -1;
+    }
+
+    // Prepare camera data
+    cv::VideoCapture camera_data;
+    if (!video_file.empty())
+    {
+        if (!camera_data.open(video_file)) return -1;
+    }
+
+    // Crop data if the starting time is given
+    if (skip_time > 0)
+    {
+        double first_time = gps_data.front()[0];
+        double start_time = first_time + skip_time;
+        auto start_gps = gps_data.begin();
+        for (auto gps = start_gps; gps != gps_data.end(); gps++)
+        {
+            if (gps->at(0) >= start_time)
+            {
+                start_gps = gps;
+                break;
+            }
+        }
+        if (start_gps != gps_data.begin()) gps_data.erase(gps_data.begin(), start_gps - 1);
+
+        auto start_ahrs = ahrs_data.begin();
+        for (auto ahrs = start_ahrs; ahrs != ahrs_data.end(); ahrs++)
+        {
+            if (ahrs->at(0) >= start_time)
+            {
+                start_ahrs = ahrs;
+                break;
+            }
+        }
+        if (start_ahrs != ahrs_data.begin()) ahrs_data.erase(ahrs_data.begin(), start_ahrs - 1);
+
+        auto start_clue = clue_data.begin();
+        for (auto clue = start_clue; clue != clue_data.end(); clue++)
+        {
+            if (clue->at(0) >= start_time)
+            {
+                start_clue = clue;
+                break;
+            }
+        }
+        if (start_clue != clue_data.begin()) clue_data.erase(clue_data.begin(), start_clue - 1);
+
+        if (camera_data.isOpened())
+        {
+            if (video_time[1] < 0) video_time[1] = first_time;
+            double fps = camera_data.get(cv::VideoCaptureProperties::CAP_PROP_FPS);
+            int frame_i = (int)((start_time - video_time[1]) * fps / video_time[0]);
+            camera_data.set(cv::VideoCaptureProperties::CAP_PROP_POS_FRAMES, frame_i);
+        }
+    }
+
+    // Read the given background image
+    cv::Mat bg_image = cv::imread(gui.image_file, cv::ImreadModes::IMREAD_COLOR);
+    cv::Mat zoom_bg_image;
+    if (gui.zoom_level > 0)
+        cv::resize(bg_image, zoom_bg_image, cv::Size(), gui.zoom_level, gui.zoom_level);
+
+    // Prepare a painter for visualization
+    dg::MapPainter painter;
+    painter.configCanvas(gui.origin_px, gui.image_scale, bg_image.size(), 0, 0);
+    painter.setImageRotation(gui.image_rotation);
+    painter.drawGrid(bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, gui.grid_unit_pos);
+    painter.drawOrigin(bg_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
+    painter.setParamValue("node_radius", 3);
+    painter.setParamValue("node_font_scale", 0);
+    painter.setParamValue("node_color", { 255, 100, 100 });
+    painter.setParamValue("edge_color", { 150, 100, 100 });
+    painter.setParamValue("edge_thickness", 1);
+    if (!map.isEmpty()) painter.drawMap(bg_image, &map);
+
+    // Prepare a painter for zoomed visualization
+    dg::MapPainter zoom_painter;
+    if (gui.zoom_level > 0)
+    {
+        zoom_painter.configCanvas(gui.origin_px * gui.zoom_level, gui.image_scale * gui.zoom_level, zoom_bg_image.size(), 0, 0);
+        zoom_painter.setImageRotation(gui.image_rotation);
+        zoom_painter.drawGrid(zoom_bg_image, cv::Point2d(10, 10), cv::Vec3b(200, 200, 200), 1, 0);
+        zoom_painter.drawGrid(zoom_bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 3, 0);
+        zoom_painter.drawOrigin(zoom_bg_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
+        zoom_painter.setParamValue("node_radius", 6);
+        zoom_painter.setParamValue("node_font_scale", 0);
+        zoom_painter.setParamValue("node_color", { 255, 100, 100 });
+        zoom_painter.setParamValue("edge_color", { 150, 100, 100 });
+        zoom_painter.setParamValue("edge_thickness", 2);
+        if (!map.isEmpty()) zoom_painter.drawMap(zoom_bg_image, &map);
+    }
+
+    // Run the localizer
+    LocalizerRunner experiment;
+    experiment.setMap(map);
+    experiment.gui_painter = &painter;
+    experiment.gui_background = bg_image;
+    experiment.gui_robot_radius = 12;
+    experiment.gui_robot_thickness = 2;
+    experiment.gui_topo_ref_radius = 6;
+    experiment.gui_topo_loc_radius = 4;
+    experiment.gui_time_offset = (skip_time > 0) ? skip_time : 0;
+    experiment.gui_wnd_flag = gui.wnd_flag;
+    //experiment.gui_wnd_wait_msec = 0;
+    experiment.video_resize = gui.video_resize;
+    experiment.video_offset = gui.video_offset;
+    experiment.video_time = video_time;
+    experiment.zoom_painter = &zoom_painter;
+    experiment.zoom_background = zoom_bg_image;
+    experiment.zoom_radius = gui.zoom_radius;
+    experiment.zoom_offset = gui.zoom_offset;
+    experiment.rec_traj_name = rec_traj_file;
+    experiment.rec_video_name = rec_video_file;
+    experiment.rec_video_resize = 0.5;
+    return experiment.runLocalizer(localizer, gps_data, ahrs_data, clue_data, camera_data);
+}
+
+int testUTMConverter()
+{
+    dg::UTMConverter converter;
+    dg::Point2UTM p1 = converter.cvtLatLon2UTM(dg::LatLon(36.383837659737, 127.367880828442));  // etri
+    dg::Point2UTM p2 = converter.cvtLatLon2UTM(dg::LatLon(37.506207, 127.05482));               // coex
+    dg::Point2UTM p3 = converter.cvtLatLon2UTM(dg::LatLon(37.510928, 126.764344));              // bucheon
+    dg::Point2UTM p4 = converter.cvtLatLon2UTM(dg::LatLon(33.19740, 126.10256));              // 남서단
+    dg::Point2UTM p5 = converter.cvtLatLon2UTM(dg::LatLon(38.61815, 129.58138));              // 북동단
+    printf("etri: zone=%d, x = %lf, y = %lf\n", p1.zone, p1.x, p1.y);
+    printf("coex: zone=%d, x = %lf, y = %lf\n", p2.zone, p2.x, p2.y);
+    printf("bucheon: zone=%d, x = %lf, y = %lf\n", p3.zone, p3.x, p3.y);
+    printf("SW: zone=%d, x = %lf, y = %lf\n", p4.zone, p4.x, p4.y);
+    printf("NE: zone=%d, x = %lf, y = %lf\n", p5.zone, p5.x, p5.y);
+
+    dg::Point2 p(1000, 0);
+    converter.setReference(converter.toLatLon(p1));
+    dg::LatLon ll = converter.toLatLon(p);
+    dg::Point2 q = converter.toMetric(ll);
+    printf("\nx=%lf, y=%lf, lat=%lf, lon=%lf, x=%lf, y=%lf\n", p.x, p.y, ll.lat, ll.lon, q.x, q.y);
+
+    return 0;
+}
 
 int runUnitTest()
 {
@@ -21,7 +214,6 @@ int runUnitTest()
     VVS_RUN_TEST(testCoreMap());
     VVS_RUN_TEST(testCorePath());
 
-
     // Test 'localizer' module
     // 1. Test GPS and UTM conversion
     VVS_RUN_TEST(testLocRawGPS2UTM(dg::LatLon(38, 128), dg::Point2(412201.58, 4206286.76))); // Zone: 52S
@@ -31,32 +223,110 @@ int runUnitTest()
     VVS_RUN_TEST(testLocRawUTM2GPS(dg::Point2(0, 0), 52, false, dg::LatLon(-1, -1))); // Print the origin of the Zone 52
     VVS_RUN_TEST(testLocUTMConverter());
 
-    // 2. Test 'dg::DirectedGraph'
-    VVS_RUN_TEST(testDirectedGraphPtr());
-    VVS_RUN_TEST(testDirectedGraphItr());
+    // 2. Test 'dg::Map' and 'dg::MapPainter'
+    VVS_RUN_TEST(testLocMap());
+    VVS_RUN_TEST(testLocMapPainter());
 
-    // 3. Test 'dg::RoadMap' and 'dg::GraphPainter'
-    VVS_RUN_TEST(testLocRoadMap());
-    VVS_RUN_TEST(testLocRoadPainter());
-
-    // 4. Test localizers
-    VVS_RUN_TEST(testLocBaseDist2());
-    VVS_RUN_TEST(testLocSimple());
-
+    // 3. Test localizers
     VVS_RUN_TEST(testLocEKFGPS());
     VVS_RUN_TEST(testLocEKFGyroGPS());
-    VVS_RUN_TEST(testLocEKFLocClue());
 
     VVS_RUN_TEST(testLocETRIMap2RoadMap());
     VVS_RUN_TEST(testLocETRISyntheticMap());
     VVS_RUN_TEST(testLocETRIRealMap());
     VVS_RUN_TEST(testLocCOEXRealMap());
 
+    // Test 'utility' module
+    VVS_RUN_TEST(testUtilRingBuffer());
+
     return 0;
+}
+
+int runLocalizer()
+{
+    // Define GUI properties for ETRI and COEX sites
+    MapGUIProp ETRI;
+    ETRI.image_file = "data/NaverMap_ETRI(Satellite)_191127.png";
+    ETRI.image_scale = cv::Point2d(1.039, 1.039);
+    ETRI.image_rotation = cx::cvtDeg2Rad(1.);
+    ETRI.origin_latlon = dg::LatLon(36.383837659737, 127.367880828442);
+    ETRI.origin_px = cv::Point2d(347, 297);
+    ETRI.map_radius = 1500; // meter
+    ETRI.grid_unit_pos = cv::Point(-215, -6);
+    ETRI.map_file = "data/ETRI/TopoMap_ETRI_210803.csv";
+    ETRI.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
+    ETRI.video_resize = 0.25;
+    ETRI.video_offset = cv::Point(270, 638);
+    ETRI.zoom_level = 5;
+    ETRI.zoom_radius = 40;
+    ETRI.zoom_offset = cv::Point(620, 400);
+
+    MapGUIProp COEX;
+    COEX.image_file = "data/NaverMap_COEX(Satellite)_200929.png";
+    COEX.image_scale = cv::Point2d(1.055, 1.055);
+    COEX.image_rotation = cx::cvtDeg2Rad(1.2);
+    COEX.origin_latlon = dg::LatLon(37.506207, 127.05482);
+    COEX.origin_px = cv::Point2d(1090, 1018);
+    COEX.map_radius = 1500; // meter
+    COEX.grid_unit_pos = cv::Point(-230, -16);
+    COEX.map_file = "data/COEX/TopoMap_COEX_210803.csv";
+    COEX.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
+    COEX.video_resize = 0.4;
+    COEX.video_offset = cv::Point(10, 50);
+    COEX.zoom_level = 5;
+    COEX.zoom_radius = 40;
+    COEX.zoom_offset = cv::Point(450, 500);
+
+    bool enable_imu = false;
+    std::string rec_video_file = "";
+    const std::string rec_traj_file = "";
+
+    //Select Test Localizer
+    //const std::string localizer = "EKFLocalizer";
+    //const std::string localizer = "EKFLocalizerHyperTan";
+    //const std::string localizer = "EKFLocalizerSinTrack";
+    const std::string localizer = "PathLocalizer";
+
+    int data_sel = 0;
+    double start_time = 0;     // offset(seconds)
+    int gps_smoothing_n = 0;
+    enable_imu = true;
+    //rec_video_file = "etri191115_path_projection_210622.mkv";
+    std::vector<std::string> data_head[] = {
+        {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
+        {"data/ETRI/200219_150153", "1.6244"},  // 1, 23911 frames, 3884 sec, video_scale = 1.6244
+        {"data/ETRI/200326_132938", "1.6694"},  // 2, 18366 frames, 3066 sec, video_scale = 1.6694
+        {"data/ETRI/200429_131714", "1.6828"},  // 3, 13953 frames, 2348 sec, video_scale = 1.6828
+        {"data/ETRI/200429_140025", "1.6571"},  // 4, 28369 frames, 4701 sec, video_scale = 1.6571
+        {"data/COEX/201007_142326", "2.8918"},  // 5, 12435 frames, 1240 sec, video_scale = 2.8918
+        {"data/COEX/201007_145022", "2.869"},   // 6, 18730 frames, 1853 sec, video_scale = 2.869
+        {"data/COEX/201007_152840", "2.8902"}   // 7, 20931 frames, 2086 sec, video_scale = 2.8902
+    };
+    const int coex_idx = 5;
+    std::string gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
+    //string gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
+    std::string ahrs_file = (enable_imu) ? data_head[data_sel][0] + "_imu_data.csv" : "";
+    std::string clue_file = "";
+    std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
+    MapGUIProp& PROP = (data_sel < coex_idx) ? ETRI : COEX;
+    cv::Vec2d video_time = cv::Vec2d(1, -1);    // (scale : offset)
+    video_time[0] = atof(data_head[data_sel][1].c_str());
+
+    // Draw GPS data
+    const cv::Vec3b COLOR_SKY(255, 127, 0);
+    //return drawGPSData(PROP, gps_file, { cx::COLOR_RED }, 1, gps_smoothing_n);
+    //return drawGPSData(ETRI, { "data/ETRI/200901_ETRI_ascen_gps-fix.csv", "data/ETRI/191115_ETRI_ascen_fix.csv" }, { cx::COLOR_BLUE, cx::COLOR_RED });
+
+    // Run localizers
+    const dg::Polar2 gps_offset(1, 0);
+    const double ascen_noise = 1, novatel_noise = 1, motion_noise_lin = 1, motion_noise_deg = 10;
+
+    return runLocalizerReal(PROP, localizer, gps_file, ahrs_file, clue_file, video_file, ascen_noise, gps_offset, motion_noise_lin, motion_noise_deg, rec_traj_file, rec_video_file, start_time, video_time, gps_smoothing_n);
 }
 
 int main()
 {
+    //return testUTMConverter();
     //return runUnitTest();
     return runLocalizer();
 }

@@ -84,7 +84,7 @@ namespace dg
         // check valid line
         bool check_vanishing_condition = true;  // ���� ���׸�Ʈ�� �ش� �ҽ������� �����ϴ��� üũ
         double max_vanishing_error = 10;        // pixels
-        bool check_horizontal_distance = true;  // �������� ����Ÿ��� �̿��Ͽ� vanishing ���� üũ
+        bool check_horizontal_distance = true;  // �������� ����Ÿ���?�̿��Ͽ� vanishing ���� üũ
         double horizontal_distance_thr = 20;
         bool check_ground_condition = true;     // �ҽ��� ������ ���ε��� �ҽ��� ���⿡�� �������� ����
         int max_upperline_deg = 70;

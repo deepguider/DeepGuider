@@ -1,168 +1,461 @@
-#ifndef __LOCALIZER__
-#define __LOCALIZER__
+#ifndef __PATH_LOCALIZER__
+#define __PATH_LOCALIZER__
 
 #include "core/basic_type.hpp"
+#include "core/shared_date.hpp"
+#include "localizer/localizer_ekf.hpp"
+#include "localizer/localizer_ekf_variants.hpp"
+#include "localizer/path_projector.hpp"
 #include <vector>
 
 namespace dg
 {
 
 /**
- * @brief Localizer interface for various input data
+ * @brief Localizer State
  *
- * This defines an interface for localizers to receive various types of input data.
+ * Data structure for saving state of ekf localizer with timestamp
  */
-class Localizer
+struct LocState
 {
-public:
-    /**
-     * The destructor
-     */
-    virtual ~Localizer() { }
+    /** The state variable */
+    cv::Mat state_vec;
 
-    /**
-     * Apply a metric pose observation<br>
-     *  The data usually come from other pose estimators.
-     * @param pose The observed pose (Unit: [m] and [rad])
-     * @param time The observed time (Unit: [sec])
-     * @param confidence The observation confidence
-     * @return True if successful (false if failed)
-     */
-    virtual bool applyPose(const Pose2& pose, Timestamp time = -1, double confidence = -1) = 0;
+    /** The state covariance */
+    cv::Mat state_cov;
 
-    /**
-     * Apply a metric position observation<br>
-     *  The data usually come from other position estimators.
-     * @param xy The observed position (Unit: [m])
-     * @param time The observed time (Unit: [sec])
-     * @param confidence The observation confidence
-     * @return True if successful (false if failed)
-     */
-    virtual bool applyPosition(const Point2& xy, Timestamp time = -1, double confidence = -1) = 0;
-
-    /**
-     * Apply a geodesic position observation<br>
-     *  The data usually come from GPS and other position estimators.
-     * @param xy The observed geodesic position (Unit: [deg])
-     * @param time The observed time (Unit: [sec])
-     * @param confidence The observation confidence
-     * @return True if successful (false if failed)
-     */
-    virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1) = 0;
-
-    /**
-     * Apply an orientation observation<br>
-     *  The data usually come from (magnetic or visual) compasses and AHRSs.
-     * @param theta The observed orientation (Unit: [rad])
-     * @param time The observed time (Unit: [sec])
-     * @param confidence The observation confidence
-     * @return True if successful (false if failed)
-     */
-    virtual bool applyOrientation(double theta, Timestamp time = -1, double confidence = -1) = 0;
-
-    /**
-     * Apply an odometry observation as relative pose<br>
-     *  The data usually come from (wheel or visual) odometry.
-     * @param pose_curr The observed current pose (Unit: [m] and [rad])
-     * @param pose_prev The previous pose (Unit: [m] and [rad])
-     * @param time_curr The observed time (Unit: [sec])
-     * @param time_prev The previous time (Unit: [sec])
-     * @param confidence The observation confidence
-     * @return True if successful (false if failed)
-     */
-    virtual bool applyOdometry(const Pose2& pose_curr, const Pose2& pose_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1) = 0;
-
-    /**
-     * Apply an odometry observation as linear and angular displacement<br>
-     *  The data usually come from (wheel) odometry.
-     * @param delta The observed displacement (Unit: [m] and [rad])<br>
-     *  If delta.lin < 0, the linear displacement is invalid. If delta.ang >= CV_PI, the angular displacement is invalid.
-     * @param time The observed time (Unit: [sec])
-     * @param confidence The observation confidence
-     * @return True if successful (false if failed)
-     */
-    virtual bool applyOdometry(const Polar2& delta, Timestamp time = -1, double confidence = -1) = 0;
-
-    /**
-     * Apply an odometry observation as angular displacement<br>
-     *  The data usually come from gyroscopes and visual compasses.
-     * @param theta_curr The observed current angle (Unit: [m] and [rad])
-     * @param theta_prev The previous angle (Unit: [m] and [rad])
-     * @param time_curr The observed time (Unit: [sec])
-     * @param time_prev The previous time (Unit: [sec])
-     * @param time The observed time (Unit: [sec])
-     * @param confidence The observation confidence
-     * @return True if successful (false if failed)
-     */
-    virtual bool applyOdometry(double theta_curr, double theta_prev, Timestamp time_curr = -1, Timestamp time_prev = -1, double confidence = -1) = 0;
-
-    /**
-     * Apply a single localization clue<br>
-     *  The data usually come from POI/structure/scene recognizers.
-     * @param id The ID of observed clue
-     * @param obs The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
-     *  If obs.lin < 0, the relative distance is invalid. If obs.ang >= CV_PI, the relative angle is invalid.
-     * @param time The observed time (Unit: [sec])
-     * @param confidence The observation confidence
-     * @return True if successful (false if failed)
-     */
-    virtual bool applyLocClue(ID id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
-
-    /**
-     * Apply multiple localization clues<br>
-     *  The data usually come from POI/structure/scene recognizers.
-     * @param ids The IDs of observed clues
-     * @param obs The relative observation from each clue (Unit: [m] and [rad])
-     * @param time The observed time (Unit: [sec])
-     * @param confidence The observation confidence
-     * @return True if successful (false if failed)
-     */
-    virtual bool applyLocClue(const std::vector<ID>& ids, const std::vector<Polar2>& obs, Timestamp time = -1, const std::vector<double>& confidence = std::vector<double>()) = 0;
+    /** The timestamp */
+    Timestamp timestamp;
 };
 
 /**
- * @brief Localizer interface for metric outputs
+ * @brief Observation Data
  *
- * This defines an interface for localizers to provide metric pose and its confidence.
+ * Data structure for saving sensor observations with timestamp
  */
-class MetricLocalizer
+struct ObsData
 {
-public:
-    /**
-     * Get the current metric pose
-     * @return The current metric pose
-     */
-    virtual Pose2 getPose() = 0;
+    /** Observation type definition */
+    enum
+    {
+        /** GPS data (v1: utm x, v2: utm y) */
+        OBS_GPS = 0,
+
+        /** IMU data (v1: odometry theta) */
+        OBS_IMU = 1,
+
+        /** POI data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
+        OBS_POI = 2,
+
+        /** VPS data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
+        OBS_VPS = 3,
+
+        /** VPS_LR data (v1 = 0: uncertain, v1 = 1: road is left, v1 = 2: road is right) */
+        OBS_VPS_LR = 4,
+
+        /** RoadTheta data (v1: theta) */
+        OBS_RoadTheta = 5,
+
+        /** Intersection classifier data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
+        OBS_IntersectCls = 6,
+
+        /** The number of observation types */
+        TYPE_NUM
+    };
 
     /**
-     * Get the current metric pose in geodesic notation
-     * @return The current geodesic pose
+     * The type of observation data
+     * @see OBS_GPS, OBS_IMU, OBS_POI, OBS_VPS, OBS_VPS_LR, OBS_RoadTheta, OBS_IntersectCls
      */
-    virtual LatLon getPoseGPS() = 0;
+    int type;
+
+    /** 
+     * Data values (The meaning of variable varies depending on the observation type)
+     * @see Observation type definition
+     */
+    double v1, v2, v3, v4;
 
     /**
-     * Get the current confidence of localization
-     * @return The current pose confidence
+     * The timestamp
      */
-    virtual double getPoseConfidence() = 0;
+    Timestamp timestamp;
+
+    /**
+     * The confidence of observation data 
+     */
+    double confidence;
+
+    /** The default constructor */
+    ObsData() {}
+
+    /** Constructor */
+    ObsData(int _type, double theta, Timestamp time, double conf) : type(_type), v1(theta), timestamp(time), confidence(conf) {}
+
+    /** Constructor */
+    ObsData(int _type, Point2 xy, Timestamp time, double conf) : type(_type), v1(xy.x), v2(xy.y), timestamp(time), confidence(conf) {}
+
+    /** Constructor */
+    ObsData(int _type, Point2 xy, Polar2 lin_ang, Timestamp time, double conf) : type(_type), v1(xy.x), v2(xy.y), v3(lin_ang.lin), v4(lin_ang.ang), timestamp(time), confidence(conf) {}
 };
 
 /**
- * @brief Localizer interface for topometric output
+ * @brief Path-based Localizer
  *
- * This is an additional interface for localizers to provide topometric pose.
+ * Localization module of deepguider system
  */
-class TopometricLocalizer : public MetricLocalizer
+class PathLocalizer : public BaseLocalizer, public PathProjector
 {
+protected:
+    // configuable parameters
+    int m_history_size = 1000;
+    bool m_enable_path_projection = true;
+    bool m_enable_map_projection = false;
+
+    /** Read parameters from cv::FileNode - Inherited from cx::Algorithm */
+    virtual int readParam(const cv::FileNode& fn)
+    {
+        int n_read = PathProjector::readParam(fn);
+        n_read += m_ekf->readParam(fn);        
+        CX_LOAD_PARAM_COUNT(fn, "enable_path_projection", m_enable_path_projection, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "enable_map_projection", m_enable_map_projection, n_read);
+        int history_size = m_history_size;
+        CX_LOAD_PARAM_COUNT(fn, "history_size", history_size, n_read);
+        if (history_size != m_history_size)
+        {
+            m_history_size = history_size;
+            initInternalVariables();
+        }
+        return n_read;
+    }
+
 public:
+    /** The constructor */
+    PathLocalizer()
+    {
+        initialize(nullptr, "EKFLocalizer");
+    }
+
+    bool initialize(SharedInterface* shared, std::string baselocalizer_name = "")
+    {
+        if (baselocalizer_name == "EKFLocalizer") m_ekf = cv::makePtr<dg::EKFLocalizer>();
+        else if (baselocalizer_name == "EKFLocalizerZeroGyro") m_ekf = cv::makePtr<dg::EKFLocalizerZeroGyro>();
+        else if (baselocalizer_name == "EKFLocalizerHyperTan") m_ekf = cv::makePtr<dg::EKFLocalizerHyperTan>();
+        else if (baselocalizer_name == "EKFLocalizerSinTrack") m_ekf = cv::makePtr<dg::EKFLocalizerSinTrack>();
+        setShared(shared);
+        initInternalVariables();
+        return (m_shared != nullptr && !m_ekf.empty());
+    }
+
+    virtual bool setShared(SharedInterface* shared)
+    {
+        if (m_ekf) m_ekf->setShared(shared);
+        return BaseLocalizer::setShared(shared);
+    }
+
+    virtual bool setParamMotionNoise(double sigma_linear_velocity, double sigma_angular_velocity_deg, double cov_lin_ang = 0)
+    {
+        if (m_ekf) return m_ekf->setParamMotionNoise(sigma_linear_velocity, sigma_angular_velocity_deg, cov_lin_ang);
+        return false;
+    }
+
+    virtual bool setParamGPSNoise(double sigma_normal, double sigma_deadzone = -1)
+    {
+        if (m_ekf) return m_ekf->setParamGPSNoise(sigma_normal, sigma_deadzone);
+        return false;
+    }
+
+    virtual bool setParamGPSOffset(double lin_offset, double ang_offset_deg = 0)
+    {
+        if (m_ekf) return m_ekf->setParamGPSOffset(lin_offset, ang_offset_deg);
+        return false;
+    }
+
+    virtual bool setParamIMUCompassNoise(double sigma_theta_deg, double offset = 0)
+    {
+        if (m_ekf) return m_ekf->setParamIMUCompassNoise(sigma_theta_deg, offset);
+        return false;
+    }
+
+    virtual bool setParamRoadThetaNoise(double sigma_theta_deg, double offset = 0)
+    {
+        if (m_ekf) return m_ekf->setParamRoadThetaNoise(sigma_theta_deg, offset);
+        return false;
+    }
+
+    virtual bool setParamCameraOffset(double lin_offset, double ang_offset_deg = 0)
+    {
+        if (m_ekf) return m_ekf->setParamCameraOffset(lin_offset, ang_offset_deg);
+        return false;
+    }
+
+    virtual bool setParamPOINoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
+    {
+        if (m_ekf) return m_ekf->setParamPOINoise(sigma_rel_dist, sigma_rel_theta_deg, sigma_position);
+        return false;
+    }
+
+    virtual bool setParamVPSNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
+    {
+        if (m_ekf) return m_ekf->setParamVPSNoise(sigma_rel_dist, sigma_rel_theta_deg, sigma_position);
+        return false;
+    }
+
+    virtual bool setParamIntersectClsNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
+    {
+        if (m_ekf) return m_ekf->setParamIntersectClsNoise(sigma_rel_dist, sigma_rel_theta_deg, sigma_position);
+        return false;
+    }
+
+    virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        if (!m_ekf->applyGPS(ll, time, confidence)) return false;
+        saveObservation(ObsData::OBS_GPS, toMetric(ll), time, confidence);
+        saveEKFState(m_ekf, time);
+        return applyPathLocalizer(m_ekf->getPose(), time);
+    }
+
+    virtual bool applyIMUCompass(double theta, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        if (!m_ekf->applyIMUCompass(theta, time, confidence)) return false;
+        saveObservation(ObsData::OBS_IMU, theta, time, confidence);
+        saveEKFState(m_ekf, time);
+        return true;
+    }
+
+    virtual bool applyRoadTheta(double theta, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        if (time < m_ekf->getLastUpdateTime())
+        {
+            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_RoadTheta, theta, time, confidence))) return false;
+            return applyPathLocalizer(m_ekf->getPose(), time);
+        }
+        if (!m_ekf->applyRoadTheta(theta, time, confidence)) return false;
+        saveObservation(ObsData::OBS_RoadTheta, theta, time, confidence);
+        saveEKFState(m_ekf, time);
+        return true;
+    }
+
+    virtual bool applyPOI(const Point2& poi_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        if (time < m_ekf->getLastUpdateTime())
+        {
+            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_POI, poi_xy, obs, time, confidence))) return false;
+            return applyPathLocalizer(m_ekf->getPose(), time);
+        }
+        if (!m_ekf->applyPOI(poi_xy, obs, time, confidence)) return false;
+        saveObservation(ObsData::OBS_POI, poi_xy, obs, time, confidence);
+        saveEKFState(m_ekf, time);
+        return applyPathLocalizer(m_ekf->getPose(), time);
+    }
+
+    virtual bool applyVPS(const Point2& streetview_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        if (time < m_ekf->getLastUpdateTime())
+        {
+            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_VPS, streetview_xy, obs, time, confidence))) return false;
+            return applyPathLocalizer(m_ekf->getPose(), time);
+        }
+        if (!m_ekf->applyVPS(streetview_xy, obs, time, confidence)) return false;
+        saveObservation(ObsData::OBS_VPS, streetview_xy, obs, time, confidence);
+        saveEKFState(m_ekf, time);
+        return applyPathLocalizer(m_ekf->getPose(), time);
+    }
+
+    virtual bool applyIntersectCls(const Point2& intersect_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        if (time < m_ekf->getLastUpdateTime())
+        {
+            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_IntersectCls, intersect_xy, obs, time, confidence))) return false;
+            return applyPathLocalizer(m_ekf->getPose(), time);
+        }
+        if (!m_ekf->applyIntersectCls(intersect_xy, obs, time, confidence)) return false;
+        saveObservation(ObsData::OBS_IntersectCls, intersect_xy, obs, time, confidence);
+        saveEKFState(m_ekf, time);
+        return applyPathLocalizer(m_ekf->getPose(), time);
+    }
+
     /**
-     * Get the current topometric pose
-     * @return The current topometric pose
+     * Apply VPS_LR result
+     * @param lr_result The position of road (0: uncertain, 1 : road is left, 2 : road is right)
      */
-    virtual TopometricPose getPoseTopometric() = 0;
-};
+    virtual bool applyVPS_LR(int lr_result, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        saveObservation(ObsData::OBS_VPS_LR, lr_result, time, confidence);
+        // TODO: apply the result to path projector
+        return true;
+    }
+
+    virtual Pose2 getPose(Timestamp* timestamp) const
+    {
+        cv::AutoLock lock(m_mutex);
+        if (timestamp) *timestamp = m_timestamp;
+        return m_pose;
+    }
+
+    virtual double getPoseConfidence(Timestamp* timestamp = nullptr) const
+    {
+        return m_ekf->getPoseConfidence(timestamp);
+    }
+
+    virtual const cv::Mat getState() const
+    {
+        cv::AutoLock lock(m_mutex);
+        return m_ekf->getState();
+    }
+
+    virtual const cv::Mat getStateCov() const
+    {
+        cv::AutoLock lock(m_mutex);
+        return m_ekf->getStateCov();
+    }
+
+protected:
+    bool initInternalVariables()
+    {
+        m_state_history.resize(m_history_size);
+        m_observation_history.resize(m_history_size);
+        m_pose_history.resize(m_history_size);
+        return true;
+    }
+
+    void saveEKFState(cv::Ptr<dg::EKFLocalizer> ekf, Timestamp timestamp)
+    {
+        LocState state;
+        state.state_vec = ekf->getState().clone();
+        state.state_cov = ekf->getStateCov().clone();
+        state.timestamp = timestamp;
+        m_state_history.push_back(state);
+        m_pose_history.push_back(Pose2T(ekf->getPose(), timestamp));
+    }
+
+    bool applyPathLocalizer(Pose2 pose, Timestamp timestamp)
+    {
+        if (!m_enable_path_projection)
+        {
+            m_pose = pose;
+            m_timestamp = timestamp;
+            return true;
+        }
+
+        if (m_shared == nullptr) return false;
+
+        Pose2 prj_pose = pose;
+        Map* map = m_shared->getMapLocked();
+        bool out_of_path = false;
+        if (map)
+        {
+            Path* path = m_shared->getPathLocked();
+            if (path) prj_pose = getPathPose(map, *path, pose, m_pose_history, out_of_path);
+            else if (m_enable_map_projection) prj_pose = getMapPose(map, pose, m_pose, m_pose_history.empty());
+            m_shared->releasePathLock();
+        }
+        m_shared->releaseMapLock();
+
+        m_pose = prj_pose;
+        m_timestamp = timestamp;
+
+        if (out_of_path) m_shared->procOutOfPath(m_pose);
+
+        return true;
+    }
+
+    bool applyObservation(const ObsData& obs)
+    {
+        if (obs.type == ObsData::OBS_GPS)
+        {
+            LatLon ll = toLatLon(Point2(obs.v1, obs.v2));
+            return m_ekf->applyGPS(ll, obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_IMU)
+        {
+            return m_ekf->applyIMUCompass(obs.v1, obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_RoadTheta)
+        {
+            return m_ekf->applyRoadTheta(obs.v1, obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_POI)
+        {
+            return m_ekf->applyPOI(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_VPS)
+        {
+            return m_ekf->applyVPS(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_IntersectCls)
+        {
+            return m_ekf->applyIntersectCls(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_VPS_LR)
+        {
+            // ignore
+        }
+        return false;
+    }
+
+    bool rollbackApplyEKF(Timestamp rollback_time, const ObsData& delayed_observation)
+    {
+        if (m_ekf.empty()) return false;
+
+        // find rollback point
+        int ndata = m_observation_history.data_count();
+        int restart_i = ndata;
+        while (restart_i > 0 && m_observation_history[restart_i - 1].timestamp > rollback_time) restart_i--;
+        if (restart_i >= ndata || restart_i <= 0) return false;
+
+        // rollback ekf state
+        int rollback_point = restart_i - 1;
+        LocState state = m_state_history[rollback_point];
+        bool ok = m_ekf->resetEKFState(state.state_vec, state.state_cov, state.timestamp);
+        if (!ok) return false;
+
+        // rollback state
+        m_state_history.erase(restart_i, -1);
+        m_pose_history.erase(restart_i, -1);
+
+        // re-apply observations after rollback point
+        restart_i = m_observation_history.insert(restart_i, delayed_observation);
+        for (int i = restart_i; i < m_observation_history.data_count(); i++)
+        {
+            applyObservation(m_observation_history[i]);
+            saveEKFState(m_ekf, m_observation_history[i].timestamp);
+        }
+        return true;
+    }
+
+    void saveObservation(int type, double theta, Timestamp time, double conf)
+    {
+        m_observation_history.push_back(ObsData(type, theta, time, conf));
+    }
+
+    void saveObservation(int type, Point2 xy, Timestamp time, double conf)
+    {
+        m_observation_history.push_back(ObsData(type, xy, time, conf));
+    }
+
+    void saveObservation(int type, Point2 xy, Polar2 lin_ang, Timestamp time, double conf)
+    {
+        m_observation_history.push_back(ObsData(type, xy, lin_ang, time, conf));
+    }
+
+    Pose2 m_pose;
+    Timestamp m_timestamp;
+    cv::Ptr<dg::EKFLocalizer> m_ekf;
+    RingBuffer<LocState> m_state_history;
+    RingBuffer<ObsData> m_observation_history;
+    RingBuffer<Pose2T> m_pose_history;
+
+}; // End of 'PathLocalizer'
+
 
 } // End of 'dg'
 
-#endif // End of '__LOCALIZER__'
+#endif // End of '__PATH_LOCALIZER__'
 

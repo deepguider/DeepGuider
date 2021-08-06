@@ -141,7 +141,7 @@ namespace cx
          * @param state The given state variable
          * @return True if successful (false if failed)
          */
-        bool setState(cv::InputArray state)
+        bool setState(const cv::InputArray state)
         {
             CV_DbgAssert(state.size() == m_state_vec.size());
             CV_DbgAssert(state.type() == m_state_vec.type());
@@ -153,7 +153,7 @@ namespace cx
          * Get the current state variable
          * @return The state variable
          */
-        const cv::Mat getState() { return m_state_vec; }
+        const cv::Mat getState() const { return m_state_vec; }
 
         /**
          * Assign the state covariance with the given value
@@ -172,7 +172,7 @@ namespace cx
          * Get the current state covariance
          * @return The state covariance
          */
-        const cv::Mat getStateCov() { return m_state_cov; }
+        const cv::Mat getStateCov() const { return m_state_cov; }
 
     protected:
         /**

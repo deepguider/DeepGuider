@@ -1,47 +1,23 @@
-#ifndef __SIMPLE_MAP_MANAGER__
-#define __SIMPLE_MAP_MANAGER__
+#ifndef __MAP_MANAGER__
+#define __MAP_MANAGER__
 
 #include "dg_core.hpp"
-
-// rapidjson header files
-#include "rapidjson/document.h" 
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/prettywriter.h"
-#include <fstream>
-using namespace rapidjson;
-
-#define CURL_STATICLIB
-// curl header file
-#include "curl/curl.h" 
-#ifdef _WIN32
-// curl library files
-#ifdef _DEBUG
-#pragma comment(lib, "libcurl_a_debug.lib")   // curl-7.65.3.zip 
-#else
-#pragma comment(lib, "libcurl_a.lib")         // curl-7.65.3.zip 
-#endif
-#pragma comment(lib, "Ws2_32.lib")
-#pragma comment(lib, "Crypt32.lib")
-#pragma comment(lib, "Wldap32.lib")
-#pragma comment(lib, "Normaliz.lib")
-#pragma execution_character_set( "utf-8" )
-#include <atlstr.h> 
-#endif
-#include "localizer/utm_converter.hpp"
-#define M_PI 3.14159265358979323846
+#include "rapidjson.hpp"
+#include "curl.hpp"
+#include "utils/utm_converter.hpp"
 
 namespace dg
 {
 
 /**
- * @brief Simple map manager
+ * @brief Map manager
  *
- * A <b>simple map manager</b> is defined with map information as dg::Map and path information with dg::Path.
+ * A <b>map manager</b> is defined with map information as dg::Map and path information with dg::Path.
  *
  * A map information contains its node, edge, POI and streetview information for the topological map.
- * A path information contains a sequence of points defined in PathElement for the path from origin to destination.
+ * A path information contains a sequence of points defined in PathNode for the path from start to destination.
  */
-class MapManager
+class MapManager : public UTMConverter
 {
 public:
 	/**
@@ -49,7 +25,6 @@ public:
 	 */
 	MapManager()
 	{
-		m_isMap = false;
 		m_ip = "localhost";
 		m_portErr = false;
 	}
@@ -59,22 +34,18 @@ public:
 	 */
 	~MapManager()
 	{
-		if (m_isMap)
-		{
-			delete m_map;
-			m_isMap = false;
-		}
 	}
 
 	/**
 	 * Initialize to use this class
+	 * @param ip The given server IP address
 	 * @return True if successful (false if failed)
 	 */
-	bool initialize();
+	bool initialize(const std::string ip);
 
 	/**
 	 * Change the current server IP address
-	 * @param ip The given server IP address to change
+	 * @param ip The given server IP address to set
 	 * @return True if successful (false if failed)
 	 */
 	bool setIP(std::string ip);
@@ -86,105 +57,156 @@ public:
 	std::string getIP();
 
 	/**
-	 * Get the topological map within a certain radius based on latitude and longitude
-	 * @param lat The given latitude of this topological map (Unit: [deg])
-	 * @param lon The given longitude of this topological map (Unit: [deg])
-	 * @param radius The given radius of this topological map (Unit: [m])
+	 * Get a map within a radius from a given latitude and longitude point
+	 * @param lat The given latitude (Unit: [deg])
+	 * @param lon The given longitude (Unit: [deg])
+	 * @param radius The given radius of map to get (Unit: [m])
 	 * @param map A reference to gotten topological map
 	 * @return True if successful (false if failed)
 	 */
-	bool getMap(double lat, double lon, double radius, Map& map);
+	bool getMapAll(double lat, double lon, double radius, Map& map)
+	{
+		bool ok = getTopoMap(lat, lon, radius, map);
+		if (ok) ok = getPOI(lat, lon, radius, map);
+		if (ok) ok = getStreetView(lat, lon, radius, map);
+		return ok;
+	}
 
 	/**
-	 * Get the topological map within a certain radius based on node
-	 * @param node_id The given node ID of this topological map
-	 * @param radius The given radius of this topological map (Unit: [m])
+	 * Get a map within a radius from a given node
+	 * @param radius The given radius of map to get (Unit: [m])
 	 * @param map A reference to gotten topological map
 	 * @return True if successful (false if failed)
 	 */
-	bool getMap(ID node_id, double radius, Map& map);
+	bool getMapAll(ID node_id, double radius, Map& map)
+	{
+		bool ok = getTopoMap(node_id, radius, map);
+		if (ok) ok = getPOI(node_id, radius, map);
+		if (ok) ok = getStreetView(node_id, radius, map);
+		return ok;
+	}
 
 	/**
-	 * Get the topological map within a certain map tile
-	 * @param tile The given map tile of this topological map
+	 * Get a map within a certain map tile
+	 * @param tile The given map tile of map to get
 	 * @param map A reference to gotten topological map
 	 * @return True if successful (false if failed)
 	 */
-	bool getMap(cv::Point2i tile, Map& map);
+	bool getMapAll(cv::Point2i tile, Map& map)
+	{
+		bool ok = getTopoMap(tile, map);
+		if (ok) ok = getPOI(tile, map);
+		if (ok) ok = getStreetView(tile, map);
+		return ok;
+	}
 
 	/**
-	 * Get the minimal topological map with a path
-	 * @param path The given path of this topological map
+	 * Get a topological map within a radius from a given latitude and longitude point
+	 * @param lat The given latitude (Unit: [deg])
+	 * @param lon The given longitude (Unit: [deg])
+	 * @param radius The given radius of map to get (Unit: [m])
 	 * @param map A reference to gotten topological map
-	 * @param alpha A radius margin to gotten topological map (Unit: [m])
 	 * @return True if successful (false if failed)
 	 */
-	bool getMap(Path path, Map& map, double alpha = 50.0);
+	bool getTopoMap(double lat, double lon, double radius, Map& map);
 
 	/**
-	 * Get the minimal topological map(auto expansion) with a path
-	 * @param path The given path of this topological map
+	 * Get a topological map within a radius from a given node
+	 * @param radius The given radius of map to get (Unit: [m])
 	 * @param map A reference to gotten topological map
-	 * @param alpha A radius margin to gotten topological map (Unit: [m])
 	 * @return True if successful (false if failed)
 	 */
-	bool getMap_expansion(Path path, Map& map, double alpha = 50.0);
+	bool getTopoMap(ID node_id, double radius, Map& map);
 
 	/**
-	 * Get the junction nodes in the current topological map
-	 * @param cur_latlon The given latitude and longitude of current location (Unit: [deg])
-	 * @param top_n The number of nodes to get 
-	 * @return A vector of gotten nodes (Sort in order from current location to nearest)
+	 * Get a topological map within a certain map tile
+	 * @param tile The given map tile of map to get
+	 * @param map A reference to gotten topological map
+	 * @return True if successful (false if failed)
 	 */
-	std::vector<Node> getMap_junction(LatLon cur_latlon, int top_n = 1);
+	bool getTopoMap(cv::Point2i tile, Map& map);
 
 	/**
-	 * Get the current topological map
-	 * @return A reference to gotten topological map
+	 * Get a topological map that encloses a given path
+	 * @param path A given path
+	 * @param map A reference to gotten topological map
+	 * @param margin A radius margin to gotten topological map (Unit: [m])
+	 * @return True if successful (false if failed)
 	 */
-	Map& getMap();
+	bool getTopoMap(const Path& path, Map& map, double margin = 50.0);
 
 	/**
-	 * Get the path from the origin to the destination
+	 * Expand a given map to enclose a given path if necessary (original map data is kept)
+	 * @param path A given path
+	 * @param map A reference to gotten topological map
+	 * @param margin A radius margin to gotten topological map (Unit: [m])
+	 * @return True if successful (false if failed)
+	 */
+	bool getTopoMap_expansion(const Path& path, Map& map, double margin = 50.0);
+
+	/**
+	 * Get a path from a given start and a destination point
 	 * @param start_lat		The given origin latitude of this path (Unit: [deg])
 	 * @param start_lon 	The given origin longitude of this path (Unit: [deg])
 	 * @param start_floor	The given origin floor of this path  (Unit: [floor])
 	 * @param dest_lat		The given destination latitude of this path (Unit: [deg])
 	 * @param dest_lon		The given destination longitude of this path (Unit: [deg])
 	 * @param dest_floor	The given destination floor of this path  (Unit: [floor])
-	 * @param path			A reference to gotten path
-	 * @param num_paths		The number of paths requested (default: 2)
+	 * @param path			A found path
+	 * @param num_paths		The number of paths requested (default: 1)
 	 * @return				True if successful (false if failed)
 	 */
-	bool getPath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, Path& path, int num_paths = 2);
+	bool getPath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, Path& path, int num_paths = 1);
 
 	/**
-	 * Get the path(auto expansion topological map) from the origin to the destination
+	 * Get a path from a given start and a destination point and expand map accordingly to enclose the found path
 	 * @param start_lat		The given origin latitude of this path (Unit: [deg])
 	 * @param start_lon 	The given origin longitude of this path (Unit: [deg])
 	 * @param start_floor	The given origin floor of this path  (Unit: [floor])
 	 * @param dest_lat		The given destination latitude of this path (Unit: [deg])
 	 * @param dest_lon		The given destination longitude of this path (Unit: [deg])
 	 * @param dest_floor	The given destination floor of this path  (Unit: [floor])
-	 * @param path			A reference to gotten path
-	 * @param num_paths		The number of paths requested (default: 2)
+	 * @param path			A found path
+	 * @param map			An expanded map to cover the found path
+	 * @param num_paths		The number of paths requested (default: 1)
 	 * @return				True if successful (false if failed)
 	 */
-	bool getPath_expansion(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, Path& path, int num_paths = 2);
-	
+	bool getPath_mapExpansion(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, Path& path, Map& map, int num_paths = 1);
+
 	/**
-	 * Read the path from the given file
-	 * @param filename The filename to read a path
-	 * @param path A reference to gotten path
+	 * Get a path from a saved json file
+	 * @param filename		A given file name
+	 * @param path			A found path
+	 * @return				True if successful (false if failed)
+	 */
+	bool MapManager::getPath(const char* filename, Path& path);
+
+	/**
+	 * Get the POIs within a certain radius based on latitude and longitude
+	 * @param lat The given latitude of these POIs (Unit: [deg])
+	 * @param lon The given longitude of these POIs (Unit: [deg])
+	 * @param radius The given radius of these POIs (Unit: [m])
+	 * @param map A reference to gotten POIs map
 	 * @return True if successful (false if failed)
 	 */
-	bool getPath(const char* filename, Path& path);
-	
+	bool getPOI(double lat, double lon, double radius, Map& map);
+
 	/**
-	 * Get the current path
-	 * @return A value to gotten path
+	 * Get the POIs within a certain radius based on node
+	 * @param node_id The given node ID of these POIs
+	 * @param radius The given radius of these POIs (Unit: [m])
+	 * @param map A reference to gotten POIs map
+	 * @return True if successful (false if failed)
 	 */
-	Path getPath();
+	bool getPOI(ID node_id, double radius, Map& map);
+
+	/**
+	 * Get the POIs within a certain map tile
+	 * @param tile The given map tile of these POIs
+	 * @param map A reference to gotten POIs map
+	 * @return True if successful (false if failed)
+	 */
+	bool getPOI(cv::Point2i tile, Map& map);
 
 	/**
 	 * Get the POIs within a certain radius based on latitude and longitude
@@ -195,7 +217,7 @@ public:
 	 * @return True if successful (false if failed)
 	 */
 	bool getPOI(double lat, double lon, double radius, std::vector<POI>& poi_vec);
-	
+
 	/**
 	 * Get the POIs within a certain radius based on node
 	 * @param node_id The given node ID of these POIs
@@ -204,7 +226,7 @@ public:
 	 * @return True if successful (false if failed)
 	 */
 	bool getPOI(ID node_id, double radius, std::vector<POI>& poi_vec);
-	
+
 	/**
 	 * Get the POIs within a certain map tile
 	 * @param tile The given map tile of these POIs
@@ -212,63 +234,33 @@ public:
 	 * @return True if successful (false if failed)
 	 */
 	bool getPOI(cv::Point2i tile, std::vector<POI>& poi_vec);
-	
-	/**
-	 * Get the current POIs vector
-	 * @return A reference to gotten POIs vector
-	 */
-	std::vector<POI>& getPOI();
-	
-	/**
-	 * Get the POI corresponding to a certain POI ID
-	 * @param poi_id The given POI ID of this POI
-	 * @param latlon The given latitude and longitude of this POI (Unit: [deg])
-	 * @param radius The given radius of this POI (Unit: [m])
-	 * @return A value to gotten POI
-	 */
-	//POI getPOI(ID poi_id, LatLon latlon, double radius);
 
 	/**
-	 * Get the POIs corresponding to a certain POI ID
-	 * @param poi_id The given POI ID of this POI
-	 * @param radius The given radius of this POI (Unit: [m])
-	 * @return A vector to gotten POIs
+	 * Get the StreetViews within a certain radius based on latitude and longitude
+	 * @param lat The given latitude of these StreetViews (Unit: [deg])
+	 * @param lon The given longitude of these StreetViews (Unit: [deg])
+	 * @param radius The given radius of these StreetViews (Unit: [m])
+	 * @param sv_vec A reference to gotten StreetViews vector
+	 * @return True if successful (false if failed)
 	 */
-	std::vector<POI> getPOI(ID poi_id, double radius = 10.0);
-	
-	/**
-	 * Get the POIs corresponding to a certain POI name
-	 * @param poi_name The given POI name of this POI
-	 * @param latlon The given latitude and longitude of this POI (Unit: [deg])
-	 * @param radius The given radius of this POI (Unit: [m])
-	 * @return A vector of gotten POIs
-	 */
-	std::vector<POI> getPOI(const std::string poi_name, LatLon latlon, double radius);
+	bool getStreetView(double lat, double lon, double radius, Map& map);
 
 	/**
-	 * Get the POIs corresponding to a certain POI name
-	 * @param poi_name The given POI name of this POI
-	 * @param latlon The given latitude and longitude of this POI (Unit: [deg])
-	 * @param radius The given radius of this POI (Unit: [m])
-	 * @param cur_latlon The given latitude and longitude of current location (Unit: [deg])
-	 * @return A vector of gotten POIs (Sort in order from current location to nearest)
+	 * Get the StreetViews within a certain radius based on node
+	 * @param node_id The given node ID of these StreetViews
+	 * @param radius The given radius of these StreetViews (Unit: [m])
+	 * @param sv_vec A reference to gotten StreetViews vector
+	 * @return True if successful (false if failed)
 	 */
-	std::vector<POI> getPOI_sorting(const std::string poi_name, LatLon latlon, double radius, LatLon cur_latlon);
+	bool getStreetView(ID node_id, double radius, Map& map);
 
 	/**
-	 * Get the POIs corresponding to a certain POI name
-	 * @param poi_name The given POI name of this POI
-	 * @return A vector of gotten POIs
+	 * Get the StreetViews within a certain map tile
+	 * @param tile The given map tile of these StreetViews
+	 * @param sv_vec A reference to gotten StreetViews vector
+	 * @return True if successful (false if failed)
 	 */
-	std::vector<POI> getPOI(const std::string poi_name);
-
-	/**
-	 * Get the POIs corresponding to a certain POI name
-	 * @param poi_name The given POI name of this POI
-	 * @param cur_latlon The given latitude and longitude of current location (Unit: [deg])
-	 * @return A vector of gotten POIs (Sort in order from current location to nearest)
-	 */
-	std::vector<POI> getPOI_sorting(const std::string poi_name, LatLon cur_latlon);
+	bool getStreetView(cv::Point2i tile, Map& map);
 
 	/**
 	 * Get the StreetViews within a certain radius based on latitude and longitude
@@ -298,30 +290,7 @@ public:
 	bool getStreetView(cv::Point2i tile, std::vector<StreetView>& sv_vec);
 
 	/**
-	 * Get the current StreetViews vector
-	 * @return A reference to gotten StreetViews vector
-	 */
-	std::vector<StreetView> getStreetView();
-
-	/**
-	 * Get the StreetView corresponding to a certain StreetView ID
-	 * @param sv_id The given StreetView ID of this StreetView
-	 * @param latlon The given latitude and longitude of this StreetView (Unit: [deg])
-	 * @param radius The given radius of this StreetView (Unit: [m])
-	 * @return A value to gotten StreetView
-	 */
-	//StreetView getStreetView(ID sv_id, LatLon latlon, double radius);
-
-	/**
-	 * Get the StreetViews corresponding to a certain StreetView ID
-	 * @param sv_id The given StreetView ID of this StreetView
-	 * @param radius The given radius of this StreetView (Unit: [m])
-	 * @return A vector to gotten StreetViews
-	 */
-	std::vector<StreetView> getStreetView(ID sv_id, double radius = 10.0);
-
-	/**
-	 * Download the StreetView image corresponding to a certain StreetView ID
+	 * Get a StreetView image corresponding to a certain StreetView ID
 	 * @param sv_id The given StreetView ID of this StreetView image
 	 * @param sv_image A reference to downloaded StreetView image
 	 * @param cubic The face of an image cube - 360: "", front: "f", back: "b", left: "l", right: "r", up: "u", down: "d" (default: "")
@@ -331,60 +300,18 @@ public:
 	bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 10);
 
 protected:
-	Map* m_map;
-	Path m_path;
+	std::string m_ip;
 	std::string m_json;
-	/** A hash table for finding Path points */
-	std::map<ID, LatLon> lookup_path;
-	/** A hash table for finding POIs by name */
-	std::map<std::wstring, LatLon> lookup_pois_name;
-	///** A hash table for finding POIs by ID */
-	//std::map<ID, LatLon> lookup_pois_id;
-	///** A hash table for finding StreetViews */
-	//std::map<ID, LatLon> lookup_svs;
-
-	/*int lat2tiley(double lat, int z);
-	int lon2tilex(double lon, int z);
-	double tiley2lat(int y, int z);
-	double tilex2lon(int x, int z);
-	cv::Point2i latlon2xy(double lat, double lon, int z);*/
-
+	bool m_portErr;
 
 	/**
-	 * Callback function for request to server 
-	 * @param ptr A pointer to data
-	 * @param size The size of a single data
-	 * @param count The number of data
-	 * @param stream A arbitrary user-data pointer
-	 * @return The size of total data
-	 */
-	static size_t write_callback(void* ptr, size_t size, size_t count, void* stream);
-		
-	/**
-	 * Request to server and receive response
-	 * @param url A web address to request to the server
-	 * @return True if successful (false if failed)
-	 */
-	bool query2server(std::string url);
-	/*std::string to_utf8(uint32_t cp);
-	bool decodeUni();*/
-	
-	/**
-	 * Convert UTF8 to UTF16 format
-	 * @param utf8 A pointer to data in UTF8 format
-	 * @param utf16 A reference to data in UTF16 format
-	 * @return True if successful (false if failed)
-	 */
-	bool utf8to16(const char* utf8, std::wstring& utf16);
-
-	/**
-	 * Request the topological map within a certain radius based on latitude and longitude to server and receive response 
+	 * Request the topological map within a certain radius based on latitude and longitude to server and receive response
 	 * @param lat The given latitude of this topological map (Unit: [deg])
 	 * @param lon The given longitude of this topological map (Unit: [deg])
 	 * @param radius The given radius of this topological map (Unit: [m])
 	 * @return True if successful (false if failed)
 	 */
-	bool downloadMap(double lat, double lon, double radius);
+	bool downloadTopoMap(double lat, double lon, double radius);
 
 	/**
 	 * Request the topological map within a certain radius based on node to server and receive response
@@ -392,21 +319,39 @@ protected:
 	 * @param radius The given radius of this topological map (Unit: [m])
 	 * @return True if successful (false if failed)
 	 */
-	bool downloadMap(ID node_id, double radius);
+	bool downloadTopoMap(ID node_id, double radius);
 
 	/**
 	 * Request the topological map within a certain map tile to server and receive response
 	 * @param tile The given map tile of this topological map
 	 * @return True if successful (false if failed)
 	 */
-	bool downloadMap(cv::Point2i tile);
+	bool downloadTopoMap(cv::Point2i tile);
 
 	/**
 	 * Parse the topological map response received
 	 * @param json A response received
+	 * @param map Parsed map from the json
 	 * @return True if successful (false if failed)
 	 */
-	bool parseMap(const char* json);
+	bool parseTopoMap(const char* json, Map& map);
+
+	/**
+	 * Request to server and receive response
+	 * @param url A web address to request to the server
+	 * @return True if successful (false if failed)
+	 */
+	bool query2server(std::string url);
+
+	/**
+	 * Callback function for request to server
+	 * @param ptr A pointer to data
+	 * @param size The size of a single data
+	 * @param count The number of data
+	 * @param stream A arbitrary user-data pointer
+	 * @return The size of total data
+	 */
+	static size_t write_callback(void* ptr, size_t size, size_t count, void* stream);
 
 	/**
 	 * Request the path from the origin to the destination to server and receive response
@@ -419,41 +364,15 @@ protected:
 	 * @param num_paths 	The number of paths requested (default: 2)
 	 * @return 				True if successful (false if failed)
 	 */
-	bool downloadPath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, int num_paths = 2);
+	bool downloadPath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, int num_paths = 1);
 
 	/**
 	 * Parse the path response received
 	 * @param json A response received
+	 * @param path Parsed path from the json data
 	 * @return True if successful (false if failed)
 	 */
-	bool parsePath(const char* json);
-	
-
-	/**
-	 * Receive the topological map including an incomplete path and completely rebuild the path
-	 * @param start_lat		The given origin latitude of this path (Unit: [deg])
-	 * @param start_lon 	The given origin longitude of this path (Unit: [deg])
-	 * @param start_floor	The given origin floor of this path  (Unit: [floor])
-	 * @param dest_lat		The given destination latitude of this path (Unit: [deg])
-	 * @param dest_lon		The given destination longitude of this path (Unit: [deg])
-	 * @param dest_floor	The given destination floor of this path  (Unit: [floor])
-	 * @param num_paths 	The number of paths requested (default: 2)
-	 * @return 				True if successful (false if failed)
-	 */
-	bool generatePath(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, int num_paths = 2);
-
-	/**
-	 * Receive the topological map(auto expansion) including an incomplete path and completely rebuild the path
-	 * @param start_lat		The given origin latitude of this path (Unit: [deg])
-	 * @param start_lon 	The given origin longitude of this path (Unit: [deg])
-	 * @param start_floor	The given origin floor of this path  (Unit: [floor])
-	 * @param dest_lat		The given destination latitude of this path (Unit: [deg])
-	 * @param dest_lon		The given destination longitude of this path (Unit: [deg])
-	 * @param dest_floor	The given destination floor of this path  (Unit: [floor])
-	 * @param num_paths 	The number of paths requested (default: 2)
-	 * @return 				True if successful (false if failed)
-	 */
-	bool generatePath_expansion(double start_lat, double start_lon, int start_floor, double dest_lat, double dest_lon, int dest_floor, int num_paths = 2);
+	bool parsePath(const char* json, Path& path);
 
 	/**
 	 * Request the POIs within a certain radius based on latitude and longitude to server and receive response
@@ -480,19 +399,20 @@ protected:
 	bool downloadPOI(cv::Point2i tile);
 
 	/**
-	 * Request the POIs within a certain radius based on POI ID to server and receive response
-	 * @param poi_id The given POI ID of these POIs
-	 * @param radius The given radius of these POIs (Unit: [m])
+	 * Parse the POIs response received
+	 * @param json A response received
+	 * @param map Parsed map from the json
 	 * @return True if successful (false if failed)
 	 */
-	bool downloadPOI_poi(ID poi_id, double radius);
+	bool parsePOI(const char* json, Map& map);
 
 	/**
 	 * Parse the POIs response received
 	 * @param json A response received
+	 * @param poi_vec Parsed POI's from the json
 	 * @return True if successful (false if failed)
 	 */
-	bool parsePOI(const char* json);
+	bool parsePOI(const char* json, std::vector<POI>& poi_vec);
 
 	/**
 	 * Request the StreetViews within a certain radius based on latitude and longitude to server and receive response
@@ -519,19 +439,38 @@ protected:
 	bool downloadStreetView(cv::Point2i tile);
 
 	/**
-	 * Request the StreetViews within a certain radius based on SV ID to server and receive response
-	 * @param sv_id The given SV ID of these StreetViews
-	 * @param radius The given radius of these StreetViews (Unit: [m])
+	 * Parse the StreetViews response received
+	 * @param json A response received
+	 * @param map Parsed map from the json
 	 * @return True if successful (false if failed)
 	 */
-	bool downloadStreetView_sv(ID sv_id, double radius);
+	bool parseStreetView(const char* json, Map& map);
 
 	/**
 	 * Parse the StreetViews response received
 	 * @param json A response received
+	 * @param sv_vec Parsed StreetViews from the json
 	 * @return True if successful (false if failed)
 	 */
-	bool parseStreetView(const char* json);
+	bool parseStreetView(const char* json, std::vector<StreetView>& sv_vec);
+
+	/**
+	 * Download the StreetView image corresponding to a certain StreetView ID
+	 * @param sv_id The given StreetView ID of this StreetView image
+	 * @param cubic The face of an image cube - 360: "", front: "f", back: "b", left: "l", right: "r", up: "u", down: "d" (default: "")
+	 * @param timeout The timeout value of curl (default: 10)
+	 * @param url_middle The web port number to request to the server (default: ":10000/")
+	 * @return The downloaded image
+	 */
+	cv::Mat downloadStreetViewImage(ID sv_id, const std::string cubic = "", int timeout = 10, const std::string url_middle = ":10000/");
+
+	/**
+	 * Request an image to server and download it
+	 * @param url A web address to request to the server
+	 * @param timeout The timeout value of curl (default: 10)
+	 * @return The downloaded image
+	 */
+	cv::Mat queryImage2server(std::string url, int timeout = 10);
 
 	/**
 	 * Callback function for request to server
@@ -544,36 +483,17 @@ protected:
 	static size_t writeImage_callback(char* ptr, size_t size, size_t nmemb, void* userdata);
 
 	/**
-	 * Request an image to server and download it
-	 * @param url A web address to request to the server
-	 * @param timeout The timeout value of curl (default: 10)
-	 * @return The downloaded image
+	 * Check if server response is valid or not
+	 * @param json A given server response to check
+	 * @return True of the response is valid
 	 */
-	cv::Mat queryImage2server(std::string url, int timeout = 10);
-
-	/**
-	 * Download the StreetView image corresponding to a certain StreetView ID
-	 * @param sv_id The given StreetView ID of this StreetView image
-	 * @param cubic The face of an image cube - 360: "", front: "f", back: "b", left: "l", right: "r", up: "u", down: "d" (default: "")
-	 * @param timeout The timeout value of curl (default: 10)
-	 * @param url_middle The web port number to request to the server (default: ":10000/")
-	 * @return The downloaded image
-	 */
-	cv::Mat downloadStreetViewImage(ID sv_id, const std::string cubic = "", int timeout = 10, const std::string url_middle = ":10000/");
-
-private:
-	bool m_isMap;
-	std::string m_ip;
-	bool m_portErr;
-};
-
-class EdgeTemp : public Edge
-{
-public:
-	//ID id;
-	std::vector<ID> node_ids;
+	bool invalid_response(const std::string& json)
+	{
+		if (json.empty() || json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n") return true;
+		return false;
+	}
 };
 
 } // End of 'dg'
 
-#endif // End of '__SIMPLE_MAP_MANAGER__'
+#endif // End of '__MAP_MANAGER__'

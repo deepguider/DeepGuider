@@ -93,22 +93,37 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
+    <ClCompile Include="..\..\src\core\map.cpp" />
     <ClCompile Include="..\..\src\guidance\guidance.cpp" />
-    <ClCompile Include="..\..\src\localizer\road_map.cpp" />
-    <ClCompile Include="..\..\src\localizer\utm_converter.cpp" />
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
     <ClCompile Include="..\..\src\roadtheta\roadtheta.cpp" />
     <ClCompile Include="..\..\src\utils\python_embedding.cpp" />
+    <ClCompile Include="..\..\src\utils\utility.cpp" />
+    <ClCompile Include="..\..\src\utils\utm_converter.cpp" />
     <ClCompile Include="dg_simple.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\core\basic_type.hpp" />
     <ClInclude Include="..\..\src\core\map.hpp" />
     <ClInclude Include="..\..\src\core\path.hpp" />
+    <ClInclude Include="..\..\src\core\shared_date.hpp" />
+    <ClInclude Include="..\..\src\guidance\guidance.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_base.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_ekf.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_ekf_variants.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_interface.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_simple.hpp" />
+    <ClInclude Include="..\..\src\localizer\path_projector.hpp" />
+    <ClInclude Include="..\..\src\map_manager\map_manager.hpp" />
+    <ClInclude Include="..\..\src\utils\ekf.hpp" />
     <ClInclude Include="..\..\src\utils\map_painter.hpp" />
     <ClInclude Include="..\..\src\utils\opencx.hpp" />
     <ClInclude Include="..\..\src\utils\opensx.hpp" />
     <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
+    <ClInclude Include="..\..\src\utils\tts.hpp" />
+    <ClInclude Include="..\..\src\utils\utility.hpp" />
+    <ClInclude Include="..\..\src\utils\utm_converter.hpp" />
     <ClInclude Include="..\..\src\utils\vvs.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

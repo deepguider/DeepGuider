@@ -83,39 +83,39 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib;..\..\EXTERNAL\curl\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>opencv_world430.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
-    <ClCompile Include="..\..\src\localizer\road_map.cpp" />
-    <ClCompile Include="..\..\src\localizer\utm_converter.cpp" />
+    <ClCompile Include="..\..\src\core\map.cpp" />
+    <ClCompile Include="..\..\src\utils\utility.cpp" />
+    <ClCompile Include="..\..\src\utils\utm_converter.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\core\basic_type.hpp" />
     <ClInclude Include="..\..\src\core\map.hpp" />
-    <ClInclude Include="..\..\src\localizer\directed_graph.hpp" />
-    <ClInclude Include="..\..\src\localizer\graph_painter.hpp" />
+    <ClInclude Include="..\..\src\core\path.hpp" />
+    <ClInclude Include="..\..\src\core\shared_date.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_base.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_ekf.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_ekf_variants.hpp" />
-    <ClInclude Include="..\..\src\localizer\road_map.hpp" />
-    <ClInclude Include="..\..\src\localizer\localizer_simple.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_interface.hpp" />
+    <ClInclude Include="..\..\src\localizer\path_projector.hpp" />
     <ClInclude Include="localizer_runner.hpp" />
-    <ClInclude Include="run_localizer.hpp" />
     <ClInclude Include="test_core_type.hpp" />
     <ClInclude Include="test_localizer_ekf.hpp" />
     <ClInclude Include="test_localizer_etri.hpp" />
     <ClInclude Include="test_localizer_gps2utm.hpp" />
-    <ClInclude Include="test_localizer_graph.hpp" />
-    <ClInclude Include="test_localizer_road.hpp" />
-    <ClInclude Include="test_localizer_simple.hpp" />
+    <ClInclude Include="test_localizer_map.hpp" />
+    <ClInclude Include="test_utility.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

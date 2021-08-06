@@ -21,7 +21,7 @@ public:
      * A constructor with assignment
      * @param _x The given X position (Unit: [m])
      * @param _y The given Y position (Unit: [m])
-     * @param _zone The given zone number
+     * @param _zone The given zone number (default = 52, utm zone of korea)
      * @param _is_south A flag whether this point is at the southern hemisphere.
      */
     Point2UTM(double _x = 0, double _y = 0, int _zone = 52, bool _is_south = false) : Point2(_x, _y), zone(_zone), is_south(_is_south) { }
