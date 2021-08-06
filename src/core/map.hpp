@@ -635,7 +635,7 @@ public:
      * @param search_radius A given search radius
      * @return A list of found node (empty list if no node found)
      */
-    std::vector<Node*> Map::getConnectedNearNodes(Node* node, double search_radius);
+    std::vector<Node*> getConnectedNearNodes(Node* node, double search_radius);
 
     /**
      * Find nodes connected to a given node within a search radius (time complexity: O(1))
@@ -643,7 +643,7 @@ public:
      * @param search_radius A given search radius
      * @return A list of found node (empty list if no node found)
      */
-    std::vector<const Node*> Map::getConnectedNearNodes(const Node* node, double search_radius) const;
+    std::vector<const Node*> getConnectedNearNodes(const Node* node, double search_radius) const;
 
     /**
      * Find a node connected from a given node with a given edge (time complexity: O(1))

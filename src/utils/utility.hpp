@@ -117,7 +117,7 @@ namespace dg
         int internal_index(int index) const { return (m_next_index - m_data_count + index + m_buf_size) % m_buf_size; }
 
         /** 링버퍼 메모리 */
-        T* m_buf;
+        T* m_buf = nullptr;
 
         /** 링버퍼 최대 크기 */
         int m_buf_size;
@@ -184,7 +184,7 @@ namespace dg
 
     protected:
         /** 링버퍼에 저장된 데이터 합 */
-        T m_sum;
+        T m_sum = 0;
     };
 
     template<class T>
@@ -371,8 +371,8 @@ namespace dg
     template<class T>
     bool RingBufferNumeric<T>::push_back(const T& data)
     {
-        if (m_buf == nullptr) return false;
-        if (m_data_count == m_buf_size) m_sum -= m_buf[m_next_index];
+        if (RingBuffer<T>::m_buf == nullptr) return false;
+        if (RingBuffer<T>::m_data_count == RingBuffer<T>::m_buf_size) m_sum -= RingBuffer<T>::m_buf[RingBuffer<T>::m_next_index];
         m_sum += data;
         RingBuffer<T>::push_back(data);
         return true;
@@ -381,8 +381,8 @@ namespace dg
     template<class T>
     int RingBufferNumeric<T>::insert(int index, const T& data)
     {
-        if (m_buf == nullptr || index == 0 && m_data_count == m_buf_size) return -1;
-        if (m_data_count == m_buf_size) m_sum -= m_buf[m_next_index];
+        if (RingBuffer<T>::m_buf == nullptr || index == 0 && RingBuffer<T>::m_data_count == RingBuffer<T>::m_buf_size) return -1;
+        if (RingBuffer<T>::m_data_count == RingBuffer<T>::m_buf_size) m_sum -= RingBuffer<T>::m_buf[RingBuffer<T>::m_next_index];
         m_sum += data;
         return RingBuffer<T>::insert(index, data);
     }
@@ -390,13 +390,13 @@ namespace dg
     template<class T>
     bool RingBufferNumeric<T>::erase(int first, int last)
     {
-        if (last < 0) last = m_data_count - 1;
-        if (m_buf == nullptr || first < 0 || last >= m_data_count || last < first) return false;
+        if (last < 0) last = RingBuffer<T>::m_data_count - 1;
+        if (RingBuffer<T>::m_buf == nullptr || first < 0 || last >= RingBuffer<T>::m_data_count || last < first) return false;
 
         for (int i = first; i <= last; i++)
         {
-            int in = internal_index(i);
-            sum -= m_buf[in];
+            int in = RingBuffer<T>::internal_index(i);
+            sum -= RingBuffer<T>::m_buf[in];
         }
         return RingBuffer<T>::erase(first, last);
     }
@@ -410,8 +410,8 @@ namespace dg
     template<class T>
     double RingBufferNumeric<T>::average()
     {
-        if (m_data_count > 0)
-            return m_sum / (double)m_data_count;
+        if (RingBuffer<T>::m_data_count > 0)
+            return m_sum / (double)RingBuffer<T>::m_data_count;
         else
             return 0;
     }

@@ -62,6 +62,7 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
 
     cv::namedWindow(video_file);
     int i = 1;
+    dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
     while (1)
     {
         int frame_i = (int)video_data.get(cv::CAP_PROP_POS_FRAMES);
@@ -73,7 +74,9 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
         dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
         bool ok = recognizer.apply(image, ts);
 
-        printf("iteration: %d (it took %lf seconds)\n", i++, recognizer.procTime());
+        dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        printf("iteration: %d (it took %lf seconds)\n", i++, t2 - t1);
+        t1 = t2;
         recognizer.print();
 
         // draw frame number & fps
@@ -110,7 +113,7 @@ void procfunc(bool recording, int rec_fps, const char* video_path)
     printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
 
     // Run the module
-    test_image_run(recognizer, false, cv::format("%s_sample.png", recognizer.name()).c_str());
+    //test_image_run(recognizer, false, cv::format("%s_sample.png", recognizer.name()).c_str());
     test_video_run(recognizer, recording, rec_fps, video_path);
 
     // Clear the module
@@ -124,7 +127,7 @@ int main()
     int rec_fps = 15;
     bool threaded_run = false;
 
-    int video_sel = 0;
+    int video_sel = 1;
     const char* video_path[] = {
         "video/191115_ETRI.avi",
         "video/etri_cart_200219_15h01m_2fps.avi",

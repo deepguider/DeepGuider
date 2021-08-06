@@ -179,7 +179,7 @@ public:
 	 * @param path			A found path
 	 * @return				True if successful (false if failed)
 	 */
-	bool MapManager::getPath(const char* filename, Path& path);
+	bool getPath(const char* filename, Path& path);
 
 	/**
 	 * Get the POIs within a certain radius based on latitude and longitude
