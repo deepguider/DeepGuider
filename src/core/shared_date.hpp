@@ -61,6 +61,22 @@ public:
         return true;
     }
 
+    /** Get gps position of a metric position by using shared converter */
+    virtual LatLon toLatLon(const Point2& metric)
+    {
+        cv::AutoLock lock(m_mutex_map);
+        if (m_map == nullptr) return LatLon();
+        return m_map->toLatLon(metric);
+    }
+
+    /** Get metric position of a gps position by using shared converter */
+    virtual Point2 toMetric(const LatLon& ll)
+    {
+        cv::AutoLock lock(m_mutex_map);
+        if (m_map == nullptr) return Point2();
+        return m_map->toMetric(ll);
+    }
+
     /** Set a lock for shared map data */
     void setMapLock() 
     {

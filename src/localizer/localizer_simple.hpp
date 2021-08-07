@@ -6,25 +6,13 @@
 namespace dg
 {
 
-class SimpleLocalizer : public BaseLocalizer
+class SimpleLocalizer : public LocalizerInterface, public UTMConverter
 {
 public:
     virtual Pose2 getPose()
     {
         cv::AutoLock lock(m_mutex);
         return m_pose;
-    }
-
-    virtual LatLon getPoseGPS()
-    {
-        return toLatLon(getPose());
-    }
-
-    virtual TopometricPose getPoseTopometric()
-    {
-        cv::AutoLock lock(m_mutex);
-        std::vector<RoadMap::Node*> near_nodes = findNearNodes(m_pose, 100);
-        return findNearestTopoPose(m_pose, near_nodes, 1);
     }
 
     virtual double getPoseConfidence()
@@ -88,24 +76,23 @@ public:
         return true;
     }
 
-    virtual bool applyLocClue(ID node_id, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    virtual bool applyLocClue(const Point2& clue_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        RoadMap::Node* node = m_map.getNode(Point2ID(node_id));
-        if (node == nullptr) return false;
-        m_pose.x = node->data.x;
-        m_pose.y = node->data.y;
+        m_pose = clue_xy;
         return true;
     }
 
-    virtual bool applyLocClue(const std::vector<ID>& node_ids, const std::vector<Polar2>& obs, Timestamp time = -1, const std::vector<double>& confidence = std::vector<double>())
+    virtual bool applyLocClue(const std::vector<Point2>& clue_xy, const std::vector<Polar2>& obs, Timestamp time = -1, const std::vector<double>& confidence = std::vector<double>())
     {
-        if (node_ids.empty() || obs.empty() || node_ids.size() != obs.size()) return false;
-        return applyLocClue(node_ids.back(), obs.back(), time);
+        if (clue_xy.empty() || obs.empty() || clue_xy.size() != obs.size()) return false;
+        return applyLocClue(clue_xy.back(), obs.back(), time);
     }
 
 protected:
+    cv::Mutex m_mutex;
     Pose2 m_pose;
+
 }; // End of 'SimpleLocalizer'
 
 } // End of 'dg'

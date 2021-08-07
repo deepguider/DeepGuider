@@ -44,18 +44,15 @@ public:
 
     virtual LatLon toLatLon(const Point2& metric) const
     {
-        const Map* map = getMap();
-        if (map == nullptr) return LatLon();
-        return map->toLatLon(metric);
+        if(m_shared) return m_shared->toLatLon(metric);
+        return LatLon();
     }
 
     virtual Point2 toMetric(const LatLon& ll) const
     {
-        const Map* map = getMap();
-        if (map == nullptr) return Point2();
-        return map->toMetric(ll);
+        if(m_shared) return m_shared->toMetric(ll);
+        return Point2();
     }
-
 
 protected:
     SharedInterface* m_shared = nullptr;

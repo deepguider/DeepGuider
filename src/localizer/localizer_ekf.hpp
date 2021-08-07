@@ -195,13 +195,19 @@ public:
         return applyPosition(xy, time, confidence);
     }
 
-    virtual bool applyIMUCompass(double theta, Timestamp time = -1, double confidence = -1)
+    virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
     {
-        double theta_prev = m_imu_compass_prev_angle, time_prev = m_imu_compass_prev_time;
-        m_imu_compass_prev_angle = theta;
+        m_observation_noise = m_gps_noise;
+        return applyPosition(xy, time, confidence);
+    }
+
+    virtual bool applyIMUCompass(double odometry_theta, Timestamp time = -1, double confidence = -1)
+    {
+        double odometry_theta_prev = m_imu_compass_prev_angle, time_prev = m_imu_compass_prev_time;
+        m_imu_compass_prev_angle = odometry_theta;
         m_imu_compass_prev_time = time;
         if (time_prev < 0) return false;
-        return applyOdometry(theta, theta_prev, time, time_prev, confidence);
+        return applyOdometry(odometry_theta, odometry_theta_prev, time, time_prev, confidence);
     }
 
     virtual bool applyRoadTheta(double theta, Timestamp time = -1, double confidence = -1)
@@ -210,22 +216,22 @@ public:
         return applyOrientation(theta, time, confidence);
     }
 
-    virtual bool applyPOI(const Point2& xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         m_observation_noise = m_poi_noise;
-        return applyLocClue(xy, obs, time, confidence);
+        return applyLocClue(clue_xy, relative, time, confidence);
     }
 
-    virtual bool applyVPS(const Point2& xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         m_observation_noise = m_vps_noise;
-        return applyLocClue(xy, obs, time, confidence);
+        return applyLocClue(clue_xy, relative, time, confidence);
     }
 
-    virtual bool applyIntersectCls(const Point2& xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    virtual bool applyIntersectCls(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         m_observation_noise = m_intersectcls_noise;
-        return applyLocClue(xy, obs, time, confidence);
+        return applyLocClue(clue_xy, relative, time, confidence);
     }
 
     bool addParamGPSDeadZone(const dg::Point2& p1, dg::Point2& p2)

@@ -21,22 +21,6 @@ class MapManager : public UTMConverter
 {
 public:
 	/**
-	 * The default constructor
-	 */
-	MapManager()
-	{
-		m_ip = "localhost";
-		m_portErr = false;
-	}
-
-	/**
-	 * The destructor
-	 */
-	~MapManager()
-	{
-	}
-
-	/**
 	 * Initialize to use this class
 	 * @param ip The given server IP address
 	 * @return True if successful (false if failed)
@@ -297,12 +281,12 @@ public:
 	 * @param timeout The timeout value of curl (default: 10)
 	 * @return True if successful (false if failed)
 	 */
-	bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 10);
+	static bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 10);
 
 protected:
-	std::string m_ip;
+	static std::string m_ip;
+	static bool m_portErr;
 	std::string m_json;
-	bool m_portErr;
 
 	/**
 	 * Request the topological map within a certain radius based on latitude and longitude to server and receive response
@@ -462,7 +446,7 @@ protected:
 	 * @param url_middle The web port number to request to the server (default: ":10000/")
 	 * @return The downloaded image
 	 */
-	cv::Mat downloadStreetViewImage(ID sv_id, const std::string cubic = "", int timeout = 10, const std::string url_middle = ":10000/");
+	static cv::Mat downloadStreetViewImage(ID sv_id, const std::string cubic = "", int timeout = 10, const std::string url_middle = ":10000/");
 
 	/**
 	 * Request an image to server and download it
@@ -470,7 +454,7 @@ protected:
 	 * @param timeout The timeout value of curl (default: 10)
 	 * @return The downloaded image
 	 */
-	cv::Mat queryImage2server(std::string url, int timeout = 10);
+	static cv::Mat queryImage2server(std::string url, int timeout = 10);
 
 	/**
 	 * Callback function for request to server

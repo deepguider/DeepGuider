@@ -5,6 +5,9 @@ using namespace rapidjson;
 namespace dg
 {
 
+std::string MapManager::m_ip = "localhost";
+bool MapManager::m_portErr = false;
+
 
 bool MapManager::initialize(const std::string ip)
 {

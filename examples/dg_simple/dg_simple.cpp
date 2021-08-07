@@ -171,9 +171,9 @@ protected:
     // sub modules
     dg::MapManager m_map_manager;
     dg::PathLocalizer m_localizer;
-    dg::VPS m_vps;
+    dg::VPSLocalizer m_vps;
     dg::LogoRecognizer m_logo;
-    dg::OCRRecognizer m_ocr;
+    dg::OCRLocalizer m_ocr;
     dg::IntersectionClassifier m_intersection_classifier;
     dg::RoadTheta m_roadtheta;
     dg::GuidanceManager m_guider;
@@ -297,23 +297,23 @@ bool DeepGuider::initialize(std::string config_file)
     if (m_enable_mapserver) printf("\tMapManager initialized!\n");
 
     // initialize VPS
-    std::string module_path = m_srcdir + "/vps";
-    if (m_enable_vps && !m_vps.initialize("vps", module_path.c_str())) return false;
+    std::string py_module_path = m_srcdir + "/vps";
+    if (m_enable_vps && !m_vps.initialize(this, m_server_ip, py_module_path)) return false;
     if (m_enable_vps) printf("\tVPS initialized in %.3lf seconds!\n", m_vps.procTime());
 
     // initialize OCR
-    module_path = m_srcdir + "/ocr_recog";
-    if (m_enable_ocr && !m_ocr.initialize("ocr_recognizer", module_path.c_str())) return false;
+    py_module_path = m_srcdir + "/ocr_recog";
+    if (m_enable_ocr && !m_ocr.initialize(this, py_module_path)) return false;
     if (m_enable_ocr) printf("\tOCR initialized in %.3lf seconds!\n", m_ocr.procTime());
 
     // initialize Intersection
-    module_path = m_srcdir + "/intersection_cls";
-    if (m_enable_intersection && !m_intersection_classifier.initialize("intersection_cls", module_path.c_str())) return false;
+    py_module_path = m_srcdir + "/intersection_cls";
+    if (m_enable_intersection && !m_intersection_classifier.initialize("intersection_cls", py_module_path.c_str())) return false;
     if (m_enable_intersection) printf("\tIntersection initialized in %.3lf seconds!\n", m_intersection_classifier.procTime());
 
     // initialize Logo
-    module_path = m_srcdir + "/logo_recog";
-    if (m_enable_logo && !m_logo.initialize("logo_recognizer", module_path.c_str())) return false;
+    py_module_path = m_srcdir + "/logo_recog";
+    if (m_enable_logo && !m_logo.initialize("logo_recognizer", py_module_path.c_str())) return false;
     if (m_enable_logo) printf("\tLogo initialized in %.3lf seconds!\n", m_logo.procTime());
 
     //initialize exploation 
@@ -525,7 +525,7 @@ int DeepGuider::run()
         const dg::LatLon gps_datum = gps_data[itr].second;
         const dg::Timestamp gps_time = gps_data[itr].first;
         procGpsData(gps_datum, gps_time);
-        m_painter.drawPoint(m_map_image, m_map->toMetric(gps_datum), 2, cv::Vec3b(0, 255, 0));
+        m_painter.drawPoint(m_map_image, toMetric(gps_datum), 2, cv::Vec3b(0, 255, 0));
         m_gps_history_asen.push_back(gps_datum);
         printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, gps_time);
 
@@ -617,7 +617,7 @@ double DeepGuider::getPoseConfidence(Timestamp* timestamp) const
 bool DeepGuider::procOutOfPath(const Point2& curr_pose)
 {
     if (!m_dest_defined) return false;
-    dg::LatLon pose_gps = m_map->toLatLon(curr_pose);
+    dg::LatLon pose_gps = toLatLon(curr_pose);
     return updateDeepGuiderPath(pose_gps, m_gps_dest);
 }
 
@@ -656,7 +656,7 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
     }
     else if (evt == cv::EVENT_LBUTTONDBLCLK)
     {
-        dg::LatLon ll = m_map->toLatLon(m_painter.cvtPixel2Value(cv::Point(x, y)));
+        dg::LatLon ll = toLatLon(m_painter.cvtPixel2Value(cv::Point(x, y)));
         setDeepGuiderDestination(ll);
     }
     else if (evt == cv::EVENT_RBUTTONDOWN)
@@ -682,7 +682,7 @@ bool DeepGuider::setDeepGuiderDestination(dg::LatLon gps_dest)
     }
 
     // get current pose
-    dg::LatLon pose_gps = m_map->toLatLon(getPose());
+    dg::LatLon pose_gps = toLatLon(getPose());
 
     // generate & apply new path
     bool ok = updateDeepGuiderPath(pose_gps, gps_dest);
@@ -715,8 +715,8 @@ bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
     }
     else
     {
-        Point2 p_start = m_map->toMetric(gps_start);
-        Point2 p_dest = m_map->toMetric(gps_dest);
+        Point2 p_start = toMetric(gps_start);
+        Point2 p_dest = toMetric(gps_dest);
         Path path;
         setMapLock();
         bool ok = m_map && m_map->getPath(p_start, p_dest, path);
@@ -741,11 +741,11 @@ bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
     releasePathLock();
     for(auto itr = m_gps_history_novatel.begin(); itr != m_gps_history_novatel.end(); itr++)
     {
-        m_painter.drawPoint(m_map_image, m_map->toMetric(*itr), 2, cv::Vec3b(0, 0, 255));
+        m_painter.drawPoint(m_map_image, toMetric(*itr), 2, cv::Vec3b(0, 0, 255));
     }
     for(auto itr = m_gps_history_asen.begin(); itr != m_gps_history_asen.end(); itr++)
     {
-        m_painter.drawPoint(m_map_image, m_map->toMetric(*itr), 2, cv::Vec3b(0, 255, 0));
+        m_painter.drawPoint(m_map_image, toMetric(*itr), 2, cv::Vec3b(0, 255, 0));
     }
 
     printf("\tGUI map is updated with new map and path!\n");
@@ -934,13 +934,13 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     m_localizer_mutex.lock();
     dg::Pose2 pose_metric = getPose();
     dg::TopometricPose pose_topo = getPoseTopometric();
-    dg::LatLon pose_gps = m_map->toLatLon(pose_metric);
+    dg::LatLon pose_gps = toLatLon(pose_metric);
     double pose_confidence = m_localizer.getPoseConfidence();
     m_localizer_mutex.unlock();
 
     // draw robot on the map
-    m_painter.drawPoint(image, m_map->toMetric(pose_gps), 10, cx::COLOR_YELLOW);
-    m_painter.drawPoint(image, m_map->toMetric(pose_gps), 8, cx::COLOR_BLUE);
+    m_painter.drawPoint(image, toMetric(pose_gps), 10, cx::COLOR_YELLOW);
+    m_painter.drawPoint(image, toMetric(pose_gps), 8, cx::COLOR_BLUE);
     dg::Point2 pose_pixel = m_painter.cvtValue2Pixel(pose_metric);
     cv::line(image, pose_pixel, pose_pixel + 10 * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)), cx::COLOR_YELLOW, 2);
 
@@ -1126,7 +1126,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     m_localizer_mutex.lock();
     dg::TopometricPose pose_topo = getPoseTopometric();
     dg::Pose2 pose_metric = getPose();
-    dg::LatLon pose_gps = m_map->toLatLon(pose_metric);
+    dg::LatLon pose_gps = toLatLon(pose_metric);
     double pose_confidence = m_localizer.getPoseConfidence();
     m_localizer_mutex.unlock();
 
@@ -1147,7 +1147,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     cur_guide = m_guider.getGuidance();
     if (node != nullptr)
     {
-        m_guider.applyPoseGPS(m_map->toLatLon(*node));
+        m_guider.applyPoseGPS(toLatLon(*node));
     }
     m_guider_mutex.unlock();
 
@@ -1335,7 +1335,10 @@ bool DeepGuider::procOcr()
     int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
-    if (!cam_image.empty() && m_ocr.apply(cam_image, capture_time))
+    std::vector<dg::Point2> poi_xys;
+    std::vector<dg::Polar2> relatives;
+    std::vector<double> poi_confidences;
+    if (!cam_image.empty() && m_ocr.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
     {
         if (m_data_logging)
         {
@@ -1345,21 +1348,13 @@ bool DeepGuider::procOcr()
         }
         m_ocr.print();
 
-        std::vector<dg::ID> ids;
-        std::vector<Polar2> obs;
-        std::vector<double> confs;
+        for (int k = 0; k < (int)poi_xys.size(); k++)
+        {
+            m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
+        }
+
         std::vector<OCRResult> ocrs;
         m_ocr.get(ocrs);
-        for (int k = 0; k < (int)ocrs.size(); k++)
-        {
-            //dg::ID ocr_id = m_map_manager.get_poi(ocrs[k].label);
-            dg::ID ocr_id = 0;
-            ids.push_back(ocr_id);
-            obs.push_back(rel_pose_defualt);
-            confs.push_back(ocrs[k].confidence);
-        }
-        //VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, capture_time, confs));
-
         if (!ocrs.empty())
         {
             m_ocr_mutex.lock();
@@ -1374,7 +1369,6 @@ bool DeepGuider::procOcr()
             m_ocrs.clear();
             m_ocr_mutex.unlock();
         }
-
     }
 
     return true;
@@ -1625,9 +1619,12 @@ bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++
     int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
-    int N = 3;  // top-3
-    double gps_accuracy = 1;   // 0: search radius = 230m ~ 1: search radius = 30m
-    if (!cam_image.empty() && m_vps.apply(cam_image, N, capture_pos.lat, capture_pos.lon, gps_accuracy, capture_time, m_server_ip.c_str()))
+    dg::Point2 sv_xy;
+    dg::Polar2 relative;
+    ID sv_id;
+    cv::Mat sv_image;
+    double sv_confidence;
+    if (!cam_image.empty() && m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, sv_id, sv_image))
     {
         if (m_data_logging)
         {
@@ -1637,51 +1634,35 @@ bool DeepGuider::procVps() // This will call apply() in vps.py embedded by C++
         } 
         m_vps.print();
 
-        std::vector<dg::ID> ids;
-        std::vector<dg::Polar2> obs;
-        std::vector<double> confs;
-        std::vector<VPSResult> streetviews;
-        m_vps.get(streetviews);
-        for (int k = 0; k < (int)streetviews.size(); k++)
-        {
-            if (streetviews[k].id <= 0 || streetviews[k].confidence <= 0) continue;        // invalid data
-            ids.push_back(streetviews[k].id);
-            obs.push_back(rel_pose_defualt);
-            confs.push_back(streetviews[k].confidence);
-        }
 
-        if(ids.size() > 0)
-        {
-            m_localizer_mutex.lock();
-            //VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, capture_time, confs));
-            m_localizer_mutex.unlock();
+        m_localizer_mutex.lock();
+        VVS_CHECK_TRUE(m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence));
+        m_localizer_mutex.unlock();
 
-            cv::Mat sv_image;
-            if(m_map_manager.getStreetViewImage(ids[0], sv_image, "f") && !sv_image.empty())
-            {
-                m_vps_mutex.lock();
-                m_vps_image = sv_image;
-                m_vps_id = ids[0];
-                m_vps_confidence = confs[0];
-                m_vps_mutex.unlock();
-            }
-            else
-            {
-                m_vps_mutex.lock();
-                m_vps_image = cv::Mat();
-                m_vps_id = ids[0];
-                m_vps_confidence = confs[0];
-                m_vps_mutex.unlock();
-            }
+        if(!sv_image.empty())
+        {
+            m_vps_mutex.lock();
+            m_vps_image = sv_image;
+            m_vps_id = sv_id;
+            m_vps_confidence = sv_confidence;
+            m_vps_mutex.unlock();
         }
         else
         {
             m_vps_mutex.lock();
             m_vps_image = cv::Mat();
-            m_vps_id = 0;
-            m_vps_confidence = 0;
+            m_vps_id = sv_id;
+            m_vps_confidence = sv_confidence;
             m_vps_mutex.unlock();
         }
+    }
+    else
+    {
+        m_vps_mutex.lock();
+        m_vps_image = cv::Mat();
+        m_vps_id = 0;
+        m_vps_confidence = 0;
+        m_vps_mutex.unlock();
     }
 
     return true;

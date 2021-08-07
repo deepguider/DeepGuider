@@ -188,9 +188,8 @@ public:
         {
             // Apply GPS data as position observation
             double timestamp = gps_data[i][0];
-            dg::Point2 gps(gps_data[i][1], gps_data[i][2]);
-            dg::LatLon ll = m_map->toLatLon(gps);
-            bool success = localizer->applyGPS(ll, timestamp);
+            dg::Point2 gps_xy(gps_data[i][1], gps_data[i][2]);
+            bool success = localizer->applyGPS(gps_xy, timestamp);
             if (!success) fprintf(stderr, "applyPosition() was failed.\n");
 
             // Record the current state on the CSV file
@@ -198,8 +197,6 @@ public:
             {
                 dg::Pose2 pose = localizer->getPose();
                 fprintf(out_traj, "%f, %f, %f, %f\n", timestamp, pose.x, pose.y, pose.theta);
-                //dg::Polar2 velocity = localizer->getVelocity();
-                //fprintf(out_traj, "%f, %f, %f, %f, %f, %f\n", timestamp, pose.x, pose.y, pose.theta, velocity.lin, velocity.ang);
             }
 
             // Visualize and show the current state as an image
@@ -207,13 +204,13 @@ public:
             {
                 dg::Pose2 pose = localizer->getPose();
                 if (gui_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, gui_traj_radius, gui_robot_color); // Robot trajectory
-                if (gui_gps_radius  > 0) gui_painter->drawPoint(bg_image, gps, gui_gps_radius, gui_gps_color);     // GPS point
+                if (gui_gps_radius  > 0) gui_painter->drawPoint(bg_image, gps_xy, gui_gps_radius, gui_gps_color);     // GPS point
                 cv::Mat out_image = genStateImage(bg_image, localizer, timestamp - timestart);
 
                 if (show_zoom)
                 {
                     if (gui_traj_radius > 0) zoom_painter->drawPoint(zoom_bg_image, pose, gui_traj_radius, gui_robot_color); // Robot trajectory
-                    if (gui_gps_radius  > 0) zoom_painter->drawPoint(zoom_bg_image, gps, gui_gps_radius, gui_gps_color);     // GPS point
+                    if (gui_gps_radius  > 0) zoom_painter->drawPoint(zoom_bg_image, gps_xy, gui_gps_radius, gui_gps_color);     // GPS point
                     cv::Mat zoom_image = genStateImage(zoom_bg_image, localizer, timestamp - timestart, zoom_painter);
                     pasteZoomedImage(out_image, pose, zoom_image);
                 }
@@ -298,16 +295,15 @@ public:
             if (gps_idx < gps_data.size() && gps_time <= ahrs_time && gps_time <= clue_time)
             {
                 // Apply GPS data as position observation
-                dg::Point2 gps(gps_data[gps_idx][1], gps_data[gps_idx][2]);
-                dg::LatLon ll = m_map->toLatLon(gps);
-                bool success = localizer->applyGPS(ll, gps_time);
+                dg::Point2 gps_xy(gps_data[gps_idx][1], gps_data[gps_idx][2]);
+                bool success = localizer->applyGPS(gps_xy, gps_time);
                 if (!success) fprintf(stderr, "applyPosition() was failed.\n");
                 gps_idx++;
 
                 if (gui_gps_radius > 0)
                 {
-                    if (show_gui) gui_painter->drawPoint(bg_image, gps, gui_gps_radius, gui_gps_color);
-                    if (show_zoom) zoom_painter->drawPoint(zoom_bg_image, gps, gui_gps_radius, gui_gps_color);
+                    if (show_gui) gui_painter->drawPoint(bg_image, gps_xy, gui_gps_radius, gui_gps_color);
+                    if (show_zoom) zoom_painter->drawPoint(zoom_bg_image, gps_xy, gui_gps_radius, gui_gps_color);
                 }
                 update_gui = true;
             }
@@ -337,18 +333,11 @@ public:
             {
                 dg::Pose2 pose = localizer->getPose();
                 fprintf(out_traj, "%f, %f, %f, %f\n", gps_time, pose.x, pose.y, pose.theta);
-                //dg::Polar2 velocity = localizer->getVelocity();
-                //fprintf(out_traj, "%f, %f, %f, %f, %f, %f\n", gps_time, pose.x, pose.y, pose.theta, velocity.lin, velocity.ang);
             }
 
             // Visualize and show the current state as an image
             if (show_gui && update_gui)
             {
-                //gui_traj_radius = 1;
-                //gui_robot_radius = 5;
-                //gui_robot_thickness = 1;
-                //gui_gps_radius = 2;
-
                 dg::Pose2 pose = localizer->getPose();
                 if (gui_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, gui_traj_radius, gui_robot_color);
                 cv::Mat out_image = genStateImage(bg_image, localizer, gps_time - timestart);
@@ -404,36 +393,6 @@ public:
                     {
                         painter->drawNode(path_image, dg::Point2ID(0, path->pts[idx]), nradius, 0, ncolor);
                     }
-
-                    /*
-                    // best evaluation path interval
-                    dg::Path& evalpath = path_localizer->m_evalpath;
-                    if (!evalpath.pts.empty())
-                    {
-                        dg::MapPainter* painter = (dg::MapPainter*)gui_painter;
-                        const cv::Vec3b ecolor = cv::Vec3b(0, 255, 0);
-                        const cv::Vec3b ecolor2 = cv::Vec3b(255, 255, 0);
-                        int ethickness = 2;
-                        int nradius = 3;
-
-                        for (int idx = 1; idx < (int)evalpath.pts.size(); idx++)
-                        {
-                            painter->drawEdge(path_image, evalpath.pts[idx - 1], evalpath.pts[idx], nradius, ecolor, ethickness);
-                        }
-                        for (int idx = graph_localizer->m_evalpath_idx; idx < (int)evalpath.pts.size(); idx++)
-                        {
-                            if (idx <= 0) continue;
-                            painter->drawEdge(path_image, evalpath.pts[idx - 1], evalpath.pts[idx], nradius, ecolor2, ethickness);
-                        }
-                    }
-
-                    std::vector<dg::Point2>& evalgps = graph_localizer->m_evalgps;
-                    const cv::Vec3b gpscolor = cv::Vec3b(0, 0, 128);
-                    for (int idx = 0; idx < (int)evalgps.size(); idx++)
-                    {
-                        gui_painter->drawPoint(path_image, evalgps[idx], gui_gps_radius, gpscolor);
-                    }
-                    */
                 }
                 releasePathLock();
 

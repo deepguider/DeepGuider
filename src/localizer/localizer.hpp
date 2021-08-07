@@ -95,7 +95,7 @@ struct ObsData
     ObsData(int _type, Point2 xy, Timestamp time, double conf) : type(_type), v1(xy.x), v2(xy.y), timestamp(time), confidence(conf) {}
 
     /** Constructor */
-    ObsData(int _type, Point2 xy, Polar2 lin_ang, Timestamp time, double conf) : type(_type), v1(xy.x), v2(xy.y), v3(lin_ang.lin), v4(lin_ang.ang), timestamp(time), confidence(conf) {}
+    ObsData(int _type, Point2 xy, Polar2 relative, Timestamp time, double conf) : type(_type), v1(xy.x), v2(xy.y), v3(relative.lin), v4(relative.ang), timestamp(time), confidence(conf) {}
 };
 
 /**
@@ -215,11 +215,20 @@ public:
         return applyPathLocalizer(m_ekf->getPose(), time);
     }
 
-    virtual bool applyIMUCompass(double theta, Timestamp time = -1, double confidence = -1)
+    virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        if (!m_ekf->applyIMUCompass(theta, time, confidence)) return false;
-        saveObservation(ObsData::OBS_IMU, theta, time, confidence);
+        if (!m_ekf->applyGPS(xy, time, confidence)) return false;
+        saveObservation(ObsData::OBS_GPS, xy, time, confidence);
+        saveEKFState(m_ekf, time);
+        return applyPathLocalizer(m_ekf->getPose(), time);
+    }
+
+    virtual bool applyIMUCompass(double odometry_theta, Timestamp time = -1, double confidence = -1)
+    {
+        cv::AutoLock lock(m_mutex);
+        if (!m_ekf->applyIMUCompass(odometry_theta, time, confidence)) return false;
+        saveObservation(ObsData::OBS_IMU, odometry_theta, time, confidence);
         saveEKFState(m_ekf, time);
         return true;
     }
@@ -238,44 +247,44 @@ public:
         return true;
     }
 
-    virtual bool applyPOI(const Point2& poi_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
         if (time < m_ekf->getLastUpdateTime())
         {
-            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_POI, poi_xy, obs, time, confidence))) return false;
+            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_POI, clue_xy, relative, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
-        if (!m_ekf->applyPOI(poi_xy, obs, time, confidence)) return false;
-        saveObservation(ObsData::OBS_POI, poi_xy, obs, time, confidence);
+        if (!m_ekf->applyPOI(clue_xy, relative, time, confidence)) return false;
+        saveObservation(ObsData::OBS_POI, clue_xy, relative, time, confidence);
         saveEKFState(m_ekf, time);
         return applyPathLocalizer(m_ekf->getPose(), time);
     }
 
-    virtual bool applyVPS(const Point2& streetview_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
         if (time < m_ekf->getLastUpdateTime())
         {
-            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_VPS, streetview_xy, obs, time, confidence))) return false;
+            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_VPS, clue_xy, relative, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
-        if (!m_ekf->applyVPS(streetview_xy, obs, time, confidence)) return false;
-        saveObservation(ObsData::OBS_VPS, streetview_xy, obs, time, confidence);
+        if (!m_ekf->applyVPS(clue_xy, relative, time, confidence)) return false;
+        saveObservation(ObsData::OBS_VPS, clue_xy, relative, time, confidence);
         saveEKFState(m_ekf, time);
         return applyPathLocalizer(m_ekf->getPose(), time);
     }
 
-    virtual bool applyIntersectCls(const Point2& intersect_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    virtual bool applyIntersectCls(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
         if (time < m_ekf->getLastUpdateTime())
         {
-            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_IntersectCls, intersect_xy, obs, time, confidence))) return false;
+            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_IntersectCls, clue_xy, relative, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
-        if (!m_ekf->applyIntersectCls(intersect_xy, obs, time, confidence)) return false;
-        saveObservation(ObsData::OBS_IntersectCls, intersect_xy, obs, time, confidence);
+        if (!m_ekf->applyIntersectCls(clue_xy, relative, time, confidence)) return false;
+        saveObservation(ObsData::OBS_IntersectCls, clue_xy, relative, time, confidence);
         saveEKFState(m_ekf, time);
         return applyPathLocalizer(m_ekf->getPose(), time);
     }
@@ -366,40 +375,6 @@ protected:
         return true;
     }
 
-    bool applyObservation(const ObsData& obs)
-    {
-        if (obs.type == ObsData::OBS_GPS)
-        {
-            LatLon ll = toLatLon(Point2(obs.v1, obs.v2));
-            return m_ekf->applyGPS(ll, obs.timestamp, obs.confidence);
-        }
-        else if (obs.type == ObsData::OBS_IMU)
-        {
-            return m_ekf->applyIMUCompass(obs.v1, obs.timestamp, obs.confidence);
-        }
-        else if (obs.type == ObsData::OBS_RoadTheta)
-        {
-            return m_ekf->applyRoadTheta(obs.v1, obs.timestamp, obs.confidence);
-        }
-        else if (obs.type == ObsData::OBS_POI)
-        {
-            return m_ekf->applyPOI(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
-        }
-        else if (obs.type == ObsData::OBS_VPS)
-        {
-            return m_ekf->applyVPS(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
-        }
-        else if (obs.type == ObsData::OBS_IntersectCls)
-        {
-            return m_ekf->applyIntersectCls(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
-        }
-        else if (obs.type == ObsData::OBS_VPS_LR)
-        {
-            // ignore
-        }
-        return false;
-    }
-
     bool rollbackApplyEKF(Timestamp rollback_time, const ObsData& delayed_observation)
     {
         if (m_ekf.empty()) return false;
@@ -428,6 +403,39 @@ protected:
             saveEKFState(m_ekf, m_observation_history[i].timestamp);
         }
         return true;
+    }
+
+    bool applyObservation(const ObsData& obs)
+    {
+        if (obs.type == ObsData::OBS_GPS)
+        {
+            return m_ekf->applyGPS(Point2(obs.v1, obs.v2), obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_IMU)
+        {
+            return m_ekf->applyIMUCompass(obs.v1, obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_RoadTheta)
+        {
+            return m_ekf->applyRoadTheta(obs.v1, obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_POI)
+        {
+            return m_ekf->applyPOI(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_VPS)
+        {
+            return m_ekf->applyVPS(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_IntersectCls)
+        {
+            return m_ekf->applyIntersectCls(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
+        }
+        else if (obs.type == ObsData::OBS_VPS_LR)
+        {
+            // ignore
+        }
+        return false;
     }
 
     void saveObservation(int type, double theta, Timestamp time, double conf)

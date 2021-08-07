@@ -99,14 +99,24 @@ public:
     virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1) = 0;
 
     /**
-     * Apply an relative orientation observation from IMU<br>
-     *  The data usually come from (magnetic or visual) compasses and AHRSs.
-     * @param theta The observed orientation (Unit: [rad])
+     * Apply a geodesic position observation<br>
+     *  The data usually come from GPS and other position estimators.
+     * @param xy The UTM position of an observed GPS data (Unit: [m])
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
-    virtual bool applyIMUCompass(double theta, Timestamp time = -1, double confidence = -1) = 0;
+    virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1) = 0;
+
+    /**
+     * Apply an relative orientation observation from IMU<br>
+     *  The data usually come from (magnetic or visual) compasses and AHRSs.
+     * @param odometry_theta The observed relative orientation (Unit: [rad])
+     * @param time The observed time (Unit: [sec])
+     * @param confidence The observation confidence
+     * @return True if successful (false if failed)
+     */
+    virtual bool applyIMUCompass(double odometry_theta, Timestamp time = -1, double confidence = -1) = 0;
 
     /**
      * Apply an absolute orientation observation from RoadTheta recognizer<br>
@@ -119,36 +129,36 @@ public:
 
     /**
      * Apply position observation from POI recognizer
-     * @param poi_xy The coordinate of observed clue
-     * @param obs The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
-     *  If obs.lin < 0, the relative distance is invalid. If obs.ang >= CV_PI, the relative angle is invalid.
+     * @param clue_xy The coordinate of observed clue
+     * @param relative The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
+     *  If relative.lin < 0, the relative distance is invalid. If relative.ang >= CV_PI, the relative angle is invalid.
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
-    virtual bool applyPOI(const Point2& poi_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
+    virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
 
     /**
      * Apply position observation from VPS recognizer
-     * @param streetview_xy The coordinate of observed clue
-     * @param obs The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
-     *  If obs.lin < 0, the relative distance is invalid. If obs.ang >= CV_PI, the relative angle is invalid.
+     * @param clue_xy The coordinate of observed clue
+     * @param relative The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
+     *  If relative.lin < 0, the relative distance is invalid. If relative.ang >= CV_PI, the relative angle is invalid.
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
-    virtual bool applyVPS(const Point2& streetview_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
+    virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
 
     /**
      * Apply position observation from Intersection Classifier
-     * @param intersect_xy The coordinate of observed clue
-     * @param obs The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
-     *  If obs.lin < 0, the relative distance is invalid. If obs.ang >= CV_PI, the relative angle is invalid.
+     * @param clue_xy The coordinate of observed clue
+     * @param relative The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
+     *  If relative.lin < 0, the relative distance is invalid. If relative.ang >= CV_PI, the relative angle is invalid.
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
-    virtual bool applyIntersectCls(const Point2& intersect_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
+    virtual bool applyIntersectCls(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
 
 };
 
@@ -236,24 +246,24 @@ public:
      * Apply a single localization clue<br>
      *  The data usually come from POI/structure/scene recognizers.
      * @param clue_xy The coordinate of observed clue
-     * @param obs The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
-     *  If obs.lin < 0, the relative distance is invalid. If obs.ang >= CV_PI, the relative angle is invalid.
+     * @param relative The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
+     *  If relative.lin < 0, the relative distance is invalid. If relative.ang >= CV_PI, the relative angle is invalid.
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
-    virtual bool applyLocClue(const Point2& clue_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
+    virtual bool applyLocClue(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
 
     /**
      * Apply multiple localization clues<br>
      *  The data usually come from POI/structure/scene recognizers.
      * @param clue_xy The coordinates of observed clues
-     * @param obs The relative observation from each clue (Unit: [m] and [rad])
+     * @param relative The relative observation from each clue (Unit: [m] and [rad])
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
-    virtual bool applyLocClue(const std::vector<Point2>& clue_xy, const std::vector<Polar2>& obs, Timestamp time = -1, const std::vector<double>& confidence = std::vector<double>()) = 0;
+    virtual bool applyLocClue(const std::vector<Point2>& clue_xy, const std::vector<Polar2>& relative, Timestamp time = -1, const std::vector<double>& confidence = std::vector<double>()) = 0;
 };
 
 /**
