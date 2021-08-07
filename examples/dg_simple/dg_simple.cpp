@@ -18,15 +18,11 @@
 using namespace dg;
 using namespace std;
 
-#define LOAD_PARAM_VALUE(fn, name_cfg, name_var) \
-    if (!(fn)[name_cfg].empty()) (fn)[name_cfg] >> name_var;
-
-
-class DeepGuider : public SharedInterface
+class DeepGuider : public SharedInterface, public cx::Algorithm
 {
 public:
     DeepGuider() {}
-    ~DeepGuider();
+    virtual ~DeepGuider();
 
     bool initialize(std::string config_file);
     int run();
@@ -41,37 +37,37 @@ public:
     virtual bool procOutOfPath(const Point2& curr_pose);
 
 protected:
-    bool loadConfig(std::string config_file);
+    int readParam(const cv::FileNode& fn);
 
     // configuable parameters
-    bool m_enable_roadtheta = false;
+    bool m_enable_intersection = false;
     bool m_enable_vps = false;
+    bool m_enable_vps_lr = false;
     bool m_enable_logo = false;
     bool m_enable_ocr = false;
-    bool m_enable_intersection = false;
+    bool m_enable_roadtheta = false;
     bool m_enable_exploration = false;
     bool m_enable_mapserver = true;
 
-    std::string m_server_ip = "127.0.0.1";        // default: 127.0.0.1 (localhost)
-    //std::string m_server_ip = "129.254.81.204";      // default: 127.0.0.1 (localhost)
-    bool m_threaded_run_python = false;
-    std::string m_srcdir = "./../src";              // path of deepguider/src (required for python embedding)
+    std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
+    std::string m_srcdir = "./../src";      // path of deepguider/src (required for python embedding)
+    bool m_enable_tts = false;
+    bool m_threaded_run_python = true;
+    bool m_use_high_precision_gps = false;   // use high-precision gps (novatel)
+
+    bool m_data_logging = false;
+    bool m_recording = false;
+    int m_recording_fps = 15;
+    std::string m_recording_header_name = "dg_simple_";
 
     std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
+    std::string m_map_data_path = "data/ETRI/TopoMap_ETRI_210803.csv";
     dg::LatLon m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
     double m_map_pixel_per_meter = 1.039;
     double m_map_image_rotation = cx::cvtDeg2Rad(1.0);
     dg::Point2 m_map_canvas_offset = dg::Point2(347, 297);
-    std::string m_gps_input = "data/191115_ETRI_asen_fix.csv";
-    std::string m_video_input = "data/191115_ETRI.avi";
-
-    bool m_use_high_gps = false;                    // use high-precision gps (novatel)
-
-    bool m_data_logging = false;
-    bool m_enable_tts = false;
-    bool m_recording = false;
-    int m_recording_fps = 30;
-    std::string m_recording_header_name = "dg_simple_";
+    std::string m_gps_input_path = "data/191115_ETRI_asen_fix.csv";
+    std::string m_video_input_path = "video/191115_ETRI.avi";
 
     // local variables
     cx::VideoWriter m_video_gui;
@@ -208,70 +204,86 @@ void onMouseEvent(int event, int x, int y, int flags, void* param)
 
 DeepGuider::~DeepGuider()
 {
+    if (m_enable_intersection) m_intersection_classifier.clear();
     if (m_enable_vps) m_vps.clear();
     if(m_enable_logo) m_logo.clear();
     if (m_enable_ocr) m_ocr.clear();
-    if(m_enable_intersection) m_intersection_classifier.clear();
     if (m_enable_roadtheta) m_roadtheta.clear();
 
     bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_logo || m_enable_ocr || m_enable_intersection || m_enable_exploration;
     if(enable_python) close_python_environment();
 }
 
-
-bool DeepGuider::loadConfig(std::string config_file)
+int DeepGuider::readParam(const cv::FileNode& fn)
 {
-    if (config_file.empty())
+    int n_read = cx::Algorithm::readParam(fn);
+
+    // Read Activate/deactivate Options
+    CX_LOAD_PARAM_COUNT(fn, "enable_intersection", m_enable_intersection, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_vps", m_enable_vps, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_vps_lr", m_enable_vps_lr, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_poi_logo", m_enable_logo, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_poi_ocr", m_enable_ocr, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_roadtheta", m_enable_roadtheta, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_exploration", m_enable_exploration, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_mapserver", m_enable_mapserver, n_read);
+
+    // Read Main Options
+    int server_ip_index = -1;
+    std::vector<cv::String> server_ip_list;
+    CX_LOAD_PARAM_COUNT(fn, "server_ip_list", server_ip_list, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "server_ip_index", server_ip_index, n_read);
+    if (server_ip_index >= 0 && server_ip_index < server_ip_list.size()) m_server_ip = server_ip_list[server_ip_index];
+
+    int site_index = -1;
+    std::string site_tagname;
+    std::vector<cv::String> site_names;
+    CX_LOAD_PARAM_COUNT(fn, "site_names", site_names, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "site_index", site_index, n_read);
+    if (site_index >= 0 && site_index < site_names.size()) site_tagname = site_names[site_index];
+
+    CX_LOAD_PARAM_COUNT(fn, "dg_srcdir", m_srcdir, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_tts", m_enable_tts, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "threaded_run_python", m_threaded_run_python, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "use_high_precision_gps", m_use_high_precision_gps, n_read);
+
+    // Read Other Options
+    CX_LOAD_PARAM_COUNT(fn, "enable_data_logging", m_data_logging, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "video_recording", m_recording, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "video_recording_fps", m_recording_fps, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "recording_header_name", m_recording_header_name, n_read);
+
+    // Read Place-specific Setting
+    CX_LOAD_PARAM_COUNT(fn, "map_image_path", m_map_image_path, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "map_data_path", m_map_data_path, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_lat", m_map_ref_point.lat, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_lon", m_map_ref_point.lon, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "map_pixel_per_meter", m_map_pixel_per_meter, n_read);
+    double map_image_rotation = m_map_image_rotation;
+    CX_LOAD_PARAM_COUNT(fn, "map_image_rotation", map_image_rotation, n_read);
+    if(map_image_rotation != m_map_image_rotation) m_map_image_rotation = cx::cvtDeg2Rad(map_image_rotation);
+    CX_LOAD_PARAM_COUNT(fn, "map_canvas_offset", m_map_canvas_offset, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "gps_input_path", m_gps_input_path, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "video_input_path", m_video_input_path, n_read);
+
+    // Read Place Setting
+    if (!site_tagname.empty())
     {
-        return false;
+        cv::FileNode fn_site = fn[site_tagname];
+        if (!fn_site.empty())
+        {
+            n_read += readParam(fn_site);
+        }
     }
-
-    cv::FileStorage fs(config_file, cv::FileStorage::READ);
-    if (!fs.isOpened())
-    {
-        return false;
-    }
-
-    cv::FileNode fn = fs.root();
-    LOAD_PARAM_VALUE(fn, "enable_intersection", m_enable_intersection);
-    LOAD_PARAM_VALUE(fn, "enable_vps", m_enable_vps);
-    LOAD_PARAM_VALUE(fn, "enable_poi_logo", m_enable_logo);
-    LOAD_PARAM_VALUE(fn, "enable_poi_ocr", m_enable_ocr);
-    LOAD_PARAM_VALUE(fn, "enable_roadtheta", m_enable_roadtheta);
-    LOAD_PARAM_VALUE(fn, "enable_exploration", m_enable_exploration);
-    LOAD_PARAM_VALUE(fn, "enable_mapserver", m_enable_mapserver);
-
-    LOAD_PARAM_VALUE(fn, "server_ip", m_server_ip);
-    LOAD_PARAM_VALUE(fn, "threaded_run_python", m_threaded_run_python);
-    LOAD_PARAM_VALUE(fn, "dg_srcdir", m_srcdir);
-
-    LOAD_PARAM_VALUE(fn, "use_high_gps", m_use_high_gps);
-
-    LOAD_PARAM_VALUE(fn, "enable_data_logging", m_data_logging);
-    LOAD_PARAM_VALUE(fn, "enable_tts", m_enable_tts);
-    LOAD_PARAM_VALUE(fn, "video_recording", m_recording);
-    LOAD_PARAM_VALUE(fn, "video_recording_fps", m_recording_fps);
-    LOAD_PARAM_VALUE(fn, "map_image_path", m_map_image_path);
-    LOAD_PARAM_VALUE(fn, "map_ref_point_lat", m_map_ref_point.lat);
-    LOAD_PARAM_VALUE(fn, "map_ref_point_lon", m_map_ref_point.lon);
-    LOAD_PARAM_VALUE(fn, "map_pixel_per_meter", m_map_pixel_per_meter);
-    LOAD_PARAM_VALUE(fn, "map_image_rotation", m_map_image_rotation);
-    m_map_image_rotation = cx::cvtDeg2Rad(m_map_image_rotation);
-    LOAD_PARAM_VALUE(fn, "map_canvas_offset", m_map_canvas_offset);
-    LOAD_PARAM_VALUE(fn, "gps_input", m_gps_input);
-    LOAD_PARAM_VALUE(fn, "video_input", m_video_input);
-    LOAD_PARAM_VALUE(fn, "recording_header_name", m_recording_header_name);
-
-    return true;
+    return n_read;
 }
-
 
 bool DeepGuider::initialize(std::string config_file)
 {
     printf("Initialize deepguider system...\n");
 
     // load config
-    bool ok = loadConfig(config_file);
+    bool ok = loadParam(config_file);
     if(ok) printf("\tConfiguration %s loaded!\n", config_file.c_str());
 
     // initialize python
@@ -314,7 +326,7 @@ bool DeepGuider::initialize(std::string config_file)
     {
         Map map;
         map.setReference(m_map_ref_point);
-        bool ok = map.load("data/ETRI/TopoMap_ETRI_210803.csv");
+        bool ok = map.load(m_map_data_path.c_str());
         if (ok) setMap(map);
     }
 
@@ -474,13 +486,13 @@ int DeepGuider::run()
     printf("Run deepguider system...\n");
 
     // load gps sensor data (ETRI dataset)
-    auto gps_data = loadExampleGPSData(m_gps_input);
+    auto gps_data = loadExampleGPSData(m_gps_input_path);
     VVS_CHECK_TRUE(!gps_data.empty());
     printf("\tSample gps data loaded!\n");
 
     // load image sensor data (ETRI dataset)
     cv::VideoCapture video_data;
-    VVS_CHECK_TRUE(video_data.open(m_video_input));
+    VVS_CHECK_TRUE(video_data.open(m_video_input_path));
     double video_time_offset = gps_data.front().first - 0.5, video_time_scale = 1.75; // Calculated from 'bag' files
     double video_resize_scale = 0.4;
     cv::Point video_offset(32, 542);

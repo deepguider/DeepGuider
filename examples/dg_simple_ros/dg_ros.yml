@@ -1,65 +1,81 @@
 %YAML:1.0
 ---
-## activate/deactivate submodules
+## Activate/deactivate submodules
 enable_intersection: 0
 enable_vps: 0
+enable_vps_lr: 0
 enable_poi_logo: 0
 enable_poi_ocr: 0
 enable_roadtheta: 0
 enable_exploration: 0
+enable_mapserver: 0
 
-## other main settings
-server_ip: "127.0.0.1"                  # localhost
-#server_ip: "129.254.81.204"            # ETRI map server
-threaded_run_python: 1
-dg_srcdir: "/home/dgtest/deepguider/src"                   # path of deepguider/src folder (required for python embedding)
+### Main Options
+server_ip_index: 0          # 0: 127.0.0.1, 1: 129.254.81.204, ...
+site_index: 0                # 0: ETRI, 1: COEX, 2: Bucheon
+topic_name_index: 0       # 0: ETRI CART, 1: KETI ROBOT
+server_ip_list: ["127.0.0.1", "129.254.81.204"]
+site_names: ["ETRI", "COEX", "Bucheon"]
+topic_names_set: ["ETRI_CART", "KETI_ROBOT"]
 
-## ros topic names (ETRI cart)
-topic_cam: "/uvc_image_raw/compressed"
-topic_gps: "/asen_fix"
-topic_dgps: "/novatel_fix"
-topic_imu: "/imu/data"
-topic_rgbd_image: "/camera/color/image_raw/compressed"
-topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
-
-## ros topic names (KETI robot)
-#topic_cam: "/usb_cam_1/image_raw/compressed"
-#topic_gps: "/fix"
-#topic_dgps: ""
-#topic_imu: "/gx5/imu/data"
-#topic_rgbd_image: "/rs_front_camera1/color/image_raw/compressed"
-#topic_rgbd_depth: "/rs_front_camera1/aligned_depth_to_color/image_raw/compressed"
-
-## place settings for ETRI
-map_image_path: "data/NaverMap_ETRI(Satellite)_191127.png"
-map_ref_point_lat: 36.383837659737     # default
-map_ref_point_lon: 127.367880828442    # default
-map_pixel_per_meter: 1.039             # default
-map_image_rotation: 1.0                 # degree
-map_canvas_offset: [ 347, 297 ]        # default
-
-## place settings for COEX
-#map_image_path: "data/NaverMap_COEX(Satellite)_200929.png"
-#map_ref_point_lat: 37.506207
-#map_ref_point_lon: 127.05482
-#map_pixel_per_meter: 1.055             # default
-#map_image_rotation: 1.2                 # degree
-#map_canvas_offset: [ 1090, 1018 ]
-
-## place settings for Bucheon
-#map_image_path: "data/NaverMap_Bucheon(Satellite).png" 
-#map_ref_point_lat: 37.510928     # default 
-#map_ref_point_lon: 126.764344    # default
-#map_pixel_per_meter: 1.056            # default
-#map_image_rotation: 0                 # degree
-#map_canvas_offset: [ 1535, 1157 ]        # default 
-
-## sensor selection
-use_high_gps: 0
-
-## etc
-enable_data_logging: 0
+dg_srcdir: "/home/dgtest/deepguider/src"  # path of deepguider/src folder (required for python embedding)
 enable_tts: 1
+threaded_run_python: 1
+use_high_precision_gps: 0     # 0: asen gps, 1: Novatel gps
+
+### Other Configurations
+enable_data_logging: 0
 video_recording: 0
-video_recording_fps: 30
+video_recording_fps: 15
 recording_header_name: "dg_ros_"
+
+### Topic Names Set
+ETRI_CART:
+  topic_cam: "/uvc_image_raw/compressed"
+  topic_gps: "/asen_fix"
+  topic_dgps: "/novatel_fix"
+  topic_imu: "/imu/data"
+  topic_rgbd_image: "/camera/color/image_raw/compressed"
+  topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
+
+KETI_ROBOT:
+  topic_cam: "/usb_cam_1/image_raw/compressed"
+  topic_gps: "/fix"
+  topic_dgps: ""
+  topic_imu: "/gx5/imu/data"
+  topic_rgbd_image: "/rs_front_camera1/color/image_raw/compressed"
+  topic_rgbd_depth: "/rs_front_camera1/aligned_depth_to_color/image_raw/compressed"
+
+## Pre-defined Place Settings
+ETRI:
+  map_image_path: "data/NaverMap_ETRI(Satellite)_191127.png"
+  map_data_path: "data/ETRI/TopoMap_ETRI_210803.csv"
+  map_ref_point_lat: 36.383837659737
+  map_ref_point_lon: 127.367880828442
+  map_pixel_per_meter: 1.039
+  map_image_rotation: 1.0
+  map_canvas_offset: [347, 297]
+  gps_input_path: "data/191115_ETRI_asen_fix.csv"
+  video_input_path: "video/191115_ETRI.avi"
+
+COEX:
+  map_image_path: "data/NaverMap_COEX(Satellite)_200929.png"
+  map_data_path: "data/COEX/TopoMap_COEX_210803.csv"
+  map_ref_point_lat: 37.506207
+  map_ref_point_lon: 127.05482
+  map_pixel_per_meter: 1.055
+  map_image_rotation: 1.2
+  map_canvas_offset: [1090, 1018]
+  gps_input_path: "data/200925_153949_AndroSensor.csv"
+  video_input_path: ""
+
+Bucheon:
+  map_image_path: "data/NaverMap_Bucheon(Satellite).png" 
+  map_data_path: "data/Bucheon/TopoMap_Bucheon_210803.csv"
+  map_ref_point_lat: 37.510928
+  map_ref_point_lon: 126.764344
+  map_pixel_per_meter: 1.056
+  map_image_rotation: 0
+  map_canvas_offset: [1535, 1157]
+  gps_input_path: "data/Sensor_record_20210513_Bucheon_AndroSensor.csv"
+  video_input_path: ""

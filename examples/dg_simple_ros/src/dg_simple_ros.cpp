@@ -22,7 +22,7 @@ public:
     bool runOnce(double timestamp);
 
 protected:
-    bool loadRosConfig(std::string config_file);
+    virtual int readParam(const cv::FileNode& fn);
     double m_wait_sec = 0.01;
 
     // Topic names
@@ -77,30 +77,32 @@ protected:
 DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
 {
     // overwrite configuable parameters of base class
-    m_enable_roadtheta = false;
-    m_enable_vps = false;
-    m_enable_ocr = false;
-    m_enable_logo = false;
     m_enable_intersection = false;
+    m_enable_vps = false;
+    m_enable_vps_lr = false;
+    m_enable_logo = false;
+    m_enable_ocr = false;
+    m_enable_roadtheta = false;
     m_enable_exploration = false;
+    m_enable_mapserver = true;
 
-    m_server_ip = "127.0.0.1";            // default: 127.0.0.1 (localhost)
-    //m_server_ip = "129.254.81.204";          // default: 127.0.0.1 (localhost)
-    m_threaded_run_python = true;
+    m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
     m_srcdir = "/home/dgtest/deepguider/src";      // system path of deepguider/src (required for python embedding)
-
-    m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
-    m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
-    m_map_pixel_per_meter = 1.045;
-    m_map_canvas_offset = dg::Point2(344, 293);
-
-    m_use_high_gps = false;                 // use high-precision gps (novatel)
+    m_enable_tts = true;
+    m_threaded_run_python = true;
+    m_use_high_precision_gps = false;
 
     m_data_logging = false;
-    m_enable_tts = false;
     m_recording = false;
-    m_recording_fps = 30;
+    m_recording_fps = 15;
     m_recording_header_name = "dg_ros_";
+
+    m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
+    m_map_data_path = "data/ETRI/TopoMap_ETRI_210803.csv";
+    m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
+    m_map_pixel_per_meter = 1.039;
+    m_map_image_rotation = cx::cvtDeg2Rad(1.0);
+    m_map_canvas_offset = dg::Point2(347, 297);
 
     // ros-specific parameters
     m_wait_sec = 0.1;
@@ -110,28 +112,34 @@ DeepGuiderROS::~DeepGuiderROS()
 {    
 }
 
-bool DeepGuiderROS::loadRosConfig(std::string config_file)
+int DeepGuiderRos::readParam(const cv::FileNode& fn)
 {
-    if (config_file.empty())
+    int n_read = cx::Algorithm::readParam(fn);
+
+    CX_LOAD_PARAM_COUNT(fn, "topic_cam", m_topic_cam, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "topic_gps", m_topic_gps, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "topic_dgps", m_topic_dgps, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "topic_imu", m_topic_imu, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "topic_rgbd_image", m_topic_rgbd_image, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "topic_rgbd_depth", m_topic_rgbd_depth, n_read);
+
+    int topic_name_index = -1;
+    std::string topicset_tagname;
+    std::vector<std::string> topic_names_set;
+    CX_LOAD_PARAM_COUNT(fn, "topic_names_set", topic_names_set, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "topic_name_index", topic_name_index, n_read);
+    if (topic_name_index >= 0 && topic_name_index < topic_names_set.size()) topicset_tagname = topic_names_set[topic_name_index];
+
+    // Read Place Setting
+    if (!topicset_tagname.empty())
     {
-        return false;
+        cv::FileNode fn_topic = fn[topicset_tagname];
+        if (!fn_topic.empty())
+        {
+            n_read += readParam(fn_topic);
+        }
     }
-
-    cv::FileStorage fs(config_file, cv::FileStorage::READ);
-    if (!fs.isOpened())
-    {
-        return false;
-    }
-
-    cv::FileNode fn = fs.root();
-    LOAD_PARAM_VALUE(fn, "topic_cam", m_topic_cam);
-    LOAD_PARAM_VALUE(fn, "topic_gps", m_topic_gps);
-    LOAD_PARAM_VALUE(fn, "topic_dgps", m_topic_dgps);
-    LOAD_PARAM_VALUE(fn, "topic_imu", m_topic_imu);
-    LOAD_PARAM_VALUE(fn, "topic_rgbd_image", m_topic_rgbd_image);
-    LOAD_PARAM_VALUE(fn, "topic_rgbd_depth", m_topic_rgbd_depth);
-
-    return true;
+    return n_read;
 }
 
 bool DeepGuiderROS::initialize(std::string config_file)
@@ -141,7 +149,8 @@ bool DeepGuiderROS::initialize(std::string config_file)
     if(!ok) return false;
 
     // Read ROS config
-    loadRosConfig(config_file);
+    bool ok = loadParam(config_file);
+    if (ok) printf("\tConfiguration %s loaded!\n", config_file.c_str());
 
     // Initialize module subscribers
     sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
@@ -323,7 +332,7 @@ void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
     // apply & draw gps
     const dg::LatLon gps_datum(lat, lon);
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
-    if (!m_use_high_gps) procGpsData(gps_datum, gps_time);
+    if (!m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
     m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
     m_gps_history_asen.push_back(gps_datum);
 }
@@ -349,7 +358,7 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
     // apply & draw gps
     const dg::LatLon gps_datum(lat, lon);
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
-    if (m_use_high_gps) procGpsData(gps_datum, gps_time);
+    if (m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
     m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 0, 255));
     m_gps_history_novatel.push_back(gps_datum);
 }
