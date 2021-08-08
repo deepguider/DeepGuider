@@ -35,7 +35,7 @@ namespace dg
             if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str())) return false;
 
             Map* map = m_shared->getMap();
-            if (map == nullptr) return false;
+            assert(map != nullptr);
             sv_id = m_streetviews[0].id;
             StreetView* view = map->getView(sv_id);
             streetview_xy = *view;

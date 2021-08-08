@@ -29,7 +29,7 @@ namespace dg
 		double m_poi_search_radius = 100;	// POI search range, Unit: [m]
 
     public:
-        bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/vps")
+        bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/ocr_recog")
         {
             cv::AutoLock lock(m_mutex);
             m_shared = shared;
@@ -58,8 +58,8 @@ namespace dg
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
             Map* map = m_shared->getMap();
-            if (map == nullptr) return false;
-            Pose2 pose = m_shared->getPose();
+			assert(map != nullptr);
+			Pose2 pose = m_shared->getPose();
             for (int k = 0; k < m_ocrs.size(); k++)
             {
                 std::wstring poi_name = converter.from_bytes(m_ocrs[k].label.c_str());

@@ -174,7 +174,7 @@ protected:
     dg::VPSLocalizer m_vps;
     dg::LogoRecognizer m_logo;
     dg::OCRLocalizer m_ocr;
-    dg::IntersectionClassifier m_intersection_classifier;
+    dg::IntersectionLocalizer m_intersection_classifier;
     dg::RoadTheta m_roadtheta;
     dg::GuidanceManager m_guider;
     dg::ActiveNavigation m_active_nav;
@@ -308,7 +308,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize Intersection
     py_module_path = m_srcdir + "/intersection_cls";
-    if (m_enable_intersection && !m_intersection_classifier.initialize("intersection_cls", py_module_path.c_str())) return false;
+    if (m_enable_intersection && !m_intersection_classifier.initialize(this, py_module_path)) return false;
     if (m_enable_intersection) printf("\tIntersection initialized in %.3lf seconds!\n", m_intersection_classifier.procTime());
 
     // initialize Logo
@@ -1233,7 +1233,11 @@ bool DeepGuider::procIntersectionClassifier()
     int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
 
-    if (!cam_image.empty() && m_intersection_classifier.apply(cam_image, capture_time))
+    dg::Point2 xy;
+    dg::Polar2 relative;
+    double confidence;
+    bool valid_xy = false;
+    if (!cam_image.empty() && m_intersection_classifier.apply(cam_image, capture_time, xy, relative, confidence, valid_xy))
     {
         if (m_data_logging)
         {
@@ -1249,7 +1253,7 @@ bool DeepGuider::procIntersectionClassifier()
         m_intersection_mutex.unlock();
 
         // apply the result to localizer
-        // TBD...
+        if(valid_xy) m_localizer.applyIntersectCls(xy, relative, capture_time, confidence);
     }
     else
     {
