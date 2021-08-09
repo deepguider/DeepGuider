@@ -11,11 +11,12 @@ set(BINDIR  "${DGDIR}/bin")
 set(SRCDIR  "${DGDIR}/src")
 set(EXTDIR  "${DGDIR}/EXTERNAL")
 set(RAPIDJSON_INC "${EXTDIR}/rapidjson/include")
+set(CURL_INC "${EXTDIR}/curl/include")
 set(CURL_LIBRARIES "-lcurl")
 set(JSONCPP_LIBRARIES "-ljsoncpp")
 set(FS_LIBRARIES "-lstdc++fs")
 
-add_compile_options(-std=c++14)
+add_compile_options(-std=c++17)
 add_compile_options(-pthread)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -52,7 +53,7 @@ catkin_package(
 #  DEPENDS system_lib
 )
 
-include_directories( ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${SRCDIR} ${RAPIDJSON_INC} ${PYTHON_INCLUDE_DIRS} ${DGDIR}/examples/dg_simple)
+include_directories( ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${SRCDIR} ${RAPIDJSON_INC} ${CURL_INC} ${PYTHON_INCLUDE_DIRS} ${DGDIR}/examples/dg_simple)
 
 file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/exploration/*.cpp ${SRCDIR}/guidance/*.cpp ${SRCDIR}/localizer/*.cpp ${SRCDIR}/intersection_cls/*.cpp ${SRCDIR}/logo_recog/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/ocr_recog/*.cpp ${SRCDIR}/roadtheta/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp *.cpp)
 

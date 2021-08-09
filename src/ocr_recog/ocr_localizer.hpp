@@ -99,7 +99,7 @@ namespace dg
 			pc.at<double>(2) = 1;
 
 			// pan, tilt of poi top
-			cv::Mat pw = R.t() * pc;
+			cv::Mat pw = cv::Mat(R.t()) * pc;
 			double xw = pw.at<double>(0);
 			double yw = pw.at<double>(1);
 			double zw = pw.at<double>(2);

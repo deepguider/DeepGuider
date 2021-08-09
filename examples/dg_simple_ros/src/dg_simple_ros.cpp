@@ -113,14 +113,14 @@ DeepGuiderROS::~DeepGuiderROS()
 {    
 }
 
-int DeepGuiderRos::readParam(const cv::FileNode& fn)
+int DeepGuiderROS::readParam(const cv::FileNode& fn)
 {
     int n_read = DeepGuider::readParam(fn);
     n_read += readRosParam(fn);
     return n_read;
 }
 
-int DeepGuiderRos::readRosParam(const cv::FileNode& fn)
+int DeepGuiderROS::readRosParam(const cv::FileNode& fn)
 {
     int n_read = 0;
     CX_LOAD_PARAM_COUNT(fn, "topic_cam", m_topic_cam, n_read);
@@ -132,7 +132,7 @@ int DeepGuiderRos::readRosParam(const cv::FileNode& fn)
 
     int topic_name_index = -1;
     std::string topicset_tagname;
-    std::vector<std::string> topic_names_set;
+    std::vector<cv::String> topic_names_set;
     CX_LOAD_PARAM_COUNT(fn, "topic_names_set", topic_names_set, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_name_index", topic_name_index, n_read);
     if (topic_name_index >= 0 && topic_name_index < topic_names_set.size()) topicset_tagname = topic_names_set[topic_name_index];
@@ -336,7 +336,7 @@ void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
     const dg::LatLon gps_datum(lat, lon);
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
     if (!m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
-    m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 255, 0));
+    m_painter.drawPoint(m_map_image, toMetric(gps_datum), 2, cv::Vec3b(0, 255, 0));
     m_gps_history_asen.push_back(gps_datum);
 }
 
@@ -362,7 +362,7 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
     const dg::LatLon gps_datum(lat, lon);
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
     if (m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
-    m_painter.drawNode(m_map_image, m_map_info, gps_datum, 2, 0, cv::Vec3b(0, 0, 255));
+    m_painter.drawPoint(m_map_image, toMetric(gps_datum), 2, cv::Vec3b(0, 0, 255));
     m_gps_history_novatel.push_back(gps_datum);
 }
 
@@ -405,6 +405,7 @@ void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
 
     if (!ocrs.empty() && cam_fnumber>=0)
     {
+        /* Todo
         m_ocr.set(ocrs, ts, proc_time);
 
         if (m_data_logging)
@@ -431,6 +432,7 @@ void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
         m_localizer_mutex.lock();
         VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, ts, confs));
         m_localizer_mutex.unlock();
+        */
     }
 }
 
@@ -468,23 +470,24 @@ void DeepGuiderROS::publishGuidance()
 
 void DeepGuiderROS::publishPath()
 {    
-    Path path = m_map_manager.getPath();
+    Path* path = getPathLocked();
+    if(path == nullptr || path->empty())
+    {
+        releasePathLock();
+        return;
+    }
 
     // make path points messages
     nav_msgs::Path rospath;
-    for (int i = 0; i < path.pts.size(); i++) 
+    for (int i = 0; i < path->pts.size(); i++) 
     {
-        ID curnid = path.pts[i].node_id;
-        Node* pNode = m_map_manager.getMap().findNode(curnid);
-        dg::LatLon ll(pNode->lat, pNode->lon);
-        Point2 xy = m_localizer.toMetric(ll);
-
         geometry_msgs::PoseStamped rospstamped;
-        rospstamped.pose.position.x = xy.x;
-        rospstamped.pose.position.y = xy.y;
+        rospstamped.pose.position.x = path->pts[i].x;
+        rospstamped.pose.position.y = path->pts[i].y;
 
         rospath.poses.push_back(rospstamped);
-    }    
+    }
+    releasePathLock();
 
     // printf("start_lat: %f, start_lon: %f, dest_lat: %f, dest_lon: %f", path.start_pos.lat, path.start_pos.lon, path.dest_pos.lat, path.dest_pos.lon);
 
