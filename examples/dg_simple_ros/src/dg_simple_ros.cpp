@@ -369,7 +369,10 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
 // A callback function for subscribing IMU
 void DeepGuiderROS::callbackIMU(const sensor_msgs::Imu::ConstPtr& msg)
 {
-    dg::Timestamp ts = msg->timestamp;
+    if (msg->header.stamp == ros::Time(0)) {
+        return;
+    }
+
     int seq = msg->header.seq;
     double ori_x = msg->orientation.x;
     double ori_y = msg->orientation.y;
@@ -381,12 +384,12 @@ void DeepGuiderROS::callbackIMU(const sensor_msgs::Imu::ConstPtr& msg)
     double linacc_x = msg->linear_acceleration.x;
     double linacc_y = msg->linear_acceleration.y;
     double linacc_z = msg->linear_acceleration.z;
-
     ROS_INFO_THROTTLE(1.0, "IMU: seq=%d, orientation=(%f,%f,%f), angular_veloctiy=(%f,%f,%f), linear_acceleration=(%f,%f,%f)", seq, ori_x, ori_y, ori_z, angvel_x, angvel_y, angvel_z, linacc_x, linacc_y, linacc_z);
 
+    const dg::Timestamp imu_time = msg->header.stamp.toSec();
     if (m_enable_imu)
     {
-        procImuData(ori_x, ori_y, ori_z, ori_w, ts);
+        procImuData(ori_x, ori_y, ori_z, ori_w, imu_time);
     }
 }
 
@@ -403,16 +406,15 @@ void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
         ocr.xmax = msg->ocrs[i].xmax;
         ocr.ymax = msg->ocrs[i].ymax;
         ocr.confidence = msg->ocrs[i].confidence;
-
         ocrs.push_back(ocr);
     }
-    dg::Timestamp ts = msg->timestamp;
+    dg::Timestamp capture_time = msg->timestamp;
     double proc_time = msg->processingtime;
-    int cam_fnumber = timestamp2Framenumber(ts);
+    int cam_fnumber = timestamp2Framenumber(capture_time);
 
     if (!ocrs.empty() && cam_fnumber>=0)
     {
-        m_ocr.set(ocrs, ts, proc_time);
+        m_ocr.set(ocrs, capture_time, proc_time);
 
         if (m_data_logging)
         {
