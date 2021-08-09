@@ -290,17 +290,17 @@ public:
             }
             if (proj_node)
             {
-                Pose2 pose = *from;
+                Point2 np = *from;
                 bool already_exist = false;
                 for (int k = 0; k < (int)results.size(); k++)
                 {
-                    if (norm(pose - results[k]) <= error_tolerance)
+                    if (norm(np - results[k]) <= error_tolerance)
                     {
                         already_exist = true;
                         break;
                     }
                 }
-                if (!already_exist) results.push_back(pose);
+                if (!already_exist) results.push_back(Pose2(np));
                 continue;
             }
 
@@ -317,17 +317,17 @@ public:
                 double d2 = norm(dist2.second - *to);
                 if (d1 > 0 && d2 > 0)
                 {
-                    Pose2 pose = dist2.second;
+                    Point2 ep = dist2.second;
                     bool already_exist = false;
                     for (int k = 0; k < (int)results.size(); k++)
                     {
-                        if (norm(pose - results[k]) <= error_tolerance)
+                        if (norm(ep - results[k]) <= error_tolerance)
                         {
                             already_exist = true;
                             break;
                         }
                     }
-                    if (!already_exist) results.push_back(pose);
+                    if (!already_exist) results.push_back(Pose2(ep));
                 }
             }
         }

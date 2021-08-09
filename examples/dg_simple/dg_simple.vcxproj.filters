@@ -113,13 +113,7 @@
     <ClInclude Include="..\..\src\vps\vps_localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\vps\vps.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp">

@@ -369,10 +369,12 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
 // A callback function for subscribing IMU
 void DeepGuiderROS::callbackIMU(const sensor_msgs::Imu::ConstPtr& msg)
 {
+    dg::Timestamp ts = msg->timestamp;
     int seq = msg->header.seq;
     double ori_x = msg->orientation.x;
     double ori_y = msg->orientation.y;
     double ori_z = msg->orientation.z;
+    double ori_w = msg->orientation.w;
     double angvel_x = msg->angular_velocity.x;
     double angvel_y = msg->angular_velocity.y;
     double angvel_z = msg->angular_velocity.z;
@@ -381,6 +383,11 @@ void DeepGuiderROS::callbackIMU(const sensor_msgs::Imu::ConstPtr& msg)
     double linacc_z = msg->linear_acceleration.z;
 
     ROS_INFO_THROTTLE(1.0, "IMU: seq=%d, orientation=(%f,%f,%f), angular_veloctiy=(%f,%f,%f), linear_acceleration=(%f,%f,%f)", seq, ori_x, ori_y, ori_z, angvel_x, angvel_y, angvel_z, linacc_x, linacc_y, linacc_z);
+
+    if (m_enable_imu)
+    {
+        procImuData(ori_x, ori_y, ori_z, ori_w, ts);
+    }
 }
 
 // A callback function for subscribing OCR output
@@ -405,7 +412,6 @@ void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
 
     if (!ocrs.empty() && cam_fnumber>=0)
     {
-        /* Todo
         m_ocr.set(ocrs, ts, proc_time);
 
         if (m_data_logging)
@@ -416,23 +422,16 @@ void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
         }
         m_ocr.print();
 
-        std::vector<dg::ID> ids;
-        std::vector<Polar2> obs;
-        std::vector<double> confs;
-        std::vector<OCRResult> ocrs;
-        for (int k = 0; k < (int)ocrs.size(); k++)
+        std::vector<dg::Point2> poi_xys;
+        std::vector<dg::Polar2> relatives;
+        std::vector<double> poi_confidences;
+        if (m_ocr.getLocClue(getPose(), poi_xys, relatives, poi_confidences))
         {
-            dg::ID ocr_id = 0;
-            std::vector<dg::POI> pois = m_map_manager.getPOI(ocrs[k].label);
-            if(!pois.empty()) ocr_id = pois[0].id;
-            ids.push_back(ocr_id);
-            obs.push_back(rel_pose_defualt);
-            confs.push_back(ocrs[k].confidence);
+            for (int k = 0; k < (int)poi_xys.size(); k++)
+            {
+                m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
+            }
         }
-        m_localizer_mutex.lock();
-        VVS_CHECK_TRUE(m_localizer.applyLocClue(ids, obs, ts, confs));
-        m_localizer_mutex.unlock();
-        */
     }
 }
 

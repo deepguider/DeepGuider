@@ -119,7 +119,6 @@
     <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp" />
     <ClInclude Include="..\..\src\map_manager\map_manager.hpp" />
     <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp" />
-    <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp" />
     <ClInclude Include="..\..\src\roadtheta\roadtheta.hpp" />
     <ClInclude Include="..\..\src\roadtheta\roadtheta_localizer.hpp" />
     <ClInclude Include="..\..\src\utils\ekf.hpp" />
@@ -131,7 +130,6 @@
     <ClInclude Include="..\..\src\utils\utility.hpp" />
     <ClInclude Include="..\..\src\utils\utm_converter.hpp" />
     <ClInclude Include="..\..\src\utils\vvs.h" />
-    <ClInclude Include="..\..\src\vps\vps.hpp" />
     <ClInclude Include="..\..\src\vps\vps_localizer.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -30,6 +30,7 @@ protected:
     bool m_enable_ocr = false;
     bool m_enable_roadtheta = false;
     bool m_enable_exploration = false;
+    bool m_enable_imu = true;
     bool m_enable_mapserver = true;
 
     std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
@@ -81,6 +82,7 @@ protected:
     void drawOcr(cv::Mat target_image, std::vector<OCRResult> pois, cv::Size original_image_size);
     void drawIntersection(cv::Mat image, IntersectionResult r, cv::Size original_image_size);
     void procGpsData(dg::LatLon gps_datum, dg::Timestamp ts);
+    bool procImuData(double ori_x, double ori_y, double ori_z, double ori_w, dg::Timestamp ts);
     void procGuidance(dg::Timestamp ts);
     bool procIntersectionClassifier();
     bool procLogo();
@@ -227,6 +229,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "enable_poi_ocr", m_enable_ocr, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_roadtheta", m_enable_roadtheta, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_exploration", m_enable_exploration, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_imu", m_enable_imu, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_mapserver", m_enable_mapserver, n_read);
 
     // Read Main Options
@@ -339,6 +342,7 @@ bool DeepGuider::initialize(std::string config_file)
     if (!m_localizer.initialize(this, "EKFLocalizer")) return false;
     m_localizer.setParamValue("enable_path_projection", true);
     m_localizer.setParamValue("enable_map_projection", false);
+    m_localizer.setParamValue("enable_gps_smoothing)", true);
     m_localizer.setParamMotionNoise(1, 10);
     m_localizer.setParamGPSNoise(1);
     m_localizer.setParamGPSOffset(1, 0);
@@ -535,6 +539,10 @@ int DeepGuider::run()
         m_gps_history_asen.push_back(gps_datum);
         printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, gps_time);
 
+        // draw robot trajectory
+        Pose2 pose_m = getPose();
+        m_painter.drawPoint(m_map_image, pose_m, 1, cv::Vec3b(0, 0, 255));
+
         // video capture
         cv::Mat video_image;
         while (video_time <= gps_time)
@@ -648,6 +656,14 @@ void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
     }
 }
 
+bool DeepGuider::procImuData(double ori_x, double ori_y, double ori_z, double ori_w, dg::Timestamp ts)
+{
+    auto euler = cx::cvtQuat2EulerAng(ori_x, ori_y, ori_z, ori_w);
+
+    m_localizer_mutex.lock();
+    VVS_CHECK_TRUE(m_localizer.applyIMUCompass(euler.z, ts));
+    m_localizer_mutex.unlock();
+}
 
 void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
 {
@@ -945,8 +961,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     m_localizer_mutex.unlock();
 
     // draw robot on the map
-    m_painter.drawPoint(image, toMetric(pose_gps), 10, cx::COLOR_YELLOW);
-    m_painter.drawPoint(image, toMetric(pose_gps), 8, cx::COLOR_BLUE);
+    m_painter.drawPoint(image, pose_metric, 10, cx::COLOR_YELLOW);
+    m_painter.drawPoint(image, pose_metric, 8, cx::COLOR_BLUE);
     dg::Point2 pose_pixel = m_painter.cvtValue2Pixel(pose_metric);
     cv::line(image, pose_pixel, pose_pixel + 10 * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)), cx::COLOR_YELLOW, 2);
 

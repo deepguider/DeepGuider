@@ -67,7 +67,7 @@ namespace dg
                 {
                     POI* poi = pois[0];
                     poi_xys.push_back(*poi);
-                    Polar2 relative = computeRelative(image.size(), m_ocrs[k].xmin, m_ocrs[k].ymin, m_ocrs[k].xmax, m_ocrs[k].ymax);
+                    Polar2 relative = computeRelative(m_ocrs[k].xmin, m_ocrs[k].ymin, m_ocrs[k].xmax, m_ocrs[k].ymax);
                     relatives.push_back(relative);
                     poi_confidences.push_back(m_ocrs[k].confidence);
                 }
@@ -75,8 +75,31 @@ namespace dg
             return true;
         }
 
+		bool getLocClue(const Pose2& pose, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
+		{
+			cv::AutoLock lock(m_mutex);
+			if (m_shared == nullptr) return false;
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			Map* map = m_shared->getMap();
+			assert(map != nullptr);
+			for (int k = 0; k < m_ocrs.size(); k++)
+			{
+				std::wstring poi_name = converter.from_bytes(m_ocrs[k].label.c_str());
+				std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
+				if (!pois.empty())
+				{
+					POI* poi = pois[0];
+					poi_xys.push_back(*poi);
+					Polar2 relative = computeRelative(m_ocrs[k].xmin, m_ocrs[k].ymin, m_ocrs[k].xmax, m_ocrs[k].ymax);
+					relatives.push_back(relative);
+					poi_confidences.push_back(m_ocrs[k].confidence);
+				}
+			}
+			return true;
+		}
+
     protected:
-        dg::Polar2 computeRelative(cv::Size image_size, int x1, int y1, int x2, int y2)
+        dg::Polar2 computeRelative(int x1, int y1, int x2, int y2)
         {
             dg::Polar2 relative = dg::Polar2(-1, CV_PI);
 

@@ -110,6 +110,10 @@ protected:
     int m_history_size = 1000;
     bool m_enable_path_projection = true;
     bool m_enable_map_projection = false;
+    bool m_enable_gps_smoothing = true;
+    double m_smoothing_alpha = 0.1;
+    double m_smoothing_beta = 0.01;
+    double m_smoothing_velocity_decaying = 0.95;
 
     /** Read parameters from cv::FileNode - Inherited from cx::Algorithm */
     virtual int readParam(const cv::FileNode& fn)
@@ -118,6 +122,11 @@ protected:
         n_read += m_ekf->readParam(fn);        
         CX_LOAD_PARAM_COUNT(fn, "enable_path_projection", m_enable_path_projection, n_read);
         CX_LOAD_PARAM_COUNT(fn, "enable_map_projection", m_enable_map_projection, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "enable_gps_smoothing", m_enable_gps_smoothing, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "smoothing_alpha", m_smoothing_alpha, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "smoothing_beta", m_smoothing_beta, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "smoothing_velocity_decaying", m_smoothing_velocity_decaying, n_read);
+
         int history_size = m_history_size;
         CX_LOAD_PARAM_COUNT(fn, "history_size", history_size, n_read);
         if (history_size != m_history_size)
@@ -208,17 +217,15 @@ public:
 
     virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1)
     {
-        cv::AutoLock lock(m_mutex);
-        if (!m_ekf->applyGPS(ll, time, confidence)) return false;
-        saveObservation(ObsData::OBS_GPS, toMetric(ll), time, confidence);
-        saveEKFState(m_ekf, time);
-        return applyPathLocalizer(m_ekf->getPose(), time);
+        return applyGPS(toMetric(ll), time, confidence);
     }
 
     virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        if (!m_ekf->applyGPS(xy, time, confidence)) return false;
+        Point2 smoothed_xy = xy;
+        if (m_enable_gps_smoothing) smoothed_xy = getSmoothedGPS(xy, time);
+        if (!m_ekf->applyGPS(smoothed_xy, time, confidence)) return false;
         saveObservation(ObsData::OBS_GPS, xy, time, confidence);
         saveEKFState(m_ekf, time);
         return applyPathLocalizer(m_ekf->getPose(), time);
@@ -331,6 +338,8 @@ protected:
         m_state_history.resize(m_history_size);
         m_observation_history.resize(m_history_size);
         m_pose_history.resize(m_history_size);
+        m_gps_state = Point2T(Point2(0, 0), 0);
+        m_gps_velocity = Point2(0, 0);
         return true;
     }
 
@@ -453,12 +462,34 @@ protected:
         m_observation_history.push_back(ObsData(type, xy, lin_ang, time, conf));
     }
 
+    Point2 getSmoothedGPS(const Point2& xy, Timestamp time)
+    {
+        if (m_gps_state.timestamp <= 0)
+        {
+            m_gps_state = Point2T(xy, time);
+            return xy;
+        }
+
+        // alpha-beta filtering with decaying velocity
+        double dt = time - m_gps_state.timestamp;
+        Point2 pred = m_gps_state + m_gps_velocity * dt;
+        Point2 residual = xy - pred;
+        m_gps_state = pred + m_smoothing_alpha * residual;
+        m_gps_state.timestamp = time;
+        m_gps_velocity = m_gps_velocity * m_smoothing_velocity_decaying + m_smoothing_beta * residual;
+
+        return m_gps_state;
+    }
+
     Pose2 m_pose;
     Timestamp m_timestamp;
     cv::Ptr<dg::EKFLocalizer> m_ekf;
     RingBuffer<LocState> m_state_history;
     RingBuffer<ObsData> m_observation_history;
     RingBuffer<Pose2T> m_pose_history;
+    Point2T m_gps_state;
+    Point2 m_gps_velocity;
+
 
 }; // End of 'PathLocalizer'
 
