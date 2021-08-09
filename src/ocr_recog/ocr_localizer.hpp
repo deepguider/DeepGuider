@@ -52,15 +52,14 @@ namespace dg
         {
             cv::AutoLock lock(m_mutex);
             if (m_shared == nullptr) return false;
+			Pose2 pose = m_shared->getPose();
 
             if (!OCRRecognizer::apply(image, image_time)) return false;
 
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-
-            Map* map = m_shared->getMap();
+			Map* map = m_shared->getMap();
 			assert(map != nullptr);
-			Pose2 pose = m_shared->getPose();
-            for (int k = 0; k < m_ocrs.size(); k++)
+			for (int k = 0; k < m_ocrs.size(); k++)
             {
                 std::wstring poi_name = converter.from_bytes(m_ocrs[k].label.c_str());
                 std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);

@@ -26,7 +26,7 @@ namespace dg
     }
 
 
-    bool RoadTheta::_apply(cv::Mat& frame_input, dg::Timestamp ts)
+    bool RoadTheta::_apply(const cv::Mat& frame_input, dg::Timestamp ts)
     {
         if (m_param.test_line_detector) { test_line_detector(frame_input); return true; };
 
@@ -1272,7 +1272,7 @@ namespace dg
     }
 
 
-    void RoadTheta::test_line_detector(cv::Mat& frame)
+    void RoadTheta::test_line_detector(const cv::Mat& frame)
     {
         std::vector<double> scales = { 0.75, 0.5, 0.39 };
         cv::namedWindow("line detector", 0);

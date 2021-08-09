@@ -149,7 +149,7 @@ public:
         }
 
         // localmap projection: 현재 위치에서 도달 가능한 모든 branch로의 투영점들을 탐색
-        std::vector<Pose2> map_poses = findProjectedMapPoses(&m_localmap, pose, m_projection_search_radius);
+        std::vector<Pose2> map_poses = findProjectedMapPoses(&m_localmap, pose, m_projection_search_radius, m_error_tolerance);
 
         // evaluation: 각각의 후보 map 투영점(prj_pts)들에 대한 궤적 정합도 평가
         if (m_enable_debugging_display)
@@ -199,6 +199,140 @@ public:
         m_evalMapPath.clear();
         m_evalMapPathStartIdx = -1;
         m_evalPoseHistory.clear();
+    }
+
+    /**
+     * 현재 위치와 연결된 반경 내의 local branch map을 반환 (두 Node 사이에 단방향 edge가 존재하는 경우는 동작하지 않음)
+     * @param map 맵 데이터
+     * @param center_nid 중심 Node ID
+     * @param localmap 탐색된 local branch map
+     * @param search_radius 탐색 반경
+     * @return Return True if successful
+     */
+    static bool getLocalBranchMap(dg::Map* map, ID center_nid, dg::Map& localmap, double search_radius)
+    {
+        if (map == nullptr || map->isEmpty()) return false;
+        Node* start = map->getNode(center_nid);
+        if (start == nullptr) return false;
+
+        localmap.removeAll();
+
+        std::list<Node*> open;
+        open.push_back(start);
+        localmap.addNode(*start);
+
+        while (!open.empty())
+        {
+            // pick next
+            auto from = open.front();
+            open.pop_front();
+
+            for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
+            {
+                Node* to = map->getConnectedNode(from, *it);
+                if (to == nullptr) continue;
+
+                // check radius
+                double d = norm(*to - *start);
+                if (d > search_radius) continue;
+
+                // check duplication
+                auto node = localmap.getNode(to->id);
+                if (node) continue;
+
+                open.push_back(to);
+                localmap.addNode(*to);
+                Edge* edge = map->getEdge(*it);
+                localmap.addEdge(*edge);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * 주어진 기준 위치에서 반경 내 가능한 모든 맵 투영점들을 반환 (node점 or edge점들)
+     * @param map Given map
+     * @param p Give reference point
+     * @param search_radius Search radius
+     * @param error_tolerance Tolerance for arithmetic error
+     * @return Return a list of found map projection points
+     */
+    static std::vector<Pose2> findProjectedMapPoses(dg::Map* map, const Pose2& p, double search_radius, double error_tolerance = 0.01)
+    {
+        std::vector<Pose2> results;
+        if (map == nullptr || map->isEmpty()) return results;
+
+        double search_radius2 = search_radius * search_radius;
+        for (auto from = map->getHeadNode(); from != map->getTailNode(); from++)
+        {
+            if (map->countEdges(&(*from)) == 0) continue;
+
+            // check search_radius
+            double d = norm(*from - p);
+            if (d > search_radius) continue;
+
+            // check node projection: 해당 node(from)가 gps의 투영점이 될 수 있는지 조사
+            Point2 nv = p - *from;
+            bool proj_node = true;
+            for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
+            {
+                Node* to = map->getConnectedNode(&(*from), *it);
+                if (to == nullptr) continue;
+
+                Point2 ev = *to - *from;
+                double theta = acos(nv.ddot(ev) / (norm(nv) * norm(ev)));
+                if (theta < CV_PI / 2)
+                {
+                    proj_node = false;
+                    break;
+                }
+            }
+            if (proj_node)
+            {
+                Pose2 pose = *from;
+                bool already_exist = false;
+                for (int k = 0; k < (int)results.size(); k++)
+                {
+                    if (norm(pose - results[k]) <= error_tolerance)
+                    {
+                        already_exist = true;
+                        break;
+                    }
+                }
+                if (!already_exist) results.push_back(pose);
+                continue;
+            }
+
+            // check edge projection: 해당 edge(from)가 gps의 투영점이 될 수 있는지 조사
+            for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
+            {
+                Node* to = map->getConnectedNode(&(*from), *it);
+                if (to == nullptr) continue;
+
+                auto dist2 = calcDist2FromLineSeg(*from, *to, p);
+                if (dist2.first > search_radius2) continue;
+
+                double d1 = norm(dist2.second - *from);
+                double d2 = norm(dist2.second - *to);
+                if (d1 > 0 && d2 > 0)
+                {
+                    Pose2 pose = dist2.second;
+                    bool already_exist = false;
+                    for (int k = 0; k < (int)results.size(); k++)
+                    {
+                        if (norm(pose - results[k]) <= error_tolerance)
+                        {
+                            already_exist = true;
+                            break;
+                        }
+                    }
+                    if (!already_exist) results.push_back(pose);
+                }
+            }
+        }
+
+        return results;
     }
 
 protected:
@@ -388,141 +522,9 @@ protected:
         return (average_align_cost + m_length_align_weight * length_cost);
     }
 
-    /**
-     * 현재 위치와 연결된 반경 내의 local branch map을 반환 (두 Node 사이에 단방향 edge가 존재하는 경우는 동작하지 않음)
-     * @param map 맵 데이터
-     * @param center_nid 중심 Node ID
-     * @param localmap 탐색된 local branch map
-     * @param search_radius 탐색 반경
-     * @return Return True if successful
-     */
-    static bool getLocalBranchMap(dg::Map* map, ID center_nid, dg::Map& localmap, double search_radius)
-    {
-        if (map == nullptr || map->isEmpty()) return false;
-        Node* start = map->getNode(center_nid);
-        if (start == nullptr) return false;
-
-        localmap.removeAll();
-
-        std::list<Node*> open;
-        open.push_back(start);
-        localmap.addNode(*start);
-
-        while (!open.empty())
-        {
-            // pick next
-            auto from = open.front();
-            open.pop_front();
-
-            for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
-            {
-                Node* to = map->getConnectedNode(from, *it);
-                if (to == nullptr) continue;
-
-                // check radius
-                double d = norm(*to - *start);
-                if (d > search_radius) continue;
-
-                // check duplication
-                auto node = localmap.getNode(to->id);
-                if (node) continue;
-
-                open.push_back(to);
-                localmap.addNode(*to);
-                Edge* edge = map->getEdge(*it);
-                localmap.addEdge(*edge);
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * 주어진 기준 위치에서 반경 내 가능한 모든 맵 투영점들을 반환 (node점 or edge점들)
-     * @param map Given map
-     * @param p Give reference point
-     * @param search_radius Search radius
-     * @return Return a list of found map projection points
-     */
-    std::vector<Pose2> findProjectedMapPoses(dg::Map* map, const Pose2& p, double search_radius)
-    {
-        std::vector<Pose2> results;
-        if (map == nullptr || map->isEmpty()) return results;
-
-        double search_radius2 = search_radius * search_radius;
-        for (auto from = map->getHeadNode(); from != map->getTailNode(); from++)
-        {
-            if (map->countEdges(&(*from)) == 0) continue;
-
-            // check search_radius
-            double d = norm(*from - p);
-            if (d > search_radius) continue;
-
-            // check node projection: 해당 node(from)가 gps의 투영점이 될 수 있는지 조사
-            Point2 nv = p - *from;
-            bool proj_node = true;
-            for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
-            {
-                Node* to = map->getConnectedNode(&(*from), *it);
-                if (to == nullptr) continue;
-
-                Point2 ev = *to - *from;
-                double theta = acos(nv.ddot(ev) / (norm(nv) * norm(ev)));
-                if (theta < CV_PI / 2)
-                {
-                    proj_node = false;
-                    break;
-                }
-            }
-            if (proj_node)
-            {
-                Pose2 pose = *from;
-                bool already_exist = false;
-                for (int k = 0; k < (int)results.size(); k++)
-                {
-                    if (norm(pose - results[k]) <= m_error_tolerance)
-                    {
-                        already_exist = true;
-                        break;
-                    }
-                }
-                if (!already_exist) results.push_back(pose);
-                continue;
-            }
-
-            // check edge projection: 해당 edge(from)가 gps의 투영점이 될 수 있는지 조사
-            for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
-            {
-                Node* to = map->getConnectedNode(&(*from), *it);
-                if (to == nullptr) continue;
-
-                auto dist2 = calcDist2FromLineSeg(*from, *to, p);
-                if (dist2.first > search_radius2) continue;
-
-                double d1 = norm(dist2.second - *from);
-                double d2 = norm(dist2.second - *to);
-                if (d1 > 0 && d2 > 0)
-                {
-                    Pose2 pose = dist2.second;
-                    bool already_exist = false;
-                    for (int k = 0; k < (int)results.size(); k++)
-                    {
-                        if (norm(pose - results[k]) <= m_error_tolerance)
-                        {
-                            already_exist = true;
-                            break;
-                        }
-                    }
-                    if (!already_exist) results.push_back(pose);
-                }
-            }
-        }
-
-        return results;
-    }
-
     static Pose2 findNearestPathPose(const Path& path, const Pose2& pose, int& path_idx, double turn_weight = 0)
     {
+        path_idx = -1;
         if (path.empty()) return pose;
 
         // Find the nearest path point

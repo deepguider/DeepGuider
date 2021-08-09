@@ -13,6 +13,7 @@
 #include "dg_guidance.hpp"
 #include "dg_exploration.hpp"
 #include "dg_utils.hpp"
+#include "lrpose_recog/lrpose_recognizer.hpp"
 #include <chrono>
 
 using namespace dg;
@@ -20,25 +21,7 @@ using namespace std;
 
 class DeepGuider : public SharedInterface, public cx::Algorithm
 {
-public:
-    DeepGuider() {}
-    virtual ~DeepGuider();
-
-    bool initialize(std::string config_file);
-    int run();
-
-    void procMouseEvent(int evt, int x, int y, int flags);
-    void procTTS();
-
-    virtual Pose2 getPose(Timestamp* timestamp = nullptr) const;
-    virtual LatLon getPoseGPS(Timestamp* timestamp = nullptr) const;
-    virtual TopometricPose getPoseTopometric(Timestamp* timestamp = nullptr) const;
-    virtual double getPoseConfidence(Timestamp* timestamp = nullptr) const;
-    virtual bool procOutOfPath(const Point2& curr_pose);
-
 protected:
-    int readParam(const cv::FileNode& fn);
-
     // configuable parameters
     bool m_enable_intersection = false;
     bool m_enable_vps = false;
@@ -53,7 +36,7 @@ protected:
     std::string m_srcdir = "./../src";      // path of deepguider/src (required for python embedding)
     bool m_enable_tts = false;
     bool m_threaded_run_python = true;
-    bool m_use_high_precision_gps = false;   // use high-precision gps (novatel)
+    bool m_use_high_precision_gps = false;  // use high-precision gps (novatel)
 
     bool m_data_logging = false;
     bool m_recording = false;
@@ -69,26 +52,24 @@ protected:
     std::string m_gps_input_path = "data/191115_ETRI_asen_fix.csv";
     std::string m_video_input_path = "video/191115_ETRI.avi";
 
-    // local variables
-    cx::VideoWriter m_video_gui;
-    cx::VideoWriter m_video_cam;
-    std::ofstream m_log;
-    cv::Mutex m_log_mutex;
-    cv::Mat m_map_image;
-    cv::Mat m_map_image_original;
-    dg::MapPainter m_painter;
-    dg::GuidanceManager::Motion m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
-    dg::GuidanceManager::GuideStatus m_guidance_status = dg::GuidanceManager::GuideStatus::GUIDE_INITIAL;
-    std::list<dg::LatLon> m_gps_history_asen;
-    std::list<dg::LatLon> m_gps_history_novatel;
+public:
+    DeepGuider() {}
+    virtual ~DeepGuider();
 
-    // global variables
-    dg::LatLon m_gps_start;
-    dg::LatLon m_gps_dest;
-    bool m_dest_defined = false;
-    bool m_pose_initialized = false;
-    bool m_path_initialized = false;
-    std::string m_winname = "DeepGuider";           // title of gui window
+    bool initialize(std::string config_file);
+    int run();
+
+    virtual Pose2 getPose(Timestamp* timestamp = nullptr) const;
+    virtual LatLon getPoseGPS(Timestamp* timestamp = nullptr) const;
+    virtual TopometricPose getPoseTopometric(Timestamp* timestamp = nullptr) const;
+    virtual double getPoseConfidence(Timestamp* timestamp = nullptr) const;
+    virtual bool procOutOfPath(const Point2& curr_pose);
+
+    void procMouseEvent(int evt, int x, int y, int flags);
+    void procTTS();
+
+protected:
+    virtual int readParam(const cv::FileNode& fn);
 
     // internal api's
     bool initializeDefaultMap();
@@ -106,6 +87,39 @@ protected:
     bool procOcr();
     bool procVps();
     bool procRoadTheta();
+
+    // sub modules
+    dg::MapManager m_map_manager;
+    dg::PathLocalizer m_localizer;
+    dg::VPSLocalizer m_vps;
+    dg::LRPoseRecognizer m_vps_lr;
+    dg::LogoRecognizer m_logo;
+    dg::OCRLocalizer m_ocr;
+    dg::IntersectionLocalizer m_intersection;
+    dg::RoadThetaLocalizer m_roadtheta;
+    dg::GuidanceManager m_guider;
+    dg::ActiveNavigation m_active_nav;
+
+    // global variables
+    dg::LatLon m_gps_start;
+    dg::LatLon m_gps_dest;
+    bool m_dest_defined = false;
+    bool m_pose_initialized = false;
+    bool m_path_initialized = false;
+
+    // local variables
+    std::string m_winname = "DeepGuider";           // title of gui window
+    cx::VideoWriter m_video_gui;
+    cx::VideoWriter m_video_cam;
+    std::ofstream m_log;
+    cv::Mutex m_log_mutex;
+    cv::Mat m_map_image;
+    cv::Mat m_map_image_original;
+    dg::MapPainter m_painter;
+    dg::GuidanceManager::Motion m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
+    dg::GuidanceManager::GuideStatus m_guidance_status = dg::GuidanceManager::GuideStatus::GUIDE_INITIAL;
+    std::list<dg::LatLon> m_gps_history_asen;
+    std::list<dg::LatLon> m_gps_history_novatel;
 
     // tts
     cv::Mutex m_tts_mutex;
@@ -125,7 +139,7 @@ protected:
     static void threadfunc_ocr(DeepGuider* guider);
     static void threadfunc_logo(DeepGuider* guider);
     static void threadfunc_intersection(DeepGuider* guider);
-    static void threadfunc_roadtheta(DeepGuider* guider);    
+    static void threadfunc_roadtheta(DeepGuider* guider);
     bool is_vps_running = false;
     bool is_ocr_running = false;
     bool is_logo_running = false;
@@ -168,17 +182,6 @@ protected:
     cv::Mutex m_guider_mutex;
     int m_gps_update_cnt = 0;
 
-    // sub modules
-    dg::MapManager m_map_manager;
-    dg::PathLocalizer m_localizer;
-    dg::VPSLocalizer m_vps;
-    dg::LogoRecognizer m_logo;
-    dg::OCRLocalizer m_ocr;
-    dg::IntersectionLocalizer m_intersection_classifier;
-    dg::RoadTheta m_roadtheta;
-    dg::GuidanceManager m_guider;
-    dg::ActiveNavigation m_active_nav;
-
     // guidance icons
     cv::Mat m_icon_forward;
     cv::Mat m_mask_forward;
@@ -194,17 +197,15 @@ protected:
     double confidence_default = -1.0;
 };
 
-
 void onMouseEvent(int event, int x, int y, int flags, void* param)
 {
     DeepGuider* dg = (DeepGuider *)param;
     dg->procMouseEvent(event, x, y, flags);
 }
 
-
 DeepGuider::~DeepGuider()
 {
-    if (m_enable_intersection) m_intersection_classifier.clear();
+    if (m_enable_intersection) m_intersection.clear();
     if (m_enable_vps) m_vps.clear();
     if(m_enable_logo) m_logo.clear();
     if (m_enable_ocr) m_ocr.clear();
@@ -253,7 +254,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "video_recording_fps", m_recording_fps, n_read);
     CX_LOAD_PARAM_COUNT(fn, "recording_header_name", m_recording_header_name, n_read);
 
-    // Read Place-specific Setting
+    // Read Site-specific Setting
     CX_LOAD_PARAM_COUNT(fn, "map_image_path", m_map_image_path, n_read);
     CX_LOAD_PARAM_COUNT(fn, "map_data_path", m_map_data_path, n_read);
     CX_LOAD_PARAM_COUNT(fn, "map_ref_point_lat", m_map_ref_point.lat, n_read);
@@ -272,7 +273,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
         cv::FileNode fn_site = fn[site_tagname];
         if (!fn_site.empty())
         {
-            n_read += readParam(fn_site);
+            n_read += DeepGuider::readParam(fn_site);
         }
     }
     return n_read;
@@ -308,13 +309,17 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize Intersection
     py_module_path = m_srcdir + "/intersection_cls";
-    if (m_enable_intersection && !m_intersection_classifier.initialize(this, py_module_path)) return false;
-    if (m_enable_intersection) printf("\tIntersection initialized in %.3lf seconds!\n", m_intersection_classifier.procTime());
+    if (m_enable_intersection && !m_intersection.initialize(this, py_module_path)) return false;
+    if (m_enable_intersection) printf("\tIntersection initialized in %.3lf seconds!\n", m_intersection.procTime());
 
     // initialize Logo
     py_module_path = m_srcdir + "/logo_recog";
     if (m_enable_logo && !m_logo.initialize("logo_recognizer", py_module_path.c_str())) return false;
     if (m_enable_logo) printf("\tLogo initialized in %.3lf seconds!\n", m_logo.procTime());
+
+    // initialize RoadTheta
+    if (m_enable_roadtheta && !m_roadtheta.initialize(this)) return false;
+    if (m_enable_roadtheta) printf("\tRoadTheta initialized in %.3lf seconds!\n", m_roadtheta.procTime());
 
     //initialize exploation 
     if (m_enable_exploration && !m_active_nav.initialize()) return false;
@@ -360,6 +365,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_painter.setParamValue("node_font_scale", 0);
     m_painter.setParamValue("node_color", { 255, 50, 255 });
     m_painter.setParamValue("edge_color", { 200, 100, 100 });
+    m_painter.setParamValue("crosswalk_color", { 0, 150, 50 });
     m_painter.setParamValue("edge_thickness", 2);
     VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, m_map));
 
@@ -1220,7 +1226,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
 
 bool DeepGuider::procIntersectionClassifier()
 {
-    dg::Timestamp ts_old = m_intersection_classifier.timestamp();
+    dg::Timestamp ts_old = m_intersection.timestamp();
     m_cam_mutex.lock(); 
     dg::Timestamp capture_time = m_cam_capture_time;
     if(capture_time <= ts_old)
@@ -1237,18 +1243,18 @@ bool DeepGuider::procIntersectionClassifier()
     dg::Polar2 relative;
     double confidence;
     bool valid_xy = false;
-    if (!cam_image.empty() && m_intersection_classifier.apply(cam_image, capture_time, xy, relative, confidence, valid_xy))
+    if (!cam_image.empty() && m_intersection.apply(cam_image, capture_time, xy, relative, confidence, valid_xy))
     {
         if (m_data_logging)
         {
             m_log_mutex.lock();
-            m_intersection_classifier.write(m_log, cam_fnumber);
+            m_intersection.write(m_log, cam_fnumber);
             m_log_mutex.unlock();
         } 
-        m_intersection_classifier.print();
+        m_intersection.print();
 
         m_intersection_mutex.lock();
-        m_intersection_classifier.get(m_intersection_result);
+        m_intersection.get(m_intersection_result);
         m_intersection_image = cam_image;
         m_intersection_mutex.unlock();
 
@@ -1378,7 +1384,6 @@ bool DeepGuider::procOcr()
     return true;
 }
 
-
 bool DeepGuider::procRoadTheta()
 {
     dg::Timestamp ts_old = m_roadtheta.timestamp();
@@ -1394,15 +1399,10 @@ bool DeepGuider::procRoadTheta()
     int cam_fnumber = m_cam_fnumber;
     m_cam_mutex.unlock();
     
-    if (!cam_image.empty() && m_roadtheta.apply(cam_image, capture_time))
+    double theta, confidence;
+    if (!cam_image.empty() && m_roadtheta.apply(cam_image, capture_time, theta, confidence))
     {
-        RoadThetaResult res;
-        m_roadtheta.get(res);
-
-        double angle, confidence;
-        angle = res.theta;
-        confidence = res.confidence;
-        //if(res.valid) VVS_CHECK_TRUE(m_localizer.applyLocClue(id_invalid, Polar2(-1, angle), capture_time, confidence));
+        m_localizer.applyRoadTheta(theta, capture_time, confidence);
     }
 
     return true;

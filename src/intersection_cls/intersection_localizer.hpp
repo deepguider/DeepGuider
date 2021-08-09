@@ -17,6 +17,8 @@ namespace dg
         double m_param_update_inc = 0.1;    // for intersection observation
         double m_param_update_dec = 0.1;    // for non-intersection observation
         double m_param_state_threshold = 0.5;
+        double m_param_state_upper_bound = 0.7;
+        double m_param_state_lower_bound = 0;
 
     public:
         enum {NONE_INTERSECTION = 0, INTERSECTION = 1};
@@ -33,6 +35,7 @@ namespace dg
         {
             cv::AutoLock lock(m_mutex);
             if (m_shared == nullptr) return false;
+            Pose2 pose = m_shared->getPose();
             valid_xy = false;
 
             if (!IntersectionClassifier::apply(image, image_time)) return false;
@@ -45,7 +48,6 @@ namespace dg
             // apply classification result only at the end of intersection
             if (state_prev == INTERSECTION && m_state == NONE_INTERSECTION)
             {
-                Pose2 pose = m_shared->getPose();
                 Path* path = m_shared->getPathLocked();
                 if (path && !path->empty()) valid_xy = findNearestPathJunction(*path, pose, xy);
                 else valid_xy = findNearestMapJunction(pose, xy);
@@ -61,8 +63,8 @@ namespace dg
         {
             if (observation == NONE_INTERSECTION) m_state_score -= m_param_update_dec;
             if (observation == INTERSECTION) m_state_score += m_param_update_inc;
-            if (m_state_score > 1) m_state_score = 1;
-            if (m_state_score < 0) m_state_score = 0;
+            if (m_state_score > m_param_state_upper_bound) m_state_score = m_param_state_upper_bound;
+            if (m_state_score < m_param_state_lower_bound) m_state_score = m_param_state_lower_bound;
 
             if (m_state_score >= m_param_state_threshold) return INTERSECTION;
             else return NONE_INTERSECTION;

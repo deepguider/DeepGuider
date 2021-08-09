@@ -106,7 +106,7 @@ MAP_LOADMAP_FAIL:
 
 bool Map::save(const char* filename, bool save_as_latlon) const
 {
-    if (isEmpty()) return false;
+    if (isEmpty(false)) return false;
 
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
@@ -505,6 +505,58 @@ const Edge* Map::getNearestEdge(const Point2& p, Point2& nearest_edge_point) con
     nearest_edge_point = min_dist2.second;
 
     return min_edge;
+}
+
+Pose2 Map::getNearestMapPose(const Pose2& pose_m) const
+{
+    // Find the nearest edge
+    Point2 ep;
+    const Edge* edge = getNearestEdge(pose_m, ep);
+    if (edge == nullptr) return pose_m;
+
+    // determine edge direction
+    const Node* node1 = getNode(edge->node_id1);
+    const Node* node2 = getNode(edge->node_id2);
+    if (node1 == nullptr || node2 == nullptr) return pose_m;
+    Point2 v1 = *node2 - *node1;
+    Point2 v2 = *node1 - *node2;
+    double dtheta1 = fabs(cx::trimRad(pose_m.theta - atan2(v1.y, v1.x)));
+    double dtheta2 = fabs(cx::trimRad(pose_m.theta - atan2(v2.y, v2.x)));
+    double theta = (dtheta1 <= dtheta2) ? atan2(v1.y, v1.x) : atan2(v2.y, v2.x);
+
+    Pose2 pose = ep;
+    pose.theta = theta;
+    return pose;
+}
+
+Pose2 Map::getNearestPathPose(const Path& path, const Pose2& pose_m)
+{
+    if (path.empty()) return pose_m;
+
+    // Find the nearest path point
+    int min_path_idx = -1;
+    std::pair<double, Point2> min_dist2 = std::make_pair(DBL_MAX, Point2());
+    for (int i = 0; i < (int)path.pts.size() - 1; i++)
+    {
+        auto dist2 = calcDist2FromLineSeg(path.pts[i], path.pts[i + 1], pose_m);
+        if (dist2.first < min_dist2.first)
+        {
+            min_dist2 = dist2;
+            min_path_idx = i;
+        }
+    }
+    if (min_path_idx <= 0) return pose_m;
+
+    // determine path direction
+    Point2 v1 = path.pts[min_path_idx + 1] - path.pts[min_path_idx];
+    Point2 v2 = path.pts[min_path_idx] - path.pts[min_path_idx + 1];
+    double dtheta1 = fabs(cx::trimRad(pose_m.theta - atan2(v1.y, v1.x)));
+    double dtheta2 = fabs(cx::trimRad(pose_m.theta - atan2(v2.y, v2.x)));
+    double theta = (dtheta1 <= dtheta2) ? atan2(v1.y, v1.x) : atan2(v2.y, v2.x);
+
+    Pose2 pose = min_dist2.second;
+    pose.theta = theta;
+    return pose;
 }
 
 int compare_poi(const void* a, const void* b)

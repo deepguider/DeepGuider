@@ -16,7 +16,7 @@ namespace dg
     */
     struct RoadThetaResult
     {
-        double theta;            // road direction in radian
+        double theta;            // camera heading w.r.t. road direction (Unit: [rad])
         double vx, vy;           // vanishing point coordinate in pixels
         double score = -1;       // vanishing point supporting score
         double confidence = -1;  // 0 ~ 1
@@ -161,7 +161,7 @@ namespace dg
         * Run once the module for a given input (support thread run)
         * @return true if successful (false if failed)
         */
-        bool apply(cv::Mat& image, dg::Timestamp ts)
+        bool apply(const cv::Mat& image, dg::Timestamp ts)
         {
             dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
@@ -286,9 +286,9 @@ namespace dg
         double get_position_filter_value(cv::Size image_sz, double x, double y);
         double get_tracking_filter_value(double xprev, double yprev, double x, double y);
 
-        bool _apply(cv::Mat& image, dg::Timestamp ts);
+        bool _apply(const cv::Mat& image, dg::Timestamp ts);
 
-        void test_line_detector(cv::Mat& frame);
+        void test_line_detector(const cv::Mat& frame);
         void grouping_test(cv::Mat& frame);
 
         // Hough-like vanishing point detection

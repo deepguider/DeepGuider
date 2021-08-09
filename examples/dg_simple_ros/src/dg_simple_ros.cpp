@@ -23,6 +23,7 @@ public:
 
 protected:
     virtual int readParam(const cv::FileNode& fn);
+    int readRosParam(const cv::FileNode& fn);
     double m_wait_sec = 0.01;
 
     // Topic names
@@ -114,8 +115,14 @@ DeepGuiderROS::~DeepGuiderROS()
 
 int DeepGuiderRos::readParam(const cv::FileNode& fn)
 {
-    int n_read = cx::Algorithm::readParam(fn);
+    int n_read = DeepGuider::readParam(fn);
+    n_read += readRosParam(fn);
+    return n_read;
+}
 
+int DeepGuiderRos::readRosParam(const cv::FileNode& fn)
+{
+    int n_read = 0;
     CX_LOAD_PARAM_COUNT(fn, "topic_cam", m_topic_cam, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_gps", m_topic_gps, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_dgps", m_topic_dgps, n_read);
@@ -130,13 +137,13 @@ int DeepGuiderRos::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "topic_name_index", topic_name_index, n_read);
     if (topic_name_index >= 0 && topic_name_index < topic_names_set.size()) topicset_tagname = topic_names_set[topic_name_index];
 
-    // Read Place Setting
+    // Read Topic Setting
     if (!topicset_tagname.empty())
     {
         cv::FileNode fn_topic = fn[topicset_tagname];
         if (!fn_topic.empty())
         {
-            n_read += readParam(fn_topic);
+            n_read += readRosParam(fn_topic);
         }
     }
     return n_read;
@@ -147,10 +154,6 @@ bool DeepGuiderROS::initialize(std::string config_file)
     // Initialize main system
     bool ok = DeepGuider::initialize(config_file);
     if(!ok) return false;
-
-    // Read ROS config
-    bool ok = loadParam(config_file);
-    if (ok) printf("\tConfiguration %s loaded!\n", config_file.c_str());
 
     // Initialize module subscribers
     sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);

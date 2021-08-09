@@ -111,7 +111,7 @@ public:
     /**
      * Apply an relative orientation observation from IMU<br>
      *  The data usually come from (magnetic or visual) compasses and AHRSs.
-     * @param odometry_theta The observed relative orientation (Unit: [rad])
+     * @param odometry_theta The observed odometry orientation (Unit: [rad])
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
      * @return True if successful (false if failed)
@@ -119,8 +119,8 @@ public:
     virtual bool applyIMUCompass(double odometry_theta, Timestamp time = -1, double confidence = -1) = 0;
 
     /**
-     * Apply an absolute orientation observation from RoadTheta recognizer<br>
-     * @param theta The observed orientation (Unit: [rad])
+     * Apply an absolute orientation observation from RoadTheta localizer<br>
+     * @param theta The observed absolute orientation (Unit: [rad])
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
      * @return True if successful (false if failed)
@@ -128,7 +128,7 @@ public:
     virtual bool applyRoadTheta(double theta, Timestamp time = -1, double confidence = -1) = 0;
 
     /**
-     * Apply position observation from POI recognizer
+     * Apply position observation from POI localizer
      * @param clue_xy The coordinate of observed clue
      * @param relative The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
      *  If relative.lin < 0, the relative distance is invalid. If relative.ang >= CV_PI, the relative angle is invalid.
@@ -139,7 +139,7 @@ public:
     virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
 
     /**
-     * Apply position observation from VPS recognizer
+     * Apply position observation from VPS localizer
      * @param clue_xy The coordinate of observed clue
      * @param relative The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
      *  If relative.lin < 0, the relative distance is invalid. If relative.ang >= CV_PI, the relative angle is invalid.
@@ -150,7 +150,7 @@ public:
     virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
 
     /**
-     * Apply position observation from Intersection Classifier
+     * Apply position observation from Intersection-based localizer
      * @param clue_xy The coordinate of observed clue
      * @param relative The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
      *  If relative.lin < 0, the relative distance is invalid. If relative.ang >= CV_PI, the relative angle is invalid.

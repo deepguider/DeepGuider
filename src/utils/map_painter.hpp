@@ -17,6 +17,7 @@ public:
         m_node_thickness = -1;
 
         m_edge_color = cx::COLOR_GREEN;
+        m_crosswalk_color = cv::Vec3b(0, 50, 50);
         m_edge_thickness = 2;
         m_edge_arrow_length = -1;
     }
@@ -31,6 +32,7 @@ public:
         CX_LOAD_PARAM_COUNT(fn, "node_thickness", m_node_thickness, n_read);
 
         CX_LOAD_PARAM_COUNT(fn, "edge_color", m_edge_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "crosswalk_color", m_crosswalk_color, n_read);
         CX_LOAD_PARAM_COUNT(fn, "edge_thickness", m_edge_thickness, n_read);
         CX_LOAD_PARAM_COUNT(fn, "edge_arrow_length", m_edge_arrow_length, n_read);
 
@@ -133,7 +135,11 @@ public:
         for (auto eid = node->edge_ids.begin(); eid != node->edge_ids.end(); eid++)
         {
             const Node* to = map->getConnectedNode(node, *eid);
-            drawEdge(image, *node, *to, radius, color, thickness, arrow_length);
+            const Edge* edge = map->getEdge(*eid);
+            if(edge->type == Edge::EDGE_CROSSWALK)
+                drawEdge(image, *node, *to, radius, m_crosswalk_color, thickness, arrow_length);
+            else
+                drawEdge(image, *node, *to, radius, color, thickness, arrow_length);
         }
         return true;
     }
@@ -175,6 +181,8 @@ protected:
     int m_node_thickness;
 
     cv::Vec3b m_edge_color;
+
+    cv::Vec3b m_crosswalk_color;
 
     int m_edge_thickness;
 

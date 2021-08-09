@@ -782,6 +782,22 @@ public:
     }
 
     /**
+     * Find the edge index of an edge from a node
+     * @param node A given node
+     * @param edge_id Edge ID to search
+     * @return Edge index of the edge (-1 if the edge is not in the node)
+     */
+    int getEdgeIndex(const Node* node, ID edge_id) const
+    {
+        if (node == nullptr) return -1;
+        for (int i = 0; i < (int)node->edge_ids.size(); i++)
+        {
+            if (node->edge_ids[i] == edge_id) return i;
+        }
+        return -1;
+    }
+
+    /**
      * Find a nearest edge from a given point (time complexity: O(|E|))
      * @param p A given point
      * @param nearest_edge_point An edge point that is nearest to p
@@ -798,22 +814,21 @@ public:
     const Edge* getNearestEdge(const Point2& p, Point2& nearest_edge_point) const;
 
     /**
-     * Find the edge index of an edge from a node
-     * @param node A given node
-     * @param edge_id Edge ID to search
-     * @return Edge index of the edge (-1 if the edge is not in the node)
+     * Find a nearest map-projected pose of a given pose (time complexity: O(|E|))
+     * @param pose_m A given metric pose
+     * @return The found map pose
      */
-    int getEdgeIndex(const Node* node, ID edge_id) const
-    {
-        if (node == nullptr) return -1;
-        for (int i = 0; i < (int)node->edge_ids.size(); i++)
-        {
-            if (node->edge_ids[i] == edge_id) return i;
-        }
-        return -1;
-    }
+    Pose2 getNearestMapPose(const Pose2& pose_m) const;
 
-	/**
+    /**
+     * Find a nearest path-projected pose for a given pose and path (time complexity: O(|E|))
+     * @param path A given path
+     * @param pose_m A given metric pose
+     * @return The found path-projected pose
+     */
+    static Pose2 getNearestPathPose(const Path& path, const Pose2& pose_m);
+
+    /**
 	 * Add a POI (time complexity: O(1))
 	 * @param poi POI to add
      * @return True if successful (false if failed)
@@ -973,9 +988,26 @@ public:
 
     /**
      * Check whether this map is empty or not
+     * @param check_only_topomap If True is given, check only topology map (default value)
      * @return True if empty (true) or not (false)
      */
-    bool isEmpty() const { return (countNodes() <= 0); }
+    bool isEmpty(bool check_only_topomap = true) const
+    {
+        if(check_only_topomap) return (countNodes() <= 0);
+        return (countNodes() <= 0 && countPOIs() <= 0 && countViews() <= 0);
+    }
+
+    /**
+     * Check whether POI map of this map is empty or not
+     * @return True if empty (true) or not (false)
+     */
+    bool isEmptyPOIMap() const { return (countPOIs() <= 0); }
+
+    /**
+     * Check whether StreetView map of this map is empty or not
+     * @return True if empty (true) or not (false)
+     */
+    bool isEmptyViewMap() const { return (countViews() <= 0); }
 
     /** Reserve memory in advance for preventing memory reallocation */
     void reserveMemory(int max_nodes = 17149, int max_edges = 24314, int max_pois = 22217, int max_views = 55513)
@@ -1272,6 +1304,7 @@ public:
         lookup_edges.clear();
         resetRouterVariables();
         m_map_rect_valid = false;
+        m_map_rect = cv::Rect2d();
     }
 
     /**
