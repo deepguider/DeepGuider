@@ -342,7 +342,7 @@ bool MapManager::getPath_mapExpansion(double start_lat, double start_lon, int st
 bool MapManager::getPath(const char* filename, Path& path)
 {
 	// Convert JSON document to string
-	auto is = std::ifstream(filename, std::ofstream::in);
+	auto is = std::ifstream(filename, std::ifstream::in);
 	assert(is.is_open());
 	std::string line, text;
 	while (std::getline(is, line))
