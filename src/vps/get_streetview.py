@@ -8,6 +8,7 @@ import json
 import argparse
 import sys
 import numpy as np
+import requests
 
 from ipdb import set_trace as bp
 from dmsg import dmsg
@@ -85,7 +86,7 @@ class ImgServer:
             self.reqdict = {'type': 'wgs', 'latitude': self.gps_lat, 'longitude': self.gps_long, 'radius': self.roi_radius}
             #req = {'type': 'wgs', 'latitude': 30, 'longitude': 120} # Invalid request (out of range)
         elif req_type=="node":
-            self.reqdict = {'type': 'node', 'node_id': 558992539200991, 'radius': 500.0} # Valid request
+            self.reqdict = {'type': 'node', 'node_id': self.node_id, 'radius': self.roi_radius} # Valid request
             #req = {'type': 'node', 'node_id': 1000} # Invalid request
         else:
             print("Not suppported request type. Set to wgs")
@@ -97,6 +98,10 @@ class ImgServer:
         self.gps_long = gps_long
         self.roi_radius = roi_radius
 
+    def SetParamsNode(self, node_id=558992539200991, roi_radius=1.0):
+        self.node_id = node_id
+        self.roi_radius = roi_radius
+
     def SaveGeoJson(self,outdir='./'):
         res = self.json_outputs
         if res != None:
@@ -105,15 +110,29 @@ class ImgServer:
                 #print('{} saved'.format(fname))
                 geojson.dump(res, f)
 
-    def SaveImages(self, outdir='./', verbose=0, PythonOnly=False):
-        import requests
-        import os
+    def ParseLatLon(self, verbose=0):
+        res = self.json_outputs
+        ports = 10000
+        numImgs = np.size(res['features'])
+        ids = []
+        lats = []
+        lons = []
+        for i in range(numImgs):
+            imgid = res['features'][i]['properties']['id']
+            imglat = res['features'][i]['properties']['latitude']
+            imglon = res['features'][i]['properties']['longitude']
+            ids.append(imgid)
+            lats.append(imglat)
+            lons.append(imglon)
+        return ids, lats, lons
+
+    def SaveImages(self, outdir='./', cubic='f', verbose=0, PythonOnly=False):
         res = self.json_outputs
         ports = 10000
         numImgs = np.size(res['features'])
         for i in range(numImgs):
             imgid = res['features'][i]['properties']['id']
-            request_cmd = 'http://{}:{}/{}/{}'.format(self.IP,ports,imgid,'f') #'f' means forward
+            request_cmd = 'http://{}:{}/{}/{}'.format(self.IP,ports,imgid, cubic) # cubic = 'f' means forward
             fname = os.path.join(outdir,'{}.jpg'.format(imgid))
             try:
                 if PythonOnly: # Code runs in "Python only" Environment
@@ -136,7 +155,7 @@ class ImgServer:
         numImgs = np.size(res['features'])
         return numImgs
 
-    def GetStreetViewInfo(self,imgidx):
+    def GetStreetViewInfo(self, imgidx):
         res = self.json_outputs
         numImgs = np.size(res['features'])
         imgLong = res['features'][imgidx]['properties']['longitude']
@@ -151,7 +170,7 @@ def makedir(fdir):
     if not os.path.exists(fdir):
         os.makedirs(fdir)
 
-def GetStreetView(gps_lat,gps_long,roi_radius=100,ipaddr='localhost',server_type="streetview",
+def GetStreetView(gps_lat, gps_long,roi_radius=100,ipaddr='localhost',server_type="streetview",
         req_type="wgs",outdir='./'):
     ## Input
     # gps_lat/long : latitude and longitude of gps
@@ -180,13 +199,52 @@ def GetStreetView(gps_lat,gps_long,roi_radius=100,ipaddr='localhost',server_type
     numImgs = isv.GetNumImgs()
     if numImgs >0: 
         imgID,imgLat,imgLong,imgDate,imgHeading,numImgs = isv.GetStreetViewInfo(0)
-        ret = isv.SaveImages(outdir)
+        ret = isv.SaveImages(outdir, cubic='f')
         if ret == -1:
             print('Image server is not available.')
             return -1
 
+def GetStreetView_fromID(svid=15292002727, roi_radius=1,ipaddr='localhost',server_type="streetview",
+        req_type="node",outdir='./', saveimage=False):
+    ## Input
+    # gps_lat/long : latitude and longitude of gps
+    # roi_radius : radius value to download the image around the current coordinate
+    # outdir : directory to save the downloaded images
+    # ipaddr : ip address of server
+    # server_type : "streetview" which is server type, layer, or Port
+    # req_type : "wgs" which is coordinate
+
+    ## Initialize image server
+    isv = ImgServer(ipaddr)
+    isv.SetServerType(server_type)
+    
+    ## Set position you want to view and request type
+    isv.SetParamsNode(svid, roi_radius) # 37,27,100
+    isv.SetReqDict(req_type)
+
+    ## Request to Server ( possibility of seg fault )
+    ret = isv.QuerytoServer(json_save=False, outdir=outdir, PythonOnly=False)
+    if ret == -1:
+        #raise Exception('Image server is not available.')
+        print('Image server is not available.')
+        return -1
+
+    ## Save downloaded image at outdir
+    numImgs = isv.GetNumImgs()
+    if numImgs > 0: 
+        imgID,imgLat,imgLong,imgDate,imgHeading,numImgs = isv.GetStreetViewInfo(0)
+        if saveimage:
+            ret = isv.SaveImages(outdir, cubic='f')
+            if ret == -1:
+                print('Image server is not available.')
+                return -1
+        return [imgID, imgLat, imgLong]
+    return [0, 0, 0]
+
+
 if __name__ == '__main__':
     ## Prepare Parameter for Server
+    server_ip = "129.254.81.204"
 
     ## Set Position you want to view
     if True: #near ETRI(SK-View Apt.)
@@ -199,8 +257,11 @@ if __name__ == '__main__':
 
     outdir='./download_jpg'
     makedir(outdir)
-    for i in range(1000):
+
+    print(GetStreetView_fromID(15292002727, roi_radius=1, ipaddr=server_ip))
+
+    for i in range(5):
         print(str(i) + '-th request')
         GetStreetView(gps_lat, gps_long, roi_radius, 
-                ipaddr='localhost', server_type="streetview",
+                ipaddr=server_ip, server_type="streetview",
                 req_type="wgs",outdir=outdir)

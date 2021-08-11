@@ -34,8 +34,6 @@ import copy
 
 import cv2 as cv
 
-import sys; sys.path.insert(0,'data_vps/netvlad/ccsmmutils'); import img_utils as myiu
-
 from get_streetview import ImgServer
 import get_streetview
 
@@ -44,7 +42,7 @@ from netvlad import etri_dbloader as dataset
 from ipdb import set_trace as bp
 
 class vps:
-    def __init__(self):
+    def __init__(self, which_gpu=0):
         self.ipaddr = 'localhost'
         self.gps_lat = 0.0 #Latitude
         self.gps_lon = 0.0 #Longitude
@@ -59,6 +57,8 @@ class vps:
         self.verbose = False # 1 : print internal results
         self.StreetViewServerAvaiable = True
         self.callcounter_gSV = 0 # N of call of getStreetView(), for debugging purpose
+        device = 'cuda:{}'.format(which_gpu) if torch.cuda.is_available() else 'cpu'  #cuda:0
+        self.device = torch.device(device)
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -166,8 +166,6 @@ class vps:
         if cuda and not torch.cuda.is_available():
             raise Exception("No GPU found, please run with --nocuda")
     
-        device = torch.device("cuda" if cuda else "cpu")
-    
         random.seed(opt.seed)
         np.random.seed(opt.seed)
         torch.manual_seed(opt.seed)
@@ -247,7 +245,7 @@ class vps:
             isParallel = True
     
         if not opt.resume:
-            model = model.to(device)
+            model = model.to(self.device)
         
         if opt.mode.lower() == 'train':
             if opt.optim.upper() == 'ADAM':
@@ -265,7 +263,7 @@ class vps:
     
             # original paper/code doesn't sqrt() the distances, we do, so sqrt() the margin, I think :D
             criterion = nn.TripletMarginLoss(margin=opt.margin**0.5, 
-                    p=2, reduction='sum').to(device)
+                    p=2, reduction='sum').to(self.device)
     
         if opt.resume:
             if opt.ckpt.lower() == 'latest':
@@ -280,7 +278,7 @@ class vps:
                 opt.start_epoch = checkpoint['epoch']
                 best_metric = checkpoint['best_score']
                 model.load_state_dict(checkpoint['state_dict'])
-                model = model.to(device)
+                model = model.to(self.device)
                 if opt.mode == 'train':
                     optimizer.load_state_dict(checkpoint['optimizer'])
                 if self.verbose:
@@ -311,7 +309,6 @@ class vps:
     def test_sub(self,eval_set,epoch=0):
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
-        device = torch.device("cuda" if cuda else "cpu")
         test_data_loader = DataLoader(dataset=eval_set, 
                     num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
                     pin_memory=cuda)
@@ -322,11 +319,13 @@ class vps:
                 print('====> Extracting Features')
             pool_size = self.encoder_dim
             if opt.pooling.lower() == 'netvlad': pool_size *= opt.num_clusters
-            Feat = np.empty([len(eval_set), pool_size])
+            Feat = np.zeros([len(eval_set), pool_size])
             for iteration, (input, indices) in enumerate(test_data_loader, 1):
-                if input == None: # for broken input data, set output to zero
+                #if input == None: # for broken input data, set output to zero
+                if len(input.shape) == 1: # for broken input data, set output to zero
+                    bp()
                     continue
-                input = input.to(device) #[24, 3, 480, 640]
+                input = input.to(self.device) #[24, 3, 480, 640]
                 try:
                     image_encoding = self.model.encoder(input) #[24, 512, 30, 40]
                 except: # for broken input data, set output to zero
@@ -338,11 +337,6 @@ class vps:
                     try:
                         if (iteration-1) % 200 == 0:
                             print("==> Batch ({}/{})".format(iteration,len(test_data_loader)), flush=True)
-                            avp = self.GAP1dChannel(image_encoding)
-                            myiu.clf()
-                            myiu.imshow(input,221,'input')
-                            myiu.imshow(-avp*0.1,222,'encoding')
-                            myiu.plot(vlad_encoding,223,'vlad')
                     except:
                         print("Cannot Display")
                 del input, image_encoding, vlad_encoding
@@ -482,7 +476,6 @@ class vps:
         # TODO what if features dont fit in memory? 
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
-        device = torch.device("cuda" if cuda else "cpu")
 
         test_data_loader = DataLoader(dataset=eval_set, 
                     num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
@@ -500,7 +493,7 @@ class vps:
             dbqFeat = np.empty((len(eval_set), pool_size))
         
             for iteration, (input, indices) in enumerate(test_data_loader, 1):
-                input = input.to(device) #[24, 3, 480, 640]
+                input = input.to(self.device) #[24, 3, 480, 640]
                 image_encoding = self.model.encoder(input) #[24, 512, 30, 40]
                 vlad_encoding = self.model.pool(image_encoding) #[24,32768] 
         
@@ -509,15 +502,6 @@ class vps:
                 try:
                     if iteration % 50 == 0 or len(test_data_loader) <= 10:
                         print("==> Batch ({}/{})".format(iteration,len(test_data_loader)), flush=True)
-                        myiu.clf()
-                        myiu.imshow(input,221,'input')
-                        myiu.imshow(image_encoding[:,:3,:,:],222,'encoding')
-                        myiu.plot(vlad_encoding,223,'vlad')
-                    if iteration*opt.cacheBatchSize >= eval_set.dbStruct.numDb:
-                        myiu.clf()
-                        myiu.imshow(input[-1,:,:,:],221,'input')
-                        myiu.imshow(image_encoding[-1,:3,:,:],222,'encoding')
-                        myiu.plot(vlad_encoding[-1],223,'vlad')
                 except:
                     print("Cannot Display")
             del input, image_encoding, vlad_encoding

@@ -15,8 +15,8 @@ import time
 from vgg_post import VGG_POST
 
 class lrpose_recognizer:  # pose recognition
-    def __init__(self):
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    def __init__(self, which_gpu=0):
+        self.device = 'cuda:{}'.format(which_gpu) if torch.cuda.is_available() else 'cpu'  #cuda:0
         self.use_cuda = True if torch.cuda.is_available() else False
         self.best_acc = 0  # best test accuracy
         self.start_epoch = 0  # start from epoch 0 or last checkpoint epoch
