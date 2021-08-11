@@ -5,6 +5,7 @@
 #include "rapidjson.hpp"
 #include "curl.hpp"
 #include "utils/utm_converter.hpp"
+#include <fstream>
 
 namespace dg
 {
