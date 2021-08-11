@@ -9,7 +9,7 @@
 namespace dg
 {
 
-class BaseLocalizer : public SensorInterface, public TopometricLocalizer, public cx::Algorithm
+class BaseLocalizer : public SensorInterface, public TopometricInterface, public cx::Algorithm
 {
 public:
     virtual bool setShared(SharedInterface* shared)

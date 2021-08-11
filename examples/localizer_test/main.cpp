@@ -5,21 +5,11 @@
 #include "test_localizer_etri.hpp"
 #include "test_utility.hpp"
 #include "localizer_runner.hpp"
+#include "localizer/data_loader.hpp"
 
-int runLocalizerReal(const MapGUIProp& gui, const std::string& localizer_name, const std::string& gps_file, const std::string& ahrs_file = "", const std::string& clue_file = "", const std::string& video_file = "",
-    double gps_noise = 0.5, dg::Polar2 gps_offset = dg::Polar2(1, 0), double motion_noise_lin = 1, double motion_noise_deg = 10, const std::string& rec_traj_file = "", const std::string& rec_video_file = "", double skip_time = -1, cv::Vec2d video_time = cv::Vec2d(1, -1), int gps_smoothing_n = 0)
+int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader, const std::string& rec_traj_file = "", const std::string& rec_video_file = "")
 {
-    // Prepare a localizer
-    cv::Ptr<dg::BaseLocalizer> localizer = LocalizerRunner::getLocalizer(localizer_name);
     if (localizer.empty()) return -1;
-    if (!localizer->setParamMotionNoise(motion_noise_lin, motion_noise_deg)) return -1;
-    if (!localizer->setParamGPSNoise(gps_noise)) return -1;
-    if (!localizer->setParamGPSOffset(gps_offset.lin, gps_offset.ang)) return -1;
-    if (!localizer->setParamValue("gps_reverse_vel", -1)) return -1;
-    localizer->setParamValue("search_turn_weight", 100);
-    localizer->setParamValue("track_near_radius", 20);
-    localizer->setParamValue("enable_path_projection", true);
-    localizer->setParamValue("enable_map_projection", false);
 
     // Prepare a map if given
     dg::Map map;
@@ -27,93 +17,6 @@ int runLocalizerReal(const MapGUIProp& gui, const std::string& localizer_name, c
     if (!gui.map_file.empty())
     {
         if (!map.load(gui.map_file.c_str())) return -1;
-    }
-
-    // Read GPS, AHRS, and location clue data
-    cx::CSVReader::Double2D gps_data = readROSGPSFix(gps_file, gui.origin_latlon);
-    if (gps_data.empty()) return -1;
-    if (gps_smoothing_n > 0)
-    {
-        std::vector<std::vector<double>> tmp = gps_data;
-        for (int k = 0; k < gps_smoothing_n; k++)
-        {
-            int n = (int)gps_data.size();
-            for (int i = 1; i < n - 1; i++)
-            {
-                tmp[i][1] = (2 * gps_data[i][1] + gps_data[i - 1][1] + gps_data[i + 1][1]) / 4;
-                tmp[i][2] = (2 * gps_data[i][2] + gps_data[i - 1][2] + gps_data[i + 1][2]) / 4;
-            }
-            tmp[0][1] = (1.5 * gps_data[0][1] + 2 * gps_data[1][1] - gps_data[2][1]) / 2.5;
-            tmp[0][2] = (1.5 * gps_data[0][2] + 2 * gps_data[1][2] - gps_data[2][2]) / 2.5;
-            tmp[n - 1][1] = (1.5 * gps_data[n - 1][1] + 2 * gps_data[n - 2][1] - gps_data[n - 3][1]) / 2.5;
-            tmp[n - 1][2] = (1.5 * gps_data[n - 1][2] + 2 * gps_data[n - 2][2] - gps_data[n - 3][2]) / 2.5;
-            gps_data = tmp;
-        }
-    }
-    cx::CSVReader::Double2D ahrs_data, clue_data;
-    if (!ahrs_file.empty())
-    {
-        ahrs_data = readROSAHRS(ahrs_file);
-        if (ahrs_data.empty()) return -1;
-    }
-    if (!clue_file.empty())
-    {
-        clue_data = readLocClues(clue_file);
-        if (clue_data.empty()) return -1;
-    }
-
-    // Prepare camera data
-    cv::VideoCapture camera_data;
-    if (!video_file.empty())
-    {
-        if (!camera_data.open(video_file)) return -1;
-    }
-
-    // Crop data if the starting time is given
-    if (skip_time > 0)
-    {
-        double first_time = gps_data.front()[0];
-        double start_time = first_time + skip_time;
-        auto start_gps = gps_data.begin();
-        for (auto gps = start_gps; gps != gps_data.end(); gps++)
-        {
-            if (gps->at(0) >= start_time)
-            {
-                start_gps = gps;
-                break;
-            }
-        }
-        if (start_gps != gps_data.begin()) gps_data.erase(gps_data.begin(), start_gps - 1);
-
-        auto start_ahrs = ahrs_data.begin();
-        for (auto ahrs = start_ahrs; ahrs != ahrs_data.end(); ahrs++)
-        {
-            if (ahrs->at(0) >= start_time)
-            {
-                start_ahrs = ahrs;
-                break;
-            }
-        }
-        if (start_ahrs != ahrs_data.begin()) ahrs_data.erase(ahrs_data.begin(), start_ahrs - 1);
-
-        auto start_clue = clue_data.begin();
-        for (auto clue = start_clue; clue != clue_data.end(); clue++)
-        {
-            if (clue->at(0) >= start_time)
-            {
-                start_clue = clue;
-                break;
-            }
-        }
-        if (start_clue != clue_data.begin()) clue_data.erase(clue_data.begin(), start_clue - 1);
-
-        if (camera_data.isOpened())
-        {
-            if (video_time[1] < 0) video_time[1] = first_time;
-            double fps = camera_data.get(cv::VideoCaptureProperties::CAP_PROP_FPS);
-            int frame_i = (int)((start_time - video_time[1]) * fps / video_time[0]);
-            camera_data.set(cv::VideoCaptureProperties::CAP_PROP_POS_FRAMES, frame_i);
-        }
     }
 
     // Read the given background image
@@ -161,12 +64,9 @@ int runLocalizerReal(const MapGUIProp& gui, const std::string& localizer_name, c
     experiment.gui_robot_thickness = 2;
     experiment.gui_topo_ref_radius = 6;
     experiment.gui_topo_loc_radius = 4;
-    experiment.gui_time_offset = (skip_time > 0) ? skip_time : 0;
     experiment.gui_wnd_flag = gui.wnd_flag;
-    //experiment.gui_wnd_wait_msec = 0;
     experiment.video_resize = gui.video_resize;
     experiment.video_offset = gui.video_offset;
-    experiment.video_time = video_time;
     experiment.zoom_painter = &zoom_painter;
     experiment.zoom_background = zoom_bg_image;
     experiment.zoom_radius = gui.zoom_radius;
@@ -174,7 +74,7 @@ int runLocalizerReal(const MapGUIProp& gui, const std::string& localizer_name, c
     experiment.rec_traj_name = rec_traj_file;
     experiment.rec_video_name = rec_video_file;
     experiment.rec_video_resize = 0.5;
-    return experiment.runLocalizer(localizer, gps_data, ahrs_data, clue_data, camera_data);
+    return experiment.runLocalizer(localizer, data_loader);
 }
 
 int testUTMConverter()
@@ -244,6 +144,19 @@ int runUnitTest()
 
 int runLocalizer()
 {
+    std::string rec_video_file = "";
+    const std::string rec_traj_file = "";
+    std::string gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+    bool enable_gps = true;
+    bool use_novatel = false;
+    bool enable_imu = false;
+    bool enable_poi = false;
+    bool enable_vps = false;
+    bool enable_intersection = false;
+    bool enable_lr = false;
+    bool enable_roadtheta = false;
+    bool draw_gps = false;
+
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
     ETRI.image_file = "data/NaverMap_ETRI(Satellite)_191127.png";
@@ -277,20 +190,34 @@ int runLocalizer()
     COEX.zoom_radius = 40;
     COEX.zoom_offset = cv::Point(450, 500);
 
-    bool enable_imu = false;
-    std::string rec_video_file = "";
-    const std::string rec_traj_file = "";
+    cv::Ptr<dg::BaseLocalizer> localizer;
+    //localizer = cv::makePtr<dg::EKFLocalizer>();
+    //localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
+    //localizer = cv::makePtr<dg::EKFLocalizerSinTrack>();
+    localizer = cv::makePtr<dg::DGLocalizer>();
 
-    //Select Test Localizer
-    //const std::string localizer = "EKFLocalizer";
-    //const std::string localizer = "EKFLocalizerHyperTan";
-    //const std::string localizer = "EKFLocalizerSinTrack";
-    const std::string localizer = "PathLocalizer";
+    if (!localizer->setParamMotionNoise(1, 10)) return -1;
+    if (!localizer->setParamGPSNoise(1)) return -1;
+    if (!localizer->setParamGPSOffset(1, 0)) return -1;
+    if (!localizer->setParamValue("gps_reverse_vel", -1)) return -1;
+    localizer->setParamValue("search_turn_weight", 100);
+    localizer->setParamValue("track_near_radius", 20);
+    localizer->setParamValue("enable_path_projection", true);
+    localizer->setParamValue("enable_map_projection", false);
+    localizer->setParamValue("enable_gps_smoothing)", true);
+
+    //enable_imu = true;
+    //use_novatel = true;
+    //enable_poi = true;
+    //enable_vps = true;
+    //enable_intersection = true;
+    //enable_lr = true;
+    //enable_roadtheta = true;
+    //draw_gps = true;
 
     int data_sel = 0;
-    double start_time = 0;     // offset(seconds)
+    double start_time = 0;     // skip time (seconds)
     int gps_smoothing_n = 0;
-    enable_imu = true;
     //rec_video_file = "etri191115_path_projection_210622.mkv";
     std::vector<std::string> data_head[] = {
         {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
@@ -303,25 +230,33 @@ int runLocalizer()
         {"data/COEX/201007_152840", "2.8902"}   // 7, 20931 frames, 2086 sec, video_scale = 2.8902
     };
     const int coex_idx = 5;
-    std::string gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
-    //string gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
-    std::string ahrs_file = (enable_imu) ? data_head[data_sel][0] + "_imu_data.csv" : "";
-    std::string clue_file = "";
-    std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
     MapGUIProp& PROP = (data_sel < coex_idx) ? ETRI : COEX;
-    cv::Vec2d video_time = cv::Vec2d(1, -1);    // (scale : offset)
-    video_time[0] = atof(data_head[data_sel][1].c_str());
+    std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
+    if (enable_gps && !use_novatel) gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
+    if (enable_gps && use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
+    if (enable_imu) imu_file = data_head[data_sel][0] + "_imu_data.csv";
+    if (enable_poi) poi_file = data_head[data_sel][0] + "_poi.csv";
+    if (enable_vps) vps_file = data_head[data_sel][0] + "_vps.csv";
+    if (enable_intersection) intersection_file = data_head[data_sel][0] + "_intersect.csv";
+    if (enable_lr) lr_file = data_head[data_sel][0] + "_vps_lr.csv";
+    if (enable_roadtheta) roadtheta_file = data_head[data_sel][0] + "_roadtheta.csv";
+
+    dg::DataLoader data_loader;
+    if (!data_loader.load(video_file, gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
+    {
+        printf("Failed to load data file\n");
+        return -1;
+    }
+    data_loader.setStartSkipTime(start_time);
 
     // Draw GPS data
-    const cv::Vec3b COLOR_SKY(255, 127, 0);
-    //return drawGPSData(PROP, gps_file, { cx::COLOR_RED }, 1, gps_smoothing_n);
-    //return drawGPSData(ETRI, { "data/ETRI/200901_ETRI_ascen_gps-fix.csv", "data/ETRI/191115_ETRI_ascen_fix.csv" }, { cx::COLOR_BLUE, cx::COLOR_RED });
+    if (draw_gps)
+    {
+        const cv::Vec3b COLOR_SKY(255, 127, 0);
+        return drawGPSData(PROP, gps_file, { cx::COLOR_RED }, 1, gps_smoothing_n);
+    }
 
-    // Run localizers
-    const dg::Polar2 gps_offset(1, 0);
-    const double ascen_noise = 1, novatel_noise = 1, motion_noise_lin = 1, motion_noise_deg = 10;
-
-    return runLocalizerReal(PROP, localizer, gps_file, ahrs_file, clue_file, video_file, ascen_noise, gps_offset, motion_noise_lin, motion_noise_deg, rec_traj_file, rec_video_file, start_time, video_time, gps_smoothing_n);
+    return runLocalizerReal(PROP, localizer, data_loader, rec_traj_file, rec_video_file);
 }
 
 int main()
