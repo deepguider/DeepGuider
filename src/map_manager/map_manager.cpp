@@ -1,4 +1,5 @@
 #include "map_manager.hpp"
+#include <fstream>
 
 using namespace rapidjson;
 

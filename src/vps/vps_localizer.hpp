@@ -3,6 +3,7 @@
 
 #include "dg_core.hpp"
 #include "vps/vps.hpp"
+#include "dg_map_manager.hpp"
 
 using namespace std;
 
