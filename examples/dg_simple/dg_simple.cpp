@@ -83,7 +83,7 @@ protected:
     void drawOcr(cv::Mat target_image, std::vector<OCRResult> pois, cv::Size original_image_size);
     void drawIntersection(cv::Mat image, IntersectionResult r, cv::Size original_image_size);
     void procGpsData(dg::LatLon gps_datum, dg::Timestamp ts);
-    bool procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts);
+    void procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts);
     void procGuidance(dg::Timestamp ts);
     bool procIntersectionClassifier();
     bool procLogo();
@@ -689,7 +689,7 @@ void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
     }
 }
 
-bool DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts)
+void DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts)
 {
     auto euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
     m_localizer_mutex.lock();
