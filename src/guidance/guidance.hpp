@@ -2,7 +2,7 @@
 #define __GUIDANCE__
 
 #include "dg_core.hpp"
-#include "core/shared_date.hpp"
+#include "core/shared_data.hpp"
 
 namespace dg
 {

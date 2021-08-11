@@ -1,8 +1,8 @@
-#ifndef __PATH_LOCALIZER__
-#define __PATH_LOCALIZER__
+#ifndef __LOCALIZER_HPP__
+#define __LOCALIZER_HPP__
 
 #include "core/basic_type.hpp"
-#include "core/shared_date.hpp"
+#include "core/shared_data.hpp"
 #include "localizer/localizer_ekf.hpp"
 #include "localizer/localizer_ekf_variants.hpp"
 #include "localizer/path_projector.hpp"
@@ -492,5 +492,5 @@ protected:
 
 } // End of 'dg'
 
-#endif // End of '__PATH_LOCALIZER__'
+#endif // End of '__LOCALIZER_HPP__'
 
