@@ -87,8 +87,8 @@ public:
             if (m_roadtheta_data.empty()) return false;
         }
 
-        if (!m_gps_data.empty()) m_first_data_time = m_gps_data.front()[0];
-        else if (!m_ahrs_data.empty()) m_first_data_time = m_ahrs_data.front()[0];
+        if (!m_ahrs_data.empty()) m_first_data_time = m_ahrs_data.front()[0];
+        else if (!m_gps_data.empty()) m_first_data_time = m_gps_data.front()[0];
         else m_first_data_time = 0;
 
         if (!video_file.empty())
@@ -96,24 +96,23 @@ public:
             if (!m_camera_data.open(video_file)) return false;
             m_video_fps = m_camera_data.get(cv::VideoCaptureProperties::CAP_PROP_FPS);
 
-            if (!m_gps_data.empty())
-            {
-                int total_frames = (int)m_camera_data.get(cv::VideoCaptureProperties::CAP_PROP_FRAME_COUNT);
-                m_first_data_time = m_gps_data.front()[0];
-                m_video_scale = m_video_fps * (m_gps_data.back()[0] - m_first_data_time) / total_frames;
-            }
-            else if (!m_ahrs_data.empty())
+            if (!m_ahrs_data.empty())
             {
                 int total_frames = (int)m_camera_data.get(cv::VideoCaptureProperties::CAP_PROP_FRAME_COUNT);
                 m_first_data_time = m_ahrs_data.front()[0];
                 m_video_scale = m_video_fps * (m_ahrs_data.back()[0] - m_first_data_time) / total_frames;
+            }
+            else if (!m_gps_data.empty())
+            {
+                int total_frames = (int)m_camera_data.get(cv::VideoCaptureProperties::CAP_PROP_FRAME_COUNT);
+                m_first_data_time = m_gps_data.front()[0];
+                m_video_scale = m_video_fps * (m_gps_data.back()[0] - m_first_data_time) / total_frames;
             }
             else
             {
                 m_video_scale = 1;
             }
         }
-        printf("video_scale = %lf\n", m_video_scale);
         return true;
     }
 
