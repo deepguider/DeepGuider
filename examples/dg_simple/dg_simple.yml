@@ -38,7 +38,7 @@ ETRI:
   map_image_rotation: 1.0
   map_canvas_offset: [347, 297]
   gps_input_path: "data/191115_ETRI_asen_fix.csv"
-  video_input_path: "video/191115_ETRI.avi"
+  video_input_path: "data/191115_ETRI.avi"
 
 COEX:
   map_image_path: "data/NaverMap_COEX(Satellite)_200929.png"
