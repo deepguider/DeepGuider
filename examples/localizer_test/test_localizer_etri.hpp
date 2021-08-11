@@ -197,14 +197,6 @@ cv::Ptr<dg::BaseLocalizer> getLocalizer(const std::string localizer_name)
     else if (localizer_name == "EKFLocalizerZeroGyro") localizer = cv::makePtr<dg::EKFLocalizerZeroGyro>();
     else if (localizer_name == "EKFLocalizerHyperTan") localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
     else if (localizer_name == "EKFLocalizerSinTrack") localizer = cv::makePtr<dg::EKFLocalizerSinTrack>();
-
-    cv::Ptr<dg::EKFLocalizer> localizer_ekf = localizer.dynamicCast<dg::EKFLocalizer>();
-    if (!localizer_ekf.empty())
-    {
-        if (!localizer_ekf->setParamMotionNoise(0.1, 0.1)) return nullptr;
-        if (!localizer_ekf->setParamGPSNoise(0.5)) return nullptr;
-        if (!localizer_ekf->setParamGPSOffset(1, 0)) return nullptr;
-    }
     return localizer;
 }
 
