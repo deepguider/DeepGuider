@@ -36,33 +36,11 @@ public:
     virtual bool setParamGPSNoise(double sigma_normal, double sigma_deadzone = -1) = 0;
 
     /**
-     * Set GPS offset
-     * @param lin_offset Linear displacement from the robot origin (Unit: [m])
-     * @param ang_offset_deg Angular displacement from the robot heading. CCW is positive. (Unit: [deg])
-     */
-    virtual bool setParamGPSOffset(double lin_offset, double ang_offset_deg = 0) = 0;
-
-    /**
      * Set error variance of IMU theta
      * @param sigma_theta_deg Standard deviation of IMU theta error (Unit: [deg])
      * @param theta_offset Angular offset of IMU theta (Unit: [deg])
      */
     virtual bool setParamIMUCompassNoise(double sigma_theta_deg, double theta_offset = 0) = 0;
-
-    /**
-     * Set error variance of RoadTheta
-     * @param sigma_theta_deg Standard deviation of RoadTheta error (Unit: [deg])
-     * @param theta_offset Angular offset of RoadTheta (It corresponds to the offset of camera orientation, Unit: [deg])
-     */
-    virtual bool setParamRoadThetaNoise(double sigma_theta_deg, double theta_offset = 0) = 0;
-
-    /**
-     * Set camera offset<br>
-     * This setting applies for vision-based recognizers (POI, VPS, and IntersectCls).
-     * @param lin_offset Linear displacement from the robot origin (Unit: [m])
-     * @param ang_offset_deg Angular displacement from the robot heading. CCW is positive. (Unit: [deg])
-     */
-    virtual bool setParamCameraOffset(double lin_offset, double ang_offset_deg = 0) = 0;
 
     /**
      * Set error covariance of POI
@@ -87,6 +65,28 @@ public:
      * @param sigma_position Standard deviation of position error of StreetView (Unit: [m])
      */
     virtual bool setParamIntersectClsNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1) = 0;
+
+    /**
+     * Set error variance of RoadTheta
+     * @param sigma_theta_deg Standard deviation of RoadTheta error (Unit: [deg])
+     * @param theta_offset Angular offset of RoadTheta (It corresponds to the offset of camera orientation, Unit: [deg])
+     */
+    virtual bool setParamRoadThetaNoise(double sigma_theta_deg, double theta_offset = 0) = 0;
+
+    /**
+     * Set GPS offset
+     * @param lin_offset Linear displacement from the robot origin (Unit: [m])
+     * @param ang_offset_deg Angular displacement from the robot heading. CCW is positive. (Unit: [deg])
+     */
+    virtual bool setParamGPSOffset(double lin_offset, double ang_offset_deg = 0) = 0;
+
+    /**
+     * Set camera offset<br>
+     * This setting applies for vision-based recognizers (POI, VPS, and IntersectCls).
+     * @param lin_offset Linear displacement from the robot origin (Unit: [m])
+     * @param ang_offset_deg Angular displacement from the robot heading. CCW is positive. (Unit: [deg])
+     */
+    virtual bool setParamCameraOffset(double lin_offset, double ang_offset_deg = 0) = 0;
 
     /**
      * Apply a geodesic position observation<br>
@@ -159,7 +159,6 @@ public:
      * @return True if successful (false if failed)
      */
     virtual bool applyIntersectCls(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
-
 };
 
 
@@ -267,11 +266,11 @@ public:
 };
 
 /**
- * @brief LocalizerInterface interface for metric outputs
+ * @brief Localizer interface for metric outputs
  *
  * This defines an interface for localizers to provide metric pose and its confidence.
  */
-class MetricLocalizer
+class MetricInterface
 {
 public:
     /**
@@ -297,11 +296,11 @@ public:
 };
 
 /**
- * @brief LocalizerInterface interface for topometric output
+ * @brief Localizer interface for topometric output
  *
  * This is an additional interface for localizers to provide topometric pose.
  */
-class TopometricLocalizer : public MetricLocalizer
+class TopometricInterface : public MetricInterface
 {
 public:
     /**

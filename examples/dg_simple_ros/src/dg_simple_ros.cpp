@@ -389,7 +389,7 @@ void DeepGuiderROS::callbackIMU(const sensor_msgs::Imu::ConstPtr& msg)
     const dg::Timestamp imu_time = msg->header.stamp.toSec();
     if (m_enable_imu)
     {
-        procImuData(ori_x, ori_y, ori_z, ori_w, imu_time);
+        procImuData(ori_w, ori_x, ori_y, ori_z, imu_time);
     }
 }
 

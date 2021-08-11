@@ -50,17 +50,14 @@ struct ObsData
         /** VPS data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
         OBS_VPS = 3,
 
+        /** Intersection classifier data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
+        OBS_IntersectCls = 4,
+
         /** VPS_LR data (v1 = 0: uncertain, v1 = 1: road is left, v1 = 2: road is right) */
-        OBS_VPS_LR = 4,
+        OBS_LR = 5,
 
         /** RoadTheta data (v1: theta) */
-        OBS_RoadTheta = 5,
-
-        /** Intersection classifier data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
-        OBS_IntersectCls = 6,
-
-        /** The number of observation types */
-        TYPE_NUM
+        OBS_RoadTheta = 6
     };
 
     /**
@@ -103,7 +100,7 @@ struct ObsData
  *
  * Localization module of deepguider system
  */
-class PathLocalizer : public BaseLocalizer, public PathProjector
+class DGLocalizer : public BaseLocalizer, public PathProjector
 {
 protected:
     // configuable parameters
@@ -139,7 +136,7 @@ protected:
 
 public:
     /** The constructor */
-    PathLocalizer()
+    DGLocalizer()
     {
         initialize(nullptr, "EKFLocalizer");
     }
@@ -298,12 +295,12 @@ public:
 
     /**
      * Apply VPS_LR result
-     * @param lr_result The position of road (0: uncertain, 1 : road is left, 2 : road is right)
+     * @param lr_result The lateral position of camera w.r.t. road (0: left sideway, 1: uncertain, 2: right sideway)
      */
-    virtual bool applyVPS_LR(int lr_result, Timestamp time = -1, double confidence = -1)
+    virtual bool applyVPS_LR(double lr_result, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        saveObservation(ObsData::OBS_VPS_LR, lr_result, time, confidence);
+        saveObservation(ObsData::OBS_LR, lr_result, time, confidence);
         // TODO: apply the result to path projector
         return true;
     }
@@ -440,7 +437,7 @@ protected:
         {
             return m_ekf->applyIntersectCls(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
         }
-        else if (obs.type == ObsData::OBS_VPS_LR)
+        else if (obs.type == ObsData::OBS_LR)
         {
             // ignore
         }
@@ -490,8 +487,7 @@ protected:
     Point2T m_gps_state;
     Point2 m_gps_velocity;
 
-
-}; // End of 'PathLocalizer'
+}; // End of 'DGLocalizer'
 
 
 } // End of 'dg'

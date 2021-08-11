@@ -14,6 +14,7 @@
 #include "dg_exploration.hpp"
 #include "dg_utils.hpp"
 #include "lrpose_recog/lrpose_recognizer.hpp"
+#include "localizer/data_loader.hpp"
 #include <chrono>
 
 using namespace dg;
@@ -82,7 +83,7 @@ protected:
     void drawOcr(cv::Mat target_image, std::vector<OCRResult> pois, cv::Size original_image_size);
     void drawIntersection(cv::Mat image, IntersectionResult r, cv::Size original_image_size);
     void procGpsData(dg::LatLon gps_datum, dg::Timestamp ts);
-    bool procImuData(double ori_x, double ori_y, double ori_z, double ori_w, dg::Timestamp ts);
+    bool procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts);
     void procGuidance(dg::Timestamp ts);
     bool procIntersectionClassifier();
     bool procLogo();
@@ -92,7 +93,7 @@ protected:
 
     // sub modules
     dg::MapManager m_map_manager;
-    dg::PathLocalizer m_localizer;
+    dg::DGLocalizer m_localizer;
     dg::VPSLocalizer m_vps;
     dg::LRPoseRecognizer m_vps_lr;
     dg::LogoRecognizer m_logo;
@@ -213,7 +214,7 @@ DeepGuider::~DeepGuider()
     if (m_enable_ocr) m_ocr.clear();
     if (m_enable_roadtheta) m_roadtheta.clear();
 
-    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_logo || m_enable_ocr || m_enable_intersection || m_enable_exploration;
+    bool enable_python = m_enable_vps || m_enable_logo || m_enable_ocr || m_enable_intersection || m_enable_exploration;
     if(enable_python) close_python_environment();
 }
 
@@ -291,7 +292,7 @@ bool DeepGuider::initialize(std::string config_file)
     if(ok) printf("\tConfiguration %s loaded!\n", config_file.c_str());
 
     // initialize python
-    bool enable_python = m_enable_roadtheta || m_enable_vps || m_enable_ocr || m_enable_logo || m_enable_intersection || m_enable_exploration;
+    bool enable_python = m_enable_vps || m_enable_ocr || m_enable_logo || m_enable_intersection || m_enable_exploration;
     if (enable_python && !init_python_environment("python3", "", m_threaded_run_python)) return false;
     if(enable_python) printf("\tPython environment initialized!\n");
 
@@ -493,105 +494,137 @@ std::vector<std::pair<double, dg::LatLon>> loadExampleGPSData(std::string csv_fi
 
 int DeepGuider::run()
 {
+    // load test dataset
+    dg::DataLoader data_loader;
+    if (!data_loader.load(m_video_input_path, m_gps_input_path))
+    {
+        printf("DeepGuider::run() - Fail to load test data. Exit program...\n");
+        return -1;
+    }
     printf("Run deepguider system...\n");
-
-    // load gps sensor data (ETRI dataset)
-    auto gps_data = loadExampleGPSData(m_gps_input_path);
-    VVS_CHECK_TRUE(!gps_data.empty());
-    printf("\tSample gps data loaded!\n");
-
-    // load image sensor data (ETRI dataset)
-    cv::VideoCapture video_data;
-    VVS_CHECK_TRUE(video_data.open(m_video_input_path));
-    double video_time_offset = gps_data.front().first - 0.5, video_time_scale = 1.75; // Calculated from 'bag' files
-    double video_resize_scale = 0.4;
-    cv::Point video_offset(32, 542);
-    double video_time = video_time_scale * video_data.get(cv::VideoCaptureProperties::CAP_PROP_POS_MSEC) / 1000 + video_time_offset;
-    printf("\tSample video data loaded!\n");
 
     // set initial destination
     //dg::LatLon gps_dest = gps_data.back().second;
     //VVS_CHECK_TRUE(setDeepGuiderDestination(gps_dest));
 
-    // run iteration
-    int maxItr = (int)gps_data.size();
-    int itr = 300;
-
-    // skip video frames captured before gps start time
-    if (video_data.isOpened())
-    {
-        const dg::Timestamp first_time = gps_data[0].first;
-        const dg::Timestamp start_time = gps_data[itr].first;
-        double fps = video_data.get(cv::VideoCaptureProperties::CAP_PROP_FPS);
-        int frame_i = (int)((start_time - first_time) * fps / video_time_scale);
-        video_data.set(cv::VideoCaptureProperties::CAP_PROP_POS_FRAMES, frame_i);
-    }
-
-    while (itr < maxItr)
+    cv::Mat video_image;
+    Timestamp capture_time;
+    int itr = 0;
+    while (1)
     {
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
-        // gps update
-        const dg::LatLon gps_datum = gps_data[itr].second;
-        const dg::Timestamp gps_time = gps_data[itr].first;
-        procGpsData(gps_datum, gps_time);
-        m_painter.drawPoint(m_map_image, toMetric(gps_datum), 2, cv::Vec3b(0, 255, 0));
-        m_gps_history_asen.push_back(gps_datum);
-        printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, gps_time);
+        // get next data
+        int type;
+        std::vector<double> data;
+        dg::Timestamp data_time;
+        if (data_loader.getNext(type, data, data_time) == false) break;
 
-        // draw robot trajectory
-        Pose2 pose_m = getPose();
-        m_painter.drawPoint(m_map_image, pose_m, 1, cv::Vec3b(0, 0, 255));
-
-        // video capture
-        cv::Mat video_image;
-        while (video_time <= gps_time)
+        // process data
+        bool update_gui = false;
+        if (type == dg::DATA_GPS)
         {
-            video_data >> video_image;
-            if (video_image.empty()) break;
-            video_time = video_time_scale * video_data.get(cv::VideoCaptureProperties::CAP_PROP_POS_MSEC) / 1000 + video_time_offset;
+            const dg::LatLon gps_datum(data[1], data[2]);
+            procGpsData(gps_datum, data_time);
+            m_painter.drawPoint(m_map_image, toMetric(gps_datum), 2, cv::Vec3b(0, 255, 0));
+            m_gps_history_asen.push_back(gps_datum);
+            printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, data_time);
+
+            video_image = data_loader.getFrame(data_time, &capture_time);
+            update_gui = true;
+        }
+        else if (type == dg::DATA_IMU)
+        {
+            auto euler = cx::cvtQuat2EulerAng(data[1], data[2], data[3], data[4]);
+            procImuData(data[1], data[2], data[3], data[4], data_time);
+        }
+        else if (type == dg::DATA_POI)
+        {
+            dg::Point2 clue_xy(data[1], data[2]);
+            dg::Polar2 relative(data[3], data[4]);
+            double confidence = data[5];
+            //bool success = m_localizer.applyPOI(clue_xy, relative, data_time, confidence);
+            //if (!success) fprintf(stderr, "applyPOI() was failed.\n");
+        }
+        else if (type == dg::DATA_VPS)
+        {
+            dg::Point2 clue_xy(data[1], data[2]);
+            dg::Polar2 relative(data[3], data[4]);
+            double confidence = data[5];
+            //bool success = m_localizer.applyVPS(clue_xy, relative, data_time, confidence);
+            //if (!success) fprintf(stderr, "applyVPS() was failed.\n");
+        }
+        else if (type == dg::DATA_IntersectCls)
+        {
+            dg::Point2 clue_xy(data[1], data[2]);
+            dg::Polar2 relative(data[3], data[4]);
+            double confidence = data[5];
+            //bool success = m_localizer.applyIntersectCls(clue_xy, relative, data_time, confidence);
+            //if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
+        }
+        else if (type == dg::DATA_LR)
+        {
+            double lr_result = data[1];
+            double confidence = data[2];
+            //bool success = m_localizer.applyVPS_LR(lr_result, data_time, confidence);
+            //if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
+        }
+        else if (type == dg::DATA_RoadTheta)
+        {
+            double theta = data[1];
+            double confidence = data[2];
+            //bool success = m_localizer.applyRoadTheta(theta, data_time, confidence);
+            //if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
         }
 
-        m_cam_mutex.lock();
-        m_cam_image = video_image;
-        m_cam_capture_time = video_time;
-        m_cam_gps = gps_datum;
-        m_cam_fnumber++;
-        m_cam_mutex.unlock();
+        // update
+        if (update_gui)
+        {
+            // draw robot trajectory
+            Pose2 pose_m = getPose();
+            m_painter.drawPoint(m_map_image, pose_m, 1, cv::Vec3b(0, 0, 255));
 
-        // process vision modules
-        if(m_enable_roadtheta) procRoadTheta();
-        if(m_enable_vps) procVps();
-        if(m_enable_logo) procLogo();
-        if (m_enable_ocr) procOcr();
-        if(m_enable_intersection) procIntersectionClassifier();
+            m_cam_mutex.lock();
+            m_cam_image = video_image;
+            m_cam_capture_time = capture_time;
+            m_cam_gps = getPoseGPS();
+            m_cam_fnumber++;
+            m_cam_mutex.unlock();
 
-        // process Guidance
-        procGuidance(gps_time);
+            // process vision modules
+            if (m_enable_roadtheta) procRoadTheta();
+            if (m_enable_vps) procVps();
+            if (m_enable_logo) procLogo();
+            if (m_enable_ocr) procOcr();
+            if (m_enable_intersection) procIntersectionClassifier();
 
-        // draw GUI display
-        cv::Mat gui_image = m_map_image.clone();
-        drawGuiDisplay(gui_image);
+            // process Guidance
+            procGuidance(data_time);
 
-        // recording
-        if (m_recording) m_video_gui << gui_image;
-        if (m_data_logging) m_video_cam << m_cam_image;
+            // draw GUI display
+            cv::Mat gui_image = m_map_image.clone();
+            drawGuiDisplay(gui_image);
 
-        dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        printf("Iteration: %d (it took %lf seconds)\n", itr, t2 - t1);
- 
-        // gui display
-        cv::imshow(m_winname, gui_image);
-        int key = cv::waitKey(1);
-        if (key == cx::KEY_SPACE) key = cv::waitKey(0);
-        if (key == cx::KEY_ESC) break;
-        if (key == 83) itr += 30;   // Right Key
+            // recording
+            if (m_recording) m_video_gui << gui_image;
+            if (m_data_logging) m_video_cam << m_cam_image;
 
-        // update iteration
-        itr++;
+            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+            printf("Iteration: %d (it took %lf seconds)\n", itr, t2 - t1);
 
-        // flush out logging data
-        if (m_data_logging) m_log.flush();
+            // gui display
+            cv::imshow(m_winname, gui_image);
+            int key = cv::waitKey(1);
+            if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+            if (key == cx::KEY_ESC) break;
+            if (key == 83) itr += 30;   // Right Key
+
+            // update iteration
+            itr++;
+
+            // flush out logging data
+            if (m_data_logging) m_log.flush();
+        }
     }
 
     // end system
@@ -656,10 +689,9 @@ void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
     }
 }
 
-bool DeepGuider::procImuData(double ori_x, double ori_y, double ori_z, double ori_w, dg::Timestamp ts)
+bool DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts)
 {
-    auto euler = cx::cvtQuat2EulerAng(ori_x, ori_y, ori_z, ori_w);
-
+    auto euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
     m_localizer_mutex.lock();
     VVS_CHECK_TRUE(m_localizer.applyIMUCompass(euler.z, ts));
     m_localizer_mutex.unlock();
