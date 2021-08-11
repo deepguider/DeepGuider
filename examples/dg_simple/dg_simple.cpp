@@ -343,6 +343,7 @@ bool DeepGuider::initialize(std::string config_file)
     if (!m_localizer.initialize(this, "EKFLocalizer")) return false;
     m_localizer.setParamValue("enable_path_projection", true);
     m_localizer.setParamValue("enable_map_projection", false);
+    m_localizer.setParamValue("enable_rollback_update", true);    
     m_localizer.setParamValue("enable_gps_smoothing)", true);
     m_localizer.setParamMotionNoise(1, 10);
     m_localizer.setParamGPSNoise(1);

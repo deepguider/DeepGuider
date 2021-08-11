@@ -204,6 +204,7 @@ int runLocalizer()
     localizer->setParamValue("track_near_radius", 20);
     localizer->setParamValue("enable_path_projection", true);
     localizer->setParamValue("enable_map_projection", false);
+    localizer->setParamValue("enable_rollback_update", true);
     localizer->setParamValue("enable_gps_smoothing)", true);
 
     //enable_imu = true;

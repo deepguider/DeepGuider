@@ -107,6 +107,7 @@ protected:
     int m_history_size = 1000;
     bool m_enable_path_projection = true;
     bool m_enable_map_projection = false;
+    bool m_enable_rollback_update = true;
     bool m_enable_gps_smoothing = true;
     double m_smoothing_alpha = 0.1;
     double m_smoothing_beta = 0.01;
@@ -119,6 +120,7 @@ protected:
         n_read += m_ekf->readParam(fn);        
         CX_LOAD_PARAM_COUNT(fn, "enable_path_projection", m_enable_path_projection, n_read);
         CX_LOAD_PARAM_COUNT(fn, "enable_map_projection", m_enable_map_projection, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "enable_rollback_update", m_enable_rollback_update, n_read);
         CX_LOAD_PARAM_COUNT(fn, "enable_gps_smoothing", m_enable_gps_smoothing, n_read);
         CX_LOAD_PARAM_COUNT(fn, "smoothing_alpha", m_smoothing_alpha, n_read);
         CX_LOAD_PARAM_COUNT(fn, "smoothing_beta", m_smoothing_beta, n_read);
@@ -240,7 +242,7 @@ public:
     virtual bool applyRoadTheta(double theta, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        if (time < m_ekf->getLastUpdateTime())
+        if (m_enable_rollback_update && time < m_ekf->getLastUpdateTime())
         {
             if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_RoadTheta, theta, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
@@ -254,7 +256,7 @@ public:
     virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        if (time < m_ekf->getLastUpdateTime())
+        if (m_enable_rollback_update && time < m_ekf->getLastUpdateTime())
         {
             if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_POI, clue_xy, relative, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
@@ -268,7 +270,7 @@ public:
     virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        if (time < m_ekf->getLastUpdateTime())
+        if (m_enable_rollback_update && time < m_ekf->getLastUpdateTime())
         {
             if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_VPS, clue_xy, relative, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
@@ -282,7 +284,7 @@ public:
     virtual bool applyIntersectCls(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        if (time < m_ekf->getLastUpdateTime())
+        if (m_enable_rollback_update && time < m_ekf->getLastUpdateTime())
         {
             if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_IntersectCls, clue_xy, relative, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
