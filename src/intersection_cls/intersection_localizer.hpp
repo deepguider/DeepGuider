@@ -31,7 +31,7 @@ namespace dg
             return (m_shared != nullptr);
         }
 
-        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& xy, dg::Polar2& relative, double& confidence, bool& valid_xy)
+        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& xy, double& confidence, bool& valid_xy)
         {
             cv::AutoLock lock(m_mutex);
             if (m_shared == nullptr) return false;
@@ -52,7 +52,6 @@ namespace dg
                 if (path && !path->empty()) valid_xy = findNearestPathJunction(*path, pose, xy);
                 else valid_xy = findNearestMapJunction(pose, xy);
                 m_shared->releasePathLock();
-                relative = Polar2(-1, CV_PI);
                 confidence = m_intersect.confidence;
             }
             return true;

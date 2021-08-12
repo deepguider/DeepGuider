@@ -107,7 +107,7 @@ protected:
     int m_history_size = 1000;
     bool m_enable_path_projection = true;
     bool m_enable_map_projection = false;
-    bool m_enable_rollback_update = true;
+    bool m_enable_backtracking_ekf = true;
     bool m_enable_gps_smoothing = true;
     double m_smoothing_alpha = 0.1;
     double m_smoothing_beta = 0.01;
@@ -120,7 +120,7 @@ protected:
         n_read += m_ekf->readParam(fn);        
         CX_LOAD_PARAM_COUNT(fn, "enable_path_projection", m_enable_path_projection, n_read);
         CX_LOAD_PARAM_COUNT(fn, "enable_map_projection", m_enable_map_projection, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "enable_rollback_update", m_enable_rollback_update, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "enable_backtracking_ekf", m_enable_backtracking_ekf, n_read);
         CX_LOAD_PARAM_COUNT(fn, "enable_gps_smoothing", m_enable_gps_smoothing, n_read);
         CX_LOAD_PARAM_COUNT(fn, "smoothing_alpha", m_smoothing_alpha, n_read);
         CX_LOAD_PARAM_COUNT(fn, "smoothing_beta", m_smoothing_beta, n_read);
@@ -208,9 +208,9 @@ public:
         return false;
     }
 
-    virtual bool setParamIntersectClsNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
+    virtual bool setParamIntersectClsNoise(double sigma_position)
     {
-        if (m_ekf) return m_ekf->setParamIntersectClsNoise(sigma_rel_dist, sigma_rel_theta_deg, sigma_position);
+        if (m_ekf) return m_ekf->setParamIntersectClsNoise(sigma_position);
         return false;
     }
 
@@ -242,9 +242,9 @@ public:
     virtual bool applyRoadTheta(double theta, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        if (m_enable_rollback_update && time < m_ekf->getLastUpdateTime())
+        if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
         {
-            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_RoadTheta, theta, time, confidence))) return false;
+            if (!backtrackingEKF(time, ObsData(ObsData::OBS_RoadTheta, theta, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
         if (!m_ekf->applyRoadTheta(theta, time, confidence)) return false;
@@ -256,9 +256,9 @@ public:
     virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        if (m_enable_rollback_update && time < m_ekf->getLastUpdateTime())
+        if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
         {
-            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_POI, clue_xy, relative, time, confidence))) return false;
+            if (!backtrackingEKF(time, ObsData(ObsData::OBS_POI, clue_xy, relative, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
         if (!m_ekf->applyPOI(clue_xy, relative, time, confidence)) return false;
@@ -270,9 +270,9 @@ public:
     virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        if (m_enable_rollback_update && time < m_ekf->getLastUpdateTime())
+        if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
         {
-            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_VPS, clue_xy, relative, time, confidence))) return false;
+            if (!backtrackingEKF(time, ObsData(ObsData::OBS_VPS, clue_xy, relative, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
         if (!m_ekf->applyVPS(clue_xy, relative, time, confidence)) return false;
@@ -281,16 +281,16 @@ public:
         return applyPathLocalizer(m_ekf->getPose(), time);
     }
 
-    virtual bool applyIntersectCls(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    virtual bool applyIntersectCls(const Point2& xy, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
-        if (m_enable_rollback_update && time < m_ekf->getLastUpdateTime())
+        if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
         {
-            if (!rollbackApplyEKF(time, ObsData(ObsData::OBS_IntersectCls, clue_xy, relative, time, confidence))) return false;
+            if (!backtrackingEKF(time, ObsData(ObsData::OBS_IntersectCls, xy, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
-        if (!m_ekf->applyIntersectCls(clue_xy, relative, time, confidence)) return false;
-        saveObservation(ObsData::OBS_IntersectCls, clue_xy, relative, time, confidence);
+        if (!m_ekf->applyIntersectCls(xy, time, confidence)) return false;
+        saveObservation(ObsData::OBS_IntersectCls, xy, time, confidence);
         saveEKFState(m_ekf, time);
         return applyPathLocalizer(m_ekf->getPose(), time);
     }
@@ -383,7 +383,7 @@ protected:
         return true;
     }
 
-    bool rollbackApplyEKF(Timestamp rollback_time, const ObsData& delayed_observation)
+    bool backtrackingEKF(Timestamp rollback_time, const ObsData& delayed_observation)
     {
         if (m_ekf.empty()) return false;
 
@@ -437,7 +437,7 @@ protected:
         }
         else if (obs.type == ObsData::OBS_IntersectCls)
         {
-            return m_ekf->applyIntersectCls(Point2(obs.v1, obs.v2), Polar2(obs.v3, obs.v4), obs.timestamp, obs.confidence);
+            return m_ekf->applyIntersectCls(Point2(obs.v1, obs.v2), obs.timestamp, obs.confidence);
         }
         else if (obs.type == ObsData::OBS_LR)
         {

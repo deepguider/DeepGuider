@@ -196,15 +196,21 @@ int runLocalizer()
     //localizer = cv::makePtr<dg::EKFLocalizerSinTrack>();
     localizer = cv::makePtr<dg::DGLocalizer>();
 
-    if (!localizer->setParamMotionNoise(1, 10)) return -1;
-    if (!localizer->setParamGPSNoise(1)) return -1;
-    if (!localizer->setParamGPSOffset(1, 0)) return -1;
-    if (!localizer->setParamValue("gps_reverse_vel", -1)) return -1;
+    if (!localizer->setParamMotionNoise(1, 10)) return -1;      // linear_velocity(m), angular_velocity(deg)
+    if (!localizer->setParamGPSNoise(4)) return -1;             // position error(m)
+    if (!localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
+    if (!localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
+    if (!localizer->setParamPOINoise(2, 10, 1)) return -1;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
+    if (!localizer->setParamVPSNoise(2, 10, 1)) return -1;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
+    if (!localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
+    if (!localizer->setParamRoadThetaNoise(10, 0)) return -1;   // angle arror(deg), angle offset(deg)
+    if (!localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
+    localizer->setParamValue("gps_reverse_vel", -1);
     localizer->setParamValue("search_turn_weight", 100);
     localizer->setParamValue("track_near_radius", 20);
     localizer->setParamValue("enable_path_projection", true);
     localizer->setParamValue("enable_map_projection", false);
-    localizer->setParamValue("enable_rollback_update", true);
+    localizer->setParamValue("enable_backtracking_ekf", true);
     localizer->setParamValue("enable_gps_smoothing)", true);
 
     //enable_imu = true;

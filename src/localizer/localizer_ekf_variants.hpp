@@ -76,11 +76,11 @@ public:
     EKFLocalizerSinTrack()
     {
         m_search_radius = 50;
-        m_search_turn_weight = 1;
+        m_search_turn_weight = 100;
         m_track_converge_threshold = 10;
         m_track_transit_dist = 10;
         m_track_drift_radius = 100;
-        m_track_near_radius = 0;
+        m_track_near_radius = 20;
 
         m_track_converge_count = 0;
     }

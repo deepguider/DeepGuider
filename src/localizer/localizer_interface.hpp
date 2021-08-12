@@ -43,7 +43,7 @@ public:
     virtual bool setParamIMUCompassNoise(double sigma_theta_deg, double theta_offset = 0) = 0;
 
     /**
-     * Set error covariance of POI
+     * Set error covariance of POI observation
      * @param sigma_rel_dist Standard deviation of estimated relative distance (Unit: [m])
      * @param sigma_rel_theta_deg Standard deviation of estimated relative orientation (Unit: [deg])
      * @param sigma_position Standard deviation of position error of POI (Unit: [m])
@@ -51,7 +51,7 @@ public:
     virtual bool setParamPOINoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1) = 0;
 
     /**
-     * Set error covariance of VPS
+     * Set error covariance of VPS observation
      * @param sigma_rel_dist Standard deviation of estimated relative distance (Unit: [m])
      * @param sigma_rel_theta_deg Standard deviation of estimated relative orientation (Unit: [deg])
      * @param sigma_position Standard deviation of position error of StreetView (Unit: [m])
@@ -59,12 +59,10 @@ public:
     virtual bool setParamVPSNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1) = 0;
 
     /**
-     * Set error covariance of Intersection Classifier
-     * @param sigma_rel_dist Standard deviation of estimated relative distance (Unit: [m])
-     * @param sigma_rel_theta_deg Standard deviation of estimated relative orientation (Unit: [deg])
-     * @param sigma_position Standard deviation of position error of StreetView (Unit: [m])
+     * Set error covariance of Intersection-based localization
+     * @param sigma_position Standard deviation of robot position estimated from Intersection observation (Unit: [m])
      */
-    virtual bool setParamIntersectClsNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1) = 0;
+    virtual bool setParamIntersectClsNoise(double sigma_position) = 0;
 
     /**
      * Set error variance of RoadTheta
@@ -151,14 +149,12 @@ public:
 
     /**
      * Apply position observation from Intersection-based localizer
-     * @param clue_xy The coordinate of observed clue
-     * @param relative The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
-     *  If relative.lin < 0, the relative distance is invalid. If relative.ang >= CV_PI, the relative angle is invalid.
+     * @param xy The coordinate of robot position estimated from intsection observation
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
      * @return True if successful (false if failed)
      */
-    virtual bool applyIntersectCls(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
+    virtual bool applyIntersectCls(const Point2& xy, Timestamp time = -1, double confidence = -1) = 0;
 };
 
 

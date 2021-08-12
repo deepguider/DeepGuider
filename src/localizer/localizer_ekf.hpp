@@ -53,10 +53,11 @@ public:
         m_imu_compass_prev_time = -1;
         m_roadtheta_noise = (cv::Mat_<double>(1, 1) << cx::cvtDeg2Rad(1));
         m_roadtheta_offset = 0;
-        m_camera_offset = Polar2(0, 0);
         m_poi_noise = cv::Mat::eye(4, 4, CV_64F);
         m_vps_noise = cv::Mat::eye(4, 4, CV_64F);
-        m_intersectcls_noise = cv::Mat::eye(4, 4, CV_64F);
+        m_intersectcls_noise = cv::Mat::eye(2, 2, CV_64F);
+        m_camera_offset = Polar2(0, 0);
+
         m_threshold_time = 0.01;
         m_threshold_clue_dist = 0;
         m_norm_conf_a = 1;
@@ -177,14 +178,10 @@ public:
         return true;
     }
 
-    virtual bool setParamIntersectClsNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
+    virtual bool setParamIntersectClsNoise(double sigma_position)
     {
         cv::AutoLock lock(m_mutex);
-        m_intersectcls_noise = cv::Mat::zeros(4, 4, CV_64F);
-        m_intersectcls_noise.at<double>(0, 0) = sigma_rel_dist * sigma_rel_dist;
-        m_intersectcls_noise.at<double>(1, 1) = cx::cvtDeg2Rad(sigma_rel_theta_deg) * cx::cvtDeg2Rad(sigma_rel_theta_deg);
-        m_intersectcls_noise.at<double>(2, 2) = sigma_position * sigma_position;
-        m_intersectcls_noise.at<double>(3, 3) = sigma_position * sigma_position;
+        m_intersectcls_noise = (cv::Mat_<double>(2, 2) << sigma_position * sigma_position, 0, 0, sigma_position * sigma_position);
         return true;
     }
 
@@ -228,10 +225,10 @@ public:
         return applyLocClue(clue_xy, relative, time, confidence);
     }
 
-    virtual bool applyIntersectCls(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+    virtual bool applyIntersectCls(const Point2& xy, Timestamp time = -1, double confidence = -1)
     {
         m_observation_noise = m_intersectcls_noise;
-        return applyLocClue(clue_xy, relative, time, confidence);
+        return applyPosition(xy, time, confidence);
     }
 
     bool addParamGPSDeadZone(const dg::Point2& p1, dg::Point2& p2)

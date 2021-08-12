@@ -341,16 +341,22 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize localizer
     if (!m_localizer.initialize(this, "EKFLocalizer")) return false;
-    m_localizer.setParamValue("enable_path_projection", true);
-    m_localizer.setParamValue("enable_map_projection", false);
-    m_localizer.setParamValue("enable_rollback_update", true);    
-    m_localizer.setParamValue("enable_gps_smoothing)", true);
-    m_localizer.setParamMotionNoise(1, 10);
-    m_localizer.setParamGPSNoise(1);
-    m_localizer.setParamGPSOffset(1, 0);
+    if (!m_localizer.setParamMotionNoise(1, 10)) return false;      // linear_velocity(m), angular_velocity(deg)
+    if (!m_localizer.setParamGPSNoise(4)) return false;             // position error(m)
+    if (!m_localizer.setParamGPSOffset(1, 0)) return false;         // displacement(lin,ang) from robot origin
+    if (!m_localizer.setParamIMUCompassNoise(1, 0)) return false;   // angle arror(deg), angle offset(deg)
+    if (!m_localizer.setParamPOINoise(2, 10, 1)) return false;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
+    if (!m_localizer.setParamVPSNoise(2, 10, 1)) return false;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
+    if (!m_localizer.setParamIntersectClsNoise(0.1)) return false;  // position error(m)
+    if (!m_localizer.setParamRoadThetaNoise(10, 0)) return false;   // angle arror(deg), angle offset(deg)
+    if (!m_localizer.setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin
     m_localizer.setParamValue("gps_reverse_vel", -1);
     m_localizer.setParamValue("search_turn_weight", 100);
     m_localizer.setParamValue("track_near_radius", 20);
+    m_localizer.setParamValue("enable_path_projection", true);
+    m_localizer.setParamValue("enable_map_projection", false);
+    m_localizer.setParamValue("enable_backtracking_ekf", true);
+    m_localizer.setParamValue("enable_gps_smoothing)", true);
     printf("\tLocalizer initialized!\n");
 
     // initialize guidance
@@ -1289,10 +1295,9 @@ bool DeepGuider::procIntersectionClassifier()
     m_cam_mutex.unlock();
 
     dg::Point2 xy;
-    dg::Polar2 relative;
     double confidence;
     bool valid_xy = false;
-    if (!cam_image.empty() && m_intersection.apply(cam_image, capture_time, xy, relative, confidence, valid_xy))
+    if (!cam_image.empty() && m_intersection.apply(cam_image, capture_time, xy, confidence, valid_xy))
     {
         if (m_data_logging)
         {
@@ -1308,7 +1313,7 @@ bool DeepGuider::procIntersectionClassifier()
         m_intersection_mutex.unlock();
 
         // apply the result to localizer
-        if(valid_xy) m_localizer.applyIntersectCls(xy, relative, capture_time, confidence);
+        if(valid_xy) m_localizer.applyIntersectCls(xy, capture_time, confidence);
     }
     else
     {

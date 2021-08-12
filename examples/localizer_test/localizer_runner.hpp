@@ -316,10 +316,9 @@ if (show_gui)
             }
             else if (type == dg::DATA_IntersectCls)
             {
-                dg::Point2 clue_xy(data[1], data[2]);
-                dg::Polar2 relative(data[3], data[4]);
+                dg::Point2 xy(data[1], data[2]);
                 double confidence = data[5];
-                bool success = localizer->applyIntersectCls(clue_xy, relative, data_time, confidence);
+                bool success = localizer->applyIntersectCls(xy, data_time, confidence);
                 if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
             }
             else if (type == dg::DATA_LR && dg_localizer)
