@@ -57,7 +57,7 @@ namespace dg
 
             if (isThreadingEnabled()) PyGILState_Release(state);
 
-            m_streetviews.clear();
+            m_result.clear();
             m_timestamp = -1;
             m_processing_time = -1;
         }
@@ -164,13 +164,13 @@ namespace dg
                 }
 
                 // Save the result
-                m_streetviews.clear();
+                m_result.clear();
                 for (size_t i = 0; i < ids.size(); i++)
                 {
                     VPSResult vps;
                     vps.id = ids[i];
                     vps.confidence = confs[i];
-                    m_streetviews.push_back(vps);
+                    m_result.push_back(vps);
                 }
             }
             else {
@@ -189,20 +189,20 @@ namespace dg
             return true;
         }
 
-        void get(std::vector<VPSResult>& streetviews) const
+        void get(std::vector<VPSResult>& result) const
         {
-            streetviews = m_streetviews;
+            result = m_result;
         }
 
-        void get(std::vector<VPSResult>& streetviews, Timestamp& ts) const
+        void get(std::vector<VPSResult>& result, Timestamp& ts) const
         {
-            streetviews = m_streetviews;
+            result = m_result;
             ts = m_timestamp;
         }
 
-        void set(const std::vector<VPSResult>& streetviews, Timestamp ts, double proc_time)
+        void set(const std::vector<VPSResult>& result, Timestamp ts, double proc_time)
         {
-            m_streetviews = streetviews;
+            m_result = result;
             m_timestamp = ts;
             m_processing_time = proc_time;
         }
@@ -219,14 +219,14 @@ namespace dg
 
         void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
         {
-            if (m_streetviews.empty()) return;
+            if (m_result.empty()) return;
 
             cv::Point msg_offset = cv::Point(10, 30);
             double font_scale = 0.8;
-            std::string str_confidence = cv::format("Confidence: %.2lf", m_streetviews[0].confidence);
+            std::string str_confidence = cv::format("Confidence: %.2lf", m_result[0].confidence);
             cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
             cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
-            std::string str_id = cv::format("ID: %zu", m_streetviews[0].id);
+            std::string str_id = cv::format("ID: %zu", m_result[0].id);
             msg_offset.y += 30;
             cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), 5);
             cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), 2);
@@ -235,25 +235,25 @@ namespace dg
         void print() const
         {
             printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
-            for (int k = 0; k < m_streetviews.size(); k++)
+            for (int k = 0; k < m_result.size(); k++)
             {
-                printf("\ttop%d: id=%zu, confidence=%.2lf\n", k, m_streetviews[k].id, m_streetviews[k].confidence);
+                printf("\ttop%d: id=%zu, confidence=%.2lf\n", k, m_result[k].id, m_result[k].confidence);
             }
         }
 
         void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
-            for (int k = 0; k < m_streetviews.size(); k++)
+            for (int k = 0; k < m_result.size(); k++)
             {
-                std::string log = cv::format("%.3lf,%d,%s,%d,%zu,%.2lf,%.3lf", m_timestamp, cam_fnumber, name(), k, m_streetviews[k].id, m_streetviews[k].confidence, m_processing_time);
+                std::string log = cv::format("%.3lf,%d,%s,%d,%zu,%.2lf,%.3lf", m_timestamp, cam_fnumber, name(), k, m_result[k].id, m_result[k].confidence, m_processing_time);
                 stream << log << std::endl;
             }
         }
 
         void read(const std::vector<std::string>& stream)
         {
-            m_streetviews.clear();
-            m_streetviews.resize(stream.size());
+            m_result.clear();
+            m_result.resize(stream.size());
             for (int k = 0; k < (int)stream.size(); k++)
             {
                 std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
@@ -269,7 +269,7 @@ namespace dg
                     int top_k = atoi(elems[3].c_str());
                     r.id = (dg::ID)atof(elems[4].c_str());
                     r.confidence = atof(elems[5].c_str());
-                    m_streetviews[top_k] = r;
+                    m_result[top_k] = r;
 
                     m_timestamp = atof(elems[0].c_str());
                     m_processing_time = atof(elems[6].c_str());
@@ -284,7 +284,7 @@ namespace dg
 
 
     protected:
-        std::vector<VPSResult> m_streetviews;
+        std::vector<VPSResult> m_result;
         Timestamp m_timestamp = -1;
         double m_processing_time = -1;
     };

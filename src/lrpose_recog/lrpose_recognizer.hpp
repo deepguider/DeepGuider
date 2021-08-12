@@ -119,9 +119,9 @@ namespace dg
 
                 // lrposenition class & confidence
                 pValue = PyTuple_GetItem(pRet, 0);
-                m_lrpose.cls = PyLong_AsLong(pValue);
+                m_result.cls = PyLong_AsLong(pValue);
                 pValue = PyTuple_GetItem(pRet, 1);
-                m_lrpose.confidence = PyFloat_AsDouble(pValue);
+                m_result.confidence = PyFloat_AsDouble(pValue);
             }
             else {
                 PyErr_Print();
@@ -141,18 +141,18 @@ namespace dg
 
         void get(LRPoseResult& lrpose) const
         {
-            lrpose = m_lrpose;
+            lrpose = m_result;
         }
 
         void get(LRPoseResult& lrpose, Timestamp& ts) const
         {
-            lrpose = m_lrpose;
+            lrpose = m_result;
             ts = m_timestamp;
         }
 
         void set(const LRPoseResult& lrpose, Timestamp ts, double proc_time)
         {
-            m_lrpose = lrpose;
+            m_result = lrpose;
             m_timestamp = ts;
             m_processing_time = proc_time;
         }
@@ -170,7 +170,7 @@ namespace dg
         void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
         {
             cv::Point pt(image.cols / 2 - 170, 100);
-            std::string msg = cv::format("lrpose : %s(%d), prob(%.2lf)", PoseClassName[m_lrpose.cls].c_str(), m_lrpose.cls, m_lrpose.confidence);
+            std::string msg = cv::format("lrpose : %s(%d), prob(%.2lf)", PoseClassName[m_result.cls].c_str(), m_result.cls, m_result.confidence);
             cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 255, 0), 6);
             cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 0, 0), 2);
         }
@@ -178,13 +178,13 @@ namespace dg
         void print() const
         {
             printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
-            printf("\tlrposenition: %d (%.2lf)\n", m_lrpose.cls, m_lrpose.confidence);
+            printf("\tlrposenition: %d (%.2lf)\n", m_result.cls, m_result.confidence);
 
         }
 
         void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
-            std::string log = cv::format("%.3lf,%d,%s,%d,%.2lf,%.3lf", m_timestamp, cam_fnumber, name(), m_lrpose.cls, m_lrpose.confidence, m_processing_time);
+            std::string log = cv::format("%.3lf,%d,%s,%d,%.2lf,%.3lf", m_timestamp, cam_fnumber, name(), m_result.cls, m_result.confidence, m_processing_time);
             stream << log << std::endl;
         }
 
@@ -201,8 +201,8 @@ namespace dg
                 std::string module_name = elems[2];
                 if (module_name == name())
                 {
-                    m_lrpose.cls = atoi(elems[3].c_str());
-                    m_lrpose.confidence = atof(elems[4].c_str());
+                    m_result.cls = atoi(elems[3].c_str());
+                    m_result.confidence = atof(elems[4].c_str());
                     m_timestamp = atof(elems[0].c_str());
                     m_processing_time = atof(elems[5].c_str());
                 }
@@ -216,7 +216,7 @@ namespace dg
 
 
     protected:
-        LRPoseResult m_lrpose;
+        LRPoseResult m_result;
         Timestamp m_timestamp = -1;
         double m_processing_time = -1;
     };

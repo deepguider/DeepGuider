@@ -76,7 +76,7 @@ namespace dg
 
             if (isThreadingEnabled()) PyGILState_Release(state);
 
-            m_ocrs.clear();
+            m_result.clear();
             m_timestamp = -1;
             m_processing_time = -1;
         }
@@ -137,7 +137,7 @@ namespace dg
                 }
 
                 // list of list: [[xmin:float, ymin:float, xmax:float, ymax:float]:list, label:str, confidence:float], timestamp
-                m_ocrs.clear();
+                m_result.clear();
                 PyObject* pList0 = PyTuple_GetItem(pRet, 0);
                 if (pList0 != NULL)
                 {
@@ -166,7 +166,7 @@ namespace dg
                             ocr.label = PyUnicode_AsUTF8(pValue);
                             pValue = PyList_GetItem(pList, idx++);
                             ocr.confidence = PyFloat_AsDouble(pValue);
-                            m_ocrs.push_back(ocr);
+                            m_result.push_back(ocr);
                         }
                     }
                 }
@@ -187,20 +187,20 @@ namespace dg
             return true;
         }
 
-        void get(std::vector<OCRResult>& ocrs) const
+        void get(std::vector<OCRResult>& result) const
         {
-            ocrs = m_ocrs;
+            result = m_result;
         }
 
-        void get(std::vector<OCRResult>& ocrs, Timestamp& ts) const
+        void get(std::vector<OCRResult>& result, Timestamp& ts) const
         {
-            ocrs = m_ocrs;
+            result = m_result;
             ts = m_timestamp;
         }
 
-        void set(const std::vector<OCRResult>& ocrs, Timestamp ts, double proc_time)
+        void set(const std::vector<OCRResult>& result, Timestamp ts, double proc_time)
         {
-            m_ocrs = ocrs;
+            m_result = result;
             m_timestamp = ts;
             m_processing_time = proc_time;
         }
@@ -217,13 +217,13 @@ namespace dg
 
         void draw(cv::Mat& image, int font_sz = 28, double xscale = 1, double yscale = 1, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
         {
-            for (size_t i = 0; i < m_ocrs.size(); i++)
+            for (size_t i = 0; i < m_result.size(); i++)
             {
                 // bbox
-                int xmin = (int)(xscale * m_ocrs[i].xmin + 0.5);
-                int ymin = (int)(yscale * m_ocrs[i].ymin + 0.5);
-                int xmax = (int)(xscale * m_ocrs[i].xmax + 0.5);
-                int ymax = (int)(yscale * m_ocrs[i].ymax + 0.5);
+                int xmin = (int)(xscale * m_result[i].xmin + 0.5);
+                int ymin = (int)(yscale * m_result[i].ymin + 0.5);
+                int xmax = (int)(xscale * m_result[i].xmax + 0.5);
+                int ymax = (int)(yscale * m_result[i].ymax + 0.5);
                 cv::Rect rc(xmin, ymin, xmax - xmin + 1, ymax - ymin + 1);
                 cv::rectangle(image, rc, color, width);
 
@@ -231,7 +231,7 @@ namespace dg
                 int sz = (rc.width < rc.height) ? rc.width : rc.height;
                 if(sz<10) font_sz = 10;
                 cv::Point pt(xmin + 3, ymin - 5);
-                std::string msg = cv::format("%s (%.2lf)", m_ocrs[i].label.c_str(), m_ocrs[i].confidence);
+                std::string msg = cv::format("%s (%.2lf)", m_result[i].label.c_str(), m_result[i].confidence);
 #ifdef HAVE_OPENCV_FREETYPE
                 if(m_ft2)
                 {
@@ -251,24 +251,24 @@ namespace dg
         void print() const
         {
             printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
-            for (int k = 0; k < m_ocrs.size(); k++)
+            for (int k = 0; k < m_result.size(); k++)
             {
-                printf("\t%s, %.2lf, x1=%d, y1=%d, x2=%d, y2=%d\n", m_ocrs[k].label.c_str(), m_ocrs[k].confidence, m_ocrs[k].xmin, m_ocrs[k].ymin, m_ocrs[k].xmax, m_ocrs[k].ymax);
+                printf("\t%s, %.2lf, x1=%d, y1=%d, x2=%d, y2=%d\n", m_result[k].label.c_str(), m_result[k].confidence, m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
             }
         }
 
         void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
-            for (int k = 0; k < m_ocrs.size(); k++)
+            for (int k = 0; k < m_result.size(); k++)
             {
-                std::string log = cv::format("%.3lf,%d,%s,%s,%.2lf,%d,%d,%d,%d,%.3lf", m_timestamp, cam_fnumber, name(), m_ocrs[k].label.c_str(), m_ocrs[k].confidence, m_ocrs[k].xmin, m_ocrs[k].ymin, m_ocrs[k].xmax, m_ocrs[k].ymax, m_processing_time);
+                std::string log = cv::format("%.3lf,%d,%s,%s,%.2lf,%d,%d,%d,%d,%.3lf", m_timestamp, cam_fnumber, name(), m_result[k].label.c_str(), m_result[k].confidence, m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax, m_processing_time);
                 stream << log << std::endl;
             }
         }
 
         void read(const std::vector<std::string>& stream)
         {
-            m_ocrs.clear();
+            m_result.clear();
             for (int k = 0; k < (int)stream.size(); k++)
             {
                 std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
@@ -287,7 +287,7 @@ namespace dg
                     r.ymin = atoi(elems[6].c_str());
                     r.xmax = atoi(elems[7].c_str());
                     r.ymax = atoi(elems[8].c_str());
-                    m_ocrs.push_back(r);
+                    m_result.push_back(r);
 
                     m_timestamp = atof(elems[0].c_str());
                     m_processing_time = atof(elems[9].c_str());
@@ -302,7 +302,7 @@ namespace dg
 
 
     protected:
-        std::vector<OCRResult> m_ocrs;
+        std::vector<OCRResult> m_result;
         Timestamp m_timestamp = -1;
         double m_processing_time = -1;
 #ifdef HAVE_OPENCV_FREETYPE

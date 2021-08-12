@@ -41,7 +41,7 @@ namespace dg
             if (!IntersectionClassifier::apply(image, image_time)) return false;
 
             // apply state filtering
-            int observed_cls = m_intersect.cls;
+            int observed_cls = m_result.cls;
             int state_prev = m_state;
             m_state = simpleStateFiltering(observed_cls);
 
@@ -52,7 +52,7 @@ namespace dg
                 if (path && !path->empty()) valid_xy = findNearestPathJunction(*path, pose, xy);
                 else valid_xy = findNearestMapJunction(pose, xy);
                 m_shared->releasePathLock();
-                confidence = m_intersect.confidence;
+                confidence = m_result.confidence;
             }
             return true;
         }
