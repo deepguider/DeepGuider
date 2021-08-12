@@ -8,6 +8,7 @@
 
 int testSimpleMapManager()
 {
+	/* commented by jylee
 	dg::MapManager manager;
 	manager.initialize();
 	bool ok;
@@ -87,6 +88,7 @@ int testSimpleMapManager()
 	// Get the StreetView image
 	cv::Mat sv_image;
 	ok = manager.getStreetViewImage(14255003037, sv_image, "");	// f, b, l, r, u, d
+	*/	// end of 'commented by jylee'
 
     return 0;
 }

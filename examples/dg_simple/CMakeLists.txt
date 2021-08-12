@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.3)
 get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
 string(REPLACE " " "_" ProjectId ${ProjectId})
 project(${ProjectId} C CXX)

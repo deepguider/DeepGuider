@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.3)
+get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
+string(REPLACE " " "_" ProjectId ${ProjectId})
+project(${ProjectId} C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
@@ -10,13 +13,6 @@ set(CURL_INC "${EXTDIR}/curl/include")
 set(CURL_LIBRARIES "-lcurl")
 set(JSONCPP_LIBRARIES "-ljsoncpp")
 set(FS_LIBRARIES "-lstdc++fs")
-## Install in bash shell manually:
-#$ sudo apt install -y libcurl4-openssl-dev
-#$ sudo apt install -y libjsoncpp-dev
-
-get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
-string(REPLACE " " "_" ProjectId ${ProjectId})
-project(${ProjectId} C CXX)
 
 find_package( PythonInterp 3.6 REQUIRED )
 find_package( PythonLibs 3.6 REQUIRED )

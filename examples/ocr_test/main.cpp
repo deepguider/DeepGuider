@@ -112,7 +112,7 @@ void procfunc(bool recording, int rec_fps, const char* video_path)
     printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
 
     // Run the Python module
-    test_image_run(recognizer, false, cv::format("sample.png", recognizer.name()).c_str());  //Astrid: "%s_sample.png" is changed to "sample.png"
+    //test_image_run(recognizer, false, cv::format("%s_sample.png", recognizer.name()).c_str());
     test_video_run(recognizer, recording, rec_fps, video_path);
 
     // Clear the Python module

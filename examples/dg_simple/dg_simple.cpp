@@ -342,11 +342,11 @@ bool DeepGuider::initialize(std::string config_file)
     // initialize localizer
     if (!m_localizer.initialize(this, "EKFLocalizer")) return false;
     if (!m_localizer.setParamMotionNoise(1, 10)) return false;      // linear_velocity(m), angular_velocity(deg)
-    if (!m_localizer.setParamGPSNoise(4)) return false;             // position error(m)
+    if (!m_localizer.setParamGPSNoise(1)) return false;             // position error(m)
     if (!m_localizer.setParamGPSOffset(1, 0)) return false;         // displacement(lin,ang) from robot origin
     if (!m_localizer.setParamIMUCompassNoise(1, 0)) return false;   // angle arror(deg), angle offset(deg)
-    if (!m_localizer.setParamPOINoise(2, 10, 1)) return false;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
-    if (!m_localizer.setParamVPSNoise(2, 10, 1)) return false;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
+    if (!m_localizer.setParamPOINoise(1, 10, 1)) return false;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
+    if (!m_localizer.setParamVPSNoise(1, 10, 1)) return false;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
     if (!m_localizer.setParamIntersectClsNoise(0.1)) return false;  // position error(m)
     if (!m_localizer.setParamRoadThetaNoise(10, 0)) return false;   // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin

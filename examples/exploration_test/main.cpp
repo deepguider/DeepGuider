@@ -1,4 +1,5 @@
 #include "dg_core.hpp"
+#include "dg_guidance.hpp"
 #include "dg_exploration.hpp"
 #include "dg_utils.hpp"
 #include <chrono>

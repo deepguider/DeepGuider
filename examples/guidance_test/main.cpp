@@ -8,6 +8,7 @@
 
 using namespace dg;
 
+/* commented by jylee -- begin
 Path getPath(const char* filename, Map& map)
 {
 	std::vector<PathElement> pathvec;
@@ -161,11 +162,13 @@ void test_image_run(ActiveNavigation& active_nav, GuidanceManager::Guidance guid
 
     }
 }
-
+*/ // commented by jylee -- end
 
 
 int main()
-{	   	 
+{
+	/* commented by jylee -- begin
+
 	//initialize map
 	MapManager map_manager;
 	map_manager.setIP("localhost");
@@ -305,6 +308,9 @@ int main()
 	fprintf(stdout, "\n Press any key to finish.\n");
 		
 	getchar();
+
+	*/ // commented by jylee -- end
 	
 	return 0;
 }
+

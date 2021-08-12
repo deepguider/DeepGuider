@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.3)
 get_filename_component(ProjectId ${CMAKE_CURRENT_LIST_DIR} NAME)
 string(REPLACE " " "_" ProjectId ${ProjectId})
 project(${ProjectId} C CXX)
@@ -12,7 +12,7 @@ find_package( OpenCV REQUIRED )
 
 INCLUDE_DIRECTORIES ( ${SRCDIR} )
 
-file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/roadtheta/*.cpp ${SRCDIR}/utils/utility.cpp *.cpp)
+file(GLOB SOURCES ${SRCDIR}/roadtheta/*.cpp ${SRCDIR}/utils/utility.cpp *.cpp)
  
 add_executable( ${PROJECT_NAME} ${SOURCES} )
 target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} )
