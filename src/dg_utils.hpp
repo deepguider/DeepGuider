@@ -8,5 +8,6 @@
 #include "utils/tts.hpp"
 #include "utils/map_painter.hpp"
 #include "utils/utility.hpp"
+#include "utils/ring_buffer.hpp"
 
 #endif // End of '__DG_UTILS__'

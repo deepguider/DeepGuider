@@ -98,8 +98,6 @@
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
     <ClCompile Include="..\..\src\roadtheta\roadtheta.cpp" />
     <ClCompile Include="..\..\src\utils\python_embedding.cpp" />
-    <ClCompile Include="..\..\src\utils\utility.cpp" />
-    <ClCompile Include="..\..\src\utils\utm_converter.cpp" />
     <ClCompile Include="dg_simple.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -124,7 +122,6 @@
     <ClInclude Include="..\..\src\utils\map_painter.hpp" />
     <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
     <ClInclude Include="..\..\src\utils\tts.hpp" />
-    <ClInclude Include="..\..\src\utils\utility.hpp" />
     <ClInclude Include="..\..\src\utils\utm_converter.hpp" />
     <ClInclude Include="..\..\src\utils\vvs.h" />
     <ClInclude Include="..\..\src\vps\vps_localizer.hpp" />

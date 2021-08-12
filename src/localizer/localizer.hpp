@@ -6,6 +6,7 @@
 #include "localizer/localizer_ekf.hpp"
 #include "localizer/localizer_ekf_variants.hpp"
 #include "localizer/path_projector.hpp"
+#include "utils/ring_buffer.hpp"
 #include <vector>
 
 namespace dg

@@ -94,8 +94,6 @@
   <ItemGroup>
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
     <ClCompile Include="..\..\src\core\map.cpp" />
-    <ClCompile Include="..\..\src\utils\utility.cpp" />
-    <ClCompile Include="..\..\src\utils\utm_converter.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>

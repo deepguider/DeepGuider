@@ -5,7 +5,7 @@
 #include "core/map.hpp"
 #include "core/path.hpp"
 #include "utils/opencx.hpp"
-#include "utils/utility.hpp"
+#include "utils/ring_buffer.hpp"
 
 namespace dg
 {

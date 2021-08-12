@@ -16,9 +16,6 @@
     <Filter Include="Module Localizers">
       <UniqueIdentifier>{d694d510-52b3-4288-97d7-73e45275696d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Unit Tests">
-      <UniqueIdentifier>{88c9a0eb-ff17-48df-a8f6-42fbceb3e02b}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp">
@@ -27,13 +24,7 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\utils\utm_converter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\core\map.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\utils\utility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -102,22 +93,22 @@
       <Filter>Module Localizers</Filter>
     </ClInclude>
     <ClInclude Include="test_core_type.hpp">
-      <Filter>Unit Tests</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_localizer_ekf.hpp">
-      <Filter>Unit Tests</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_localizer_etri.hpp">
-      <Filter>Unit Tests</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_localizer_gps2utm.hpp">
-      <Filter>Unit Tests</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_localizer_map.hpp">
-      <Filter>Unit Tests</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_utility.hpp">
-      <Filter>Unit Tests</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
