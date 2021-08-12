@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Module Localizers">
+      <UniqueIdentifier>{d694d510-52b3-4288-97d7-73e45275696d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Unit Tests">
+      <UniqueIdentifier>{88c9a0eb-ff17-48df-a8f6-42fbceb3e02b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp">
@@ -65,26 +71,53 @@
     <ClInclude Include="localizer_runner.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_core_type.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="test_localizer_ekf.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="test_localizer_etri.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="test_localizer_gps2utm.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="test_localizer_map.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="test_utility.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\localizer\data_loader.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp">
+      <Filter>Module Localizers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp">
+      <Filter>Module Localizers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vps\vps_localizer.hpp">
+      <Filter>Module Localizers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\roadtheta\roadtheta_localizer.hpp">
+      <Filter>Module Localizers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vps\vps.hpp">
+      <Filter>Module Localizers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\roadtheta\roadtheta.hpp">
+      <Filter>Module Localizers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp">
+      <Filter>Module Localizers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp">
+      <Filter>Module Localizers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp">
+      <Filter>Module Localizers</Filter>
+    </ClInclude>
+    <ClInclude Include="test_core_type.hpp">
+      <Filter>Unit Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_ekf.hpp">
+      <Filter>Unit Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_etri.hpp">
+      <Filter>Unit Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_gps2utm.hpp">
+      <Filter>Unit Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="test_localizer_map.hpp">
+      <Filter>Unit Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="test_utility.hpp">
+      <Filter>Unit Tests</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

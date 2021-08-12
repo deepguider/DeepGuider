@@ -103,6 +103,8 @@
     <ClInclude Include="..\..\src\core\map.hpp" />
     <ClInclude Include="..\..\src\core\path.hpp" />
     <ClInclude Include="..\..\src\core\shared_date.hpp" />
+    <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp" />
+    <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\data_loader.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_base.hpp" />
@@ -110,6 +112,13 @@
     <ClInclude Include="..\..\src\localizer\localizer_ekf_variants.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_interface.hpp" />
     <ClInclude Include="..\..\src\localizer\path_projector.hpp" />
+    <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp" />
+    <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp" />
+    <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp" />
+    <ClInclude Include="..\..\src\roadtheta\roadtheta.hpp" />
+    <ClInclude Include="..\..\src\roadtheta\roadtheta_localizer.hpp" />
+    <ClInclude Include="..\..\src\vps\vps.hpp" />
+    <ClInclude Include="..\..\src\vps\vps_localizer.hpp" />
     <ClInclude Include="localizer_runner.hpp" />
     <ClInclude Include="test_core_type.hpp" />
     <ClInclude Include="test_localizer_ekf.hpp" />
