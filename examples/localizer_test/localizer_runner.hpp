@@ -4,6 +4,8 @@
 #include "dg_localizer.hpp"
 #include "localizer/data_loader.hpp"
 #include "intersection_cls/intersection_localizer.hpp"
+#include "vps/vps_localizer.hpp"
+#include "ocr_recog/ocr_localizer.hpp"
 
 void onMouseEventLocalizer(int event, int x, int y, int flags, void* param);
 
@@ -14,7 +16,11 @@ protected:
     dg::Point2   m_dest_xy;
 
     cv::Ptr<dg::BaseLocalizer> m_localizer;
-    dg::IntersectionLocalizer m_intersection;
+    dg::IntersectionLocalizer m_intersection_localizer;
+    dg::OCRLocalizer m_ocr_localizer;
+    dg::VPSLocalizer m_vps_localizer;
+    //dg::LRLocalizer m_lr_localizer;
+
 
 public:
     dg::Pose2 getPose(dg::Timestamp* timestamp = nullptr) const
@@ -54,7 +60,10 @@ public:
         cv::Ptr<dg::DGLocalizer> dg_localizer = localizer.dynamicCast<dg::DGLocalizer>();
 
         // initialize module localizers
-        m_intersection.initialize_without_python(this);
+        m_intersection_localizer.initialize_without_python(this);
+        m_ocr_localizer.initialize_without_python(this);
+        m_vps_localizer.initialize_without_python(this);
+        //m_lr_localizer.initialize_without_python(this);
 
         // Prepare the result trajectory and video
         FILE* out_traj = nullptr;
@@ -131,7 +140,7 @@ public:
                 dg::Point2 xy;
                 double xy_confidence;
                 bool xy_valid = false;
-                if (m_intersection.apply(data_time, cls, cls_conf, xy, xy_confidence, xy_valid) && xy_valid)
+                if (m_intersection_localizer.apply(data_time, cls, cls_conf, xy, xy_confidence, xy_valid) && xy_valid)
                 {
                     bool success = localizer->applyIntersectCls(xy, data_time, xy_confidence);
                     if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
