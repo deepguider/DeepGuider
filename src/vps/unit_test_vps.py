@@ -165,6 +165,7 @@ def do_vps(avi, ascen, output_filename,  begin_frame=1000, server_ip="129.254.81
 if __name__ == "__main__":
     ## Image server address
     server_ip = config.ip
+    region = config.dataset_region
 
     ## Set the GPU number (which gpu will you use)
     gpu_num = config.which_gpu
@@ -179,7 +180,7 @@ if __name__ == "__main__":
     begin_skip_frame = config.begin_skip_frame
 
     images, ascen_fix, outputs = get_input_file_list(testset_dir, ext=in_ext, out_postfix=out_postfix)
-    mod_vps = vps(gpu_num)
+    mod_vps = vps(gpu_num, region)
     mod_vps.initialize()
     avi_filename = images[date_idx]
     ascen_filename = ascen_fix[date_idx]

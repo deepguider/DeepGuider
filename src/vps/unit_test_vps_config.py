@@ -1,4 +1,5 @@
-dataset_region="ETRI"
+#dataset_region="ETRI"
+dataset_region="COEX"
 date_idx = 0
 begin_skip_frame = 0
 ip = "129.254.81.204"
