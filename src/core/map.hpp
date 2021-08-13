@@ -182,6 +182,15 @@ struct Edge
     bool directed;
 
     /**
+     * Side of the road where the edge (node_id1 -> node_id2) is located
+     * LR_LEFT: left-side (edge from node_id1 to node_id2 is located left side of a road)
+     * LR_RIGHT: right-size (edge from node_id1 to node_id2 is located right side of a road)
+     * LR_NONE: side info is not applicable nor undefined for this edge
+     */
+    int lr_side;
+    enum { LR_LEFT = 0, LR_RIGHT = 2, LR_NONE = -1 };
+
+    /**
      * A constructor with member initialization
      * @param _id The given identifier
      * @param _type The given type of edge
@@ -190,7 +199,7 @@ struct Edge
      * @param _length The given length of edge (Unit: [m])
      * @param _directed The given flag whether the edge is undirected (false) or directed (true)
      */
-    Edge(ID _id = 0, int _type = 0, ID _node_id1 = 0, ID _node_id2 = 0, double _length = -1, bool _directed = false) : id(_id), type(_type), node_id1(_node_id1), node_id2(_node_id2), length(_length), directed(_directed) { }
+    Edge(ID _id = 0, int _type = 0, ID _node_id1 = 0, ID _node_id2 = 0, double _length = -1, bool _directed = false, int _lr_side = LR_NONE) : id(_id), type(_type), node_id1(_node_id1), node_id2(_node_id2), length(_length), directed(_directed), lr_side(_lr_side) { }
 
     /**
      * Overriding the assignment operator
@@ -205,6 +214,7 @@ struct Edge
 		node_id2 = rhs.node_id2;
         length = rhs.length;
         directed = rhs.directed;
+        lr_side = rhs.lr_side;
         return *this;
     }
 
