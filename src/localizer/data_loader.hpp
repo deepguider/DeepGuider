@@ -12,10 +12,10 @@ namespace dg
  */
 enum
 {
-    /** GPS data (lat, lon) */
+    /** GPS data (time, lat, lon) */
     DATA_GPS = 0,
 
-    /** IMU data (w, x, y, z) */
+    /** IMU data (time, w, x, y, z) */
     DATA_IMU = 1,
 
     /** POI data */
@@ -24,10 +24,10 @@ enum
     /** VPS data */
     DATA_VPS = 3,
 
-    /** Intersection classifier data */
+    /** Intersection classifier data (time, v, confidence) */
     DATA_IntersectCls = 4,
 
-    /** VPS_LR data */
+    /** VPS_LR data (time, v, confidence) */
     DATA_LR = 5,
 
     /** RoadTheta data */
@@ -63,17 +63,17 @@ public:
         }
         if (!poi_file.empty())
         {
-            m_poi_data = readLocClues(poi_file);
+            m_poi_data = readPOI(poi_file);
             if (m_poi_data.empty()) return false;
         }
         if (!vps_file.empty())
         {
-            m_vps_data = readLocClues(vps_file);
+            m_vps_data = readVPS(vps_file);
             if (m_vps_data.empty()) return false;
         }
         if (!intersection_file.empty())
         {
-            m_intersection_data = readLocClues(intersection_file);
+            m_intersection_data = readIntersection(intersection_file);
             if (m_intersection_data.empty()) return false;
         }
         if (!lr_file.empty())
@@ -251,6 +251,11 @@ public:
 
     double getStartTime() const { return m_first_data_time; }
 
+    bool empty() const
+    {
+        return !m_camera_data.isOpened() && m_gps_data.empty() && m_ahrs_data.empty() && m_poi_data.empty() && m_vps_data.empty() && m_intersection_data.empty() && m_lr_data.empty() && m_roadtheta_data.empty();
+    }
+
 protected:
     void clear()
     {
@@ -340,28 +345,55 @@ protected:
         return data;
     }
 
+    cx::CSVReader::Double2D readIntersection(const std::string& clue_file)
+    {
+        cx::CSVReader::Double2D data;
+        cx::CSVReader csv;
+        if (csv.open(clue_file))
+        {
+            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 0, 1, 2, 3 }); // Skip the header
+            if (!raw_data.empty())
+            {
+                for (auto row = raw_data.begin(); row != raw_data.end(); row++)
+                {
+                    data.push_back({ row->at(1), row->at(2), row->at(3) }); // t, v, conf
+                }
+            }
+        }
+        return data;
+    }
+
     cx::CSVReader::Double2D readVPS_LR(const std::string& clue_file)
     {
         cx::CSVReader::Double2D data;
         cx::CSVReader csv;
-        if (csv.open(clue_file)) data = csv.extDouble2D(0, { 0, 1, 2 });
+        if (csv.open(clue_file))
+        {
+            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 0, 1, 2, 3 }); // Skip the header
+            if (!raw_data.empty())
+            {
+                for (auto row = raw_data.begin(); row != raw_data.end(); row++)
+                {
+                    data.push_back({ row->at(1), row->at(2), row->at(3) }); // t, v, conf
+                }
+            }
+        }
         return data;
     }
 
     cx::CSVReader::Double2D readRoadTheta(const std::string& clue_file)
     {
-        cx::CSVReader::Double2D data;
-        cx::CSVReader csv;
-        if (csv.open(clue_file)) data = csv.extDouble2D(0, { 0, 1, 2 });
-        return data;
+        return cx::CSVReader::Double2D();
     }
 
-    cx::CSVReader::Double2D readLocClues(const std::string& clue_file, const std::vector<size_t>& cols = { 0, 1, 2, 3, 4, 5 })
+    cx::CSVReader::Double2D readPOI(const std::string& clue_file)
     {
-        cx::CSVReader::Double2D data;
-        cx::CSVReader csv;
-        if (csv.open(clue_file)) data = csv.extDouble2D(0, cols);
-        return data;
+        return cx::CSVReader::Double2D();
+    }
+
+    cx::CSVReader::Double2D readVPS(const std::string& clue_file)
+    {
+        return cx::CSVReader::Double2D();
     }
 
     cv::VideoCapture m_camera_data;

@@ -24,6 +24,13 @@ namespace dg
             return (m_shared != nullptr);
         }
 
+        bool initialize_without_python(SharedInterface* shared)
+        {
+            cv::AutoLock lock(m_mutex);
+            m_shared = shared;
+            return (m_shared != nullptr);
+        }
+
         bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence, dg::ID& sv_id, cv::Mat& sv_image)
         {
             cv::AutoLock lock(m_mutex);

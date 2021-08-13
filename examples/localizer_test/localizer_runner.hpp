@@ -3,124 +3,20 @@
 
 #include "dg_localizer.hpp"
 #include "localizer/data_loader.hpp"
-
-struct MapGUIProp
-{
-public:
-    std::string image_file;
-    cv::Point2d image_scale;
-    double      image_rotation = 0; // radian
-    dg::LatLon  origin_latlon;      // origin of UTM
-    cv::Point2d origin_px;          // pixel coordinte of UTM origin at map image
-    double      map_radius;         // topomap coverage from the origin (unit: meter)
-    cv::Point   grid_unit_pos;
-    std::string map_file;
-    int         wnd_flag = cv::WindowFlags::WINDOW_AUTOSIZE;
-    double      video_resize = 0;
-    cv::Point   video_offset;
-    double      zoom_level = 0;
-    double      zoom_radius = 0;
-    cv::Point   zoom_offset;
-};
+#include "intersection_cls/intersection_localizer.hpp"
 
 void onMouseEventLocalizer(int event, int x, int y, int flags, void* param);
 
 class LocalizerRunner : public dg::SharedInterface
 {
-public:
-    cx::Painter* gui_painter;
-    cv::Mat      gui_background;
-    int          gui_robot_radius;
-    cv::Vec3b    gui_robot_color;
-    int          gui_robot_thickness;
-    int          gui_traj_radius;
-    cv::Vec3b    gui_gps_color;
-    int          gui_gps_radius;
-    double       gui_covar_scale;
-    cv::Vec3b    gui_covar_color;
-    int          gui_covar_thickness;
-    double       gui_text_scale;
-    cv::Point    gui_text_offset;
-    cv::Vec3b    gui_text_color;
-    int          gui_text_thickness;
-    int          gui_topo_ref_radius;
-    cv::Vec3b    gui_topo_ref_color;
-    int          gui_topo_ref_thickness;
-    int          gui_topo_loc_radius;
-    cv::Vec3b    gui_topo_loc_color;
-    int          gui_topo_loc_thickness;
-    std::string  gui_clue_text;
-    cv::Vec3b    gui_clue_color;
-    int          gui_clue_thickness;
-    int          gui_wnd_flag;
-    int          gui_wnd_wait_msec;
-    bool         gui_wnd_wait_exit;
-
-    double       video_resize;
-    cv::Point    video_offset;
-    cv::Vec2d    video_time;
-
-    cx::Painter* zoom_painter;
-    cv::Mat      zoom_background;
-    double       zoom_radius;
-    cv::Point    zoom_offset;
-    cv::Vec3b    zoom_box_color;
-    int          zoom_box_thickness;
-    bool         zoom_user_drag = false;
-    cv::Point    zoom_user_point;
-
-    std::string  rec_traj_name;
-    std::string  rec_video_name;
-    double       rec_video_fps = 10;
-    int          rec_video_fourcc = cv::VideoWriter::fourcc('X', 'V', 'I', 'D');
-    double       rec_video_quality = 100;
-    double       rec_video_resize;
-
+protected:
     bool         m_dest_defined = false;
     dg::Point2   m_dest_xy;
 
     cv::Ptr<dg::BaseLocalizer> m_localizer;
+    dg::IntersectionLocalizer m_intersection;
 
-    LocalizerRunner()
-    {
-        gui_painter = nullptr;
-        gui_robot_radius = 10;
-        gui_robot_color = cv::Vec3b(0, 0, 255);
-        gui_robot_thickness = 2;
-        gui_traj_radius = 2;
-        gui_gps_color = cv::Vec3b(100, 100, 100);
-        gui_gps_radius = 2;
-        gui_covar_scale = 30;
-        gui_covar_color = cv::Vec3b(0, 255, 0);
-        gui_covar_thickness = 1;
-        gui_text_scale = 1;
-        gui_text_offset = cv::Point(5, 15);
-        gui_text_color = cx::COLOR_MAGENTA;
-        gui_text_thickness = 1;
-        gui_topo_ref_radius = 0;
-        gui_topo_ref_color = cv::Vec3b(255, 127, 255);
-        gui_topo_ref_thickness = -1;
-        gui_topo_loc_radius = 0;
-        gui_topo_loc_color = cv::Vec3b(127, 255, 127);
-        gui_topo_loc_thickness = 2;
-        gui_clue_text = "Intersection (%.2f)";
-        gui_clue_color = cv::Vec3b(255, 0, 0);
-        gui_clue_thickness = 2;
-        gui_wnd_flag = cv::WindowFlags::WINDOW_AUTOSIZE;
-        gui_wnd_wait_msec = 10;
-        gui_wnd_wait_exit = false;
-
-        video_resize = 1;
-        video_time = cv::Vec2d(1, -1);
-
-        zoom_painter = nullptr;
-        zoom_radius = 0;
-        zoom_offset = cv::Point(5, 20);
-        zoom_box_thickness = 1;
-
-        rec_video_resize = 1;
-    }
-
+public:
     dg::Pose2 getPose(dg::Timestamp* timestamp = nullptr) const
     {
         return m_localizer->getPose(timestamp);
@@ -150,95 +46,15 @@ public:
         return setPath(path);
     }
 
-    int runLocalizer(cv::Ptr<dg::BaseLocalizer> localizer, const cx::CSVReader::Double2D& gps_data)
-    {
-        CV_DbgAssert(!localizer.empty() && !gps_data.empty());
-        m_localizer = localizer;
-        m_localizer->setShared(this);
-
-        // Prepare the result trajectory and video
-        FILE* out_traj = nullptr;
-        if (!rec_traj_name.empty())
-        {
-            out_traj = fopen(rec_traj_name.c_str(), "wt");
-            if (out_traj == nullptr) return -1;
-            fprintf(out_traj, "# Time[sec], X[m], Y[m], Theta[rad], LinVel[m/s], AngVel[rad/s]\n");
-        }
-        cx::VideoWriter out_video;
-        if (!rec_video_name.empty())
-        {
-            if (rec_video_quality > 0) out_video.set(cv::VIDEOWRITER_PROP_QUALITY, rec_video_quality);
-            if (!out_video.open(rec_video_name, rec_video_fps, rec_video_fourcc)) return -1;
-            if (rec_video_quality > 0) out_video.set(cv::VIDEOWRITER_PROP_QUALITY, rec_video_quality);
-        }
-
-        // Prepare visualization
-        bool show_gui = gui_wnd_wait_msec >= 0 && gui_painter != nullptr && !gui_background.empty();
-        cv::Mat bg_image = gui_background.clone();
-        bool show_zoom = show_gui && zoom_painter != nullptr && !zoom_background.empty();
-        cv::Mat zoom_bg_image = zoom_background.clone();
-
-        // Run GPS-only localization
-        if (show_gui) cv::namedWindow("LocalizerRunner::runLocalizer()", gui_wnd_flag);
-        cv::setMouseCallback("LocalizerRunner::runLocalizer()", onMouseEventLocalizer, this);
-
-        double timestart = gps_data[0][0];
-        for (size_t i = 0; i < gps_data.size(); i++)
-        {
-            // Apply GPS data as position observation
-            double timestamp = gps_data[i][0];
-dg::Point2 gps_xy(gps_data[i][1], gps_data[i][2]);
-bool success = localizer->applyGPS(gps_xy, timestamp);
-if (!success) fprintf(stderr, "applyPosition() was failed.\n");
-
-// Record the current state on the CSV file
-if (out_traj != nullptr)
-{
-    dg::Pose2 pose = localizer->getPose();
-    fprintf(out_traj, "%f, %f, %f, %f\n", timestamp, pose.x, pose.y, pose.theta);
-}
-
-// Visualize and show the current state as an image
-if (show_gui)
-{
-    dg::Pose2 pose = localizer->getPose();
-    if (gui_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, gui_traj_radius, gui_robot_color); // Robot trajectory
-    if (gui_gps_radius > 0) gui_painter->drawPoint(bg_image, gps_xy, gui_gps_radius, gui_gps_color);     // GPS point
-    cv::Mat out_image = genStateImage(bg_image, localizer, timestamp - timestart);
-
-    if (show_zoom)
-    {
-        if (gui_traj_radius > 0) zoom_painter->drawPoint(zoom_bg_image, pose, gui_traj_radius, gui_robot_color); // Robot trajectory
-        if (gui_gps_radius > 0) zoom_painter->drawPoint(zoom_bg_image, gps_xy, gui_gps_radius, gui_gps_color);     // GPS point
-        cv::Mat zoom_image = genStateImage(zoom_bg_image, localizer, timestamp - timestart, zoom_painter);
-        pasteZoomedImage(out_image, pose, zoom_image);
-    }
-
-    // Record the current visualization on the AVI file
-    if (out_video.isConfigured())
-    {
-        cv::Mat resize;
-        cv::resize(out_image, resize, cv::Size(), rec_video_resize, rec_video_resize);
-        out_video << out_image;
-    }
-
-    cv::imshow("LocalizerRunner::runLocalizer()", out_image);
-    int key = cv::waitKey(gui_wnd_wait_msec);
-    if (key == cx::KEY_SPACE) key = cv::waitKey(0);
-    if (key == cx::KEY_ESC) break;
-}
-        }
-        if (out_traj != nullptr) fclose(out_traj);
-        if (gui_wnd_wait_exit) cv::waitKey(0);
-        return 0;
-    }
-
     int runLocalizer(cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader)
     {
-        CV_DbgAssert(!localizer.empty() && !gps_data.empty());
+        CV_DbgAssert(!localizer.empty() && !data_loader.empty());
         m_localizer = localizer;
         m_localizer->setShared(this);
         cv::Ptr<dg::DGLocalizer> dg_localizer = localizer.dynamicCast<dg::DGLocalizer>();
+
+        // initialize module localizers
+        m_intersection.initialize_without_python(this);
 
         // Prepare the result trajectory and video
         FILE* out_traj = nullptr;
@@ -300,40 +116,36 @@ if (show_gui)
             }
             else if (type == dg::DATA_POI)
             {
-                dg::Point2 clue_xy(data[1], data[2]);
-                dg::Polar2 relative(data[3], data[4]);
-                double confidence = data[5];
-                bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
-                if (!success) fprintf(stderr, "applyPOI() was failed.\n");
+                //bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
+                //if (!success) fprintf(stderr, "applyPOI() was failed.\n");
             }
             else if (type == dg::DATA_VPS)
             {
-                dg::Point2 clue_xy(data[1], data[2]);
-                dg::Polar2 relative(data[3], data[4]);
-                double confidence = data[5];
-                bool success = localizer->applyVPS(clue_xy, relative, data_time, confidence);
-                if (!success) fprintf(stderr, "applyVPS() was failed.\n");
+                //bool success = localizer->applyVPS(clue_xy, relative, data_time, confidence);
+                //if (!success) fprintf(stderr, "applyVPS() was failed.\n");
             }
             else if (type == dg::DATA_IntersectCls)
             {
-                dg::Point2 xy(data[1], data[2]);
-                double confidence = data[5];
-                bool success = localizer->applyIntersectCls(xy, data_time, confidence);
-                if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
+                double cls = data[1];
+                double cls_conf = data[2];
+                dg::Point2 xy;
+                double xy_confidence;
+                bool xy_valid = false;
+                if (m_intersection.apply(data_time, cls, cls_conf, xy, xy_confidence, xy_valid) && xy_valid)
+                {
+                    bool success = localizer->applyIntersectCls(xy, data_time, xy_confidence);
+                    if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
+                }
             }
             else if (type == dg::DATA_LR && dg_localizer)
             {
-                double lr_result = data[1];
-                double confidence = data[2];
-                bool success = dg_localizer->applyVPS_LR(lr_result, data_time, confidence);
-                if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
+                //bool success = dg_localizer->applyVPS_LR(lr_result, data_time, confidence);
+                //if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
             }
             else if (type == dg::DATA_RoadTheta)
             {
-                double theta = data[1];
-                double confidence = data[2];
-                bool success = localizer->applyRoadTheta(theta, data_time, confidence);
-                if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
+                //bool success = localizer->applyRoadTheta(theta, data_time, confidence);
+                //if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
             }
 
             // Record the current state on the CSV file
@@ -591,6 +403,55 @@ if (show_gui)
         return data;
     }
 
+public:
+    cx::Painter* gui_painter = nullptr;
+    cv::Mat      gui_background;
+    int          gui_robot_radius = 10;
+    cv::Vec3b    gui_robot_color = cv::Vec3b(0, 0, 255);
+    int          gui_robot_thickness = 2;
+    int          gui_traj_radius = 2;
+    cv::Vec3b    gui_gps_color = cv::Vec3b(100, 100, 100);
+    int          gui_gps_radius = 2;
+    double       gui_covar_scale = 30;
+    cv::Vec3b    gui_covar_color = cv::Vec3b(0, 255, 0);;
+    int          gui_covar_thickness = 1;
+    double       gui_text_scale = 1;
+    cv::Point    gui_text_offset = cv::Point(5, 15);
+    cv::Vec3b    gui_text_color = cx::COLOR_MAGENTA;
+    int          gui_text_thickness = 1;
+    int          gui_topo_ref_radius = 0;
+    cv::Vec3b    gui_topo_ref_color = cv::Vec3b(255, 127, 255);
+    int          gui_topo_ref_thickness = -1;
+    int          gui_topo_loc_radius = 0;
+    cv::Vec3b    gui_topo_loc_color = cv::Vec3b(127, 255, 127);
+    int          gui_topo_loc_thickness = 2;
+    std::string  gui_clue_text = "Intersection (%.2f)";
+    cv::Vec3b    gui_clue_color = cv::Vec3b(255, 0, 0);
+    int          gui_clue_thickness = 2;
+    int          gui_wnd_flag = cv::WindowFlags::WINDOW_AUTOSIZE;
+    int          gui_wnd_wait_msec = 1;
+    bool         gui_wnd_wait_exit = false;
+
+    double       video_resize = 1;
+    cv::Point    video_offset = cv::Vec2d(1, -1);;
+    //cv::Vec2d    video_time;
+
+    cx::Painter* zoom_painter = nullptr;
+    cv::Mat      zoom_background;
+    double       zoom_radius = 0;
+    cv::Point    zoom_offset = cv::Point(5, 20);
+    cv::Vec3b    zoom_box_color;
+    int          zoom_box_thickness = 1;
+    bool         zoom_user_drag = false;
+    cv::Point    zoom_user_point;
+
+    std::string  rec_traj_name;
+    std::string  rec_video_name;
+    double       rec_video_fps = 10;
+    int          rec_video_fourcc = cv::VideoWriter::fourcc('X', 'V', 'I', 'D');
+    double       rec_video_quality = 100;
+    double       rec_video_resize = 1;
+
 }; // End of 'LocalizerRunner'
 
 void onMouseEventLocalizer(int event, int x, int y, int flags, void* param)
@@ -599,185 +460,5 @@ void onMouseEventLocalizer(int event, int x, int y, int flags, void* param)
     localizer->procMouseEvent(event, x, y, flags);
 }
 
-cx::CSVReader::Double2D readROSGPSFix(const std::string& gps_file, const dg::LatLon& ref_pts = dg::LatLon(-1, -1), const std::vector<size_t>& cols = { 2, 3, 5, 7, 8 })
-{
-    cx::CSVReader::Double2D data;
-    cx::CSVReader csv;
-    if (csv.open(gps_file))
-    {
-        cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, cols); // Skip the header
-        if (!raw_data.empty())
-        {
-            dg::UTMConverter converter;
-            if (ref_pts.lat >= 0 && ref_pts.lon >= 0) converter.setReference(ref_pts);
-            else
-            {
-                dg::LatLon ll(raw_data.front().at(3), raw_data.front().at(4));
-                converter.setReference(ll);
-            }
-            for (auto row = raw_data.begin(); row != raw_data.end(); row++)
-            {
-                double status = row->at(2);
-                if (status < 0) continue;   // skip nan data
-
-                double timestamp = row->at(0) + 1e-9 * row->at(1);
-                dg::LatLon ll(row->at(3), row->at(4));
-                dg::Point2 utm = converter.toMetric(ll);
-                std::vector<double> datum = { timestamp, utm.x, utm.y };
-                data.push_back(datum);
-            }
-        }
-    }
-    return data;
-}
-
-cx::CSVReader::Double2D readROSAHRS(const std::string& ahrs_file)
-{
-    cx::CSVReader::Double2D data;
-    cx::CSVReader csv;
-    if (csv.open(ahrs_file))
-    {
-        cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 2, 3, 5, 6, 7, 8 }); // Skip the header
-        if (!raw_data.empty())
-        {
-            for (auto row = raw_data.begin(); row != raw_data.end(); row++)
-            {
-                double timestamp = row->at(0) + 1e-9 * row->at(1);
-                data.push_back({ timestamp, row->at(5), row->at(2), row->at(3), row->at(4) });
-            }
-        }
-    }
-    return data;
-}
-
-cx::CSVReader::Double2D readAndroGPS(const std::string& gps_file, const dg::LatLon& ref_pts = dg::LatLon(-1, -1))
-{
-    cx::CSVReader::Double2D data;
-    cx::CSVReader csv;
-    if (csv.open(gps_file, ';'))
-    {
-        cx::CSVReader::Double2D raw_data = csv.extDouble2D(2, { 31, 22, 23, 28 }); // Skip the header
-        if (!raw_data.empty())
-        {
-            dg::UTMConverter converter;
-            if (ref_pts.lat >= 0 && ref_pts.lon >= 0) converter.setReference(ref_pts);
-            else
-            {
-                dg::LatLon ll(raw_data.front().at(1), raw_data.front().at(2));
-                converter.setReference(ll);
-            }
-            for (auto row = raw_data.begin(); row != raw_data.end(); row++)
-            {
-                double timestamp = 1e-3 * row->at(0);
-                dg::LatLon ll(row->at(1), row->at(2));
-                dg::Point2 utm = converter.toMetric(ll);
-                double accuracy = row->at(3);
-                std::vector<double> datum = { timestamp, utm.x, utm.y, accuracy };
-                data.push_back(datum);
-            }
-        }
-    }
-    return data;
-}
-
-cx::CSVReader::Double2D readLocClues(const std::string& clue_file)
-{
-    cx::CSVReader::Double2D data;
-    cx::CSVReader csv;
-    if (csv.open(clue_file)) data = csv.extDouble2D(0, { 0, 3, 4 });
-    return data;
-}
-
-int drawGPSData(const MapGUIProp& gui, const std::string& gps_file, const cv::Vec3b& color, int radius = 1, int gps_smoothing_n = 0)
-{
-    // Prepare an image and a painter for visualization
-    cv::Mat image = cv::imread(gui.image_file);
-    if (image.empty()) return -1;
-    dg::MapPainter painter;
-    painter.configCanvas(gui.origin_px, gui.image_scale, image.size(), 0, 0);
-    painter.setImageRotation(gui.image_rotation);
-    painter.drawGrid(image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, gui.grid_unit_pos);
-    painter.drawOrigin(image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
-    painter.setParamValue("node_radius", 3);
-    painter.setParamValue("node_font_scale", 0);
-    painter.setParamValue("node_color", { 255, 100, 100 });
-    painter.setParamValue("edge_color", { 150, 100, 100 });
-    painter.setParamValue("edge_thickness", 1);
-    if (!gui.map_file.empty())
-    {
-        dg::Map map;
-        if (map.load(gui.map_file.c_str())) painter.drawMap(image, &map);
-    }
-
-    // Read and draw GPS data
-    std::vector<std::vector<double>> gps_data = readROSGPSFix(gps_file, gui.origin_latlon);
-    if (gps_data.empty()) return -1;
-    if (!LocalizerRunner::drawGPSData(image, &painter, gps_data, color, radius)) return -1;
-
-    // Draw smoothed gps
-    if (gps_smoothing_n > 0)
-    {
-        std::vector<std::vector<double>> tmp = gps_data;
-        for (int k = 0; k < gps_smoothing_n; k++)
-        {
-            int n = (int)gps_data.size();
-            for (int i = 1; i < n - 1; i++)
-            {
-                tmp[i][1] = (2 * gps_data[i][1] + gps_data[i - 1][1] + gps_data[i + 1][1]) / 4;
-                tmp[i][2] = (2 * gps_data[i][2] + gps_data[i - 1][2] + gps_data[i + 1][2]) / 4;
-            }
-            tmp[0][1] = (1.5 * gps_data[0][1] + 2 * gps_data[1][1] - gps_data[2][1]) / 2.5;
-            tmp[0][2] = (1.5 * gps_data[0][2] + 2 * gps_data[1][2] - gps_data[2][2]) / 2.5;
-            tmp[n - 1][1] = (1.5 * gps_data[n - 1][1] + 2 * gps_data[n - 2][1] - gps_data[n - 3][1]) / 2.5;
-            tmp[n - 1][2] = (1.5 * gps_data[n - 1][2] + 2 * gps_data[n - 2][2] - gps_data[n - 3][2]) / 2.5;
-            gps_data = tmp;
-        }
-        if (!LocalizerRunner::drawGPSData(image, &painter, gps_data, cx::COLOR_BLUE, radius)) return -1;
-    }
-
-    // Show the image
-    cv::namedWindow("::drawGPSData()", gui.wnd_flag);
-    cv::imshow("::drawGPSData()", image);
-    cv::waitKey();
-    return 0;
-}
-
-int drawGPSData(const MapGUIProp& gui, const std::vector<std::string>& gps_files, const std::vector<cv::Vec3b>& colors, int radius = 1)
-{
-    if (gps_files.size() != colors.size()) return -1;
-
-    // Prepare an image and a painter for visualization
-    cv::Mat image = cv::imread(gui.image_file);
-    if (image.empty()) return -1;
-    dg::MapPainter painter;
-    painter.configCanvas(gui.origin_px, gui.image_scale, image.size(), 0, 0);
-    painter.setImageRotation(gui.image_rotation);
-    painter.drawGrid(image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, gui.grid_unit_pos);
-    painter.drawOrigin(image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
-    painter.setParamValue("node_radius", 3);
-    painter.setParamValue("node_font_scale", 0);
-    painter.setParamValue("node_color", { 255, 100, 100 });
-    painter.setParamValue("edge_color", { 150, 100, 100 });
-    painter.setParamValue("edge_thickness", 1);
-    if (!gui.map_file.empty())
-    {
-        dg::Map map;
-        if (map.load(gui.map_file.c_str())) painter.drawMap(image, &map);
-    }
-
-    // Read and draw GPS data
-    for (size_t i = 0; i < gps_files.size(); i++)
-    {
-        std::vector<std::vector<double>> gps_data = readROSGPSFix(gps_files[i], gui.origin_latlon);
-        if (gps_data.empty()) return -1;
-        if (!LocalizerRunner::drawGPSData(image, &painter, gps_data, colors[i], radius)) return -1;
-    }
-
-    // Show the image
-    cv::namedWindow("::drawGPSData()", gui.wnd_flag);
-    cv::imshow("::drawGPSData()", image);
-    cv::waitKey();
-    return 0;
-}
 
 #endif // End of '__LOCALIZER_RUNNER__'

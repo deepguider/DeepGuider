@@ -31,12 +31,19 @@ namespace dg
             return (m_shared != nullptr);
         }
 
-        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& xy, double& confidence, bool& valid_xy)
+        bool initialize_without_python(SharedInterface* shared)
+        {
+            cv::AutoLock lock(m_mutex);
+            m_shared = shared;
+            return (m_shared != nullptr);
+        }
+
+        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& xy, double& xy_confidence, bool& xy_valid)
         {
             cv::AutoLock lock(m_mutex);
             if (m_shared == nullptr) return false;
             Pose2 pose = m_shared->getPose();
-            valid_xy = false;
+            xy_valid = false;
 
             if (!IntersectionClassifier::apply(image, image_time)) return false;
 
@@ -49,13 +56,38 @@ namespace dg
             if (state_prev == INTERSECTION && m_state == NONE_INTERSECTION)
             {
                 Path* path = m_shared->getPathLocked();
-                if (path && !path->empty()) valid_xy = findNearestPathJunction(*path, pose, xy);
-                else valid_xy = findNearestMapJunction(pose, xy);
+                if (path && !path->empty()) xy_valid = findNearestPathJunction(*path, pose, xy);
+                else xy_valid = findNearestMapJunction(pose, xy);
                 m_shared->releasePathLock();
-                confidence = m_result.confidence;
+                xy_confidence = m_result.confidence;
             }
             return true;
         }
+
+        bool apply(const dg::Timestamp image_time, double cls, double cls_conf, dg::Point2& xy, double& xy_confidence, bool& xy_valid)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (m_shared == nullptr) return false;
+            Pose2 pose = m_shared->getPose();
+            xy_valid = false;
+
+            // apply state filtering
+            int observed_cls = (int)(cls + 0.5);
+            int state_prev = m_state;
+            m_state = simpleStateFiltering(observed_cls);
+
+            // apply classification result only at the end of intersection
+            if (state_prev == INTERSECTION && m_state == NONE_INTERSECTION)
+            {
+                Path* path = m_shared->getPathLocked();
+                if (path && !path->empty()) xy_valid = findNearestPathJunction(*path, pose, xy);
+                else xy_valid = findNearestMapJunction(pose, xy);
+                m_shared->releasePathLock();
+                xy_confidence = cls_conf;
+            }
+            return true;
+        }
+
 
     protected:
         int simpleStateFiltering(int observation)

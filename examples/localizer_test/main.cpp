@@ -7,6 +7,149 @@
 #include "localizer_runner.hpp"
 #include "localizer/data_loader.hpp"
 
+struct MapGUIProp
+{
+public:
+    std::string image_file;
+    cv::Point2d image_scale;
+    double      image_rotation = 0; // radian
+    dg::LatLon  origin_latlon;      // origin of UTM
+    cv::Point2d origin_px;          // pixel coordinte of UTM origin at map image
+    double      map_radius;         // topomap coverage from the origin (unit: meter)
+    cv::Point   grid_unit_pos;
+    std::string map_file;
+    int         wnd_flag = cv::WindowFlags::WINDOW_AUTOSIZE;
+    double      video_resize = 0;
+    cv::Point   video_offset;
+    double      zoom_level = 0;
+    double      zoom_radius = 0;
+    cv::Point   zoom_offset;
+};
+
+cx::CSVReader::Double2D readROSGPSFix(const std::string& gps_file, const dg::LatLon& ref_pts = dg::LatLon(-1, -1), const std::vector<size_t>& cols = { 2, 3, 5, 7, 8 })
+{
+    cx::CSVReader::Double2D data;
+    cx::CSVReader csv;
+    if (csv.open(gps_file))
+    {
+        cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, cols); // Skip the header
+        if (!raw_data.empty())
+        {
+            dg::UTMConverter converter;
+            if (ref_pts.lat >= 0 && ref_pts.lon >= 0) converter.setReference(ref_pts);
+            else
+            {
+                dg::LatLon ll(raw_data.front().at(3), raw_data.front().at(4));
+                converter.setReference(ll);
+            }
+            for (auto row = raw_data.begin(); row != raw_data.end(); row++)
+            {
+                double status = row->at(2);
+                if (status < 0) continue;   // skip nan data
+
+                double timestamp = row->at(0) + 1e-9 * row->at(1);
+                dg::LatLon ll(row->at(3), row->at(4));
+                dg::Point2 utm = converter.toMetric(ll);
+                std::vector<double> datum = { timestamp, utm.x, utm.y };
+                data.push_back(datum);
+            }
+        }
+    }
+    return data;
+}
+
+int drawGPSData(const MapGUIProp& gui, const std::string& gps_file, const cv::Vec3b& color, int radius = 1, int gps_smoothing_n = 0)
+{
+    // Prepare an image and a painter for visualization
+    cv::Mat image = cv::imread(gui.image_file);
+    if (image.empty()) return -1;
+    dg::MapPainter painter;
+    painter.configCanvas(gui.origin_px, gui.image_scale, image.size(), 0, 0);
+    painter.setImageRotation(gui.image_rotation);
+    painter.drawGrid(image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, gui.grid_unit_pos);
+    painter.drawOrigin(image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
+    painter.setParamValue("node_radius", 3);
+    painter.setParamValue("node_font_scale", 0);
+    painter.setParamValue("node_color", { 255, 100, 100 });
+    painter.setParamValue("edge_color", { 150, 100, 100 });
+    painter.setParamValue("edge_thickness", 1);
+    if (!gui.map_file.empty())
+    {
+        dg::Map map;
+        if (map.load(gui.map_file.c_str())) painter.drawMap(image, &map);
+    }
+
+    // Read and draw GPS data
+    std::vector<std::vector<double>> gps_data = readROSGPSFix(gps_file, gui.origin_latlon);
+    if (gps_data.empty()) return -1;
+    if (!LocalizerRunner::drawGPSData(image, &painter, gps_data, color, radius)) return -1;
+
+    // Draw smoothed gps
+    if (gps_smoothing_n > 0)
+    {
+        std::vector<std::vector<double>> tmp = gps_data;
+        for (int k = 0; k < gps_smoothing_n; k++)
+        {
+            int n = (int)gps_data.size();
+            for (int i = 1; i < n - 1; i++)
+            {
+                tmp[i][1] = (2 * gps_data[i][1] + gps_data[i - 1][1] + gps_data[i + 1][1]) / 4;
+                tmp[i][2] = (2 * gps_data[i][2] + gps_data[i - 1][2] + gps_data[i + 1][2]) / 4;
+            }
+            tmp[0][1] = (1.5 * gps_data[0][1] + 2 * gps_data[1][1] - gps_data[2][1]) / 2.5;
+            tmp[0][2] = (1.5 * gps_data[0][2] + 2 * gps_data[1][2] - gps_data[2][2]) / 2.5;
+            tmp[n - 1][1] = (1.5 * gps_data[n - 1][1] + 2 * gps_data[n - 2][1] - gps_data[n - 3][1]) / 2.5;
+            tmp[n - 1][2] = (1.5 * gps_data[n - 1][2] + 2 * gps_data[n - 2][2] - gps_data[n - 3][2]) / 2.5;
+            gps_data = tmp;
+        }
+        if (!LocalizerRunner::drawGPSData(image, &painter, gps_data, cx::COLOR_BLUE, radius)) return -1;
+    }
+
+    // Show the image
+    cv::namedWindow("::drawGPSData()", gui.wnd_flag);
+    cv::imshow("::drawGPSData()", image);
+    cv::waitKey();
+    return 0;
+}
+
+int drawGPSData(const MapGUIProp& gui, const std::vector<std::string>& gps_files, const std::vector<cv::Vec3b>& colors, int radius = 1)
+{
+    if (gps_files.size() != colors.size()) return -1;
+
+    // Prepare an image and a painter for visualization
+    cv::Mat image = cv::imread(gui.image_file);
+    if (image.empty()) return -1;
+    dg::MapPainter painter;
+    painter.configCanvas(gui.origin_px, gui.image_scale, image.size(), 0, 0);
+    painter.setImageRotation(gui.image_rotation);
+    painter.drawGrid(image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, gui.grid_unit_pos);
+    painter.drawOrigin(image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
+    painter.setParamValue("node_radius", 3);
+    painter.setParamValue("node_font_scale", 0);
+    painter.setParamValue("node_color", { 255, 100, 100 });
+    painter.setParamValue("edge_color", { 150, 100, 100 });
+    painter.setParamValue("edge_thickness", 1);
+    if (!gui.map_file.empty())
+    {
+        dg::Map map;
+        if (map.load(gui.map_file.c_str())) painter.drawMap(image, &map);
+    }
+
+    // Read and draw GPS data
+    for (size_t i = 0; i < gps_files.size(); i++)
+    {
+        std::vector<std::vector<double>> gps_data = readROSGPSFix(gps_files[i], gui.origin_latlon);
+        if (gps_data.empty()) return -1;
+        if (!LocalizerRunner::drawGPSData(image, &painter, gps_data, colors[i], radius)) return -1;
+    }
+
+    // Show the image
+    cv::namedWindow("::drawGPSData()", gui.wnd_flag);
+    cv::imshow("::drawGPSData()", image);
+    cv::waitKey();
+    return 0;
+}
+
 int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader, const std::string& rec_traj_file = "", const std::string& rec_video_file = "")
 {
     if (localizer.empty()) return -1;

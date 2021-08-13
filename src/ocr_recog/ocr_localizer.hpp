@@ -37,6 +37,13 @@ namespace dg
             return (m_shared != nullptr);
         }
 
+		bool initialize_without_python(SharedInterface* shared)
+		{
+			cv::AutoLock lock(m_mutex);
+			m_shared = shared;
+			return (m_shared != nullptr);
+		}
+
 		void setParam(double f, double cx, double cy, double cam_vy, double cam_h, double poi_h = 3.8, double search_radius = 100)
 		{
 			m_focal_length = f;
