@@ -35,7 +35,8 @@ def get_input_file_list(testset_dir, ext="*.avi", out_postfix='vps.csv'):
     outputs = []
     for i, fn in enumerate(flist):
         prefix = os.path.basename(fn)[:14]  # "191115_151140_" from 191115_151140_images.avi
-        images.append(os.path.join(testset_dir, prefix+postfix_dict["images"]))
+        #images.append(os.path.join(testset_dir, prefix+postfix_dict["images"]))
+        images.append(fn)
         ascen_fix.append(os.path.join(testset_dir, prefix+postfix_dict["ascen_fix"]))
         outputs.append(os.path.join(testset_dir, prefix+out_postfix))
     assert len(images)==len(ascen_fix), "Number of files are mis-matched."
@@ -145,7 +146,7 @@ def do_vps(avi, ascen, output_filename,  begin_frame=1000, server_ip="129.254.81
         
         utm_err = get_utm_err(curr_lat, curr_lon, pred_lat, pred_lon)
 
-        string = '{0:04d},{1:10.2f},{2:11d},{3:},{4:2.8f},{5:3.7f},{6:3d},{7:1.3f},{8:1.3f},{9:2.8f},{10:3.7f},{11:3.1f}'.format(
+        string = '{0:04d},{1:10.3f},{2:11d},{3:},{4:2.8f},{5:3.7f},{6:3d},{7:1.3f},{8:1.3f},{9:2.8f},{10:3.7f},{11:3.1f}'.format(
             fnumber,timestamp,svid,svidx,pred_lat,pred_lon,distance,angle,confidence,curr_lat,curr_lon,utm_err)
         fout.write(string+'\n')
         print(string)

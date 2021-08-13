@@ -28,14 +28,15 @@ postfix_dict = {
         "novatel_fix":"novatel_fix.csv"}
 
 def get_input_file_list(testset_dir, ext="*.avi", out_postfix='vps.csv'):
-    flist = glob.glob(os.path.join(testset_dir, ext))
+    flist = glob.glob(os.path.join(testset_dir, ext))  # At first, get image(video) files for reference of name.
     flist.sort()
     images = []
     ascen_fix = []
     outputs = []
     for i, fn in enumerate(flist):
         prefix = os.path.basename(fn)[:14]  # "191115_151140_" from 191115_151140_images.avi
-        images.append(os.path.join(testset_dir, prefix+postfix_dict["images"]))
+        #images.append(os.path.join(testset_dir, prefix+postfix_dict["images"]))
+        images.append(fn)
         ascen_fix.append(os.path.join(testset_dir, prefix+postfix_dict["ascen_fix"]))
         outputs.append(os.path.join(testset_dir, prefix+out_postfix))
     assert len(images)==len(ascen_fix), "Number of files are mis-matched."
@@ -143,7 +144,7 @@ def do_lrpose_recog(avi, ascen, output_filename,  begin_frame=1000, server_ip="1
             v_label = "right"
         else:
             v_label = "uncertain"
-        string = '{0:04d},{1:10.2f},{2:d},{3:1.3f},{4}'.format(fnumber, timestamp, pred, confidence, v_label)
+        string = '{0:04d},{1:10.03f},{2:d},{3:1.3f},{4}'.format(fnumber, timestamp, pred, confidence, v_label)
         fout.write(string+'\n')
         print(string)
 
