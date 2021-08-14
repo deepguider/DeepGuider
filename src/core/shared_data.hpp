@@ -149,7 +149,7 @@ public:
      * @param curr_pose A given current pose which is out-of-path
      * @return Return True if the processing is successful, False otherwise
      */
-    virtual bool procOutOfPath(const Point2& curr_pose) = 0;
+    virtual bool procOutOfPath(const Point2& curr_pose) { return true; }
 };
 
 

@@ -308,7 +308,7 @@ public:
         return true;
     }
 
-    virtual Pose2 getPose(Timestamp* timestamp) const
+    virtual Pose2 getPose(Timestamp* timestamp = nullptr) const
     {
         cv::AutoLock lock(m_mutex);
         if (timestamp) *timestamp = m_timestamp;

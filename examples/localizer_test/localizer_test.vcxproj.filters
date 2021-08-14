@@ -13,7 +13,7 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Module Localizers">
+    <Filter Include="Recognizer Modules">
       <UniqueIdentifier>{d694d510-52b3-4288-97d7-73e45275696d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -41,9 +41,6 @@
     <ClInclude Include="..\..\src\core\path.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\core\shared_date.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\localizer\localizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -69,31 +66,31 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp">
-      <Filter>Module Localizers</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp">
-      <Filter>Module Localizers</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\vps\vps_localizer.hpp">
-      <Filter>Module Localizers</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\roadtheta\roadtheta_localizer.hpp">
-      <Filter>Module Localizers</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\vps\vps.hpp">
-      <Filter>Module Localizers</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\roadtheta\roadtheta.hpp">
-      <Filter>Module Localizers</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp">
-      <Filter>Module Localizers</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp">
-      <Filter>Module Localizers</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp">
-      <Filter>Module Localizers</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="test_core_type.hpp">
       <Filter>Header Files</Filter>
@@ -111,6 +108,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="test_utility.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\core\shared_data.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

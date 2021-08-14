@@ -515,7 +515,6 @@ int DeepGuider::run()
     //VVS_CHECK_TRUE(setDeepGuiderDestination(gps_dest));
 
     cv::Mat video_image;
-    Timestamp capture_time;
     int itr = 0;
     while (1)
     {
@@ -537,7 +536,7 @@ int DeepGuider::run()
             m_gps_history_asen.push_back(gps_datum);
             printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, data_time);
 
-            video_image = data_loader.getFrame(data_time, &capture_time);
+            video_image = data_loader.getFrame(data_time);
             update_gui = true;
         }
         else if (type == dg::DATA_IMU)
@@ -593,7 +592,7 @@ int DeepGuider::run()
 
             m_cam_mutex.lock();
             m_cam_image = video_image;
-            m_cam_capture_time = capture_time;
+            m_cam_capture_time = data_time;
             m_cam_gps = getPoseGPS();
             m_cam_fnumber++;
             m_cam_mutex.unlock();

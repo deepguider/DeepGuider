@@ -95,18 +95,17 @@ public:
         {
             if (!m_camera_data.open(video_file)) return false;
             m_video_fps = m_camera_data.get(cv::VideoCaptureProperties::CAP_PROP_FPS);
+            m_total_frames = (int)m_camera_data.get(cv::VideoCaptureProperties::CAP_PROP_FRAME_COUNT);
 
             if (!m_ahrs_data.empty())
             {
-                int total_frames = (int)m_camera_data.get(cv::VideoCaptureProperties::CAP_PROP_FRAME_COUNT);
                 m_first_data_time = m_ahrs_data.front()[0];
-                m_video_scale = m_video_fps * (m_ahrs_data.back()[0] - m_first_data_time) / total_frames;
+                m_video_scale = m_video_fps * (m_ahrs_data.back()[0] - m_first_data_time) / m_total_frames;
             }
             else if (!m_gps_data.empty())
             {
-                int total_frames = (int)m_camera_data.get(cv::VideoCaptureProperties::CAP_PROP_FRAME_COUNT);
                 m_first_data_time = m_gps_data.front()[0];
-                m_video_scale = m_video_fps * (m_gps_data.back()[0] - m_first_data_time) / total_frames;
+                m_video_scale = m_video_fps * (m_gps_data.back()[0] - m_first_data_time) / m_total_frames;
             }
             else
             {
@@ -190,13 +189,111 @@ public:
         return false;
     }
 
-    cv::Mat getFrame(const Timestamp time, Timestamp* capture_time = nullptr)
+    /**
+     * Get next datum as long as its timestamp doesn't exceed a given reference time.
+     * @param[in] ref_time A givan reference time
+     * @param[out] type The returned data type
+     * @param[out] data The returned data
+     * @param[out] timestamp The timestamp of the returned data
+     */
+    bool getNextUntil(dg::Timestamp ref_time, int& type, std::vector<double>& data, dg::Timestamp& timestamp)
+    {
+        double min_time = ref_time;
+        cx::CSVReader::Double2D* min_data = nullptr;
+        size_t* min_index = nullptr;
+        int min_type = -1;
+
+        if (m_gps_index < m_gps_data.size() && m_gps_data[m_gps_index][0] <= min_time)
+        {
+            min_time = m_gps_data[m_gps_index][0];
+            min_data = &m_gps_data;
+            min_index = &m_gps_index;
+            min_type = DATA_GPS;
+        }
+        if (m_ahrs_index < m_ahrs_data.size() && m_ahrs_data[m_ahrs_index][0] <= min_time)
+        {
+            min_time = m_ahrs_data[m_ahrs_index][0];
+            min_data = &m_ahrs_data;
+            min_index = &m_ahrs_index;
+            min_type = DATA_IMU;
+        }
+        if (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] <= min_time)
+        {
+            min_time = m_poi_data[m_poi_index][0];
+            min_data = &m_poi_data;
+            min_index = &m_poi_index;
+            min_type = DATA_POI;
+        }
+        if (m_vps_index < m_vps_data.size() && m_vps_data[m_vps_index][0] <= min_time)
+        {
+            min_time = m_vps_data[m_vps_index][0];
+            min_data = &m_vps_data;
+            min_index = &m_vps_index;
+            min_type = DATA_VPS;
+        }
+        if (m_intersection_index < m_intersection_data.size() && m_intersection_data[m_intersection_index][0] <= min_time)
+        {
+            min_time = m_intersection_data[m_intersection_index][0];
+            min_data = &m_intersection_data;
+            min_index = &m_intersection_index;
+            min_type = DATA_IntersectCls;
+        }
+        if (m_lr_index < m_lr_data.size() && m_lr_data[m_lr_index][0] <= min_time)
+        {
+            min_time = m_lr_data[m_lr_index][0];
+            min_data = &m_lr_data;
+            min_index = &m_lr_index;
+            min_type = DATA_LR;
+        }
+        if (m_roadtheta_index < m_roadtheta_data.size() && m_roadtheta_data[m_roadtheta_index][0] <= min_time)
+        {
+            min_time = m_roadtheta_data[m_roadtheta_index][0];
+            min_data = &m_roadtheta_data;
+            min_index = &m_roadtheta_index;
+            min_type = DATA_RoadTheta;
+        }
+
+        if (min_data)
+        {
+            data = (*min_data)[*min_index];
+            type = min_type;
+            timestamp = min_time;
+            (*min_index)++;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Get image frame that is closest to a given timestamp
+     * @param time The input timestamp
+     */
+    cv::Mat getFrame(const Timestamp time)
     {
         cv::Mat frame;
-        int frame_i = (int)((time - m_first_data_time) * m_video_fps / m_video_scale);
-        m_camera_data.set(cv::VideoCaptureProperties::CAP_PROP_POS_FRAMES, frame_i);
-        m_camera_data >> frame;
-        if (capture_time) *capture_time = m_first_data_time + frame_i * m_video_scale / m_video_fps;
+        if (m_camera_data.isOpened())
+        {
+            int frame_i = (int)((time - m_first_data_time) * m_video_fps / m_video_scale + 0.5);
+            m_camera_data.set(cv::VideoCaptureProperties::CAP_PROP_POS_FRAMES, frame_i);
+            m_camera_data >> frame;
+        }
+        return frame;
+    }
+
+    /**
+     * Get a next image frame from the camera data
+     * @param[out] time The timestamp of the returned image frame
+     */
+    cv::Mat getNextFrame(Timestamp& time)
+    {
+        cv::Mat frame;
+        if (m_camera_data.isOpened() && m_frame_index < m_total_frames)
+        {
+            m_camera_data.set(cv::VideoCaptureProperties::CAP_PROP_POS_FRAMES, m_frame_index);
+            m_camera_data >> frame;
+            time = m_frame_index * m_video_scale / m_video_fps + m_first_data_time;
+            m_frame_index++;
+        }
         return frame;
     }
 
@@ -215,6 +312,7 @@ public:
         m_lr_index = 0;
         m_poi_index = 0;
         m_roadtheta_index = 0;
+        m_frame_index = 0;
 
         if (skip_time <= 0) return;
 
@@ -247,6 +345,10 @@ public:
         {
             while (m_roadtheta_index < m_roadtheta_data.size() && m_roadtheta_data[m_roadtheta_index][0] < start_time) m_roadtheta_index++;
         }
+        if (m_camera_data.isOpened())
+        {
+            m_frame_index = (int)((start_time - m_first_data_time) * m_video_fps / m_video_scale + 0.5);
+        }
     }
 
     double getStartTime() const { return m_first_data_time; }
@@ -278,6 +380,8 @@ protected:
         m_video_scale = 1;
         m_video_fps = -1;
         m_first_data_time = -1;
+        m_total_frames = 0;
+        m_frame_index = 0;
     }
 
     cx::CSVReader::Double2D readROSGPSFix(const std::string& gps_file)
@@ -415,6 +519,8 @@ protected:
     double m_first_data_time = -1;
     double m_video_scale = 1;
     double m_video_fps = -1;
+    int m_total_frames = 0;
+    int m_frame_index = 0;
 
 }; // End of 'DataLoader'
 

@@ -101,7 +101,7 @@
     <ClInclude Include="..\..\src\core\basic_type.hpp" />
     <ClInclude Include="..\..\src\core\map.hpp" />
     <ClInclude Include="..\..\src\core\path.hpp" />
-    <ClInclude Include="..\..\src\core\shared_date.hpp" />
+    <ClInclude Include="..\..\src\core\shared_data.hpp" />
     <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp" />
     <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\data_loader.hpp" />

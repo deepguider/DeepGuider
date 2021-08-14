@@ -15,7 +15,7 @@ namespace dg
     class VPSLocalizer : public VPS
     {
     public:
-        bool initialize(SharedInterface* shared, std::string server_ipaddr, std::string py_module_path = "./../src/vps")
+        bool initialize(SharedInterface* shared, std::string server_ipaddr = "127.0.0.1", std::string py_module_path = "./../src/vps")
         {
             cv::AutoLock lock(m_mutex);
             m_shared = shared;
@@ -24,10 +24,11 @@ namespace dg
             return (m_shared != nullptr);
         }
 
-        bool initialize_without_python(SharedInterface* shared)
+        bool initialize_without_python(SharedInterface* shared, std::string server_ipaddr = "127.0.0.1")
         {
             cv::AutoLock lock(m_mutex);
             m_shared = shared;
+            m_server_ipaddr = server_ipaddr;
             return (m_shared != nullptr);
         }
 
