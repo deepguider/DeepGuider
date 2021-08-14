@@ -216,8 +216,8 @@ class DG_DatasetFromStruct(data.Dataset):
             #    img1[:,:,2]=img1[:,:,0]
             #    img = Image.fromarray(img1)
         except:
-            print("Broken image : ", self.images[index])
-            return None, index
+            #print("Broken image : ", self.images[index])
+            return torch.zeros(1), index  # for broken image, set the size of torch to 1 in order to check in for loop.
         if self.input_transform:
             img = self.input_transform(img)
         return img, index
@@ -260,15 +260,18 @@ class WholeDatasetFromStruct_forDG(data.Dataset):
         self.distances = None
 
     def __getitem__(self, index):
-        img = Image.open(self.images[index])
-#        print(index,np.array(img).shape) #(480,640,3)
-#        print(np.array(img.resize((640,480))).shape) #(480,640,3)
-        img = img.resize((640,480)) #ccsmm
-        if np.array(img).shape[-1] is not 3: #bug fix for bad image file, ccsmm, to make 3 channel
-            img1=np.array(img)
-            img1[:,:,1]=img1[:,:,0]
-            img1[:,:,2]=img1[:,:,0]
-            img = Image.fromarray(img1)
+        try:
+            img = Image.open(self.images[index])
+            img = img.resize((640,480)) #ccsmm, as a  2-tuple:(width,height)
+            # print(index,np.array(img).shape) #(480,640,3)
+            #if np.array(img).shape[-1] is not 3: #bug fix for bad image file, ccsmm, to make 3 channel
+            #    img1=np.array(img)
+            #    img1[:,:,1]=img1[:,:,0]
+            #    img1[:,:,2]=img1[:,:,0]
+            #    img = Image.fromarray(img1)
+        except:
+            #print("Broken image : ", self.images[index])
+            return torch.zeros(1), index  # for broken image, set the size of torch to 1 in order to check in for loop.
 
         if self.input_transform:
             img = self.input_transform(img)

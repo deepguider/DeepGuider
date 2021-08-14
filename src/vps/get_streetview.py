@@ -13,12 +13,19 @@ import requests
 from ipdb import set_trace as bp
 from dmsg import dmsg
 
+PORT_ROUTING = 21500  
+PORT_STREETVIEW = 21501  # Querying of streetview information. 
+PORT_POI = 21502
+PORT_IMAGE_DATA_ETRI = 10000
+PORT_IMAGE_DATA_COEX = 10001
+PORT_IMAGE_DATA_BUCHEON = 10002
+
 class ImgServer:
     def __init__(self,ipaddr="localhost"): # 127.0.0.1
         self.IP=ipaddr
-        self.ROUTING_SERVER_URL = 'http://{}:21500/'.format(self.IP)
-        self.STREETVIEW_SERVER_URL = 'http://{}:21501/'.format(self.IP)
-        self.POI_SERVER_URL = 'http://{}:21502/'.format(self.IP)
+        self.ROUTING_SERVER_URL = 'http://{}:{}/'.format(self.IP, PORT_ROUTING)
+        self.STREETVIEW_SERVER_URL = 'http://{}:{}/'.format(self.IP, PORT_STREETVIEW)
+        self.POI_SERVER_URL = 'http://{}:{}/'.format(self.IP, PORT_POI)
         self.SERVER_URL = self.STREETVIEW_SERVER_URL #default
         self.req_type='wgs'
         self.gps_lat=37.513366
@@ -126,9 +133,16 @@ class ImgServer:
             lons.append(imglon)
         return ids, lats, lons
 
-    def SaveImages(self, outdir='./', cubic='f', verbose=0, PythonOnly=False):
+    def SaveImages(self, outdir='./', cubic='f', verbose=0, PythonOnly=False, region="ETRI"):
         res = self.json_outputs
-        ports = 10000
+        if region.lower() == "etri":
+            ports = PORT_IMAGE_DATA_ETRI
+        elif region.lower() == "coex":
+            ports = PORT_IMAGE_DATA_COEX
+        elif region.lower() == "bucheon":
+            ports = PORT_IMAGE_DATA_BUCHEON
+        else:
+            ports = PORT_IMAGE_DATA_ETRI
         numImgs = np.size(res['features'])
         for i in range(numImgs):
             imgid = res['features'][i]['properties']['id']

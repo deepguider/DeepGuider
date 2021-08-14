@@ -42,7 +42,7 @@ from netvlad import etri_dbloader as dataset
 from ipdb import set_trace as bp
 
 class vps:
-    def __init__(self, which_gpu=0):
+    def __init__(self, which_gpu=0, region="ETRI"):
         self.ipaddr = 'localhost'
         self.gps_lat = 0.0 #Latitude
         self.gps_lon = 0.0 #Longitude
@@ -59,6 +59,7 @@ class vps:
         self.callcounter_gSV = 0 # N of call of getStreetView(), for debugging purpose
         device = 'cuda:{}'.format(which_gpu) if torch.cuda.is_available() else 'cpu'  #cuda:0
         self.device = torch.device(device)
+        self.set_region(region)
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -591,6 +592,11 @@ class vps:
         if not os.path.exists(fdir):
             os.makedirs(fdir)
 
+    def set_region(self, region="ETRI"):  # region information for image server used in isv.SaveImages
+        self.region = region
+
+    def get_region(self):  # region information for image server used in isv.SaveImages
+        return self.region
 
     def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.9, timestamp=0.0, ipaddr=None):
         ## Init.
@@ -676,7 +682,7 @@ class vps:
             #for f in files:
             #    os.remove(f) # may cause seg.fault in C+Python environment
             os.system("rm -rf " + os.path.join(outdir,'*.jpg')) # You have to pay attention to code 'rm -rf' command
-            ret = isv.SaveImages(outdir=outdir, verbose=0, PythonOnly=self.PythonOnly)
+            ret = isv.SaveImages(outdir=outdir, verbose=0, PythonOnly=self.PythonOnly, region=self.region)
             if ret == -1:
                 #raise Exception('Image server is not available.')
                 print('Image server is not available.')
