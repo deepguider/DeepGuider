@@ -115,8 +115,15 @@ public:
                 }
                 else if (module_sel == DG_POI && type == dg::DATA_POI)
                 {
-                    //bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
-                    //if (!success) fprintf(stderr, "applyPOI() was failed.\n");
+                    //if (m_ocr_localizer->apply(...))
+                    //{
+                        //bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
+                        //if (!success) fprintf(stderr, "applyPOI() was failed.\n");
+                    //}
+                    video_image = data_loader.getFrame(data_time);
+                    result_image = video_image.clone();
+                    m_ocr_localizer->draw(result_image);
+                    update_gui = true;
                 }
                 else if (module_sel == DG_VPS && type == dg::DATA_VPS)
                 {
