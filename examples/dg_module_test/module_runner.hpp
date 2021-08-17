@@ -69,7 +69,7 @@ public:
         m_viewport.initialize(bg_image, m_view_size, m_view_offset);
 
         // Run localization with GPS and other sensors
-        if (show_gui) cv::namedWindow("ModuleRunner::run()", cv::WindowFlags::WINDOW_AUTOSIZE);
+        if (show_gui) cv::namedWindow("ModuleRunner::run()", cv::WindowFlags::WINDOW_NORMAL);
         cv::setMouseCallback("ModuleRunner::run()", onMouseEvent, this);
 
         int type;

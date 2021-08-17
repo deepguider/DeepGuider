@@ -71,6 +71,9 @@ namespace dg
             Pose2 pose = m_shared->getPose();
             xy_valid = false;
 
+            m_result.cls = (int)(cls + 0.5);
+            m_result.confidence = cls_conf;
+
             // apply state filtering
             int observed_cls = (int)(cls + 0.5);
             int state_prev = m_state;
