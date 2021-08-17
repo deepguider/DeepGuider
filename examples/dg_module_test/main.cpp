@@ -125,7 +125,7 @@ int runModule()
     bool use_novatel = false;
     bool enable_imu = true;
 
-    bool use_saved_testset = false;
+    bool use_saved_testset = true;
 
     int module_sel = DG_Intersection;
     //int module_sel = DG_VPS;

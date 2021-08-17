@@ -15,6 +15,7 @@
 #include "dg_utils.hpp"
 #include "lrpose_recog/lrpose_recognizer.hpp"
 #include "localizer/data_loader.hpp"
+#include "utils/viewport.hpp"
 #include <chrono>
 
 using namespace dg;
@@ -41,16 +42,16 @@ protected:
     bool m_use_high_precision_gps = false;  // use high-precision gps (novatel)
 
     bool m_data_logging = false;
-    bool m_recording = false;
-    int m_recording_fps = 15;
+    bool m_video_recording = false;
+    int m_video_recording_fps = 15;
     std::string m_recording_header_name = "dg_simple_";
 
     std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
     std::string m_map_data_path = "data/ETRI/TopoMap_ETRI_210803.csv";
     dg::LatLon m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
+    dg::Point2 m_map_ref_point_pixel = dg::Point2(347, 297);
     double m_map_pixel_per_meter = 1.039;
     double m_map_image_rotation = cx::cvtDeg2Rad(1.0);
-    dg::Point2 m_map_canvas_offset = dg::Point2(347, 297);
     std::string m_gps_input_path = "data/191115_ETRI_asen_fix.csv";
     std::string m_video_input_path = "video/191115_ETRI.avi";
 
@@ -77,7 +78,7 @@ protected:
     bool initializeDefaultMap();
     bool setDeepGuiderDestination(dg::LatLon gps_dest);
     bool updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest);
-    void drawGuiDisplay(cv::Mat& gui_image);
+    void drawGuiDisplay(cv::Mat& gui_image, cv::Point view_offset, double view_zoom);
     void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
     void drawLogo(cv::Mat target_image, std::vector<LogoResult> pois, cv::Size original_image_size);
     void drawOcr(cv::Mat target_image, std::vector<OCRResult> pois, cv::Size original_image_size);
@@ -104,7 +105,6 @@ protected:
     dg::ActiveNavigation m_active_nav;
 
     // global variables
-    dg::LatLon m_gps_start;
     dg::LatLon m_gps_dest;
     bool m_dest_defined = false;
     bool m_pose_initialized = false;
@@ -124,7 +124,12 @@ protected:
     std::list<dg::LatLon> m_gps_history_asen;
     std::list<dg::LatLon> m_gps_history_novatel;
 
-    // tts
+    // GUI display
+    cv::Point m_view_offset = cv::Point(0, 0);
+    cv::Size m_view_size = cv::Size(1920, 1080);
+    dg::Viewport m_viewport;
+
+    // TTS
     cv::Mutex m_tts_mutex;
     std::vector<std::string> m_tts_msg;
     std::thread* tts_thread = nullptr;
@@ -254,20 +259,23 @@ int DeepGuider::readParam(const cv::FileNode& fn)
 
     // Read Other Options
     CX_LOAD_PARAM_COUNT(fn, "enable_data_logging", m_data_logging, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "video_recording", m_recording, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "video_recording_fps", m_recording_fps, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "video_recording", m_video_recording, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "video_recording_fps", m_video_recording_fps, n_read);
     CX_LOAD_PARAM_COUNT(fn, "recording_header_name", m_recording_header_name, n_read);
 
     // Read Site-specific Setting
     CX_LOAD_PARAM_COUNT(fn, "map_image_path", m_map_image_path, n_read);
     CX_LOAD_PARAM_COUNT(fn, "map_data_path", m_map_data_path, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_lat", m_map_ref_point.lat, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_lon", m_map_ref_point.lon, n_read);
+    cv::Vec2d ref_point = cv::Vec2d(m_map_ref_point.lat, m_map_ref_point.lon);
+    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_latlon", ref_point, n_read);
+    m_map_ref_point = dg::LatLon(ref_point[0], ref_point[1]);
+    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_pixel", m_map_ref_point_pixel, n_read);
     CX_LOAD_PARAM_COUNT(fn, "map_pixel_per_meter", m_map_pixel_per_meter, n_read);
-    double map_image_rotation = m_map_image_rotation;
+    double map_image_rotation = cx::cvtRad2Deg(m_map_image_rotation);
     CX_LOAD_PARAM_COUNT(fn, "map_image_rotation", map_image_rotation, n_read);
-    if(map_image_rotation != m_map_image_rotation) m_map_image_rotation = cx::cvtDeg2Rad(map_image_rotation);
-    CX_LOAD_PARAM_COUNT(fn, "map_canvas_offset", m_map_canvas_offset, n_read);
+    m_map_image_rotation = cx::cvtDeg2Rad(map_image_rotation);
+    CX_LOAD_PARAM_COUNT(fn, "map_view_offset", m_view_offset, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "map_view_size", m_view_size, n_read);
     CX_LOAD_PARAM_COUNT(fn, "gps_input_path", m_gps_input_path, n_read);
     CX_LOAD_PARAM_COUNT(fn, "video_input_path", m_video_input_path, n_read);
 
@@ -369,11 +377,12 @@ bool DeepGuider::initialize(std::string config_file)
     m_map_image_original = m_map_image.clone();
 
     // prepare GUI map
-    m_painter.configCanvas(m_map_canvas_offset, cv::Point2d(m_map_pixel_per_meter, m_map_pixel_per_meter), m_map_image.size(), 0, 0);
+    m_viewport.initialize(m_map_image, m_view_size, m_view_offset);
+    m_painter.configCanvas(m_map_ref_point_pixel, cv::Point2d(m_map_pixel_per_meter, m_map_pixel_per_meter), m_map_image.size(), 0, 0);
     m_painter.setImageRotation(m_map_image_rotation);
-    m_painter.drawGrid(m_map_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, cv::Point(-215, -6));
+    //m_painter.drawGrid(m_map_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, cv::Point(-215, -6));
     m_painter.drawOrigin(m_map_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
-    m_painter.setParamValue("node_radius", 4);
+    m_painter.setParamValue("node_radius", 3);
     m_painter.setParamValue("node_font_scale", 0);
     m_painter.setParamValue("node_color", { 255, 50, 255 });
     m_painter.setParamValue("edge_color", { 200, 100, 100 });
@@ -391,12 +400,9 @@ bool DeepGuider::initialize(std::string config_file)
     cv::threshold(m_icon_turn_right, m_mask_turn_right, 250, 1, cv::THRESH_BINARY_INV);
     cv::threshold(m_icon_turn_back, m_mask_turn_back, 250, 1, cv::THRESH_BINARY_INV);
 
-    // show GUI window
+    // create GUI window
     cv::namedWindow(m_winname, cv::WINDOW_NORMAL);
     cv::setMouseCallback(m_winname, onMouseEvent, this);
-    cv::resizeWindow(m_winname, m_map_image.cols, m_map_image.rows);
-    cv::imshow(m_winname, m_map_image);
-    cv::waitKey(1);
 
     // init video recording
     time_t start_t;
@@ -404,10 +410,10 @@ bool DeepGuider::initialize(std::string config_file)
     tm _tm = *localtime(&start_t);
     char sztime[255];
     strftime(sztime, 255, "%y%m%d_%H%M%S", &_tm);
-    if (m_recording)
+    if (m_video_recording)
     {
         std::string filename = m_recording_header_name + sztime + "_gui.avi";
-        m_video_gui.open(filename, m_recording_fps);
+        m_video_gui.open(filename, m_video_recording_fps);
     }
 
     // init data logging
@@ -417,7 +423,7 @@ bool DeepGuider::initialize(std::string config_file)
         m_log.open(filename, ios::out);
 
         std::string filename_cam = m_recording_header_name + sztime + "_cam.avi";
-        m_video_cam.open(filename_cam, m_recording_fps);
+        m_video_cam.open(filename_cam, m_video_recording_fps);
     }
 
     // reset interval variables
@@ -515,6 +521,7 @@ int DeepGuider::run()
     //VVS_CHECK_TRUE(setDeepGuiderDestination(gps_dest));
 
     cv::Mat video_image;
+    int wait_msec = 10;
     int itr = 0;
     while (1)
     {
@@ -608,11 +615,13 @@ int DeepGuider::run()
             procGuidance(data_time);
 
             // draw GUI display
-            cv::Mat gui_image = m_map_image.clone();
-            drawGuiDisplay(gui_image);
+            cv::Point2d view_offset;
+            double view_zoom;
+            cv::Mat gui_image = m_viewport.getViewportImage(view_offset, view_zoom);
+            drawGuiDisplay(gui_image, view_offset, view_zoom);
 
             // recording
-            if (m_recording) m_video_gui << gui_image;
+            if (m_video_recording) m_video_gui << gui_image;
             if (m_data_logging) m_video_cam << m_cam_image;
 
             dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
@@ -620,7 +629,7 @@ int DeepGuider::run()
 
             // gui display
             cv::imshow(m_winname, gui_image);
-            int key = cv::waitKey(1);
+            int key = cv::waitKey(wait_msec);
             if (key == cx::KEY_SPACE) key = cv::waitKey(0);
             if (key == cx::KEY_ESC) break;
             if (key == 83) itr += 30;   // Right Key
@@ -637,7 +646,7 @@ int DeepGuider::run()
     printf("End deepguider system...\n");
     terminateThreadFunctions();
     printf("\tthread terminated\n");
-    if(m_recording) m_video_gui.release();
+    if(m_video_recording) m_video_gui.release();
     if(m_data_logging) m_video_cam.release();
     printf("\tclose recording\n");
     cv::destroyWindow(m_winname);
@@ -705,6 +714,8 @@ void DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double or
 
 void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
 {
+    m_viewport.procMouseEvent(evt, x, y, flags);
+
     if (evt == cv::EVENT_MOUSEMOVE)
     {
     }
@@ -716,7 +727,8 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
     }
     else if (evt == cv::EVENT_LBUTTONDBLCLK)
     {
-        dg::LatLon ll = toLatLon(m_painter.cvtPixel2Value(cv::Point(x, y)));
+        cv::Point2d px = m_viewport.cvtView2World(cv::Point(x, y));
+        dg::LatLon ll = toLatLon(m_painter.cvtPixel2Value(px));
         setDeepGuiderDestination(ll);
     }
     else if (evt == cv::EVENT_RBUTTONDOWN)
@@ -814,7 +826,7 @@ bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
 }
 
 
-void DeepGuider::drawGuiDisplay(cv::Mat& image)
+void DeepGuider::drawGuiDisplay(cv::Mat& image, cv::Point view_offset, double view_zoom)
 {
     double video_resize_scale = 0.4;
     int win_delta = 10;
@@ -923,7 +935,9 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
             dg::StreetView* sv = m_map->getView(sv_id);
             if(sv)
             {
-                m_painter.drawPoint(image, *sv, 6, cv::Vec3b(255, 255, 0));
+                dg::Point2 pose_pixel = (m_painter.cvtValue2Pixel(*sv) - Point2(view_offset)) * view_zoom;
+                dg::Point2 pose_local = m_painter.cvtPixel2Value(pose_pixel);
+                m_painter.drawPoint(image, pose_local, (int)(6 * view_zoom), cv::Vec3b(255, 255, 0));
             }
         }
     }
@@ -999,10 +1013,11 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
     m_localizer_mutex.unlock();
 
     // draw robot on the map
-    m_painter.drawPoint(image, pose_metric, 10, cx::COLOR_YELLOW);
-    m_painter.drawPoint(image, pose_metric, 8, cx::COLOR_BLUE);
-    dg::Point2 pose_pixel = m_painter.cvtValue2Pixel(pose_metric);
-    cv::line(image, pose_pixel, pose_pixel + 10 * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)), cx::COLOR_YELLOW, 2);
+    dg::Point2 pose_pixel = (m_painter.cvtValue2Pixel(pose_metric) - Point2(view_offset)) * view_zoom;
+    dg::Point2 pose_local = m_painter.cvtPixel2Value(pose_pixel);
+    m_painter.drawPoint(image, pose_local, (int)(10*view_zoom), cx::COLOR_YELLOW);
+    m_painter.drawPoint(image, pose_local, (int)(8*view_zoom), cx::COLOR_BLUE);
+    cv::line(image, pose_pixel, pose_pixel + (int)(10*view_zoom) * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)), cx::COLOR_YELLOW, (int)(2*view_zoom));
 
     // draw status message (localization)
     cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
@@ -1040,7 +1055,6 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image)
         cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 0, 0), 4);
     }
 }
-
 
 void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect)
 {

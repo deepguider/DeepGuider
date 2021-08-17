@@ -6,6 +6,7 @@
 #include "intersection_cls/intersection_localizer.hpp"
 #include "vps/vps_localizer.hpp"
 #include "ocr_recog/ocr_localizer.hpp"
+#include "utils/viewport.hpp"
 
 void onMouseEventLocalizer(int event, int x, int y, int flags, void* param);
 
@@ -86,6 +87,7 @@ public:
         cv::Mat bg_image = gui_background.clone();
         bool show_zoom = show_gui && zoom_painter != nullptr && !zoom_background.empty();
         cv::Mat zoom_bg_image = zoom_background.clone();
+        m_viewport.initialize(bg_image, m_view_size, m_view_offset);
 
         // Run localization with GPS and other sensors
         if (show_gui) cv::namedWindow("LocalizerRunner::runLocalizer()", gui_wnd_flag);
@@ -443,6 +445,10 @@ public:
 
     double       video_resize = 1;
     cv::Point    video_offset = cv::Point(0, 0);
+
+    cv::Point    m_view_offset = cv::Point(0, 0);
+    cv::Size     m_view_size = cv::Size(1920, 1080);
+    dg::Viewport m_viewport;
 
     cx::Painter* zoom_painter = nullptr;
     cv::Mat      zoom_background;

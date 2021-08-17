@@ -113,5 +113,8 @@
     <ClInclude Include="..\..\src\core\shared_data.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\utils\viewport.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

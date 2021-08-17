@@ -136,8 +136,11 @@ public:
         {
             const Node* to = map->getConnectedNode(node, *eid);
             const Edge* edge = map->getEdge(*eid);
-            if(edge->type == Edge::EDGE_CROSSWALK)
-                drawEdge(image, *node, *to, radius, m_crosswalk_color, thickness, arrow_length);
+            if (edge->type == Edge::EDGE_CROSSWALK)
+            {
+                drawEdge(image, *node, *to, radius, m_crosswalk_color / 2, thickness * 3, arrow_length);
+                drawEdge(image, *node, *to, radius, cv::Vec3b(255, 255, 255), thickness, arrow_length);
+            }
             else
                 drawEdge(image, *node, *to, radius, color, thickness, arrow_length);
         }

@@ -116,6 +116,7 @@
     <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp" />
     <ClInclude Include="..\..\src\roadtheta\roadtheta.hpp" />
     <ClInclude Include="..\..\src\roadtheta\roadtheta_localizer.hpp" />
+    <ClInclude Include="..\..\src\utils\viewport.hpp" />
     <ClInclude Include="..\..\src\vps\vps.hpp" />
     <ClInclude Include="..\..\src\vps\vps_localizer.hpp" />
     <ClInclude Include="localizer_runner.hpp" />

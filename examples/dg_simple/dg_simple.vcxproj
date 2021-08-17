@@ -123,6 +123,7 @@
     <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
     <ClInclude Include="..\..\src\utils\tts.hpp" />
     <ClInclude Include="..\..\src\utils\utm_converter.hpp" />
+    <ClInclude Include="..\..\src\utils\viewport.hpp" />
     <ClInclude Include="..\..\src\utils\vvs.h" />
     <ClInclude Include="..\..\src\vps\vps_localizer.hpp" />
   </ItemGroup>
