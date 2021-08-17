@@ -26,7 +26,6 @@ public:
     int run(int module_sel, bool use_saved_testset, cv::Ptr<dg::DGLocalizer> localizer, dg::DataLoader& data_loader)
     {
         // initialize localizer
-        CV_DbgAssert(!localizer.empty() && !data_loader.empty());
         m_localizer = localizer;
         m_localizer->setShared(this);
 
@@ -38,19 +37,22 @@ public:
         //if (module_sel == DG_VPS_LR) m_lr_localizer = cv::makePtr<dg::LRLocalizer>();
         if (use_saved_testset)
         {
-            if (m_vps_localizer) m_vps_localizer->initialize_without_python(this);
-            if (m_ocr_localizer) m_ocr_localizer->initialize_without_python(this);
-            if (m_intersection_localizer) m_intersection_localizer->initialize_without_python(this);
-            if (m_roadtheta_localizer) m_roadtheta_localizer->initialize(this);
-            //if (m_lr_localizer) m_lr_localizer->initialize_without_python(this);
+            if (m_vps_localizer) VVS_CHECK_TRUE(m_vps_localizer->initialize_without_python(this));
+            if (m_ocr_localizer) VVS_CHECK_TRUE(m_ocr_localizer->initialize_without_python(this));
+            if (m_intersection_localizer) VVS_CHECK_TRUE(m_intersection_localizer->initialize_without_python(this));
+            if (m_roadtheta_localizer) VVS_CHECK_TRUE(m_roadtheta_localizer->initialize(this));
+            //if (m_lr_localizer) VVS_CHECK_TRUE(m_lr_localizer->initialize_without_python(this));
         }
         else
         {
-            if (m_vps_localizer) m_vps_localizer->initialize(this);
-            if (m_ocr_localizer) m_ocr_localizer->initialize(this);
-            if (m_intersection_localizer) m_intersection_localizer->initialize(this);
-            if (m_roadtheta_localizer) m_roadtheta_localizer->initialize(this);
-            //if (m_lr_localizer) m_lr_localizer->initialize(this);
+            // initialize python environment
+            dg::init_python_environment("python3", "", false);
+
+            if (m_vps_localizer) VVS_CHECK_TRUE(m_vps_localizer->initialize(this));
+            if (m_ocr_localizer) VVS_CHECK_TRUE(m_ocr_localizer->initialize(this));
+            if (m_intersection_localizer) VVS_CHECK_TRUE(m_intersection_localizer->initialize(this));
+            if (m_roadtheta_localizer) VVS_CHECK_TRUE(m_roadtheta_localizer->initialize(this));
+            //if (m_lr_localizer) VVS_CHECK_TRUE(m_lr_localizer->initialize(this));
         }
 
         // Prepare the video for recording
@@ -86,7 +88,6 @@ public:
                     auto euler = cx::cvtQuat2EulerAng(data[1], data[2], data[3], data[4]);
                     bool success = localizer->applyIMUCompass(euler.z, data_time, 1);
                     if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
-                    update_gui = true;
                 }
                 else if (type == dg::DATA_GPS)
                 {
@@ -141,7 +142,7 @@ public:
                     //if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
                 }
             }
-            else  // apply recognizer online
+            else  // run modules online
             {
                 double capture_time;
                 video_image = data_loader.getNextFrame(capture_time);
@@ -155,7 +156,6 @@ public:
                         auto euler = cx::cvtQuat2EulerAng(data[1], data[2], data[3], data[4]);
                         bool success = localizer->applyIMUCompass(euler.z, data_time, 1);
                         if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
-                        update_gui = true;
                     }
                     else if (type == dg::DATA_GPS)
                     {
@@ -284,13 +284,20 @@ public:
                     out_video << out_image;
                 }
 
-                cv::imshow("LocalizerRunner::runLocalizer()", out_image);
+                cv::imshow("ModuleRunner::run()", out_image);
                 int key = cv::waitKey(gui_wnd_wait_msec);
                 if (key == cx::KEY_SPACE) key = cv::waitKey(0);
                 if (key == cx::KEY_ESC) break;
             }
         }
         if (gui_wnd_wait_exit) cv::waitKey(0);
+
+        if (!use_saved_testset)
+        {
+            // Close the Python Interpreter
+            dg::close_python_environment();
+        }
+
         return 0;
     }
 
@@ -354,7 +361,7 @@ public:
     bool         gui_wnd_wait_exit = false;
 
     double       video_resize = 1;
-    cv::Point    video_offset = cv::Vec2d(1, -1);
+    cv::Point    video_offset = cv::Point(0, 0);
     double       result_resize = 1;
 
     std::string  rec_video_name;

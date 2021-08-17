@@ -84,11 +84,12 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     map.setReference(guiprop.origin_latlon);
     if (!guiprop.map_file.empty())
     {
-        if (!map.load(guiprop.map_file.c_str())) return -1;
+        VVS_CHECK_TRUE(map.load(guiprop.map_file.c_str()));
     }
 
     // Read the given background image
     cv::Mat bg_image = cv::imread(guiprop.image_file, cv::ImreadModes::IMREAD_COLOR);
+    VVS_CHECK_TRUE(!bg_image.empty());
 
     // Prepare a painter for visualization
     dg::MapPainter painter;
@@ -126,11 +127,11 @@ int runModule()
 
     bool use_saved_testset = false;
 
-    //int module_sel = DG_Intersection;
+    int module_sel = DG_Intersection;
     //int module_sel = DG_VPS;
     //int module_sel = DG_VPS_LR;
     //int module_sel = DG_POI;
-    int module_sel = DG_RoadTheta;
+    //int module_sel = DG_RoadTheta;
 
     int data_sel = 0;
     double start_time = 0;     // time skip (seconds)

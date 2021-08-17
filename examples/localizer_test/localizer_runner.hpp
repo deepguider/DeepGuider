@@ -442,8 +442,7 @@ public:
     bool         gui_wnd_wait_exit = false;
 
     double       video_resize = 1;
-    cv::Point    video_offset = cv::Vec2d(1, -1);;
-    //cv::Vec2d    video_time;
+    cv::Point    video_offset = cv::Point(0, 0);
 
     cx::Painter* zoom_painter = nullptr;
     cv::Mat      zoom_background;

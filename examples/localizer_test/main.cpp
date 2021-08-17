@@ -367,7 +367,6 @@ int runLocalizer()
 
     int data_sel = 0;
     double start_time = 0;     // skip time (seconds)
-    int gps_smoothing_n = 0;
     //rec_video_file = "etri191115_path_projection_210622.mkv";
     std::vector<std::string> data_head[] = {
         {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
@@ -402,6 +401,7 @@ int runLocalizer()
     // Draw GPS data
     if (draw_gps)
     {
+        int gps_smoothing_n = 0;
         const cv::Vec3b COLOR_SKY(255, 127, 0);
         return drawGPSData(PROP, gps_file, { cx::COLOR_RED }, 1, gps_smoothing_n);
     }
