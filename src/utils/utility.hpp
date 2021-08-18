@@ -6,6 +6,15 @@
 
 namespace dg
 {
+    inline std::string getTimeString()
+    {
+        time_t start_t;
+        time(&start_t);
+        tm _tm = *localtime(&start_t);
+        char sztime[255];
+        strftime(sztime, 255, "%y%m%d_%H%M%S", &_tm);
+        return sztime;
+    }
 
     inline std::vector<std::string> splitStr(const char* buf, int buf_len, char dlm = ',')
     {

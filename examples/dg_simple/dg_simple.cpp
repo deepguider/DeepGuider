@@ -348,7 +348,7 @@ bool DeepGuider::initialize(std::string config_file)
     }
 
     // initialize localizer
-    if (!m_localizer.initialize(this, "EKFLocalizer")) return false;
+    if (!m_localizer.initialize(this, "EKFLocalizerHyperTan")) return false;
     if (!m_localizer.setParamMotionNoise(1, 10)) return false;      // linear_velocity(m), angular_velocity(deg)
     if (!m_localizer.setParamGPSNoise(1)) return false;             // position error(m)
     if (!m_localizer.setParamGPSOffset(1, 0)) return false;         // displacement(lin,ang) from robot origin
@@ -405,11 +405,7 @@ bool DeepGuider::initialize(std::string config_file)
     cv::setMouseCallback(m_winname, onMouseEvent, this);
 
     // init video recording
-    time_t start_t;
-    time(&start_t);
-    tm _tm = *localtime(&start_t);
-    char sztime[255];
-    strftime(sztime, 255, "%y%m%d_%H%M%S", &_tm);
+    std::string sztime = getTimeString();
     if (m_video_recording)
     {
         std::string filename = m_recording_header_name + sztime + "_gui.avi";
@@ -419,9 +415,8 @@ bool DeepGuider::initialize(std::string config_file)
     // init data logging
     if (m_data_logging)
     {
-        std::string filename = m_recording_header_name + sztime + ".txt";
+        std::string filename = m_recording_header_name + sztime + "_logging.csv";
         m_log.open(filename, ios::out);
-
         std::string filename_cam = m_recording_header_name + sztime + "_cam.avi";
         m_video_cam.open(filename_cam, m_video_recording_fps);
     }

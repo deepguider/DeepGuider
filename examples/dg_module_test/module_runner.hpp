@@ -28,7 +28,7 @@ public:
     {
         // initialize localizer
         m_localizer = localizer;
-        m_localizer->setShared(this);
+        m_localizer->initialize(this, "EKFLocalizerHyperTan");
 
         // initialize module localizers
         if (module_sel == DG_VPS) m_vps_localizer = cv::makePtr<dg::VPSLocalizer>();

@@ -12,8 +12,8 @@ enable_imu: 1
 enable_mapserver: 1
 
 ### Main Options
-site_index: 0               # 0: ETRI, 1: COEX, 2: Bucheon
-site_names: ["ETRI", "COEX", "Bucheon"]
+site_index: 0            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, ...
+site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI"]
 server_ip_index: 0          # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
 topic_name_index: 0         # 0: ETRI CART, 1: KETI ROBOT
@@ -48,6 +48,18 @@ KETI_ROBOT:
   topic_rgbd_depth: "/rs_front_camera1/aligned_depth_to_color/image_raw/compressed"
 
 ## Pre-defined Place Settings
+TEST_ETRI:
+  map_image_path: "data/ETRI/NaverMap_ETRI(Satellite).png"
+  map_data_path: "data/ETRI/TopoMap_ETRI_210803.csv"
+  map_ref_point_latlon: [36.379208, 127.364585]
+  map_ref_point_pixel: [1344, 1371]
+  map_pixel_per_meter: 1.2474
+  map_image_rotation: 0.95
+  map_view_offset: [1289, 371]
+  map_view_size: [1920, 1080]  
+  gps_input_path: "data/ETRI/191115_151140_ascen_fix.csv"
+  video_input_path: "data/ETRI/191115_151140_images.avi"
+
 ETRI:
   map_image_path: "data/NaverMap_ETRI(Satellite)_191127.png"
   map_data_path: "data/ETRI/TopoMap_ETRI_210803.csv"
