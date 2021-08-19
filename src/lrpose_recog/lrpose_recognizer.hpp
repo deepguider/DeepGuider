@@ -18,6 +18,7 @@ namespace dg
     };
 
 	const string PoseClassName[3] = {"Left", "Uncertain", "Right"};
+    // const string PoseClassName[3] = {"LEFT_SIDE_OF_ROAD", "UNKNOWN_SIDE_OF_ROAD", "RIGHT_SIDE_OF_ROAD"};
 
     /**
     * @brief C++ Wrapper of Python module - LRPoseRecognizer

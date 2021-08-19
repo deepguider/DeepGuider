@@ -6,7 +6,8 @@ using namespace rapidjson;
 namespace dg
 {
 
-std::string MapManager::m_ip = "localhost";
+//std::string MapManager::m_ip = "localhost";
+std::string MapManager::m_ip = "129.254.81.204";
 bool MapManager::m_portErr = false;
 
 

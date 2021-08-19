@@ -497,7 +497,20 @@ protected:
 
     cx::CSVReader::Double2D readVPS(const std::string& clue_file)
     {
-        return cx::CSVReader::Double2D();
+        cx::CSVReader::Double2D data;
+        cx::CSVReader csv;
+        if (csv.open(clue_file))
+        {
+            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}); // Skip the header
+            if (!raw_data.empty())
+            {
+                for (auto row = raw_data.begin(); row != raw_data.end(); row++)
+                {
+                    data.push_back({ row->at(1), row->at(2), row->at(3), row->at(4), row->at(5), row->at(6), row->at(7), row->at(8)}); // timestamp,svid,svidx,pred_lat,pred_lon,distance,angle,confidence
+                }
+            }
+        }
+        return data;        
     }
 
     cv::VideoCapture m_camera_data;

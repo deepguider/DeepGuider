@@ -15,20 +15,22 @@ namespace dg
     class VPSLocalizer : public VPS
     {
     public:
-        bool initialize(SharedInterface* shared, std::string server_ipaddr = "127.0.0.1", std::string py_module_path = "./../src/vps")
+        bool initialize(SharedInterface* shared, std::string server_ipaddr = "129.254.81.204", std::string py_module_path = "./../src/vps")
         {
             cv::AutoLock lock(m_mutex);
             m_shared = shared;
             m_server_ipaddr = server_ipaddr;
             if (!VPS::initialize("vps", py_module_path.c_str())) return false;
+            //MapManager::setIP((const std::string)server_ipaddr);
             return (m_shared != nullptr);
         }
 
-        bool initialize_without_python(SharedInterface* shared, std::string server_ipaddr = "127.0.0.1")
+        bool initialize_without_python(SharedInterface* shared, std::string server_ipaddr = "129.254.81.204")
         {
             cv::AutoLock lock(m_mutex);
             m_shared = shared;
             m_server_ipaddr = server_ipaddr;
+            //MapManager::setIP((const std::string)m_server_ipaddr);
             return (m_shared != nullptr);
         }
 
@@ -51,6 +53,24 @@ namespace dg
             streetview_xy = *view;
             relative = computeRelative(image, sv_id, sv_image);
             streetview_confidence = m_result[0].confidence;
+            return true;
+        }
+
+        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::ID svid, dg::LatLon& pred_ll, double pred_distance, double pred_angle, double &pred_confidence, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence, dg::ID& sv_id, cv::Mat& sv_image)
+        {
+            /*
+             Input :
+                const cv::Mat image, const dg::Timestamp image_time, double svid, dg::LatLon& pred_ll, double pred_distance, double pred_angle, double pred_confidence,
+
+             Output :
+                 dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence, dg::ID& sv_id, cv::Mat& sv_image
+            */
+            cv::AutoLock lock(m_mutex);
+            if (m_shared == nullptr) return false;
+            streetview_xy = m_shared->toMetric(pred_ll);
+            sv_id = svid;
+            relative = computeRelative(image, sv_id, sv_image);
+            streetview_confidence = pred_confidence;
             return true;
         }
 

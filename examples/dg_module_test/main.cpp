@@ -127,14 +127,14 @@ int runModule()
 
     bool use_saved_testset = true;
 
-    int module_sel = DG_Intersection;
-    //int module_sel = DG_VPS;
+    //int module_sel = DG_Intersection;
+    int module_sel = DG_VPS;
     //int module_sel = DG_VPS_LR;
     //int module_sel = DG_POI;
     //int module_sel = DG_RoadTheta;
 
     int data_sel = 0;
-    double start_time = 0;     // time skip (seconds)
+    double start_time = 450;     // time skip (seconds)
     //rec_video_file = "result.mkv";
     std::vector<std::string> data_head[] = {
         {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
