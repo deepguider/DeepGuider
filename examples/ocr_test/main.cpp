@@ -4,11 +4,31 @@
 #include "utils/opencx.hpp"
 #include <chrono>
 #include <thread>
+#include "localizer/data_loader.hpp"
 
 using namespace dg;
 using namespace std;
 
 #define RECOGNIZER OCRRecognizer
+
+/**
+ * @brief DataLoader4Rec
+ *
+ * This implement interfaces for loading and providing timestamped sensor data for recording
+ */
+class DataLoader4Rec : public dg::DataLoader
+{
+public:
+    int getFrameNumber(const Timestamp time)
+    {
+        int frame_i;
+        if (m_camera_data.isOpened())
+        {
+            frame_i = (int)((time - m_first_data_time) * m_video_fps / m_video_scale + 0.5);
+        }
+        return frame_i;
+    }
+}; // End of 'DataLoader4Rec'
 
 
 void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* image_file = "sample.png", int nItr = 5)
@@ -120,7 +140,126 @@ void procfunc(bool recording, int rec_fps, const char* video_path)
 }
 
 
-int main()
+int run(RECOGNIZER recognizer, DataLoader4Rec& data_loader, const std::string& rec_traj_file = "")
+{
+    // Prepare the result trajectory
+    FILE* out_traj = nullptr;
+    
+    if (!rec_traj_file.empty())
+    {
+        out_traj = fopen(rec_traj_file.c_str(), "wt");//, ccs=UTF-8");
+        if (out_traj == nullptr) return -1;
+        fprintf(out_traj, "fnumber,timestamp,dname,confidence,xmin,ymin,xmax,ymax,lat,lon\n");
+    }
+    
+    int type;
+    std::vector<double> data;
+    dg::Timestamp data_time;
+    cv::Mat video_image;
+    //double timestart = data_loader.getStartTime();
+    while (1)
+    {
+        video_image = data_loader.getNextFrame(data_time);
+        if (video_image.empty() == true) break;        
+        int fnumber = data_loader.getFrameNumber(data_time);
+
+        data_loader.getNextUntil(data_time, type, data, data_time);
+        dg::LatLon gps_datum(data[1], data[2]);        
+
+        bool ok = recognizer.apply(video_image, data_time);//ts);
+        std::vector<OCRResult> result;
+        result.clear();
+        recognizer.get(result);
+        
+        // Record the current state on the CSV file
+        if (out_traj != nullptr)
+        {
+            if(result.size() != 0)
+            {                
+                for (int k = 0; k < result.size(); k++)
+                {
+                    //printf("%d,%.3lf,%s,%.2lf,%d,%d,%d,%d,%.7lf,%.7lf\n", fnumber, data_time, result[k].label.c_str(), result[k].confidence, result[k].xmin, result[k].ymin, result[k].xmax, result[k].ymax, (double)gps_datum.lat, (double)gps_datum.lon);
+                    fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%d,%d,%d,%d,%.7lf,%.7lf\n", fnumber, data_time, result[k].label.c_str(), result[k].confidence, result[k].xmin, result[k].ymin, result[k].xmax, result[k].ymax, (double)gps_datum.lat, (double)gps_datum.lon);
+                }
+            }
+            else
+            {   
+                //printf("%d,%.3lf,%s,%.2lf,%d,%d,%d,%d,%.7lf,%.7lf\n", fnumber, data_time, "", 0.00, 0, 0, 0, 0, (double)gps_datum.lat, (double)gps_datum.lon);
+                fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%d,%d,%d,%d,%.7lf,%.7lf\n", fnumber, data_time, "", 0.00, 0, 0, 0, 0, (double)gps_datum.lat, (double)gps_datum.lon);
+            }
+        }
+    }
+    
+    if (out_traj != nullptr) fclose(out_traj);
+
+    return 0;
+}
+
+
+int runOCRReal(DataLoader4Rec& data_loader, const std::string& rec_traj_file = "")
+{
+    // initialize python environment
+    dg::init_python_environment("python3", "", false);
+
+    // Initialize Python module
+    RECOGNIZER recognizer;
+    if (!recognizer.initialize()) return -1;
+    printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
+
+    // Run the Python module
+    run(recognizer, data_loader, rec_traj_file);
+
+    // Clear the Python module
+    recognizer.clear();
+
+    // Close the Python Interpreter
+    dg::close_python_environment();
+
+    return 0;
+}
+
+
+int testOCRLocalizer()
+{
+    std::string gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+
+    bool enable_gps = true;
+    bool use_novatel = false;
+
+    int data_sel = 0;
+    double start_time = 0;     // time skip (seconds)
+ 
+    std::vector<std::string> data_head[] = {
+        {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
+        {"data/ETRI/200219_150153", "1.6244"},  // 1, 23911 frames, 3884 sec, video_scale = 1.6244
+        {"data/ETRI/200326_132938", "1.6694"},  // 2, 18366 frames, 3066 sec, video_scale = 1.6694
+        {"data/ETRI/200429_131714", "1.6828"},  // 3, 13953 frames, 2348 sec, video_scale = 1.6828
+        {"data/ETRI/200429_140025", "1.6571"},  // 4, 28369 frames, 4701 sec, video_scale = 1.6571
+        {"data/COEX/201007_142326", "2.8918"},  // 5, 12435 frames, 1240 sec, video_scale = 2.8918
+        {"data/COEX/201007_145022", "2.869"},   // 6, 18730 frames, 1853 sec, video_scale = 2.869
+        {"data/COEX/201007_152840", "2.8902"}   // 7, 20931 frames, 2086 sec, video_scale = 2.8902
+    };
+    const int coex_idx = 5;
+    std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
+    if (enable_gps && !use_novatel) gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
+    if (enable_gps && use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
+
+    //dg::DataLoader data_loader;
+    DataLoader4Rec data_loader;
+    if (!data_loader.load(video_file, gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
+    {
+        printf("Failed to load data file\n");
+        return -1;
+    }
+    data_loader.setStartSkipTime(start_time);
+
+    poi_file = data_head[data_sel][0] + "_ocr.csv"; //"_poi.csv";
+
+    return runOCRReal(data_loader, poi_file);
+}
+
+
+int runOCRLocalizer()
 {
     bool recording = false;
     int rec_fps = 5;
@@ -157,4 +296,12 @@ int main()
     printf("done..\n");
 
     return 0;
+}
+
+
+int main()
+{
+    return testOCRLocalizer();
+    //return runUnitTest();    
+    //return runOCRLocalizer();
 }
