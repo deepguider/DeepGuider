@@ -1,5 +1,3 @@
-## Test
-
 from __future__ import print_function
 import os
 import glob # may cause segmentation fault in (C+Python) environment
