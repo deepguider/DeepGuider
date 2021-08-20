@@ -94,16 +94,16 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_use_high_precision_gps = false;
 
     m_data_logging = false;
-    m_recording = false;
-    m_recording_fps = 15;
+    m_video_recording = false;
+    m_video_recording_fps = 15;
     m_recording_header_name = "dg_ros_";
 
     m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
     m_map_data_path = "data/ETRI/TopoMap_ETRI_210803.csv";
     m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
+    m_map_ref_point_pixel = dg::Point2(347, 297);
     m_map_pixel_per_meter = 1.039;
     m_map_image_rotation = cx::cvtDeg2Rad(1.0);
-    m_map_canvas_offset = dg::Point2(347, 297);
 
     // ros-specific parameters
     m_wait_sec = 0.1;
@@ -198,7 +198,7 @@ int DeepGuiderROS::run()
     printf("End deepguider system...\n");
     terminateThreadFunctions();
     printf("\tthread terminated\n");
-    if(m_recording) m_video_gui.release();
+    if(m_video_recording) m_video_gui.release();
     if(m_data_logging) m_video_cam.release();
     printf("\tclose recording\n");
     cv::destroyWindow(m_winname);
@@ -220,11 +220,13 @@ bool DeepGuiderROS::runOnce(double timestamp)
     publishPath();
     
     // draw GUI display
-    cv::Mat gui_image = m_map_image.clone();
-    drawGuiDisplay(gui_image);
+    cv::Point2d view_offset;
+    double view_zoom;
+    cv::Mat gui_image = m_viewport.getViewportImage(view_offset, view_zoom);
+    drawGuiDisplay(gui_image, view_offset, view_zoom);
 
     // recording
-    if (m_recording) m_video_gui << gui_image;
+    if (m_video_recording) m_video_gui << gui_image;
 
     cv::imshow(m_winname, gui_image);
     int key = cv::waitKey(1);
