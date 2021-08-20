@@ -61,8 +61,11 @@ public:
     {
         cv::AutoLock lock(m_mutex);
 
-        double wx = m_viewport.x + view_xy.x / m_zoom;
-        double wy = m_viewport.y + view_xy.y / m_zoom;
+        cv::Rect2d image_roi(m_viewport.x, m_viewport.y, m_viewport.width / m_zoom, m_viewport.height / m_zoom);
+        image_roi = (image_roi & m_world);
+        double view_zoom = min((double)m_viewport.width / image_roi.width, (double)m_viewport.height / image_roi.height);
+        double wx = m_viewport.x + view_xy.x / view_zoom;
+        double wy = m_viewport.y + view_xy.y / view_zoom;
         return cv::Point2d(wx, wy);
     }
 
@@ -70,8 +73,11 @@ public:
     {
         cv::AutoLock lock(m_mutex);
 
-        double vx = (world_xy.x - m_viewport.x) * m_zoom;
-        double vy = (world_xy.y - m_viewport.y) * m_zoom;
+        cv::Rect2d image_roi(m_viewport.x, m_viewport.y, m_viewport.width / m_zoom, m_viewport.height / m_zoom);
+        image_roi = (image_roi & m_world);
+        double view_zoom = min((double)m_viewport.width / image_roi.width, (double)m_viewport.height / image_roi.height);
+        double vx = (world_xy.x - m_viewport.x) * view_zoom;
+        double vy = (world_xy.y - m_viewport.y) * view_zoom;
         return cv::Point2d(vx, vy);
     }
 

@@ -51,7 +51,7 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     ETRI.map_radius = 1500; // meter
     ETRI.grid_unit_pos = cv::Point(-215, -6);
     ETRI.video_resize = 0.2;
-    ETRI.video_offset = cv::Point(350, 658);
+    ETRI.video_offset = cv::Point(350, 858);
     ETRI.result_resize = 0.5;
 
     MapGUIProp COEX;
