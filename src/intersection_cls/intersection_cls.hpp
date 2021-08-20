@@ -171,6 +171,11 @@ namespace dg
             std::string msg = cv::format("Intersection: %d (%.2lf)", m_result.cls, m_result.confidence);
             cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 255, 0), 6);
             cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 0, 0), 2);
+            if(m_result.cls > 0)
+            {
+                cv::Rect image_rc(0, 0, image.cols, image.rows);
+                cv::rectangle(image, image_rc, cv::Scalar(0, 0, 255), 20);
+            }
         }
 
         void print() const
