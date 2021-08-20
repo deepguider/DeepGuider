@@ -9,6 +9,7 @@
 #include "lrpose_recog/lrpose_localizer.hpp"
 #include "ocr_recog/ocr_localizer.hpp"
 #include "roadtheta/roadtheta_localizer.hpp"
+#include "utils/viewport.hpp"
 
 enum { DG_VPS, DG_VPS_LR, DG_POI, DG_RoadTheta, DG_Intersection };
 
@@ -28,7 +29,7 @@ public:
     {
         // initialize localizer
         m_localizer = localizer;
-        m_localizer->setShared(this);
+        m_localizer->initialize(this, "EKFLocalizerHyperTan");
 
         // initialize module localizers
         if (module_sel == DG_VPS) m_vps_localizer = cv::makePtr<dg::VPSLocalizer>();
@@ -53,7 +54,7 @@ public:
             if (m_ocr_localizer) VVS_CHECK_TRUE(m_ocr_localizer->initialize(this));
             if (m_intersection_localizer) VVS_CHECK_TRUE(m_intersection_localizer->initialize(this));
             if (m_roadtheta_localizer) VVS_CHECK_TRUE(m_roadtheta_localizer->initialize(this));
-            //if (m_lr_localizer) VVS_CHECK_TRUE(m_lr_localizer->initialize(this));
+            if (m_lr_localizer) VVS_CHECK_TRUE(m_lr_localizer->initialize(this));
         }
 
         // Prepare the video for recording
@@ -66,9 +67,10 @@ public:
         // Prepare visualization
         bool show_gui = gui_wnd_wait_msec >= 0 && gui_painter != nullptr && !gui_background.empty();
         cv::Mat bg_image = gui_background.clone();
+        m_viewport.initialize(bg_image, m_view_size, m_view_offset);
 
         // Run localization with GPS and other sensors
-        if (show_gui) cv::namedWindow("ModuleRunner::run()", cv::WindowFlags::WINDOW_AUTOSIZE);
+        if (show_gui) cv::namedWindow("ModuleRunner::run()", cv::WindowFlags::WINDOW_NORMAL);
         cv::setMouseCallback("ModuleRunner::run()", onMouseEvent, this);
 
         int type;
@@ -129,9 +131,6 @@ public:
                 }
                 else if (module_sel == DG_VPS && type == dg::DATA_VPS)
                 {
-                    //bool success = localizer->applyVPS(clue_xy, relative, data_time, confidence);
-                    //if (!success) fprintf(stderr, "applyVPS() was failed.\n");
-
                     /*** Input of m_vps_localizer->apply() ***/
                     double t = data[0];
                     double svid = data[1];
@@ -157,12 +156,11 @@ public:
 
                     if (m_vps_localizer->apply(video_image, data_time, svid, pred_ll, pred_distance, pred_angle, pred_confidence, streetview_xy, relative, streetview_confidence, sv_id, sv_image))
                     {
-                        bool success = true; //localizer->applyVPS(lr_valid, data_time, lr_confidence);
-                        if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
+                        bool success = localizer->applyVPS(streetview_xy, relative, data_time, streetview_confidence);
+                        if (!success) fprintf(stderr, "applyVPS() was failed.\n");
                     }
 
-                    // result_image = video_image.clone();
-                    result_image = sv_image.clone();
+                    result_image = sv_image;
                     result.confidence = streetview_confidence;
                     result.id = sv_id;
                     results.push_back(result);
@@ -300,14 +298,23 @@ public:
                 dg::Pose2 pose = localizer->getPose();
                 if (robot_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, robot_traj_radius, gui_robot_color);
 
-                cv::Mat out_image = bg_image.clone();
+                // get viewport image
+                double view_zoom;
+                cv::Point2d view_offset;
+                cv::Mat out_image = m_viewport.getViewportImage(view_offset, view_zoom);
+
+                // convert to viewport point
+                dg::Point2 pose_pixel = (gui_painter->cvtValue2Pixel(pose) - view_offset) * view_zoom;
+                dg::Point2 pose_viewport = gui_painter->cvtPixel2Value(pose_pixel);
+                int gui_robot_radius_viewport = (int)(gui_robot_radius * view_zoom + 0.5);
+
                 if (gui_robot_radius > 0)
                 {
-                    gui_painter->drawPoint(out_image, pose, gui_robot_radius, gui_robot_color);                                         // Robot body
-                    gui_painter->drawPoint(out_image, pose, gui_robot_radius, cv::Vec3b(255, 255, 255) - gui_robot_color, 1);           // Robot outline
-                    cv::Point2d pose_px = gui_painter->cvtValue2Pixel(pose);
-                    cv::Point2d head_px(gui_robot_radius * cos(pose.theta), -gui_robot_radius * sin(pose.theta));
-                    cv::line(out_image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, 2); // Robot heading
+                    gui_painter->drawPoint(out_image, pose_viewport, gui_robot_radius_viewport, gui_robot_color);                                         // Robot body
+                    gui_painter->drawPoint(out_image, pose_viewport, gui_robot_radius_viewport, cv::Vec3b(255, 255, 255) - gui_robot_color, 1);           // Robot outline
+                    cv::Point2d pose_px = gui_painter->cvtValue2Pixel(pose_viewport);
+                    cv::Point2d head_px(gui_robot_radius_viewport* cos(pose.theta), -gui_robot_radius_viewport * sin(pose.theta));
+                    cv::line(out_image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, (int)(2 * view_zoom)); // Robot heading
                 }
 
                 // Draw the image given from the camera
@@ -355,6 +362,8 @@ public:
 
     void procMouseEvent(int evt, int x, int y, int flags)
     {
+        m_viewport.procMouseEvent(evt, x, y, flags);
+
         if (evt == cv::EVENT_MOUSEMOVE)
         {
         }
@@ -408,6 +417,10 @@ public:
     int          robot_traj_radius = 1;
     cv::Vec3b    gui_gps_color = cv::Vec3b(100, 100, 100);
     int          gui_gps_radius = 2;
+
+    cv::Point   m_view_offset = cv::Point(0, 0);
+    cv::Size    m_view_size = cv::Size(1920, 1080);
+    dg::Viewport m_viewport;
 
     int          gui_wnd_wait_msec = 1;
     bool         gui_wnd_wait_exit = false;

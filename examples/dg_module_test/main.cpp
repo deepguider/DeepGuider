@@ -4,13 +4,15 @@ struct MapGUIProp
 {
 public:
     std::string image_file;
-    cv::Point2d image_scale;
-    double      image_rotation = 0; // radian
+    std::string map_file;
     dg::LatLon  origin_latlon;      // origin of UTM
     cv::Point2d origin_px;          // pixel coordinte of UTM origin at map image
+    cv::Point2d image_scale;
+    double      image_rotation = 0; // radian
+    cv::Point   map_view_offset = cv::Point(0, 0);
+    cv::Size    map_view_size = cv::Size(1920, 1080);
     double      map_radius;         // topomap coverage from the origin (unit: meter)
     cv::Point   grid_unit_pos;
-    std::string map_file;
     double      video_resize = 0;
     cv::Point   video_offset;
     double      result_resize = 0;
@@ -39,17 +41,18 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
 
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
-    ETRI.image_file = "data/NaverMap_ETRI(Satellite)_191127.png";
-    ETRI.image_scale = cv::Point2d(1.039, 1.039);
-    ETRI.image_rotation = cx::cvtDeg2Rad(1.);
-    ETRI.origin_latlon = dg::LatLon(36.383837659737, 127.367880828442);
-    ETRI.origin_px = cv::Point2d(347, 297);
+    ETRI.image_file = "data/ETRI/NaverMap_ETRI(Satellite).png";
+    ETRI.map_file = "data/ETRI/TopoMap_ETRI_210803.csv";
+    ETRI.origin_latlon = dg::LatLon(36.379208, 127.364585);
+    ETRI.origin_px = cv::Point2d(1344, 1371);
+    ETRI.image_scale = cv::Point2d(1.2474, 1.2474);
+    ETRI.image_rotation = cx::cvtDeg2Rad(0.95);
+    ETRI.map_view_offset = cv::Point(1289, 371);
     ETRI.map_radius = 1500; // meter
     ETRI.grid_unit_pos = cv::Point(-215, -6);
-    ETRI.map_file = "data/ETRI/TopoMap_ETRI_210803.csv";
-    ETRI.video_resize = 0.25;
-    ETRI.video_offset = cv::Point(270, 638);
-    ETRI.result_resize = 0.4;
+    ETRI.video_resize = 0.2;
+    ETRI.video_offset = cv::Point(350, 658);
+    ETRI.result_resize = 0.5;
 
     MapGUIProp COEX;
     COEX.image_file = "data/NaverMap_COEX(Satellite)_200929.png";
@@ -95,13 +98,14 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     dg::MapPainter painter;
     painter.configCanvas(guiprop.origin_px, guiprop.image_scale, bg_image.size(), 0, 0);
     painter.setImageRotation(guiprop.image_rotation);
-    painter.drawGrid(bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, guiprop.grid_unit_pos);
+    //painter.drawGrid(bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, guiprop.grid_unit_pos);
     painter.drawOrigin(bg_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
     painter.setParamValue("node_radius", 3);
     painter.setParamValue("node_font_scale", 0);
-    painter.setParamValue("node_color", { 255, 100, 100 });
-    painter.setParamValue("edge_color", { 150, 100, 100 });
-    painter.setParamValue("edge_thickness", 1);
+    painter.setParamValue("node_color", { 255, 50, 255 });
+    painter.setParamValue("edge_color", { 200, 100, 100 });
+    painter.setParamValue("crosswalk_color", { 0, 150, 50 });
+    painter.setParamValue("edge_thickness", 2);
     if (!map.isEmpty()) painter.drawMap(bg_image, &map);
 
     // Run the localizer
@@ -113,6 +117,8 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     runner.video_offset = guiprop.video_offset;
     runner.result_resize = guiprop.result_resize;
     runner.rec_video_name = rec_video_file;
+    runner.m_view_offset = guiprop.map_view_offset;
+    runner.m_view_size = guiprop.map_view_size;
     return runner.run(module_sel, use_saved_testset, localizer, data_loader);
 }
 
@@ -127,8 +133,8 @@ int runModule()
 
     bool use_saved_testset = true;
 
-    //int module_sel = DG_Intersection;
-    int module_sel = DG_VPS;
+    int module_sel = DG_Intersection;
+    //int module_sel = DG_VPS;
     //int module_sel = DG_VPS_LR;
     //int module_sel = DG_POI;
     //int module_sel = DG_RoadTheta;
