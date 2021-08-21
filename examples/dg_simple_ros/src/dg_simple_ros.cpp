@@ -220,10 +220,9 @@ bool DeepGuiderROS::runOnce(double timestamp)
     publishPath();
     
     // draw GUI display
-    cv::Point2d view_offset;
-    double view_zoom;
-    cv::Mat gui_image = m_viewport.getViewportImage(view_offset, view_zoom);
-    drawGuiDisplay(gui_image, view_offset, view_zoom);
+    cv::Mat gui_image;
+    m_viewport.getViewportImage(gui_image);
+    drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
 
     // recording
     if (m_video_recording) m_video_gui << gui_image;

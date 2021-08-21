@@ -78,7 +78,7 @@ protected:
     bool initializeDefaultMap();
     bool setDeepGuiderDestination(dg::LatLon gps_dest);
     bool updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest);
-    void drawGuiDisplay(cv::Mat& gui_image, cv::Point view_offset, double view_zoom);
+    void drawGuiDisplay(cv::Mat& gui_image, const cv::Point2d& view_offset, double view_zoom);
     void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
     void drawLogo(cv::Mat target_image, std::vector<LogoResult> pois, cv::Size original_image_size);
     void drawOcr(cv::Mat target_image, std::vector<OCRResult> pois, cv::Size original_image_size);
@@ -516,6 +516,7 @@ int DeepGuider::run()
     //VVS_CHECK_TRUE(setDeepGuiderDestination(gps_dest));
 
     cv::Mat video_image;
+    cv::Mat gui_image;
     int wait_msec = 10;
     int itr = 0;
     while (1)
@@ -610,10 +611,8 @@ int DeepGuider::run()
             procGuidance(data_time);
 
             // draw GUI display
-            cv::Point2d view_offset;
-            double view_zoom;
-            cv::Mat gui_image = m_viewport.getViewportImage(view_offset, view_zoom);
-            drawGuiDisplay(gui_image, view_offset, view_zoom);
+            m_viewport.getViewportImage(gui_image);
+            drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
 
             // recording
             if (m_video_recording) m_video_gui << gui_image;
@@ -722,7 +721,7 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
     }
     else if (evt == cv::EVENT_LBUTTONDBLCLK)
     {
-        cv::Point2d px = m_viewport.cvtView2World(cv::Point(x, y));
+        cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
         dg::LatLon ll = toLatLon(m_painter.cvtPixel2Value(px));
         setDeepGuiderDestination(ll);
     }
@@ -814,14 +813,13 @@ bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
     {
         m_painter.drawPoint(m_map_image, toMetric(*itr), 2, cv::Vec3b(0, 255, 0));
     }
-
     printf("\tGUI map is updated with new map and path!\n");
 
     return true;    
 }
 
 
-void DeepGuider::drawGuiDisplay(cv::Mat& image, cv::Point view_offset, double view_zoom)
+void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, double view_zoom)
 {
     double video_resize_scale = 0.4;
     int win_delta = 10;
@@ -930,9 +928,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, cv::Point view_offset, double vi
             dg::StreetView* sv = m_map->getView(sv_id);
             if(sv)
             {
-                dg::Point2 pose_pixel = (m_painter.cvtValue2Pixel(*sv) - Point2(view_offset)) * view_zoom;
-                dg::Point2 pose_local = m_painter.cvtPixel2Value(pose_pixel);
-                m_painter.drawPoint(image, pose_local, (int)(6 * view_zoom), cv::Vec3b(255, 255, 0));
+                m_painter.drawPoint(image, *sv, 6, cv::Vec3b(255, 255, 0), view_offset, view_zoom);
             }
         }
     }
@@ -1008,11 +1004,10 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, cv::Point view_offset, double vi
     m_localizer_mutex.unlock();
 
     // draw robot on the map
-    dg::Point2 pose_pixel = (m_painter.cvtValue2Pixel(pose_metric) - Point2(view_offset)) * view_zoom;
-    dg::Point2 pose_local = m_painter.cvtPixel2Value(pose_pixel);
-    m_painter.drawPoint(image, pose_local, (int)(10*view_zoom), cx::COLOR_YELLOW);
-    m_painter.drawPoint(image, pose_local, (int)(8*view_zoom), cx::COLOR_BLUE);
-    cv::line(image, pose_pixel, pose_pixel + (int)(10*view_zoom) * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)), cx::COLOR_YELLOW, (int)(2*view_zoom));
+    m_painter.drawPoint(image, pose_metric, 10, cx::COLOR_YELLOW, view_offset, view_zoom);
+    m_painter.drawPoint(image, pose_metric, 8, cx::COLOR_BLUE, view_offset, view_zoom);
+    cv::Point2d px = (m_painter.cvtValue2Pixel(pose_metric) - view_offset) * view_zoom;
+    cv::line(image, px, px + 10 * view_zoom * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_YELLOW, (int)(2*view_zoom+0.5));
 
     // draw status message (localization)
     cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);

@@ -77,6 +77,7 @@ public:
         std::vector<double> data;
         dg::Timestamp data_time;
         cv::Mat video_image;
+        cv::Mat out_image;
         double timestart = data_loader.getStartTime();
         while (1)
         {
@@ -299,49 +300,21 @@ public:
                 if (robot_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, robot_traj_radius, gui_robot_color);
 
                 // get viewport image
-                double view_zoom;
-                cv::Point2d view_offset;
-                cv::Mat out_image = m_viewport.getViewportImage(view_offset, view_zoom);
-
-                // convert to viewport point
-                dg::Point2 pose_pixel = (gui_painter->cvtValue2Pixel(pose) - view_offset) * view_zoom;
-                dg::Point2 pose_viewport = gui_painter->cvtPixel2Value(pose_pixel);
-                int gui_robot_radius_viewport = (int)(gui_robot_radius * view_zoom + 0.5);
+                m_viewport.getViewportImage(out_image);
 
                 // Draw path
                 dg::Path* path = getPathLocked();
-                if (path && !path->empty())
-                {
-                    // conversion
-                    std::vector<dg::Point2> pts;
-                    pts.resize(path->pts.size());
-                    for(size_t idx=0;idx<path->pts.size(); idx++) pts[idx] = gui_painter->cvtPixel2Value((gui_painter->cvtValue2Pixel(path->pts[idx]) - view_offset) * view_zoom);
-
-                    // draw current path
-                    dg::MapPainter* painter = (dg::MapPainter*)gui_painter;
-                    const cv::Vec3b ecolor = cv::Vec3b(255, 0, 0);
-                    const cv::Vec3b ncolor = cv::Vec3b(0, 255, 255);
-                    int nradius = 3;
-                    int ethickness = 1;
-                    for (int idx = 1; idx < (int)pts.size(); idx++)
-                    {
-                        painter->drawEdge(out_image, pts[idx - 1], pts[idx], nradius, ecolor, ethickness);
-                    }
-                    for (int idx = 1; idx < (int)pts.size() - 1; idx++)
-                    {
-                        painter->drawNode(out_image, dg::Point2ID(0, pts[idx]), nradius, 0, ncolor);
-                    }
-                }
+                gui_painter->drawPath(out_image, getMap(), path, m_viewport.offset(), m_viewport.zoom());
                 releasePathLock();
 
                 // draw robot position
                 if (gui_robot_radius > 0)
                 {
-                    gui_painter->drawPoint(out_image, pose_viewport, gui_robot_radius_viewport, gui_robot_color);                                         // Robot body
-                    gui_painter->drawPoint(out_image, pose_viewport, gui_robot_radius_viewport, cv::Vec3b(255, 255, 255) - gui_robot_color, 1);           // Robot outline
-                    cv::Point2d pose_px = gui_painter->cvtValue2Pixel(pose_viewport);
-                    cv::Point2d head_px(gui_robot_radius_viewport * cos(pose.theta), -gui_robot_radius_viewport * sin(pose.theta));
-                    cv::line(out_image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, (int)(2 * view_zoom)); // Robot heading
+                    gui_painter->drawPoint(out_image, pose, gui_robot_radius, gui_robot_color, m_viewport.offset(), m_viewport.zoom());                                         // Robot body
+                    gui_painter->drawPoint(out_image, pose, gui_robot_radius, cv::Vec3b(255, 255, 255) - gui_robot_color, m_viewport.offset(), m_viewport.zoom(), (int)(2*m_viewport.zoom() + 0.5));           // Robot outline
+                    cv::Point2d pose_px = (gui_painter->cvtValue2Pixel(pose) - cv::Point2d(m_viewport.offset())) * m_viewport.zoom();
+                    cv::Point2d head_px(gui_robot_radius* m_viewport.zoom() * cos(pose.theta), -gui_robot_radius * m_viewport.zoom() * sin(pose.theta));
+                    cv::line(out_image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, (int)(2 * m_viewport.zoom())); // Robot heading
                 }
 
                 // Draw the image given from the camera
@@ -403,12 +376,10 @@ public:
         else if (evt == cv::EVENT_LBUTTONDBLCLK)
         {
             dg::Pose2 p_start = getPose();
-            cv::Point2d p_pixel = m_viewport.cvtView2World(cv::Point(x, y));
-            cv::Point2d p_dest = gui_painter->cvtPixel2Value(p_pixel);
+            cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            cv::Point2d p_dest = gui_painter->cvtPixel2Value(px);
             dg::Path path;
-            setMapLock();
             bool ok = m_map && m_map->getPath(p_start, p_dest, path);
-            releaseMapLock();
             if (ok)
             {
                 setPath(path);
@@ -461,7 +432,7 @@ public:
     bool         m_dest_defined = false;
     dg::Point2   m_dest_xy;
 
-    cx::Painter* gui_painter = nullptr;
+    dg::MapPainter* gui_painter = nullptr;
     cv::Mat      gui_background;
     int          gui_robot_radius = 10;
     cv::Vec3b    gui_robot_color = cv::Vec3b(0, 0, 255);
