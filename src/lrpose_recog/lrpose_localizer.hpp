@@ -38,44 +38,54 @@ namespace dg
             return (m_shared != nullptr);
         }
 
-        bool apply(const cv::Mat image, const dg::Timestamp image_time, double& lr_confidence, bool& lr_valid)
+        bool apply(const cv::Mat image, const dg::Timestamp image_time, double& lr_cls, double& lr_confidence)
         {
+            /***
+             * Input :
+             *  const cv::Mat image, const dg::Timestamp image_time
+             * Output:
+             *  double& lr_cls, double& lr_confidence
+             * ***/
             cv::AutoLock lock(m_mutex);
             if (m_shared == nullptr) return false;
             Pose2 pose = m_shared->getPose();
-            lr_valid = false;
 
             if (!LRPoseRecognizer::apply(image, image_time)) return false;
 
             // apply state filtering
-            int observed_cls = m_result.cls;
+            int observed_cls = m_result.cls;  // m_result from python
             int state_prev = m_state;
             m_state = simpleStateFiltering(observed_cls);
-
             m_shared->releasePathLock();
-			lr_valid = m_state;
+
+			lr_cls = m_state;  // filtered cls
             lr_confidence = m_result.confidence;
             return true;
         }
 
-        bool apply(const dg::Timestamp image_time, double cls, double cls_conf, double& lr_confidence, double& lr_valid)
+        bool apply(const dg::Timestamp image_time, double cls, double cls_conf, double& lr_cls, double& lr_confidence)
+        /*** 
+         * Input:
+         *  const dg::Timestamp image_time, double cls, double cls_conf
+         * Output:
+         *  double& lr_cls, double& lr_confidence
+         * ***/
         {
             cv::AutoLock lock(m_mutex);
             if (m_shared == nullptr) return false;
             Pose2 pose = m_shared->getPose();
-            lr_valid = false;
 
             // apply state filtering
             //int observed_cls = (int)(cls + 0.5);  // round up ?
             //int state_prev = m_state;
             //m_state = simpleStateFiltering(observed_cls);
 
-            lr_valid = cls;
-            lr_confidence = cls_conf;
-
-            // Update variables for draw()
-            m_result.cls = lr_valid;
+            // Update variables for draw(). m_result needs to be set by manual when csv dataloader is enabled rather than python.
+            m_result.cls = cls;
             m_result.confidence = cls_conf;
+
+            lr_cls = cls;
+            lr_confidence = cls_conf;
 
             return true;
         }
@@ -93,7 +103,7 @@ namespace dg
             else return LEFT_SIDE_OF_ROAD;
         }
 
-        double m_state_score = 0;           // initiallly, non-intersection
+        double m_state_score = 0;
         int m_state = LEFT_SIDE_OF_ROAD;
 
         SharedInterface* m_shared = nullptr;
