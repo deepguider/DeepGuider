@@ -57,7 +57,7 @@ namespace dg
 
             if (isThreadingEnabled()) PyGILState_Release(state);
 
-            m_logos.clear();
+            m_result.clear();
             m_timestamp = -1;
             m_processing_time = -1;
         }
@@ -118,7 +118,7 @@ namespace dg
                 }
 
                 // list of list
-                m_logos.clear();
+                m_result.clear();
                 PyObject* pList0 = PyTuple_GetItem(pRet, 0);
                 if (pList0 != NULL)
                 {
@@ -142,7 +142,7 @@ namespace dg
                             logo.label = PyUnicode_AsUTF8(pValue);
                             pValue = PyList_GetItem(pList, idx++);
                             logo.confidence = PyFloat_AsDouble(pValue);
-                            m_logos.push_back(logo);
+                            m_result.push_back(logo);
                         }
                     }
                 }
@@ -165,18 +165,18 @@ namespace dg
 
         void get(std::vector<LogoResult>& logos) const
         {
-            logos = m_logos;
+            logos = m_result;
         }
 
         void get(std::vector<LogoResult>& logos, Timestamp& ts) const
         {
-            logos = m_logos;
+            logos = m_result;
             ts = m_timestamp;
         }
 
         void set(const std::vector<LogoResult>& logos, Timestamp ts, double proc_time)
         {
-            m_logos = logos;
+            m_result = logos;
             m_timestamp = ts;
             m_processing_time = proc_time;
         }
@@ -191,40 +191,40 @@ namespace dg
             return m_processing_time;
         }
 
-        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
+        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
         {
-            for (size_t i = 0; i < m_logos.size(); i++)
+            for (size_t i = 0; i < m_result.size(); i++)
             {
-                cv::Rect rc(m_logos[i].xmin, m_logos[i].ymin, m_logos[i].xmax - m_logos[i].xmin + 1, m_logos[i].ymax - m_logos[i].ymin + 1);
-                cv::rectangle(image, rc, color, width);
-                cv::Point pt(m_logos[i].xmin + 3, m_logos[i].ymin - 5);
-                std::string msg = cv::format("%s %.2lf", m_logos[i].label.c_str(), m_logos[i].confidence);
-                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 255), 6);
-                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255, 0, 0), 2);
+                cv::Rect rc(m_result[i].xmin, m_result[i].ymin, m_result[i].xmax - m_result[i].xmin + 1, m_result[i].ymax - m_result[i].ymin + 1);
+                cv::rectangle(image, rc, color, (int)(2 * drawing_scale));
+                cv::Point2d pt(m_result[i].xmin + 3 * drawing_scale, m_result[i].ymin - 5 * drawing_scale);
+                std::string msg = cv::format("%s %.2lf", m_result[i].label.c_str(), m_result[i].confidence);
+                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5 * drawing_scale, cv::Scalar(0, 255, 255), (int)(6 * drawing_scale));
+                cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5 * drawing_scale, cv::Scalar(255, 0, 0), (int)(2 * drawing_scale));
             }
         }
 
         void print() const
         {
             printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
-            for (int k = 0; k < m_logos.size(); k++)
+            for (int k = 0; k < m_result.size(); k++)
             {
-                printf("\t%s, %.2lf, x1=%d, y1=%d, x2=%d, y2=%d\n", m_logos[k].label.c_str(), m_logos[k].confidence, m_logos[k].xmin, m_logos[k].ymin, m_logos[k].xmax, m_logos[k].ymax);
+                printf("\t%s, %.2lf, x1=%d, y1=%d, x2=%d, y2=%d\n", m_result[k].label.c_str(), m_result[k].confidence, m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
             }
         }
 
         void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
-            for (int k = 0; k < m_logos.size(); k++)
+            for (int k = 0; k < m_result.size(); k++)
             {
-                std::string log = cv::format("%.3lf,%d,%s,%s,%.2lf,%d,%d,%d,%d,%.3lf", m_timestamp, cam_fnumber, name(), m_logos[k].label.c_str(), m_logos[k].confidence, m_logos[k].xmin, m_logos[k].ymin, m_logos[k].xmax, m_logos[k].ymax, m_processing_time);
+                std::string log = cv::format("%.3lf,%d,%s,%s,%.2lf,%d,%d,%d,%d,%.3lf", m_timestamp, cam_fnumber, name(), m_result[k].label.c_str(), m_result[k].confidence, m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax, m_processing_time);
                 stream << log << std::endl;
             }
         }
 
         void read(const std::vector<std::string>& stream)
         {
-            m_logos.clear();
+            m_result.clear();
             for (int k = 0; k < (int)stream.size(); k++)
             {
                 std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
@@ -243,7 +243,7 @@ namespace dg
                     r.ymin = atoi(elems[6].c_str());
                     r.xmax = atoi(elems[7].c_str());
                     r.ymax = atoi(elems[8].c_str());
-                    m_logos.push_back(r);
+                    m_result.push_back(r);
 
                     m_timestamp = atof(elems[0].c_str());
                     m_processing_time = atof(elems[9].c_str());
@@ -258,7 +258,7 @@ namespace dg
 
 
     protected:
-        std::vector<LogoResult> m_logos;
+        std::vector<LogoResult> m_result;
         Timestamp m_timestamp = -1;
         double m_processing_time = -1;
     };

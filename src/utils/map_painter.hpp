@@ -138,7 +138,7 @@ public:
             if (edge->type == Edge::EDGE_CROSSWALK)
             {
                 drawEdge(image, *node, *to, radius, m_crosswalk_color / 2, thickness * 3, offset, zoom, arrow_length);
-                drawEdge(image, *node, *to, radius, cv::Vec3b(255, 255, 255), thickness, offset, zoom, arrow_length);
+                drawEdge(image, *node, *to, radius, cv::Vec3b(200, 255, 255), thickness, offset, zoom, arrow_length);
             }
             else
                 drawEdge(image, *node, *to, radius, color, thickness, offset, zoom, arrow_length);
@@ -146,7 +146,7 @@ public:
         return true;
     }
 
-    bool drawPath(cv::Mat& image, const dg::Map* map, const dg::Path* path, const cv::Point2d& offset = cv::Point2d(0, 0), double zoom = 1, const cv::Vec3b& ecolor = cv::Vec3b(255, 0, 0), const cv::Vec3b& ncolor = cv::Vec3b(0, 255, 255), int nradius = 5, int ethickness = 2)
+    bool drawPath(cv::Mat& image, const dg::Map* map, const dg::Path* path, const cv::Point2d& offset = cv::Point2d(0, 0), double zoom = 1, const cv::Vec3b& ecolor = cv::Vec3b(0, 255, 0), const cv::Vec3b& ncolor = cv::Vec3b(0, 255, 255), int nradius = 4, int ethickness = 2)
     {
         if (map == nullptr || path == nullptr || path->empty()) return false;
 
@@ -161,11 +161,11 @@ public:
                 {
                     int rdelta = (node_prev->type == Node::NODE_JUNCTION) ? 1 : 0;
                     drawNode(image, *node_prev, nradius + rdelta, 0, ncolor, offset, zoom);
-                    if (node_prev->type == Node::NODE_JUNCTION) drawNode(image, *node_prev, nradius - 2, 0, ncolor / 3, offset, zoom);
+                    if (node_prev->type == Node::NODE_JUNCTION) drawNode(image, *node_prev, nradius - 1, 0, ncolor / 3, offset, zoom);
                 }
                 int rdelta = (node->type == Node::NODE_JUNCTION) ? 1 : 0;
                 drawNode(image, *node, nradius + rdelta, 0, ncolor, offset, zoom);
-                if (node->type == Node::NODE_JUNCTION) drawNode(image, *node, nradius - 2, 0, ncolor / 3, offset, zoom);
+                if (node->type == Node::NODE_JUNCTION) drawNode(image, *node, nradius - 1, 0, ncolor / 3, offset, zoom);
                 node_prev = node;
             }
         }

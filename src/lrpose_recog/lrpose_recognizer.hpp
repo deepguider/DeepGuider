@@ -168,12 +168,23 @@ namespace dg
             return m_processing_time;
         }
 
-        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
+        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
         {
-            cv::Point pt(image.cols / 2 - 170, 100);
-            std::string msg = cv::format("lrpose : %s(%d), prob(%.2lf)", PoseClassName[m_result.cls].c_str(), m_result.cls, m_result.confidence);
-            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 255, 0), 6);
-            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 0, 0), 2);
+            if (m_result.cls == 0)
+            {
+                cv::Rect roi(image.cols * 2 / 3, 0, image.cols - image.cols * 2 / 3, image.rows);
+                image(roi) = image(roi) / 2;
+            }
+            else if (m_result.cls == 2)
+            {
+                cv::Rect roi(0, 0, image.cols / 3, image.rows);
+                image(roi) = image(roi) / 2;
+            }
+
+            cv::Point2d pt(image.cols / 2 - 190 * drawing_scale, 100 * drawing_scale);
+            std::string msg = cv::format("lrpose : %s(%.2lf)", PoseClassName[m_result.cls].c_str(), m_result.confidence);
+            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 255, 0), (int)(6 * drawing_scale));
+            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 0, 0), (int)(2 * drawing_scale));
         }
 
         void print() const

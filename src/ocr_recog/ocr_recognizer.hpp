@@ -215,7 +215,7 @@ namespace dg
             return m_processing_time;
         }
 
-        void draw(cv::Mat& image, int font_sz = 28, double xscale = 1, double yscale = 1, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
+        void draw(cv::Mat& image, int font_sz = 28, double xscale = 1, double yscale = 1, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
         {
             for (size_t i = 0; i < m_result.size(); i++)
             {
@@ -225,25 +225,25 @@ namespace dg
                 int xmax = (int)(xscale * m_result[i].xmax + 0.5);
                 int ymax = (int)(yscale * m_result[i].ymax + 0.5);
                 cv::Rect rc(xmin, ymin, xmax - xmin + 1, ymax - ymin + 1);
-                cv::rectangle(image, rc, color, width);
+                cv::rectangle(image, rc, color, (int)(2 * drawing_scale));
 
                 // label
                 int sz = (rc.width < rc.height) ? rc.width : rc.height;
                 if(sz<10) font_sz = 10;
-                cv::Point pt(xmin + 3, ymin - 5);
+                cv::Point2d pt(xmin + 3 * drawing_scale, ymin - 5 * drawing_scale);
                 std::string msg = cv::format("%s (%.2lf)", m_result[i].label.c_str(), m_result[i].confidence);
 #ifdef HAVE_OPENCV_FREETYPE
                 if(m_ft2)
                 {
-                    m_ft2->putText(image, msg, pt, font_sz, cv::Scalar(255, 0, 0), 2, cv::LINE_AA, true);
-                    m_ft2->putText(image, msg, pt, font_sz, cv::Scalar(0, 255, 255), 1, cv::LINE_AA, true);
-                    m_ft2->putText(image, msg, pt, font_sz, cv::Scalar(0, 255, 255), -1, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, font_sz * drawing_scale, cv::Scalar(255, 0, 0), 2, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, font_sz * drawing_scale, cv::Scalar(0, 255, 255), 1, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, font_sz * drawing_scale, cv::Scalar(0, 255, 255), -1, cv::LINE_AA, true);
                 }
                 else
 #endif
                 {
-                    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0, 255, 255), 6);
-                    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255, 0, 0), 2);
+                    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5 * drawing_scale, cv::Scalar(0, 255, 255), (int)(6 * drawing_scale));
+                    cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 1.5 * drawing_scale, cv::Scalar(255, 0, 0), (int)(2 * drawing_scale));
                 }
             }
         }

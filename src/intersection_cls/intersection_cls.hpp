@@ -165,16 +165,16 @@ namespace dg
             return m_processing_time;
         }
 
-        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), int width = 2) const
+        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
         {
-            cv::Point pt(image.cols / 2 - 170, 100);
+            cv::Point2d pt(image.cols / 2 - 180 * drawing_scale, 100 * drawing_scale);
             std::string msg = cv::format("Intersection: %d (%.2lf)", m_result.cls, m_result.confidence);
-            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 255, 0), 6);
-            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2, cv::Scalar(0, 0, 0), 2);
+            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, color, (int)(6 * drawing_scale));
+            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 0, 0), (int)(2 * drawing_scale));
             if(m_result.cls > 0)
             {
                 cv::Rect image_rc(0, 0, image.cols, image.rows);
-                cv::rectangle(image, image_rc, cv::Scalar(0, 0, 255), 20);
+                cv::rectangle(image, image_rc, color, (int)(20 * drawing_scale));
             }
         }
 

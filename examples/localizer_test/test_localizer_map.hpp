@@ -130,10 +130,10 @@ int testLocMapPainter(int wait_msec = 1)
     // Draw additional nodes
     auto node1 = map.getHeadNode();
     VVS_CHECK_TRUE(node1 != map.getTailNode());
-    VVS_CHECK_TRUE(painter.drawNode(image, *node1, 3, 0.5, cx::COLOR_MAGENTA, 2));
+    VVS_CHECK_TRUE(painter.drawNode(image, *node1, 3, 0.5, cx::COLOR_MAGENTA));
     dg::Node* node3 = map.getNode(3);
     VVS_CHECK_TRUE(node3 != nullptr);
-    VVS_CHECK_TRUE(painter.drawNode(image, *node3, 3, 0.5, cx::COLOR_RED, -1));
+    VVS_CHECK_TRUE(painter.drawNode(image, *node3, 3, 0.5, cx::COLOR_RED));
 
     // Draw additional edges
     auto edge = map.getEdge(&(*node1), 0);

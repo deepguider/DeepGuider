@@ -10,7 +10,7 @@ public:
     cv::Point2d image_scale;
     double      image_rotation = 0; // radian
     cv::Point   map_view_offset = cv::Point(0, 0);
-    cv::Size    map_view_size = cv::Size(1920, 1080);
+    cv::Size    map_view_size = cv::Size(1800, 1012);
     double      map_radius;         // topomap coverage from the origin (unit: meter)
     cv::Point   grid_unit_pos;
     double      video_resize = 0;
@@ -51,7 +51,7 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     ETRI.map_radius = 1500; // meter
     ETRI.grid_unit_pos = cv::Point(-215, -6);
     ETRI.video_resize = 0.2;
-    ETRI.video_offset = cv::Point(350, 858);
+    ETRI.video_offset = cv::Point(350, 840);
     ETRI.result_resize = 0.5;
 
     MapGUIProp COEX;
@@ -98,7 +98,7 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     dg::MapPainter painter;
     painter.configCanvas(guiprop.origin_px, guiprop.image_scale, bg_image.size(), 0, 0);
     painter.setImageRotation(guiprop.image_rotation);
-    //painter.drawGrid(bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, guiprop.grid_unit_pos);
+    painter.drawGrid(bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, guiprop.grid_unit_pos);
     painter.drawOrigin(bg_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
     painter.setParamValue("node_radius", 3);
     painter.setParamValue("node_font_scale", 0);

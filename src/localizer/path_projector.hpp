@@ -23,7 +23,7 @@ protected:
     double m_projection_search_radius = 60;     // Unit: [m]
     double m_eval_pathlen_backward = 50;        // Unit: [m]
     double m_eval_pathlen_forward = 25;         // Unit: [m]
-    double m_min_alignscore_gap = 30;           // Unit: [m]
+    double m_min_alignscore_gap = 20;           // Unit: [m]
     int m_min_eval_historylen = 10;
     double m_length_align_weight = 0.5;
     double m_error_tolerance = 0.01;            // Unit: [m]

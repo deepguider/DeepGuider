@@ -95,5 +95,8 @@
     <ClInclude Include="..\..\src\utils\viewport.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\lrpose_recog\lrpose_localizer.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

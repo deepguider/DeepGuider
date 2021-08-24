@@ -110,6 +110,7 @@
     <ClInclude Include="..\..\src\localizer\data_loader.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\path_projector.hpp" />
+    <ClInclude Include="..\..\src\lrpose_recog\lrpose_localizer.hpp" />
     <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp" />
     <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp" />
     <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp" />
