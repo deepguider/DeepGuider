@@ -173,12 +173,12 @@ namespace dg
             if (m_result.cls == 0)
             {
                 cv::Rect roi(image.cols * 2 / 3, 0, image.cols - image.cols * 2 / 3, image.rows);
-                image(roi) = image(roi) / 2;
+                image(roi) = image(roi) / 3;
             }
             else if (m_result.cls == 2)
             {
                 cv::Rect roi(0, 0, image.cols / 3, image.rows);
-                image(roi) = image(roi) / 2;
+                image(roi) = image(roi) / 3;
             }
 
             cv::Point2d pt(image.cols / 2 - 190 * drawing_scale, 100 * drawing_scale);
