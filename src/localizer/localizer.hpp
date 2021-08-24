@@ -224,6 +224,12 @@ public:
     {
         cv::AutoLock lock(m_mutex);
         Point2 smoothed_xy = xy;
+        if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
+        {
+            if (!backtrackingEKF(time, ObsData(ObsData::OBS_GPS, xy, time, confidence))) return false;
+            return applyPathLocalizer(m_ekf->getPose(), time);
+        }
+        else if(time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
         if (m_enable_gps_smoothing) smoothed_xy = getSmoothedGPS(xy, time);
         if (!m_ekf->applyGPS(smoothed_xy, time, confidence)) return false;
         saveObservation(ObsData::OBS_GPS, xy, time, confidence);
@@ -234,6 +240,12 @@ public:
     virtual bool applyIMUCompass(double odometry_theta, Timestamp time = -1, double confidence = -1)
     {
         cv::AutoLock lock(m_mutex);
+        if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
+        {
+            if (!backtrackingEKF(time, ObsData(ObsData::OBS_IMU, odometry_theta, time, confidence))) return false;
+            return applyPathLocalizer(m_ekf->getPose(), time);
+        }
+        else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
         if (!m_ekf->applyIMUCompass(odometry_theta, time, confidence)) return false;
         saveObservation(ObsData::OBS_IMU, odometry_theta, time, confidence);
         saveEKFState(m_ekf, time);
@@ -248,6 +260,7 @@ public:
             if (!backtrackingEKF(time, ObsData(ObsData::OBS_RoadTheta, theta, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
+        else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
         if (!m_ekf->applyRoadTheta(theta, time, confidence)) return false;
         saveObservation(ObsData::OBS_RoadTheta, theta, time, confidence);
         saveEKFState(m_ekf, time);
@@ -262,6 +275,7 @@ public:
             if (!backtrackingEKF(time, ObsData(ObsData::OBS_POI, clue_xy, relative, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
+        else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
         if (!m_ekf->applyPOI(clue_xy, relative, time, confidence)) return false;
         saveObservation(ObsData::OBS_POI, clue_xy, relative, time, confidence);
         saveEKFState(m_ekf, time);
@@ -276,6 +290,7 @@ public:
             if (!backtrackingEKF(time, ObsData(ObsData::OBS_VPS, clue_xy, relative, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
+        else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
         if (!m_ekf->applyVPS(clue_xy, relative, time, confidence)) return false;
         saveObservation(ObsData::OBS_VPS, clue_xy, relative, time, confidence);
         saveEKFState(m_ekf, time);
@@ -290,6 +305,7 @@ public:
             if (!backtrackingEKF(time, ObsData(ObsData::OBS_IntersectCls, xy, time, confidence))) return false;
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
+        else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
         if (!m_ekf->applyIntersectCls(xy, time, confidence)) return false;
         saveObservation(ObsData::OBS_IntersectCls, xy, time, confidence);
         saveEKFState(m_ekf, time);

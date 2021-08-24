@@ -150,7 +150,7 @@ int drawGPSData(const MapGUIProp& gui, const std::vector<std::string>& gps_files
     return 0;
 }
 
-int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader, const std::string& rec_traj_file = "", const std::string& rec_video_file = "")
+int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader, const std::string& rec_traj_file = "", const std::string& rec_video_file = "", double rec_video_fps = 10)
 {
     if (localizer.empty()) return -1;
 
@@ -217,6 +217,7 @@ int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer
     experiment.rec_traj_name = rec_traj_file;
     experiment.rec_video_name = rec_video_file;
     experiment.rec_video_resize = 0.5;
+    experiment.rec_video_fps = rec_video_fps;
     return experiment.runLocalizer(localizer, data_loader);
 }
 
@@ -353,8 +354,8 @@ int runLocalizer()
     localizer->setParamValue("track_near_radius", 20);
     localizer->setParamValue("enable_path_projection", true);
     localizer->setParamValue("enable_map_projection", false);
-    localizer->setParamValue("enable_backtracking_ekf", true);
-    localizer->setParamValue("enable_gps_smoothing)", true);
+    localizer->setParamValue("enable_backtracking_ekf", false);
+    localizer->setParamValue("enable_gps_smoothing", true);
 
     //enable_imu = true;
     //use_novatel = true;
@@ -366,8 +367,9 @@ int runLocalizer()
     //draw_gps = true;
 
     int data_sel = 0;
-    double start_time = 0;     // skip time (seconds)
-    //rec_video_file = "etri191115_path_projection_210622.mkv";
+    double start_time = 800;     // skip time (seconds)
+    //rec_video_file = "localizer_test_simple.avi";
+    double rec_video_fps = 10;
     std::vector<std::string> data_head[] = {
         {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
         {"data/ETRI/200219_150153", "1.6244"},  // 1, 23911 frames, 3884 sec, video_scale = 1.6244
@@ -406,7 +408,7 @@ int runLocalizer()
         return drawGPSData(PROP, gps_file, { cx::COLOR_RED }, 1, gps_smoothing_n);
     }
 
-    return runLocalizerReal(PROP, localizer, data_loader, rec_traj_file, rec_video_file);
+    return runLocalizerReal(PROP, localizer, data_loader, rec_traj_file, rec_video_file, rec_video_fps);
 }
 
 int main()

@@ -215,7 +215,7 @@ namespace dg
             return m_processing_time;
         }
 
-        void draw(cv::Mat& image, int font_sz = 28, double xscale = 1, double yscale = 1, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
+        void draw(cv::Mat& image, int font_sz = 28, double xscale = 1, double yscale = 1, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 1) const
         {
             for (size_t i = 0; i < m_result.size(); i++)
             {
