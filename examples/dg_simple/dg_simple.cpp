@@ -499,7 +499,7 @@ std::vector<std::pair<double, dg::LatLon>> loadExampleGPSData(std::string csv_fi
 
 int DeepGuider::run()
 {
-    // load test dataset
+    // load test dataset    
     dg::DataLoader data_loader;
     if (!data_loader.load(m_video_input_path, m_gps_input_path))
     {
@@ -516,6 +516,8 @@ int DeepGuider::run()
     cv::Mat gui_image;
     int wait_msec = 10;
     int itr = 0;
+    double start_time = 200;
+    data_loader.setStartSkipTime(start_time);
     while (1)
     {
         dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
@@ -596,10 +598,10 @@ int DeepGuider::run()
             m_cam_mutex.unlock();
 
             // process vision modules
+            if (m_enable_ocr) procOcr();
             if (m_enable_vps) procVps();
             if (m_enable_lrpose) procLRPose();
             if (m_enable_logo) procLogo();
-            if (m_enable_ocr) procOcr();
             if (m_enable_intersection) procIntersectionClassifier();
             if (m_enable_roadtheta) procRoadTheta();
 
@@ -612,7 +614,6 @@ int DeepGuider::run()
 
             // recording
             if (m_video_recording) m_video_gui << gui_image;
-            if (m_data_logging) m_video_cam << m_cam_image;
 
             dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
             printf("Iteration: %d (it took %lf seconds)\n", itr, t2 - t1);
@@ -892,7 +893,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         if(!m_logo_image.empty())
         {
             double fy = (double)win_rect.height / m_logo_image.rows;
-            cv::resize(m_logo_image, result_image, cv::Size(), fy * 0.9, fy);
+            cv::resize(m_logo_image, result_image, cv::Size(), fy, fy);
         }
         m_logo_mutex.unlock();
 
@@ -911,7 +912,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         if (!m_ocr_image.empty())
         {
             double fy = (double)win_rect.height / m_ocr_image.rows;
-            cv::resize(m_ocr_image, result_image, cv::Size(), fy * 0.9, fy);
+            cv::resize(m_ocr_image, result_image, cv::Size(), fy, fy);
         }
         m_ocr_mutex.unlock();
 
@@ -1217,7 +1218,7 @@ bool DeepGuider::procLogo()
     std::vector<dg::Point2> poi_xys;
     std::vector<dg::Polar2> relatives;
     std::vector<double> poi_confidences;
-    if (m_logo.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences) && !poi_xys.empty())
+    if (m_logo.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
     {
         for (int k = 0; k < (int)poi_xys.size(); k++)
         {
@@ -1249,7 +1250,7 @@ bool DeepGuider::procOcr()
     std::vector<dg::Point2> poi_xys;
     std::vector<dg::Polar2> relatives;
     std::vector<double> poi_confidences;
-    if (m_ocr.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences) && !poi_xys.empty())
+    if (m_ocr.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
     {
         for (int k = 0; k < (int)poi_xys.size(); k++)
         {

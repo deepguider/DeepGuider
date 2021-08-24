@@ -80,7 +80,7 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     // overwrite configuable parameters of base class
     m_enable_intersection = false;
     m_enable_vps = false;
-    m_enable_vps_lr = false;
+    m_enable_lrpose = false;
     m_enable_logo = false;
     m_enable_ocr = false;
     m_enable_roadtheta = false;
@@ -264,17 +264,7 @@ void DeepGuiderROS::callbackImageCompressed(const sensor_msgs::CompressedImageCo
         m_cam_mutex.lock();
         m_cam_image = cv::imdecode(cv::Mat(msg->data), 1);//convert compressed image data to cv::Mat
         m_cam_capture_time = msg->header.stamp.toSec();
-        m_cam_gps = m_localizer.getPoseGPS();
-        m_cam_fnumber++;
-        if (m_data_logging) logging_image = m_cam_image.clone();
         m_cam_mutex.unlock();
-
-        updateTimestamp2Framenumber(m_cam_capture_time, m_cam_fnumber);
-
-        if (m_data_logging)
-        {
-            m_video_cam << logging_image;
-        }
     }
     catch (cv_bridge::Exception& e)
     {
@@ -337,8 +327,8 @@ void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
     const dg::LatLon gps_datum(lat, lon);
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
     if (!m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
-    m_painter.drawPoint(m_map_image, toMetric(gps_datum), 2, cv::Vec3b(0, 255, 0));
-    m_gps_history_asen.push_back(gps_datum);
+    m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_color);
+    m_gps_history.push_back(gps_datum);
 }
 
 // A callback function for subscribing GPS Novatel
@@ -363,7 +353,7 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
     const dg::LatLon gps_datum(lat, lon);
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
     if (m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
-    m_painter.drawPoint(m_map_image, toMetric(gps_datum), 2, cv::Vec3b(0, 0, 255));
+    m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_novatel_color);
     m_gps_history_novatel.push_back(gps_datum);
 }
 

@@ -190,7 +190,7 @@ namespace dg
         void print() const
         {
             printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
-            printf("\tlrposenition: %d (%.2lf)\n", m_result.cls, m_result.confidence);
+            printf("\tlrpose: %d (%.2lf)\n", m_result.cls, m_result.confidence);
 
         }
 
@@ -207,7 +207,7 @@ namespace dg
                 std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
                 if (elems.size() != 6)
                 {
-                    printf("[lrposenition] Invalid log data %s\n", stream[k].c_str());
+                    printf("[lrpose] Invalid log data %s\n", stream[k].c_str());
                     return;
                 }
                 std::string module_name = elems[2];
@@ -223,7 +223,7 @@ namespace dg
 
         static const char* name()
         {
-            return "lrposenition";
+            return "lrpose";
         }
 
 

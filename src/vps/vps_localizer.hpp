@@ -42,6 +42,7 @@ namespace dg
             int N = 1;  // top-1
             Pose2 pose = m_shared->getPose();
             double pose_confidence = m_shared->getPoseConfidence(); // 0: vps search radius = 230m ~ 1: search radius = 30m
+            pose_confidence = 1;
             LatLon ll = m_shared->toLatLon(pose);
             if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str())) return false;
             if (m_result.empty()) return false;

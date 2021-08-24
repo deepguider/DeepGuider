@@ -3,7 +3,7 @@
 ## Activate/deactivate submodules
 enable_intersection: 0
 enable_vps: 0
-enable_vps_lr: 0
+enable_lrpose: 0
 enable_poi_logo: 0
 enable_poi_ocr: 0
 enable_roadtheta: 0
