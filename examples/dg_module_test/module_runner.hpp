@@ -176,10 +176,10 @@ public:
                     double cls = data[1];
                     double cls_conf = data[2];
                     double lr_confidence;
-                    double lr_valid = 1;  // UNKNOWN_SIDE_OF_ROAD
-                    if (m_lr_localizer->apply(data_time, cls, cls_conf, lr_confidence, lr_valid))
+                    double lr_cls = 1;  // UNKNOWN_SIDE_OF_ROAD
+                    if (m_lr_localizer->apply(data_time, cls, cls_conf, lr_cls, lr_confidence))
                     {
-                        bool success = localizer->applyVPS_LR(lr_valid, data_time, lr_confidence);
+                        bool success = localizer->applyVPS_LR(lr_cls, data_time, lr_confidence);
                         if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
                     }
                     video_image = data_loader.getFrame(data_time);
