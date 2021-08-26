@@ -87,5 +87,6 @@ Bucheon:
   map_ref_point_pixel: [1535, 1157]
   map_pixel_per_meter: 1.056
   map_image_rotation: 0
+  map_view_offset: [652, 227]
   gps_input_path: "data/Sensor_record_20210513_Bucheon_AndroSensor.csv"
   video_input_path: ""

@@ -814,6 +814,7 @@ bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
 
 void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, double view_zoom)
 {
+    if (m_cam_image.empty()) return;
     cv::Rect image_rc(0, 0, image.cols, image.rows);
 
     // draw cam image on the GUI map
