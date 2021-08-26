@@ -142,13 +142,13 @@ public:
             min_index = &m_ahrs_index;
             min_type = DATA_IMU;
         }
-        if (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] < min_time)
-        {
-            min_time = m_poi_data[m_poi_index][0];
-            min_data = &m_poi_data;
-            min_index = &m_poi_index;
-            min_type = DATA_POI;
-        }
+        // if (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] < min_time)
+        // {
+        //     min_time = m_poi_data[m_poi_index][0];
+        //     min_data = &m_poi_data;
+        //     min_index = &m_poi_index;
+        //     min_type = DATA_POI;
+        // }
         if (m_vps_index < m_vps_data.size() && m_vps_data[m_vps_index][0] < min_time)
         {
             min_time = m_vps_data[m_vps_index][0];
@@ -190,6 +190,38 @@ public:
     }
 
     /**
+     * Get next datum in the order of time squence
+     * @param[out] type The returned data type
+     * @param[out] data The returned data (string)
+     * @param[out] timestamp The timestamp of the returned data
+     */
+    bool getNext(int& type, std::vector<std::string>& data, dg::Timestamp& timestamp)
+    {
+        double min_time = DBL_MAX;
+        cx::CSVReader::String2D* min_data = nullptr;
+        size_t* min_index = nullptr;
+        int min_type = -1;
+
+        if (m_poi_index < m_poi_data.size() && std::stod(m_poi_data[m_poi_index][0]) < min_time)
+        {
+            min_time = std::stod(m_poi_data[m_poi_index][0]);
+            min_data = &m_poi_data;
+            min_index = &m_poi_index;
+            min_type = DATA_POI;
+        }
+
+        if (min_data)
+        {
+            data = (*min_data)[*min_index];
+            type = min_type;
+            timestamp = min_time;
+            (*min_index)++;
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Get next datum as long as its timestamp doesn't exceed a given reference time.
      * @param[in] ref_time A givan reference time
      * @param[out] type The returned data type
@@ -217,13 +249,13 @@ public:
             min_index = &m_ahrs_index;
             min_type = DATA_IMU;
         }
-        if (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] <= min_time)
-        {
-            min_time = m_poi_data[m_poi_index][0];
-            min_data = &m_poi_data;
-            min_index = &m_poi_index;
-            min_type = DATA_POI;
-        }
+        // if (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] <= min_time)
+        // {
+        //     min_time = m_poi_data[m_poi_index][0];
+        //     min_data = &m_poi_data;
+        //     min_index = &m_poi_index;
+        //     min_type = DATA_POI;
+        // }
         if (m_vps_index < m_vps_data.size() && m_vps_data[m_vps_index][0] <= min_time)
         {
             min_time = m_vps_data[m_vps_index][0];
@@ -251,6 +283,39 @@ public:
             min_data = &m_roadtheta_data;
             min_index = &m_roadtheta_index;
             min_type = DATA_RoadTheta;
+        }
+
+        if (min_data)
+        {
+            data = (*min_data)[*min_index];
+            type = min_type;
+            timestamp = min_time;
+            (*min_index)++;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Get next datum as long as its timestamp doesn't exceed a given reference time.
+     * @param[in] ref_time A givan reference time
+     * @param[out] type The returned data type
+     * @param[out] data The returned data (string)
+     * @param[out] timestamp The timestamp of the returned data
+     */
+    bool getNextUntil(dg::Timestamp ref_time, int& type, std::vector<std::string>& data, dg::Timestamp& timestamp)
+    {
+        double min_time = ref_time;
+        cx::CSVReader::String2D* min_data = nullptr;
+        size_t* min_index = nullptr;
+        int min_type = -1;
+
+        if (m_poi_index < m_poi_data.size() && std::stod(m_poi_data[m_poi_index][0]) <= min_time)
+        {
+            min_time = std::stod(m_poi_data[m_poi_index][0]);
+            min_data = &m_poi_data;
+            min_index = &m_poi_index;
+            min_type = DATA_POI;
         }
 
         if (min_data)
@@ -327,7 +392,7 @@ public:
         }
         if (!m_poi_data.empty())
         {
-            while (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] < start_time) m_poi_index++;
+            while (m_poi_index < m_poi_data.size() && std::stod(m_poi_data[m_poi_index][0]) < start_time) m_poi_index++;
         }
         if (!m_vps_data.empty())
         {
@@ -490,9 +555,41 @@ protected:
         return cx::CSVReader::Double2D();
     }
 
-    cx::CSVReader::Double2D readPOI(const std::string& clue_file)
+    cx::CSVReader::String2D readPOI(const std::string& clue_file)
     {
-        return cx::CSVReader::Double2D();
+        cx::CSVReader::String2D data;
+        cx::CSVReader csv;
+        if (csv.open(clue_file))
+        {
+            std::size_t pos = clue_file.rfind('_');
+            std::string type = clue_file.substr(pos + 1, 3);
+            
+            if(type == "poi")
+            {
+                cx::CSVReader::String2D raw_data = csv.extString2D(1, { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }); // Skip the header
+                if (!raw_data.empty())
+                {
+                    for (auto row = raw_data.begin(); row != raw_data.end(); row++)
+                    {
+                        std::vector<std::string> datum = { row->at(0), row->at(1), row->at(2), row->at(3), row->at(4), row->at(5), row->at(6), row->at(7), row->at(8), row->at(9), row->at(10), row->at(11), row->at(12), row->at(13), row->at(14), row->at(15), row->at(16) };
+                        data.push_back(datum); // fnumber,timestamp,dname,x,y,w,h,poi_id,poi_name,poi_x,poi_y,poi_floor,distance,angle,confidence,cam_lat,cam_lon
+                    }
+                }
+            }
+            else if(type == "ocr")
+            {
+                cx::CSVReader::String2D raw_data = csv.extString2D(1, { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }); // Skip the header
+                if (!raw_data.empty())
+                {
+                    for (auto row = raw_data.begin(); row != raw_data.end(); row++)
+                    {
+                        std::vector<std::string> datum = { row->at(0), row->at(1), row->at(2), row->at(3), row->at(4), row->at(5), row->at(6), row->at(7), row->at(8), row->at(9) };
+                        data.push_back(datum); // fnumber,timestamp,dname,confidence,xmin,ymin,xmax,ymax,lat,lon
+                    }
+                }
+            }
+        }
+        return data;       
     }
 
     cx::CSVReader::Double2D readVPS(const std::string& clue_file)
@@ -516,7 +613,7 @@ protected:
     cv::VideoCapture m_camera_data;
     cx::CSVReader::Double2D m_gps_data;
     cx::CSVReader::Double2D m_ahrs_data;
-    cx::CSVReader::Double2D m_poi_data;
+    cx::CSVReader::String2D m_poi_data;
     cx::CSVReader::Double2D m_vps_data;
     cx::CSVReader::Double2D m_intersection_data;
     cx::CSVReader::Double2D m_lr_data;

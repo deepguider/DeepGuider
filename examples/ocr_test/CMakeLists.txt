@@ -8,17 +8,22 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -g")
 set(BINDIR	"${CMAKE_SOURCE_DIR}/../../bin")
 set(SRCDIR	"${CMAKE_SOURCE_DIR}/../../src")
 set(EXTDIR	"${CMAKE_SOURCE_DIR}/../../EXTERNAL")
+set(RAPIDJSON_INC "${EXTDIR}/rapidjson/include")
+set(CURL_INC "${EXTDIR}/curl/include")
+set(CURL_LIBRARIES "-lcurl")
+set(JSONCPP_LIBRARIES "-ljsoncpp")
 set(FS_LIBRARIES "-lstdc++fs")
 
 find_package( PythonInterp 3.6 REQUIRED )
 find_package( PythonLibs 3.6 REQUIRED )
 find_package( OpenCV REQUIRED )
+find_package( CURL REQUIRED )
 
-INCLUDE_DIRECTORIES ( ${SRCDIR} ${PYTHON_INCLUDE_DIRS} )
+INCLUDE_DIRECTORIES ( ${SRCDIR} ${RAPIDJSON_INC} ${CURL_INC} ${PYTHON_INCLUDE_DIRS} )
 
-file(GLOB SOURCES ${SRCDIR}/ocr_recog/*.cpp ${SRCDIR}/utils/*.cpp *.cpp)
+file(GLOB SOURCES ${SRCDIR}/ocr_recog/*.cpp ${SRCDIR}/utils/*.cpp ${SRCDIR}/core/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp *.cpp)
  
 add_executable( ${PROJECT_NAME} ${SOURCES} )
-target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} ${FS_LIBRARIES} )
+target_link_libraries( ${PROJECT_NAME} ${OpenCV_LIBS} ${PYTHON_LIBRARIES} ${CURL_LIBRARIES} ${JSONCPP_LIBRARIES} ${FS_LIBRARIES} )
 
 install( TARGETS ${PROJECT_NAME} DESTINATION ${BINDIR} )

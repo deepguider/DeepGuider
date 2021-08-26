@@ -83,6 +83,38 @@ namespace dg
             return true;
         }
 
+		bool applyRec(const std::vector<std::string> data, POI* poi, Polar2& relative, double& poi_confidence)
+        {
+            // cv::AutoLock lock(m_mutex);
+            // if (m_shared == nullptr) return false;
+			// Pose2 pose = m_shared->getPose();
+			dg::UTMConverter utmconv;
+			dg::LatLon ll;
+			dg::Point2 utm;
+
+            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			Map* map = m_shared->getMap();
+			assert(map != nullptr);
+			for (int k = 0; k < m_result.size(); k++)
+            {			
+				ll.lat = std::stod(data[8]);
+				ll.lon = std::stod(data[9]);
+				utm = utmconv.toMetric(ll);
+
+				std::string dname = data[2];
+
+				std::wstring poi_name = converter.from_bytes(dname.c_str());
+                std::vector<POI*> pois = map->getPOI(poi_name, utm, m_poi_search_radius, true);
+                if (!pois.empty())
+                {
+                    poi = pois[0]; // TODO
+                    relative = computeRelative(std::stoi(data[4]), std::stoi(data[5]), std::stoi(data[6]), std::stoi(data[7]));
+                    poi_confidence = std::stod(data[3]); //TODO: m_result[k].confidence);
+                }
+            }
+            return true;
+        }
+
 		bool getLocClue(const Pose2& pose, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
 		{
 			cv::AutoLock lock(m_mutex);
