@@ -81,8 +81,8 @@ protected:
 
     // internal api's
     bool initializeDefaultMap();
-    bool setDeepGuiderDestination(dg::LatLon gps_dest);
-    bool updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest);
+    bool setDeepGuiderDestination(dg::Point2F dest);
+    bool updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest);
     void drawGuiDisplay(cv::Mat& gui_image, const cv::Point2d& view_offset, double view_zoom);
     void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
     void procGpsData(dg::LatLon gps_datum, dg::Timestamp ts);
@@ -108,7 +108,7 @@ protected:
     dg::ActiveNavigation m_active_nav;
 
     // global variables
-    dg::LatLon m_gps_dest;
+    dg::Point2F m_dest;
     bool m_dest_defined = false;
     bool m_pose_initialized = false;
     bool m_path_initialized = false;
@@ -124,8 +124,6 @@ protected:
     dg::MapPainter m_painter;
     dg::GuidanceManager::Motion m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
     dg::GuidanceManager::GuideStatus m_guidance_status = dg::GuidanceManager::GuideStatus::GUIDE_INITIAL;
-    std::list<dg::LatLon> m_gps_history;
-    std::list<dg::LatLon> m_gps_history_novatel;
 
     // GUI display
     dg::Viewport m_viewport;
@@ -434,8 +432,6 @@ bool DeepGuider::initialize(std::string config_file)
     m_ocr_image.release();
     m_intersection_image.release();
     m_roadtheta_image.release();
-    m_gps_history.clear();
-    m_gps_history_novatel.clear();
     m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
     m_guidance_status = dg::GuidanceManager::GuideStatus::GUIDE_INITIAL;
 
@@ -463,40 +459,6 @@ bool DeepGuider::initializeDefaultMap()
     return true;
 }
 
-std::vector<std::pair<double, dg::LatLon>> loadExampleGPSData(std::string csv_file)
-{
-    const string ANDRO_POSTFIX = "AndroSensor.csv";
-    cx::CSVReader csv;
-    std::vector<std::pair<double, dg::LatLon>> data;
-    const string postfix = csv_file.substr(csv_file.length() - ANDRO_POSTFIX.length(), ANDRO_POSTFIX.length());
-    if (postfix.compare(ANDRO_POSTFIX) == 0)
-    {
-        VVS_CHECK_TRUE(csv.open(csv_file, ';'));
-        cx::CSVReader::Double2D csv_ext = csv.extDouble2D(2, { 31, 22, 23, 28 }); // Skip the header
-
-        for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
-        {
-            double timestamp = 1e-3 * row->at(0);
-            dg::LatLon ll(row->at(1), row->at(2));
-            data.push_back(std::make_pair(timestamp, ll));
-        }
-    }
-    else
-    {
-        VVS_CHECK_TRUE(csv.open(csv_file));
-        cx::CSVReader::Double2D csv_ext = csv.extDouble2D(1, { 2, 3, 7, 8 }); // Skip the header
-
-        for (auto row = csv_ext.begin(); row != csv_ext.end(); row++)
-        {
-            double timestamp = row->at(0) + 1e-9 * row->at(1);
-            dg::LatLon ll(row->at(2), row->at(3));
-            data.push_back(std::make_pair(timestamp, ll));
-        }
-    }
-    return data;
-}
-
-
 int DeepGuider::run()
 {
     // load test dataset    
@@ -507,10 +469,6 @@ int DeepGuider::run()
         return -1;
     }
     printf("Run deepguider system...\n");
-
-    // set initial destination
-    //dg::LatLon gps_dest = gps_data.back().second;
-    //VVS_CHECK_TRUE(setDeepGuiderDestination(gps_dest));
 
     cv::Mat video_image;
     cv::Mat gui_image;
@@ -535,7 +493,6 @@ int DeepGuider::run()
             const dg::LatLon gps_datum(data[1], data[2]);
             procGpsData(gps_datum, data_time);
             m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_color);
-            m_gps_history.push_back(gps_datum);
             printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, data_time);
 
             video_image = data_loader.getFrame(data_time);
@@ -670,8 +627,7 @@ double DeepGuider::getPoseConfidence(Timestamp* timestamp) const
 bool DeepGuider::procOutOfPath(const Point2& curr_pose)
 {
     if (!m_dest_defined) return false;
-    dg::LatLon pose_gps = toLatLon(curr_pose);
-    return updateDeepGuiderPath(pose_gps, m_gps_dest);
+    return updateDeepGuiderPath(curr_pose, m_dest);
 }
 
 void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
@@ -687,19 +643,17 @@ void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
         m_pose_initialized = true;
         if(m_dest_defined)
         {
-            setDeepGuiderDestination(m_gps_dest);
+            setDeepGuiderDestination(m_dest);
         }
         printf("[Localizer] initial pose is estimated!\n");
     }
 }
-
 
 void DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts)
 {
     auto euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
     VVS_CHECK_TRUE(m_localizer.applyIMUCompass(euler.z, ts));
 }
-
 
 void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
 {
@@ -717,8 +671,8 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
     else if (evt == cv::EVENT_LBUTTONDBLCLK)
     {
         cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
-        dg::LatLon ll = toLatLon(m_painter.cvtPixel2Value(px));
-        setDeepGuiderDestination(ll);
+        dg::Point2 dest = m_painter.cvtPixel2Value(px);
+        setDeepGuiderDestination(dest);
     }
     else if (evt == cv::EVENT_RBUTTONDOWN)
     {
@@ -731,41 +685,32 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
     }
 }
 
-
-bool DeepGuider::setDeepGuiderDestination(dg::LatLon gps_dest)
+bool DeepGuider::setDeepGuiderDestination(dg::Point2F dest)
 {
-    // check self-localized
     if(!m_pose_initialized)
     {
-        m_gps_dest = gps_dest;
+        m_dest = dest;
         m_dest_defined = true;
         return true;
     }
 
-    // get current pose
-    dg::LatLon pose_gps = toLatLon(getPose());
-
-    // generate & apply new path
-    bool ok = updateDeepGuiderPath(pose_gps, gps_dest);
-    if(!ok) return false;
-
-    // update system status
-    m_gps_dest = gps_dest;
+    if (!updateDeepGuiderPath(getPose(), dest)) return false;
+    m_dest = dest;
     m_dest_defined = true;
     m_path_initialized = true;
     return true;
 }
 
-
-bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
+bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
 {
+    if (m_enable_tts) putTTS("Regenerate path!");
     if (m_enable_mapserver)
     {
-        int start_floor = 0;
-        int dest_floor = 0;
         Path path;
+        dg::LatLon gps_start = toLatLon(start);
+        dg::LatLon gps_dest = toLatLon(dest);
         setMapLock();
-        bool ok = m_map_manager.getPath_mapExpansion(gps_start.lat, gps_start.lon, start_floor, gps_dest.lat, gps_dest.lon, dest_floor, path, *m_map);
+        bool ok = m_map_manager.getPath_mapExpansion(gps_start.lat, gps_start.lon, start.floor, gps_dest.lat, gps_dest.lon, dest.floor, path, *m_map);
         releaseMapLock();
         if (!ok)
         {
@@ -777,12 +722,8 @@ bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
     }
     else
     {
-        Point2 p_start = toMetric(gps_start);
-        Point2 p_dest = toMetric(gps_dest);
         Path path;
-        setMapLock();
-        bool ok = m_map && m_map->getPath(p_start, p_dest, path);
-        releaseMapLock();
+        bool ok = m_map && m_map->getPath(start, dest, path);
         if (!ok) return false;
         setPath(path);
     }
@@ -793,29 +734,21 @@ bool DeepGuider::updateDeepGuiderPath(dg::LatLon gps_start, dg::LatLon gps_dest)
     m_guider_mutex.unlock();
     printf("\tGuidance is updated with new map and path!\n");
 
-    // draw map
-    m_map_image_original.copyTo(m_map_image);
-    setPathLock();
-    m_painter.drawPath(m_map_image, m_map, m_path);
-    releasePathLock();
-    for(auto itr = m_gps_history_novatel.begin(); itr != m_gps_history_novatel.end(); itr++)
-    {
-        m_painter.drawPoint(m_map_image, toMetric(*itr), m_gui_gps_trj_radius, m_gui_gps_novatel_color);
-    }
-    for(auto itr = m_gps_history.begin(); itr != m_gps_history.end(); itr++)
-    {
-        m_painter.drawPoint(m_map_image, toMetric(*itr), m_gui_gps_trj_radius, m_gui_gps_color);
-    }
-    printf("\tGUI map is updated with new map and path!\n");
-
     return true;    
 }
-
 
 void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, double view_zoom)
 {
     if (m_cam_image.empty()) return;
     cv::Rect image_rc(0, 0, image.cols, image.rows);
+
+    // draw path
+    setPathLock();
+    if (m_path && !m_path->empty())
+    {
+        m_painter.drawPath(image, m_map, m_path, view_offset, view_zoom);
+    }
+    releasePathLock();
 
     // draw cam image on the GUI map
     cv::Mat video_image;
@@ -992,7 +925,6 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     }
 }
 
-
 void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect)
 {
     if(!m_path_initialized || !m_dest_defined) return;
@@ -1075,7 +1007,6 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
     cv::putText(image, guide.msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 0, 0), 2);
 }
 
-
 void DeepGuider::procGuidance(dg::Timestamp ts)
 {
     if(!m_path_initialized || !m_dest_defined) return;
@@ -1083,7 +1014,6 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     // get updated pose & localization confidence
     dg::TopometricPose pose_topo = getPoseTopometric();
     dg::Pose2 pose_metric = getPose();
-    dg::LatLon pose_gps = toLatLon(pose_metric);
     double pose_confidence = m_localizer.getPoseConfidence();
 
     // Guidance: generate navigation guidance
@@ -1149,8 +1079,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         if (cur_status == dg::GuidanceManager::GuideStatus::GUIDE_OOP || cur_status == dg::GuidanceManager::GuideStatus::GUIDE_LOST)
         {
             printf("GUIDANCE: out of path detected!\n");
-            if (m_enable_tts) putTTS("Regenerate path!");
-            VVS_CHECK_TRUE(updateDeepGuiderPath(pose_gps, m_gps_dest));
+            VVS_CHECK_TRUE(updateDeepGuiderPath(pose_metric, m_dest));
         }
 
         // check lost
@@ -1172,7 +1101,6 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     }
     m_guidance_status = cur_status;
 }
-
 
 bool DeepGuider::procIntersectionClassifier()
 {
@@ -1202,7 +1130,6 @@ bool DeepGuider::procIntersectionClassifier()
     }
     return false;
 }
-
 
 bool DeepGuider::procLogo()
 {

@@ -214,6 +214,24 @@ struct Point2ID : public Point2
 };
 
 /**
+ * @brief 2D point with floor
+ */
+struct Point2F : public Point2
+{
+    /** Floor */
+    int floor;
+
+    /** A default constructor */
+    Point2F() : Point2(0, 0), floor(0) { }
+
+    /** A constructor with x, y, and  floor */
+    Point2F(double _x, double _y, int _floor = 0) : Point2(_x, _y), floor(_floor) { }
+
+    /** A constructor with a 2D point and floor */
+    Point2F(Point2 p, int _floor = 0) : Point2(p), floor(_floor) { }
+};
+
+/**
  * @brief 2D point with Timestamp
  */
 struct Point2T : public Point2

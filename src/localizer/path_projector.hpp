@@ -541,10 +541,11 @@ protected:
         }
 
         // Set the pose to nearest path pose
-        Pose2 path_pose = min_dist2.second;
+        Pose2 path_pose = pose;
         if (min_path_idx < (int)path.pts.size() - 1)
         {
-            path_pose = min_dist2.second;
+            path_pose.x = min_dist2.second.x;
+            path_pose.y = min_dist2.second.y;
             double dx = path.pts[min_path_idx + 1].x - path.pts[min_path_idx].x;
             double dy = path.pts[min_path_idx + 1].y - path.pts[min_path_idx].y;
             path_pose.theta = cx::trimRad(atan2(dy, dx));

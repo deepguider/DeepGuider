@@ -27,7 +27,7 @@ enum
     /** Intersection classifier data (time, v, confidence) */
     DATA_IntersectCls = 4,
 
-    /** VPS_LR data (time, v, confidence) */
+    /** LRPose data (time, v, confidence) */
     DATA_LR = 5,
 
     /** RoadTheta data */

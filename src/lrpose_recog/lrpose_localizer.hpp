@@ -81,7 +81,7 @@ namespace dg
             //m_state = simpleStateFiltering(observed_cls);
 
             // Update variables for draw(). m_result needs to be set by manual when csv dataloader is enabled rather than python.
-            m_result.cls = cls;
+            m_result.cls = (int)(cls + 0.5);
             m_result.confidence = cls_conf;
 
             lr_cls = cls;
