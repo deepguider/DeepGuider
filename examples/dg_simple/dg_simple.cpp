@@ -408,6 +408,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // create GUI window
     cv::namedWindow(m_winname, cv::WINDOW_NORMAL);
+    cv::resizeWindow(m_winname, m_viewport.size().width, m_viewport.size().height);
     cv::setMouseCallback(m_winname, onMouseEvent, this);
 
     // init video recording

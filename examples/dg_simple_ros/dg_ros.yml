@@ -8,7 +8,7 @@ enable_poi_logo: 0
 enable_poi_ocr: 0
 enable_roadtheta: 0
 enable_exploration: 0
-enable_imu: 1
+enable_imu: 0
 enable_mapserver: 1
 
 ### Main Options

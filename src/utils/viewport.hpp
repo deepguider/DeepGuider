@@ -65,6 +65,8 @@ public:
 
     double zoom() { return m_zoom; }
 
+    cv::Size size() { return m_viewport.size(); }
+
     void procMouseEvent(int evt, int x, int y, int flags)
     {
         cv::AutoLock lock(m_mutex);

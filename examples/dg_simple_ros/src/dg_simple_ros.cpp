@@ -328,7 +328,6 @@ void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
     if (!m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
     m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_color);
-    m_gps_history.push_back(gps_datum);
 }
 
 // A callback function for subscribing GPS Novatel
@@ -354,7 +353,6 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
     if (m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
     m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_novatel_color);
-    m_gps_history_novatel.push_back(gps_datum);
 }
 
 // A callback function for subscribing IMU
