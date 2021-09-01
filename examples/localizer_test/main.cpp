@@ -274,6 +274,7 @@ int runUnitTest()
     // 3. Test localizers
     VVS_RUN_TEST(testLocEKFGPS());
     VVS_RUN_TEST(testLocEKFGyroGPS());
+    VVS_RUN_TEST(testLocEKFBacktracking());
 
     VVS_RUN_TEST(testLocETRIMap2RoadMap());
     VVS_RUN_TEST(testLocETRISyntheticMap());
@@ -354,10 +355,10 @@ int runLocalizer()
     localizer->setParamValue("track_near_radius", 20);
     localizer->setParamValue("enable_path_projection", true);
     localizer->setParamValue("enable_map_projection", false);
-    localizer->setParamValue("enable_backtracking_ekf", false);
+    localizer->setParamValue("enable_backtracking_ekf", true);
     localizer->setParamValue("enable_gps_smoothing", true);
 
-    //enable_imu = true;
+    enable_imu = true;
     //use_novatel = true;
     //enable_poi = true;
     //enable_vps = true;
@@ -367,7 +368,7 @@ int runLocalizer()
     //draw_gps = true;
 
     int data_sel = 0;
-    double start_time = 800;     // skip time (seconds)
+    double start_time = 0;     // skip time (seconds)
     //rec_video_file = "localizer_test_simple.avi";
     double rec_video_fps = 10;
     std::vector<std::string> data_head[] = {

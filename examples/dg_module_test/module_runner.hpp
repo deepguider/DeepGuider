@@ -11,7 +11,7 @@
 #include "roadtheta/roadtheta_localizer.hpp"
 #include "utils/viewport.hpp"
 
-enum { DG_VPS, DG_VPS_LR, DG_POI, DG_RoadTheta, DG_Intersection };
+enum { DG_VPS, DG_LR, DG_POI, DG_RoadTheta, DG_Intersection };
 
 void onMouseEvent(int event, int x, int y, int flags, void* param);
 
@@ -36,7 +36,7 @@ public:
         if (module_sel == DG_POI) m_ocr_localizer = cv::makePtr<dg::OCRLocalizer>();
         if (module_sel == DG_Intersection) m_intersection_localizer = cv::makePtr<dg::IntersectionLocalizer>();
         if (module_sel == DG_RoadTheta) m_roadtheta_localizer = cv::makePtr<dg::RoadThetaLocalizer>();
-        if (module_sel == DG_VPS_LR) m_lr_localizer = cv::makePtr<dg::LRLocalizer>();
+        if (module_sel == DG_LR) m_lr_localizer = cv::makePtr<dg::LRLocalizer>();
         if (use_saved_testset)
         {
             if (m_vps_localizer) VVS_CHECK_TRUE(m_vps_localizer->initialize_without_python(this));
@@ -134,7 +134,7 @@ public:
                 {
                     /*** Input of m_vps_localizer->apply() ***/
                     double t = data[0];
-                    double svid = data[1];
+                    dg::ID svid = (dg::ID)(data[1] + 0.5);
                     double svidx = data[2];  // Which side db image was matched to query. 'f' means front, 'b', 'u', 'l', 'r'.
                     double pred_lat = data[3];
                     double pred_lon = data[4];                    
@@ -169,7 +169,7 @@ public:
                     m_vps_localizer->draw(result_image);
                     update_gui = true;                      
                 }
-                else if (module_sel == DG_VPS_LR && type == dg::DATA_LR)
+                else if (module_sel == DG_LR && type == dg::DATA_LR)
                 {
                     //bool success = dg_localizer->applyVPS_LR(lr_result, data_time, confidence);
                     //if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
@@ -271,7 +271,7 @@ public:
                         m_vps_localizer->draw(result_image);
                     }
                 }
-                else if (module_sel == DG_VPS_LR)
+                else if (module_sel == DG_LR)
                 {
                     //bool success = dg_localizer->applyVPS_LR(lr_result, data_time, confidence);
                     //if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");

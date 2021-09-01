@@ -369,7 +369,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("track_near_radius", 20);
     m_localizer.setParamValue("enable_path_projection", true);
     m_localizer.setParamValue("enable_map_projection", false);
-    m_localizer.setParamValue("enable_backtracking_ekf", false);
+    m_localizer.setParamValue("enable_backtracking_ekf", true);
     m_localizer.setParamValue("enable_gps_smoothing)", true);
     printf("\tLocalizer initialized!\n");
 
