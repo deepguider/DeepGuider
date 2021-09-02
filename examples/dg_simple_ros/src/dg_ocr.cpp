@@ -82,6 +82,23 @@ bool DGRosRecognizer::loadConfig(std::string config_file)
     // ros-specific parameters
     LOAD_PARAM_VALUE(fn, "topic_cam", m_topic_cam);
 
+    int topic_name_index = -1;
+    std::string topicset_tagname;
+    std::vector<cv::String> topic_names_set;
+    LOAD_PARAM_VALUE(fn, "topic_names_set", topic_names_set);
+    LOAD_PARAM_VALUE(fn, "topic_name_index", topic_name_index);
+    if (topic_name_index >= 0 && topic_name_index < topic_names_set.size()) topicset_tagname = topic_names_set[topic_name_index];
+
+    // Read Topic Setting
+    if (!topicset_tagname.empty())
+    {
+        cv::FileNode fn_topic = fn[topicset_tagname];
+        if (!fn_topic.empty())
+        {
+            LOAD_PARAM_VALUE(fn_topic, "topic_cam", m_topic_cam);
+        }
+    }
+
     return true;
 }
 
@@ -154,6 +171,7 @@ bool DGRosRecognizer::initialize(std::string config_file)
 
     // show GUI window
     cv::namedWindow(m_winname, cv::WINDOW_NORMAL);
+    cv::resizeWindow(m_winname, 640, 360);
 
     printf("\tInitialization is done!\n\n");
 
