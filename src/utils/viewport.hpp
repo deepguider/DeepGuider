@@ -79,6 +79,8 @@ public:
                 updateViewport(ix, iy);
                 m_mouse_pt2 = cv::Point(x, y);
             }
+            m_mouse_move_x = x;
+            m_mouse_move_y = y;
         }
         else if (evt == cv::EVENT_LBUTTONDOWN)
         {
@@ -110,6 +112,28 @@ public:
                 double zoom_new = m_virtual_zoom / 2;
                 double view_sx = ix - x / zoom_new;
                 double view_sy = iy - y / zoom_new;
+                updateViewport(view_sx, view_sy, zoom_new);
+            }
+        }
+        else if (evt == cv::EVENT_MOUSEHWHEEL)  // for ROS run in Linux
+        {
+            double ix = m_viewport.x + m_mouse_move_x / m_zoom;
+            double iy = m_viewport.y + m_mouse_move_y / m_zoom;
+            int delta = -cv::getMouseWheelDelta(flags);
+            if (delta > 0 && m_virtual_zoom < m_virtual_zoom_max) // virtual_zoom in
+            {
+                double zoom_old = m_zoom;
+                double zoom_new = m_virtual_zoom * 2;
+                double view_sx = ix - m_mouse_move_x / zoom_new;
+                double view_sy = iy - m_mouse_move_y / zoom_new;
+                updateViewport(view_sx, view_sy, zoom_new);
+            }
+            else if (delta < 0 && m_virtual_zoom > m_virtual_zoom_min)  // virtual_zoom out
+            {
+                double zoom_old = m_zoom;
+                double zoom_new = m_virtual_zoom / 2;
+                double view_sx = ix - m_mouse_move_x / zoom_new;
+                double view_sy = iy - m_mouse_move_y / zoom_new;
                 updateViewport(view_sx, view_sy, zoom_new);
             }
         }
@@ -158,6 +182,8 @@ protected:
     cv::Point m_mouse_pt2;
     cv::Point m_view_pt1;
     cv::Mutex m_mutex;
+    int m_mouse_move_x = 0;
+    int m_mouse_move_y = 0;
 
 }; // End of 'Viewport'
 
