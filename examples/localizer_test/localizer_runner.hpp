@@ -90,7 +90,11 @@ public:
         m_viewport.initialize(bg_image, m_view_size, m_view_offset);
 
         // Run localization with GPS and other sensors
-        if (show_gui) cv::namedWindow("LocalizerRunner::runLocalizer()", gui_wnd_flag);
+        if (show_gui)
+        {
+            cv::namedWindow("LocalizerRunner::runLocalizer()", gui_wnd_flag);
+            cv::resizeWindow("LocalizerRunner::runLocalizer()", bg_image.size());
+        }
         cv::setMouseCallback("LocalizerRunner::runLocalizer()", onMouseEventLocalizer, this);
         cv::Mat cam_image;
 
