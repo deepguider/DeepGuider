@@ -31,7 +31,7 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     if (!localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
     if (!localizer->setParamRoadThetaNoise(10, 0)) return -1;   // angle arror(deg), angle offset(deg)
     if (!localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
-    localizer->setParamValue("gps_reverse_vel", -1);
+    localizer->setParamValue("gps_reverse_vel", -0.5);
     localizer->setParamValue("search_turn_weight", 100);
     localizer->setParamValue("track_near_radius", 20);
     localizer->setParamValue("enable_path_projection", true);

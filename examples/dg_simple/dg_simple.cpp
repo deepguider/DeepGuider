@@ -364,7 +364,7 @@ bool DeepGuider::initialize(std::string config_file)
     if (!m_localizer.setParamIntersectClsNoise(0.1)) return false;  // position error(m)
     if (!m_localizer.setParamRoadThetaNoise(10, 0)) return false;   // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin
-    m_localizer.setParamValue("gps_reverse_vel", -1);
+    m_localizer.setParamValue("gps_reverse_vel", -0.5);
     m_localizer.setParamValue("search_turn_weight", 100);
     m_localizer.setParamValue("track_near_radius", 20);
     m_localizer.setParamValue("enable_path_projection", true);
