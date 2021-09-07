@@ -53,7 +53,7 @@ protected:
     double m_map_pixel_per_meter = 1.039;
     double m_map_image_rotation = cx::cvtDeg2Rad(1.0);
     std::string m_gps_input_path = "data/191115_ETRI_asen_fix.csv";
-    std::string m_video_input_path = "video/191115_ETRI.avi";
+    std::string m_video_input_path = "data/ETRI/191115_151140_images.avi";
     cv::Vec3b m_gui_robot_color = cv::Vec3b(0, 0, 255);
     cv::Vec3b m_gui_gps_color = cv::Vec3b(80, 80, 80);
     cv::Vec3b m_gui_gps_novatel_color = cv::Vec3b(255, 0, 0);

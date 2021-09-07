@@ -46,10 +46,11 @@ namespace dg
             LatLon ll = m_shared->toLatLon(pose);
             if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str())) return false;
             if (m_result.empty()) return false;
+            sv_id = m_result[0].id;  
+            if (sv_id == 0) return false;  // no valid matching between query and streetveiw due to lack of db images around query.
 
             Map* map = m_shared->getMap();
             assert(map != nullptr);
-            sv_id = m_result[0].id;
             StreetView* view = map->getView(sv_id);
             streetview_xy = *view;
             relative = computeRelative(image, sv_id, sv_image);

@@ -277,8 +277,18 @@ public:
                 }
                 else if (module_sel == DG_LR)
                 {
-                    //bool success = dg_localizer->applyVPS_LR(lr_result, data_time, confidence);
-                    //if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
+                    double lr_confidence;
+                    double lr_cls = 1;  // UNKNOWN_SIDE_OF_ROAD
+                    if (m_lr_localizer->apply(video_image, capture_time, lr_cls, lr_confidence))
+                    {
+                        bool success = localizer->applyVPS_LR(lr_cls, data_time, lr_confidence);
+                        if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
+                    }
+                    if (show_gui)
+                    {
+                        result_image = video_image.clone();
+                        m_lr_localizer->draw(result_image);
+                    }
                 }
                 else if (module_sel == DG_RoadTheta)
                 {

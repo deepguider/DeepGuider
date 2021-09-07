@@ -133,9 +133,9 @@ int runModule()
 
     bool use_saved_testset = true;
 
-    //int module_sel = DG_Intersection;
-    //int module_sel = DG_VPS;
-    int module_sel = DG_LR;
+    int module_sel = DG_Intersection;
+    // int module_sel = DG_VPS;
+    // int module_sel = DG_LR;
     //int module_sel = DG_POI;
     //int module_sel = DG_RoadTheta;
 

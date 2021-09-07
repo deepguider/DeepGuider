@@ -581,8 +581,10 @@ class vps:
 
 
     def init_vps_IDandConf(self,K):
-        vps_imgID = [int(i) for i in np.zeros(K)] # list of uint64, fixed dg'issue #36
-        vps_imgConf = [float(i) for i in np.zeros(K)] # list of double(float64), fixed dg'issue #36
+        # vps_imgID = [int(i) for i in np.zeros(K)] # list of uint64, fixed dg'issue #36
+        # vps_imgConf = [float(i) for i in np.zeros(K)] # list of double(float64), fixed dg'issue #36
+        vps_imgID = [int(0) for i in np.zeros(K)] # list of uint64, fixed dg'issue #36
+        vps_imgConf = [float(-1) for i in np.zeros(K)] # list of double(float64), fixed dg'issue #36
         self.vps_IDandConf = [vps_imgID, vps_imgConf]
         return 0
 
@@ -648,8 +650,7 @@ class vps:
             raise Exception('Unknown dataset')
 
         ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]
-        # return self.getIDConf()
-        return self.vps_IDandConf
+        return self.getIDConf()
 
     def getIDConf(self):
         if self.checking_return_value() < 0:
