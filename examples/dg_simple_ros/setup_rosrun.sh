@@ -27,6 +27,7 @@ fi
 mkdir -p $ROSDIR/src
 ln -sf $DGDIR/examples/dg_simple_ros $ROSDIR/src/
 ln -sf $DGDIR/bin/font $ROSDIR/
+ln -sf $DGDIR/bin/recordings $ROSDIR/
 ln -sf $DGDIR/bin/data $ROSDIR/
 ln -sf $DGDIR/bin/data_localizer $ROSDIR/
 ln -sf $DGDIR/src/vps/data_vps $ROSDIR/
