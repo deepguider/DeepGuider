@@ -10,7 +10,7 @@ networkx==2.4
 numpy==1.18.2
 opencv-contrib-python-headless==4.2.0.34
 opencv-python==4.2.0.32
-Pillow==6.2.1
+Pillow==8.3.2
 pygame==1.9.6
 pyparsing==2.4.6
 python-dateutil==2.8.1
