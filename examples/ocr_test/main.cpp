@@ -210,13 +210,14 @@ int runOCRloc(LOCALIZER& localizer, DataLoader& data_loader, const std::string& 
     {
         out_traj = fopen(rec_traj_file.c_str(), "wt");//, ccs=UTF-8");
         if (out_traj == nullptr) return -1;
-        fprintf(out_traj, "fnumber,timestamp,dname,x,y,w,h,poi_id,poi_name,poi_x,poi_y,poi_floor,distance,angle,confidence,cam_lat,cam_lon\n");
+        fprintf(out_traj, "fnumber,timestamp,poi_id,poi_x,poi_y,distance,angle,confidence\n");
+        //fprintf(out_traj, "fnumber,timestamp,dname,x,y,w,h,poi_id,poi_name,poi_x,poi_y,poi_floor,distance,angle,confidence,cam_lat,cam_lon\n");
     }
     
     int type;
     std::vector<std::string> data;
     dg::Timestamp data_time;
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    //std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     
     while (1)
     {
@@ -232,7 +233,7 @@ int runOCRloc(LOCALIZER& localizer, DataLoader& data_loader, const std::string& 
         int ymax = std::stoi(data[7]);      
         double cam_lat = std::stod(data[8]);
         double cam_lon = std::stod(data[9]);     
-        POI* poi = nullptr;//std::vector<dg::Point2> poi_xys;
+        std::vector<POI> pois;
         Polar2 relatives;
         double poi_confidences;
 
@@ -242,21 +243,23 @@ int runOCRloc(LOCALIZER& localizer, DataLoader& data_loader, const std::string& 
         double w = xmax - xmin;
         double h = ymax - ymin;
 
-        bool ok = localizer.applyRec(data, poi, relatives, poi_confidences);        
+        bool ok = localizer.applyLoc(data, pois, relatives, poi_confidences);        
         
         // Record the current state on the CSV file
         if (out_traj != nullptr)
         {
-            if(poi != nullptr)
-            {       
-                printf("%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
-                fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
-            }
-            else
+            if(!pois.empty())
             {
-                printf("%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,0,"",0.00,0.00,0,0.00,0.00,0.00,cam_lat,cam_lon);
-                fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,0,"",0.00,0.00,0,0.00,0.00,0.00,cam_lat,cam_lon);
+                printf("%d,%.3lf,%d,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,(int)pois[0].id,pois[0].x,pois[0].y,relatives.lin,relatives.ang,poi_confidences);
+                fprintf(out_traj, "%d,%.3lf,%d,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,(int)pois[0].id,pois[0].x,pois[0].y,relatives.lin,relatives.ang,poi_confidences);       
+                // printf("%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
+                // fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
             }
+            // else
+            // {
+            //     printf("%d,%.3lf,%d,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,0,0.00,0.00,0.00,0.00,0.00);
+            //     fprintf(out_traj, "%d,%.3lf,%d,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,0,0.00,0.00,0.00,0.00,0.00);
+            // }
         }
     }
     
@@ -334,6 +337,8 @@ int runOCRLocalizerReal(const std::string& site, DataLoader& data_loader, const 
     // Clear the Python module
     localizer.clear();
 
+    delete shared;
+    
     return 0;
 }
 
@@ -345,7 +350,7 @@ int testOCRLocalizer()
     //bool enable_gps = false;
     //bool use_novatel = false;
 
-    int data_sel = 7;
+    int data_sel = 5;
     double start_time = 0;     // time skip (seconds)
  
     std::vector<std::string> data_head[] = {
@@ -421,11 +426,11 @@ int runOCRrec(RECOGNIZER recognizer, DataLoader4Rec& data_loader, const std::str
                     fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%d,%d,%d,%d,%.7lf,%.7lf\n", fnumber, data_time, result[k].label.c_str(), result[k].confidence, result[k].xmin, result[k].ymin, result[k].xmax, result[k].ymax, (double)gps_datum.lat, (double)gps_datum.lon);
                 }
             }
-            else
-            {   
-                printf("%d,%.3lf,%s,%.2lf,%d,%d,%d,%d,%.7lf,%.7lf\n", fnumber, data_time, "", 0.00, 0, 0, 0, 0, (double)gps_datum.lat, (double)gps_datum.lon);
-                fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%d,%d,%d,%d,%.7lf,%.7lf\n", fnumber, data_time, "", 0.00, 0, 0, 0, 0, (double)gps_datum.lat, (double)gps_datum.lon);
-            }
+            // else
+            // {   
+            //     printf("%d,%.3lf,%s,%.2lf,%d,%d,%d,%d,%.7lf,%.7lf\n", fnumber, data_time, "", 0.00, 0, 0, 0, 0, (double)gps_datum.lat, (double)gps_datum.lon);
+            //     fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%d,%d,%d,%d,%.7lf,%.7lf\n", fnumber, data_time, "", 0.00, 0, 0, 0, 0, (double)gps_datum.lat, (double)gps_datum.lon);
+            // }
         }
     }
     

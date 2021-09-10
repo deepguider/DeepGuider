@@ -83,31 +83,30 @@ namespace dg
             return true;
         }
 
-		bool applyRec(const std::vector<std::string> data, POI* poi, Polar2& relative, double& poi_confidence)
+		bool applyLoc(const std::vector<std::string> data, std::vector<POI>& pois, Polar2& relative, double& poi_confidence)
         {
-            // cv::AutoLock lock(m_mutex);
-            // if (m_shared == nullptr) return false;
-			// Pose2 pose = m_shared->getPose();
-			dg::UTMConverter utmconv;
+            cv::AutoLock lock(m_mutex);
+            if (m_shared == nullptr) return false;
 			dg::LatLon ll;
 			dg::Point2 utm;
 
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-			Map* map = m_shared->getMap();
-			assert(map != nullptr);
+			Map map = *(m_shared->getMap());
+
+			assert(!map.isEmpty());
 			for (int k = 0; k < m_result.size(); k++)
             {			
 				ll.lat = std::stod(data[8]);
 				ll.lon = std::stod(data[9]);
-				utm = utmconv.toMetric(ll);
+				utm = map.toMetric(ll);
 
 				std::string dname = data[2];
 
 				std::wstring poi_name = converter.from_bytes(dname.c_str());
-                std::vector<POI*> pois = map->getPOI(poi_name, utm, m_poi_search_radius, true);
-                if (!pois.empty())
+                std::vector<POI*> spois = map.getPOI(poi_name, utm, m_poi_search_radius, true);
+                if (!spois.empty())
                 {
-                    poi = pois[0]; // TODO
+                    pois.push_back(*spois[0]); // TODO
                     relative = computeRelative(std::stoi(data[4]), std::stoi(data[5]), std::stoi(data[6]), std::stoi(data[7]));
                     poi_confidence = std::stod(data[3]); //TODO: m_result[k].confidence);
                 }
