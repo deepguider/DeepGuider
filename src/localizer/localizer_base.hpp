@@ -36,6 +36,13 @@ public:
         return toLatLon(pose_m);
     }
 
+    virtual Point2UTM getPoseUTM(Timestamp* timestamp = nullptr) const
+    {
+        Pose2 metric = getPose(timestamp);
+        if (m_shared) return m_shared->cvtLatLon2UTM(toLatLon(metric));
+        return Point2UTM();
+    }
+
     virtual TopometricPose getPoseTopometric(Timestamp* timestamp = nullptr) const
     {
         Pose2 pose_m = getPose(timestamp);

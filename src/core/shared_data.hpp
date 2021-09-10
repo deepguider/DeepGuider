@@ -77,6 +77,14 @@ public:
         return m_map->toMetric(ll);
     }
 
+    /** Get UTM position of a gps position by using shared converter */
+    virtual Point2UTM cvtLatLon2UTM(const LatLon& ll)
+    {
+        cv::AutoLock lock(m_mutex_map);
+        if (m_map == nullptr) return Point2UTM();
+        return m_map->cvtLatLon2UTM(ll);
+    }
+
     /** Set a lock for shared map data */
     void setMapLock() 
     {
