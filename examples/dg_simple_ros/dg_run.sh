@@ -9,6 +9,8 @@ pid=`pgrep roscore`
 if [ ! -n pid ];then  # If process is not running.
     gnome-terminal -- roscore
     sleep 2s    # wait until roscore is ready
+else
+	gnome-terminal -- roscore
 fi
 
 ## Start rosbag play
