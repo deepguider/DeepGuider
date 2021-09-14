@@ -21,6 +21,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <cwctype>
 
 namespace cx
 {
@@ -35,6 +36,11 @@ namespace cx
         text.erase(text.begin(), std::find_if(text.begin(), text.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
         return text;
     }
+    inline std::wstring trimLeft(std::wstring text)
+    {
+        text.erase(text.begin(), std::find_if(text.begin(), text.end(), std::not1(std::ptr_fun<wint_t, int>(std::iswspace))));
+        return text;
+    }
 
     /**
      * Remove space at the right of the given string
@@ -46,6 +52,11 @@ namespace cx
         text.erase(std::find_if(text.rbegin(), text.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), text.end());
         return text;
     }
+    inline std::wstring trimRight(std::wstring text)
+    {
+        text.erase(std::find_if(text.rbegin(), text.rend(), std::not1(std::ptr_fun<wint_t, int>(std::iswspace))).base(), text.end());
+        return text;
+    }
 
     /**
      * Remove space at the left and right of the given string
@@ -53,6 +64,7 @@ namespace cx
      * @return The trimmed string
      */
     inline std::string trimBoth(std::string text) { return trimLeft(trimRight(text)); }
+    inline std::wstring trimBoth(std::wstring text) { return trimLeft(trimRight(text)); }
 
     /**
      * Make the given string to its lower cases

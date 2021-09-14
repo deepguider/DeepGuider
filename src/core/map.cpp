@@ -2,6 +2,7 @@
 #include "utils/opencx.hpp"
 #include <locale>
 #include <codecvt>
+#include <wchar.h>
 
 #define MAP_BUF_SIZE               (1024)
 
@@ -12,30 +13,31 @@ bool Map::load(const char* filename, bool load_from_latlon)
 {
     removeAll();
 
-    FILE* fid = fopen(filename, "rt");
+    FILE* fid = fopen(filename, "rt+,ccs=UTF-8");
     if (fid == nullptr) return false;
 
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
-    char buffer[MAP_BUF_SIZE];
+    wchar_t buffer[MAP_BUF_SIZE];
+    wchar_t* context;
     while (!feof(fid))
     {
-        if (fgets(buffer, MAP_BUF_SIZE, fid) == nullptr) break;
-        char* token;
-        if ((token = strtok(buffer, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
+        if (fgetws(buffer, MAP_BUF_SIZE, fid) == nullptr) break;
+        wchar_t* token;
+        if ((token = wcstok(buffer, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
         if (token[0] == 'N' || token[0] == 'n')
         {
             // Read nodes
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            ID id = strtoll(token, nullptr, 10);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            double v1 = strtod(token, nullptr);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            double v2 = strtod(token, nullptr);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            int type = strtol(token, nullptr, 10);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            int floor = strtol(token, nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            ID id = std::stoll(cx::trimBoth(token), nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            double v1 = std::stod(cx::trimBoth(token), nullptr);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            double v2 = std::stod(cx::trimBoth(token), nullptr);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            int type = std::stoi(cx::trimBoth(token), nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            int floor = std::stoi(cx::trimBoth(token), nullptr, 10);
 
             if(load_from_latlon) addNode(Node(id, toMetric(LatLon(v1, v2)), type, floor));
             else addNode(Node(id, v1, v2, type, floor));
@@ -43,34 +45,41 @@ bool Map::load(const char* filename, bool load_from_latlon)
         else if (token[0] == 'E' || token[0] == 'e')
         {
             // Read edges
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            ID id = strtoll(token, nullptr, 10);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            int type = strtol(token, nullptr, 10);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            ID id1 = strtoll(token, nullptr, 10);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            ID id2 = strtoll(token, nullptr, 10);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            double length = strtod(token, nullptr);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            bool directed = (strtol(token, nullptr, 10) != 0);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            ID id = std::stoll(cx::trimBoth(token), nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            int type = std::stoi(cx::trimBoth(token), nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            ID id1 = std::stoll(cx::trimBoth(token), nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            ID id2 = std::stoll(cx::trimBoth(token), nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            double length = std::stod(cx::trimBoth(token), nullptr);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            bool directed = (std::stoi(cx::trimBoth(token), nullptr, 10) != 0);
 
             addEdge(Edge(id, type, id1, id2, length, directed));
         }
         else if (token[0] == 'P' || token[0] == 'p')
         {
             // Read pois
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            ID id = strtoll(token, nullptr, 10);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            double v1 = strtod(token, nullptr);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            double v2 = strtod(token, nullptr);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            std::wstring name = converter.from_bytes(token);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            int floor = strtol(token, nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            ID id = std::stoll(cx::trimBoth(token), nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            double v1 = std::stod(cx::trimBoth(token), nullptr);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            double v2 = std::stod(cx::trimBoth(token), nullptr);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            std::wstring name_token = token;
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            std::wstring floor_token = token;
+            while ((token = wcstok(nullptr, L",", &context)) != nullptr)
+            {
+                name_token = name_token + L"," + floor_token;
+                floor_token = token;
+            }
+            std::wstring name = cx::trimBoth(name_token);
+            int floor = std::stoi(cx::trimBoth(floor_token), nullptr, 10);
 
             if(load_from_latlon) addPOI(POI(id, toMetric(LatLon(v1, v2)), name, floor));
             else addPOI(POI(id, v1, v2, name, floor));
@@ -78,18 +87,18 @@ bool Map::load(const char* filename, bool load_from_latlon)
         else if (token[0] == 'V' || token[0] == 'v')
         {
             // Read views
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            ID id = strtoll(token, nullptr, 10);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            double v1 = strtod(token, nullptr);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            double v2 = strtod(token, nullptr);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            int floor = strtol(token, nullptr, 10);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            double heading = strtod(token, nullptr);
-            if ((token = strtok(nullptr, ",")) == nullptr) goto MAP_LOADMAP_FAIL;
-            std::string date = token;
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            ID id = std::stoll(cx::trimBoth(token), nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            double v1 = std::stod(cx::trimBoth(token), nullptr);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            double v2 = std::stod(cx::trimBoth(token), nullptr);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            int floor = std::stoi(cx::trimBoth(token), nullptr, 10);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            double heading = std::stod(cx::trimBoth(token), nullptr);
+            if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto MAP_LOADMAP_FAIL;
+            std::string date = converter.to_bytes(cx::trimBoth(token));
 
             if (load_from_latlon) addView(StreetView(id, toMetric(LatLon(v1, v2)), floor, heading, date));
             else addView(StreetView(id, v1, v2, floor, heading, date));
