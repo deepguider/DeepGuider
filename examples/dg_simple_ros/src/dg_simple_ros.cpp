@@ -58,8 +58,10 @@ protected:
     // Topic publishers
     ros::Publisher pub_guide;
     ros::Publisher pub_path;
+    ros::Publisher pub_pose;
     void publishGuidance();
     void publishPath();
+    void publishDGPose();
 
     // A node handler
     ros::NodeHandle& nh_dg;
@@ -167,8 +169,9 @@ bool DeepGuiderROS::initialize(std::string config_file)
     if(!m_topic_rgbd_depth.empty()) sub_image_realsense_depth = nh_dg.subscribe(m_topic_rgbd_depth, 1, &DeepGuiderROS::callbackRealsenseDepth, this);
 
     // Initialize publishers
-    pub_guide = nh_dg.advertise<dg_simple_ros::guidance>("guide", 1, true);
-    pub_path = nh_dg.advertise<nav_msgs::Path>("path", 1, true);
+    pub_guide = nh_dg.advertise<dg_simple_ros::guidance>("dg_guide", 1, true);
+    pub_path = nh_dg.advertise<nav_msgs::Path>("dg_path", 1, true);
+    pub_pose = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_pose_utm", 1, true);
 
     return true;
 }
@@ -218,6 +221,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     // get guidance messages
     publishGuidance();
     publishPath();
+    publishDGPose();
     
     // draw GUI display
     cv::Mat gui_image;
@@ -458,6 +462,18 @@ void DeepGuiderROS::publishGuidance()
     pub_guide.publish(msg_guide);
 }
 
+void DeepGuiderROS::publishDGPose()
+{
+    geometry_msgs::PoseStamped rosps;
+    dg::Point2UTM cur_pose = m_localizer.getPoseUTM();
+    rosps.pose.position.x = cur_pose.x;
+    rosps.pose.position.y = cur_pose.y;
+    
+    //printf("cur_pose.x: %f, cur_pose.y: %f\n", cur_pose.x, cur_pose.y);
+
+    pub_pose.publish(rosps);    
+}
+
 void DeepGuiderROS::publishPath()
 {    
     Path* path = getPathLocked();
@@ -469,13 +485,14 @@ void DeepGuiderROS::publishPath()
 
     // make path points messages
     nav_msgs::Path rospath;
+    geometry_msgs::PoseStamped rosps;
+    dg::Point2UTM pose_utm;
     for (int i = 0; i < path->pts.size(); i++) 
     {
-        geometry_msgs::PoseStamped rospstamped;
-        rospstamped.pose.position.x = path->pts[i].x;
-        rospstamped.pose.position.y = path->pts[i].y;
-
-        rospath.poses.push_back(rospstamped);
+        pose_utm = cvtLatLon2UTM(toLatLon(path->pts[i]));
+        rosps.pose.position.x = pose_utm.x;
+        rosps.pose.position.y = pose_utm.y;
+        rospath.poses.push_back(rosps);
     }
     releasePathLock();
 
