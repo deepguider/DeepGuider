@@ -306,6 +306,15 @@ namespace dg
         virtual bool applyIntersectCls(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
+            
+            cv::Mat cur_state = m_ekf->getState();
+            cur_state.at<double>(0) = xy.x;
+            cur_state.at<double>(1) = xy.y;
+            cur_state.at<double>(2) = 0.0;
+            cur_state.at<double>(3) = 0.0;
+            cur_state.at<double>(4) = 0.0;
+            m_ekf->initialize(cur_state);
+
             if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
             {
                 if (!backtrackingEKF(time, ObsData(ObsData::OBS_IntersectCls, xy, time, confidence))) return false;

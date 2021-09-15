@@ -14,10 +14,10 @@ namespace dg
     class IntersectionLocalizer: public IntersectionClassifier
     {
         //configurable parameters
-        double m_param_update_inc = 0.1;    // for intersection observation
-        double m_param_update_dec = 0.1;    // for non-intersection observation
-        double m_param_state_threshold = 0.5;
-        double m_param_state_upper_bound = 0.7;
+        double m_param_update_inc = 0.05;    // for intersection observation
+        double m_param_update_dec = 0.05;    // for non-intersection observation
+        double m_param_state_threshold = 0.6;
+        double m_param_state_upper_bound = 1.0;
         double m_param_state_lower_bound = 0;
 
     public:
