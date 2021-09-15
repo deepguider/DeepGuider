@@ -582,8 +582,8 @@ int compare_poi(const void* a, const void* b)
 
 std::vector<POI*> Map::getPOI(std::wstring name, const Point2& p, double search_radius, bool sorted)
 {
-    std::vector<POI*> name_pois = getPOI(name);
-    if (name_pois.empty()) return name_pois;
+    std::vector<size_t> name_pois = getPOI(name);
+    if (name_pois.empty()) return std::vector<POI*>();
 
     if (!sorted)
     {
@@ -591,10 +591,10 @@ std::vector<POI*> Map::getPOI(std::wstring name, const Point2& p, double search_
         double radius2 = search_radius * search_radius;
         for (auto it = name_pois.begin(); it != name_pois.end(); it++)
         {
-            double d2 = (p.x - (*it)->x) * (p.x - (*it)->x) + (p.y - (*it)->y) * (p.y - (*it)->y);
+            double d2 = (p.x - pois[*it].x) * (p.x - pois[*it].x) + (p.y - pois[*it].y) * (p.y - pois[*it].y);
             if (d2 <= radius2)
             {
-                results.push_back(&(*(*it)));
+                results.push_back(&(pois[*it]));
             }
         }
         return results;
@@ -605,10 +605,10 @@ std::vector<POI*> Map::getPOI(std::wstring name, const Point2& p, double search_
     double radius2 = search_radius * search_radius;
     for (auto it = name_pois.begin(); it != name_pois.end(); it++)
     {
-        double d2 = (p.x - (*it)->x) * (p.x - (*it)->x) + (p.y - (*it)->y) * (p.y - (*it)->y);
+        double d2 = (p.x - pois[*it].x) * (p.x - pois[*it].x) + (p.y - pois[*it].y) * (p.y - pois[*it].y);
         if (d2 <= radius2)
         {
-            arr.push_back(std::make_pair(&(*(*it)), d2));
+            arr.push_back(std::make_pair(&(pois[*it]), d2));
         }
     }
     qsort(&(arr[0]), arr.size(), sizeof(arr[0]), compare_poi);

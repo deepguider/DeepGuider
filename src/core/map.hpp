@@ -856,13 +856,13 @@ public:
         {
             size_t data_idx = poi_names_data.size();
             lookup_poi_names.insert(std::make_pair(poi.name, data_idx));
-            std::vector<POI*> data;
-            data.push_back(&pois.back());
+            std::vector<size_t> data;
+            data.push_back(poi_idx);
             poi_names_data.push_back(data);
         }
         else
         {
-            poi_names_data[found->second].push_back(&pois.back());
+            poi_names_data[found->second].push_back(poi_idx);
         }
         return true;
 	}
@@ -894,12 +894,12 @@ public:
     /**
      * Find POIs using name (time complexity: O(1))
      * @param name Name to search
-     * @return A list of found POI pointers (`nullptr` if not exist)
+     * @return A list of found POI indices (`nullptr` if not exist)
      */
-    std::vector<POI*> getPOI(std::wstring name) const
+    std::vector<size_t> getPOI(std::wstring name) const
     {
         auto found = lookup_poi_names.find(name);
-        if (found == lookup_poi_names.end()) return std::vector<POI*>();
+        if (found == lookup_poi_names.end()) return std::vector<size_t>();
         return poi_names_data[found->second];
     }
 
@@ -1372,7 +1372,7 @@ protected:
 
     /** A hash table for finding POI names <name,index> */
     std::map<std::wstring, size_t> lookup_poi_names;
-    std::vector<std::vector<POI*>> poi_names_data;
+    std::vector<std::vector<size_t>> poi_names_data;
 
 	/** A hash table for finding Street-views */
 	std::map<ID, size_t> lookup_views;
