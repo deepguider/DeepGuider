@@ -894,13 +894,18 @@ public:
     /**
      * Find POIs using name (time complexity: O(1))
      * @param name Name to search
-     * @return A list of found POI indices (`nullptr` if not exist)
+     * @return A list of found POI pointers
      */
-    std::vector<size_t> getPOI(std::wstring name) const
+    std::vector<POI*> getPOI(std::wstring name)
     {
         auto found = lookup_poi_names.find(name);
-        if (found == lookup_poi_names.end()) return std::vector<size_t>();
-        return poi_names_data[found->second];
+        if (found == lookup_poi_names.end()) return std::vector<POI*>();
+        std::vector<POI*> results;
+        for (auto it = poi_names_data[found->second].begin(); it != poi_names_data[found->second].end(); it++)
+        {
+            results.push_back(&(pois[*it]));
+        }
+        return results;
     }
 
     /**
