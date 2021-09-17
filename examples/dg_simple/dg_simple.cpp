@@ -390,8 +390,11 @@ bool DeepGuider::initialize(std::string config_file)
     m_painter.setParamValue("node_radius", 3);
     m_painter.setParamValue("node_font_scale", 0);
     m_painter.setParamValue("node_color", { 255, 50, 255 });
-    m_painter.setParamValue("edge_color", { 200, 100, 100 });
+    m_painter.setParamValue("junction_color", { 255, 250, 0 });
+    m_painter.setParamValue("edge_color", { 0, 255, 255 });
+    m_painter.setParamValue("sidewalk_color", { 200, 100, 100 });
     m_painter.setParamValue("crosswalk_color", { 0, 150, 50 });
+    m_painter.setParamValue("mixedroad_color", { 200, 100, 100 });
     m_painter.setParamValue("edge_thickness", 2);
     VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, m_map));
     m_map_image_original = m_map_image.clone();

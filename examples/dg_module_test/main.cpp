@@ -103,8 +103,11 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     painter.setParamValue("node_radius", 3);
     painter.setParamValue("node_font_scale", 0);
     painter.setParamValue("node_color", { 255, 50, 255 });
+    painter.setParamValue("junction_color", { 255, 50, 255 });
     painter.setParamValue("edge_color", { 200, 100, 100 });
+    painter.setParamValue("sidewalk_color", { 200, 100, 100 });
     painter.setParamValue("crosswalk_color", { 0, 150, 50 });
+    painter.setParamValue("mixedroad_color", { 200, 100, 100 });
     painter.setParamValue("edge_thickness", 2);
     if (!map.isEmpty()) painter.drawMap(bg_image, &map);
 

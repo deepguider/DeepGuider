@@ -14,9 +14,12 @@ public:
         m_node_radius = 10;
         m_node_font_scale = 0.5;
         m_node_color = cx::COLOR_BLUE;
+        m_junction_color = cx::COLOR_BLUE;
 
         m_edge_color = cx::COLOR_GREEN;
+        m_sidewalk_color = cv::Vec3b(0, 255, 255);
         m_crosswalk_color = cv::Vec3b(0, 50, 50);
+        m_mixedroad_color = cv::Vec3b(200, 100, 100);
         m_edge_thickness = 2;
     }
 
@@ -27,9 +30,12 @@ public:
         CX_LOAD_PARAM_COUNT(fn, "node_radius", m_node_radius, n_read);
         CX_LOAD_PARAM_COUNT(fn, "node_font_scale", m_node_font_scale, n_read);
         CX_LOAD_PARAM_COUNT(fn, "node_color", m_node_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "junction_color", m_junction_color, n_read);
 
         CX_LOAD_PARAM_COUNT(fn, "edge_color", m_edge_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "sidewalk_color", m_sidewalk_color, n_read);
         CX_LOAD_PARAM_COUNT(fn, "crosswalk_color", m_crosswalk_color, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "mixedroad_color", m_mixedroad_color, n_read);
         CX_LOAD_PARAM_COUNT(fn, "edge_thickness", m_edge_thickness, n_read);
 
         return n_read;
@@ -94,7 +100,10 @@ public:
         {
             if (map->countEdges(&(*n)) < min_n_edge) continue;
             cv::Point center = (cvtValue2Pixel(*n) - offset) * zoom + cv::Point2d(0.5, 0.5); // + 0.5: Rounding
-            cv::circle(image, center, radius, color, thickness);
+            if(n->type == dg::Node::NODE_JUNCTION)
+                cv::circle(image, center, radius, m_junction_color, thickness);
+            else
+                cv::circle(image, center, radius, color, thickness);
             if (font_scale > 0)
                 cv::putText(image, cv::format("%zd", n->id), center + font_offset, cv::FONT_HERSHEY_DUPLEX, font_scale, font_color, int(font_scale + 0.5));
         }
@@ -140,6 +149,10 @@ public:
                 drawEdge(image, *node, *to, radius, m_crosswalk_color / 2, thickness * 3, offset, zoom, arrow_length);
                 drawEdge(image, *node, *to, radius, cv::Vec3b(200, 255, 255), thickness, offset, zoom, arrow_length);
             }
+            else if (edge->type == Edge::EDGE_SIDEWALK)
+                drawEdge(image, *node, *to, radius, m_sidewalk_color, thickness, offset, zoom, arrow_length);
+            else if (edge->type == Edge::EDGE_ROAD)
+                drawEdge(image, *node, *to, radius, m_mixedroad_color, thickness, offset, zoom, arrow_length);
             else
                 drawEdge(image, *node, *to, radius, color, thickness, offset, zoom, arrow_length);
         }
@@ -188,12 +201,14 @@ protected:
     double m_node_font_scale;
 
     cv::Vec3b m_node_color;
+    cv::Vec3b m_junction_color;
 
     int m_node_thickness;
 
     cv::Vec3b m_edge_color;
-
+    cv::Vec3b m_sidewalk_color;
     cv::Vec3b m_crosswalk_color;
+    cv::Vec3b m_mixedroad_color;
 
     int m_edge_thickness;
 

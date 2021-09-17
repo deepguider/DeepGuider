@@ -177,7 +177,10 @@ int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer
     painter.setParamValue("node_radius", 3);
     painter.setParamValue("node_font_scale", 0);
     painter.setParamValue("node_color", { 255, 100, 100 });
+    painter.setParamValue("junction_color", { 255, 100, 100 });
     painter.setParamValue("edge_color", { 150, 100, 100 });
+    painter.setParamValue("sidewalk_color", { 150, 100, 100 });
+    painter.setParamValue("mixedroad_color", { 150, 100, 100 });
     painter.setParamValue("edge_thickness", 1);
     if (!map.isEmpty()) painter.drawMap(bg_image, &map);
 
@@ -193,7 +196,10 @@ int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer
         zoom_painter.setParamValue("node_radius", 6);
         zoom_painter.setParamValue("node_font_scale", 0);
         zoom_painter.setParamValue("node_color", { 255, 100, 100 });
+        zoom_painter.setParamValue("junction_color", { 255, 100, 100 });
         zoom_painter.setParamValue("edge_color", { 150, 100, 100 });
+        zoom_painter.setParamValue("sidewalk_color", { 150, 100, 100 });
+        zoom_painter.setParamValue("mixedroad_color", { 150, 100, 100 });
         zoom_painter.setParamValue("edge_thickness", 2);
         if (!map.isEmpty()) zoom_painter.drawMap(zoom_bg_image, &map);
     }
