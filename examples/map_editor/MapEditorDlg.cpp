@@ -107,7 +107,7 @@ BOOL MapEditorDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
-	SetWindowPos(NULL, 150, 100, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+	SetWindowPos(NULL, 50, 100, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }

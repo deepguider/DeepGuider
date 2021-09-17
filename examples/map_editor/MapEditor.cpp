@@ -48,6 +48,13 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
         bool update_gui = false;
         if (update_node)
         {
+            cv::Mat view_image;
+            double zoom = m_viewport.zoom();
+            m_viewport.getViewportImage(view_image);
+            m_painter.drawNode(view_image, *node, 4, 0, cv::Vec3b(0, 255, 255), m_viewport.offset(), zoom, (int)(2*zoom+0.5));
+            cv::imshow(m_winname, view_image);
+            int key = cv::waitKey(1);
+
             dg::LatLon ll = m_map.toLatLon(*node);
             DlgNode dlg;
             dlg.ID = node->id;
@@ -71,6 +78,15 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
         }
         else if (edge && d2 <= dist_thr)
         {
+            dg::Node* from = m_map.getNode(edge->node_id1);
+            dg::Node* to = m_map.getNode(edge->node_id2);
+            cv::Mat view_image;
+            double zoom = m_viewport.zoom();
+            m_viewport.getViewportImage(view_image);
+            m_painter.drawEdge(view_image, *from, *to, 3, cv::Vec3b(0, 255, 255), 3, m_viewport.offset(), m_viewport.zoom());
+            cv::imshow(m_winname, view_image);
+            int key = cv::waitKey(1);
+
             DlgEdge dlg;
             dlg.ID = edge->id;
             dlg.type = edge->type;

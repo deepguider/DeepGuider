@@ -76,6 +76,7 @@ public:
 
         MapGUIProp guiprop = (site == "coex") ? COEX : (site == "bucheon") ? Bucheon : ETRI;
         m_guiprop = guiprop;
+        m_site = site;
 
         // Prepare a map if given
         m_fpath = guiprop.map_file;
@@ -121,16 +122,16 @@ public:
         m_stop_running = false;
 
         m_viewport.initialize(m_bg_image, m_view_size, m_view_offset);
-        std::string winname = "map viewer";
-        cv::namedWindow(winname, cv::WindowFlags::WINDOW_NORMAL);
-        cv::resizeWindow(winname, m_viewport.size());
-        cv::setMouseCallback(winname, onMouseEvent, this);
+        cv::namedWindow(m_winname, cv::WindowFlags::WINDOW_NORMAL);
+        cv::setWindowTitle(m_winname, m_site);
+        cv::resizeWindow(m_winname, m_viewport.size());
+        cv::setMouseCallback(m_winname, onMouseEvent, this);
 
         cv::Mat view_image;
         while (!m_stop_running)
         {
             m_viewport.getViewportImage(view_image);
-            cv::imshow(winname, view_image);
+            cv::imshow(m_winname, view_image);
             int key = cv::waitKey(10);
         }
         m_running = false;
@@ -160,6 +161,8 @@ protected:
     std::string     m_fpath;
     MapGUIProp      m_guiprop;
     bool            m_under_edit = false;
+    std::string     m_winname = "map";
+    std::string     m_site = "etri";
 
     cv::Point       m_view_offset = cv::Point(0, 0);
     cv::Size        m_view_size = cv::Size(1800, 1012);

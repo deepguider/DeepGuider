@@ -67,6 +67,19 @@ BOOL DlgEdge::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
+	int delta = 50;
+	POINT pt;
+	GetCursorPos(&pt);
+	RECT rc;
+	GetWindowRect(&rc);
+	int w = rc.right - rc.left;
+	int h = rc.bottom - rc.top;
+	int x = pt.x - w - delta;
+	int y = pt.y - h * 2 / 3;
+	if (x <= 0) x = pt.x + delta;
+	if (y <= 0) y = delta;
+	SetWindowPos(NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+
 	m_listType.AddString("EDGE_SIDEWALK");
 	m_listType.AddString("EDGE_ROAD");
 	m_listType.AddString("EDGE_CROSSWALK");
