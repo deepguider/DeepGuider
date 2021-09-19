@@ -333,7 +333,7 @@ struct StreetView : public Point2ID
     */
     int floor;
 
-    /** The given True north-based azimuths of this StreetView (Unit: [rad]) */
+    /** The given True north-based azimuths of this StreetView (Unit: [deg]) */
     double heading;
 
     /** The date this StreetView was taken (Format: [yyyy-mm-dd]) */
@@ -979,9 +979,10 @@ public:
      * Find streetviews within a search radius from a point (time complexity: O(|N|))
      * @param p A given point
      * @param search_radius A given search radius
+     * @param sorted If True, the Views are sorted in ascending order w.r.t diatance from a given point p
      * @return A list of found streetviews (empty list if no streetview found)
      */
-    std::vector<StreetView*> getNearViews(const Point2& p, double search_radius);
+    std::vector<StreetView*> getNearViews(const Point2& p, double search_radius, bool sorted = false);
 
     /**
      * Find a shortest path between two points using Dijkstra's shortest path algorithm (time complexity: O(|N|^2))

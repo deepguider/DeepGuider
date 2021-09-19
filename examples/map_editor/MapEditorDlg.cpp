@@ -51,13 +51,17 @@ END_MESSAGE_MAP()
 
 MapEditorDlg::MapEditorDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_MAP_EDITOR_DIALOG, pParent)
+    , m_show_poi(FALSE)
+    , m_show_streetview(FALSE)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
 void MapEditorDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+    CDialogEx::DoDataExchange(pDX);
+    DDX_Check(pDX, IDC_CHECK_POI, m_show_poi);
+    DDX_Check(pDX, IDC_CHECK_STREETVIEW, m_show_streetview);
 }
 
 BEGIN_MESSAGE_MAP(MapEditorDlg, CDialogEx)
@@ -72,6 +76,9 @@ BEGIN_MESSAGE_MAP(MapEditorDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE, &MapEditorDlg::OnBnClickedButtonSave)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE_AS, &MapEditorDlg::OnBnClickedButtonSaveAs)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD, &MapEditorDlg::OnBnClickedButtonLoad)
+    ON_BN_CLICKED(IDC_CHECK_POI, &MapEditorDlg::OnBnClickedCheckPoi)
+	ON_BN_CLICKED(IDC_CHECK_STREETVIEW, &MapEditorDlg::OnBnClickedCheckStreetview)
+	ON_BN_CLICKED(IDC_BUTTON_DOWNLOAD, &MapEditorDlg::OnBnClickedButtonDownload)
 END_MESSAGE_MAP()
 
 
@@ -223,4 +230,24 @@ void MapEditorDlg::OnBnClickedButtonSaveAs()
 void MapEditorDlg::OnBnClickedButtonLoad()
 {
 	if (m_editor) m_editor->load();
+}
+
+
+void MapEditorDlg::OnBnClickedCheckPoi()
+{
+	UpdateData();
+	if (m_editor) m_editor->showPoi(m_show_poi == TRUE);
+}
+
+
+void MapEditorDlg::OnBnClickedCheckStreetview()
+{
+	UpdateData();
+	if (m_editor) m_editor->showStreetView(m_show_streetview == TRUE);
+}
+
+
+void MapEditorDlg::OnBnClickedButtonDownload()
+{
+	if (m_editor) m_editor->download();
 }

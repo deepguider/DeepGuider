@@ -44,4 +44,9 @@ public:
 	afx_msg void OnBnClickedButtonSave();
 	afx_msg void OnBnClickedButtonSaveAs();
 	afx_msg void OnBnClickedButtonLoad();
+    BOOL m_show_poi;
+    BOOL m_show_streetview;
+    afx_msg void OnBnClickedCheckPoi();
+    afx_msg void OnBnClickedCheckStreetview();
+    afx_msg void OnBnClickedButtonDownload();
 };

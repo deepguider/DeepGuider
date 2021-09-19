@@ -69,11 +69,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;_DEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include;..\..\EXTERNAL\rapidjson\include;..\..\EXTERNAL\curl\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib;..\..\EXTERNAL\curl\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>opencv_world430d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Midl>
@@ -96,14 +96,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\src;..\..\EXTERNAL\OpenCV\include;..\..\EXTERNAL\rapidjson\include;..\..\EXTERNAL\curl\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\EXTERNAL\OpenCV\lib;..\..\EXTERNAL\curl\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>opencv_world430.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
@@ -119,8 +119,11 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\src\map_manager\map_manager.hpp" />
     <ClInclude Include="DlgEdge.h" />
     <ClInclude Include="DlgNode.h" />
+    <ClInclude Include="DlgPOI.h" />
+    <ClInclude Include="DlgView.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MapEditorDlg.h" />
     <ClInclude Include="MapEditorApp.h" />
@@ -131,8 +134,11 @@
   <ItemGroup>
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
     <ClCompile Include="..\..\src\core\map.cpp" />
+    <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
     <ClCompile Include="DlgEdge.cpp" />
     <ClCompile Include="DlgNode.cpp" />
+    <ClCompile Include="DlgPOI.cpp" />
+    <ClCompile Include="DlgView.cpp" />
     <ClCompile Include="MapEditor.cpp" />
     <ClCompile Include="MapEditorDlg.cpp" />
     <ClCompile Include="MapEditorApp.cpp" />

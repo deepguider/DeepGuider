@@ -676,17 +676,53 @@ std::vector<std::wstring> Map::getNearPOINames(const Point2& p, double search_ra
     return results;
 }
 
-std::vector<StreetView*> Map::getNearViews(const Point2& p, double search_radius)
+int compare_view(const void* a, const void* b)
 {
-    std::vector<StreetView*> results;
+    double x = ((std::pair<StreetView*, double>*)a)->second;
+    double y = ((std::pair<StreetView*, double>*)b)->second;
+
+    if (x > y)
+        return 1;
+    else if (x < y)
+        return -1;
+    return 0;
+}
+
+std::vector<StreetView*> Map::getNearViews(const Point2& p, double search_radius, bool sorted)
+{
+    if (!sorted)
+    {
+        std::vector<StreetView*> results;
+        double radius2 = search_radius * search_radius;
+        for (auto it = views.begin(); it != views.end(); it++)
+        {
+            double d2 = (p.x - it->x) * (p.x - it->x) + (p.y - it->y) * (p.y - it->y);
+            if (d2 <= radius2)
+            {
+                results.push_back(&(*it));
+            }
+        }
+        return results;
+    }
+
+    // qsort in ascending order
+    std::vector<std::pair<StreetView*, double>> arr;
     double radius2 = search_radius * search_radius;
     for (auto it = views.begin(); it != views.end(); it++)
     {
         double d2 = (p.x - it->x) * (p.x - it->x) + (p.y - it->y) * (p.y - it->y);
         if (d2 <= radius2)
         {
-            results.push_back(&(*it));
+            arr.push_back(std::make_pair(&(*it), d2));
         }
+    }
+    qsort(&(arr[0]), arr.size(), sizeof(arr[0]), compare_view);
+
+    std::vector<StreetView*> results;
+    results.resize(arr.size());
+    for (auto i = 0; i < arr.size(); i++)
+    {
+        results[i] = arr[i].first;
     }
     return results;
 }

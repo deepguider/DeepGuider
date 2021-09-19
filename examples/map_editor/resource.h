@@ -9,6 +9,8 @@
 #define IDR_MAINFRAME                   128
 #define IDD_NODE                        129
 #define IDD_EDGE                        131
+#define IDD_POI                         132
+#define IDD_VIEW                        133
 #define IDC_BUTTON_ETRI                 1000
 #define IDC_BUTTON_COEX                 1001
 #define IDC_BUTTON_BUCHEON              1002
@@ -16,8 +18,11 @@
 #define IDC_EDIT_LAT                    1004
 #define IDC_EDIT_LON                    1005
 #define IDC_LIST_TYPE                   1006
+#define IDC_EDIT_NAME                   1006
 #define IDC_EDIT_FLOOR                  1007
 #define IDC_LIST_EDGES                  1008
+#define IDC_EDIT_FLOOR2                 1008
+#define IDC_EDIT_HEADING                1008
 #define IDC_EDIT_NODE1                  1012
 #define IDC_EDIT_NODE2                  1013
 #define IDC_EDIT_LENGTH                 1014
@@ -27,6 +32,10 @@
 #define IDC_BUTTON_SAVE_AS              1019
 #define IDC_BUTTON3                     1020
 #define IDC_BUTTON_LOAD                 1020
+#define IDC_CHECK_POI                   1021
+#define IDC_CHECK_STREETVIEW            1022
+#define IDC_BUTTON_DOWNLOAD             1023
+#define IDC_EDIT_DATE                   1024
 
 // Next default values for new objects
 // 
@@ -34,7 +43,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1021
+#define _APS_NEXT_CONTROL_VALUE         1025
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

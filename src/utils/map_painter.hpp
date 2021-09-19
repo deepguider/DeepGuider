@@ -73,7 +73,7 @@ public:
     {
         if (image.empty()) return false;
         radius = (int)(radius * zoom + 0.5);
-        cv::Point center = (cvtValue2Pixel(node) - offset) * zoom + cv::Point2d(0.5, 0.5); // + 0.5: Rounding
+        cv::Point center = (cvtValue2Pixel(node) - offset) * zoom;
         cv::circle(image, center, radius, color, thickness);
         if (font_scale > 0)
         {
@@ -99,7 +99,7 @@ public:
         for (auto n = map->getHeadNodeConst(); n != map->getTailNodeConst(); n++)
         {
             if (map->countEdges(&(*n)) < min_n_edge) continue;
-            cv::Point center = (cvtValue2Pixel(*n) - offset) * zoom + cv::Point2d(0.5, 0.5); // + 0.5: Rounding
+            cv::Point center = (cvtValue2Pixel(*n) - offset) * zoom;
             if(n->type == dg::Node::NODE_JUNCTION)
                 cv::circle(image, center, radius, m_junction_color, thickness);
             else
@@ -190,7 +190,7 @@ public:
         if (image.empty()) clearCanvas(image);
 
         radius = (int)(radius * zoom + 0.5);
-        cv::Point center_px = (cvtValue2Pixel(center) - offset)*zoom + cv::Point2d(0.5, 0.5); // + 0.5: Rounding
+        cv::Point center_px = (cvtValue2Pixel(center) - offset) * zoom;
         cv::circle(image, center_px, radius, color, thickness, linetype);
         return true;
     }
