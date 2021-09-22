@@ -94,6 +94,8 @@ def test_net(net, args, image, text_threshold, link_threshold, low_text, cuda, p
     if args.show_time : print("\ninfer/postproc time : {:.3f}/{:.3f}".format(t0, t1))
 
     return boxes, polys, ret_score_text
+
+
 def Config():
 
     parser_craft = argparse.ArgumentParser(description='CRAFT Text Detection')
@@ -122,7 +124,7 @@ def Config():
     return args
 
 
-def Detection_txt(args, image_path,net):
+def Detection_txt(args, image_path, net):
 
     # """ For test images in a folder """
     # image_list, _, _ = file_utils.get_files(args.test_folder)
@@ -156,8 +158,7 @@ def Detection_txt(args, image_path,net):
     # print("Test image {:d}/{:d}: {:s}".format(k+1, len(image_list), image_path), end='\r')
 
     # print("Test image : {:s}".format(image_path), end='\r')
-
-
+    
     bboxes, polys, score_text = test_net(net, args, image,args.text_threshold, args.link_threshold, args.low_text, args.cuda, args.poly, refine_net)
 
     # save score text

@@ -54,8 +54,8 @@ class OCRRecognizer:
         self.net = None #detect
         self.model = None #recog
         self.converter = None
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+        #self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
         self.res_imagefileName = None
 
         self.opt_craft, self.opt_recog = self.setup_parser()
@@ -87,9 +87,15 @@ class OCRRecognizer:
         # official
 
         self.saved_model = './data_ocr/best_accuracy.pth'
-        self.craft_trained_model = './data_ocr/best_accuracy_craft.pth'
+        self.craft_trained_model = './data_ocr/best_craft.pth'
         self.logfilepath = './data_ocr/log_ocr_result.txt'
-
+        
+        if torch.cuda.is_available():
+            self.device = torch.device('cuda')
+            self.cuda = True
+        else:
+            self.device = torch.device('cpu')
+            self.cuda = False
 
 
         """ vocab / character number configuration """
@@ -99,29 +105,31 @@ class OCRRecognizer:
         cudnn.benchmark = True
         cudnn.deterministic = True
 
-        self.num_gpu = torch.cuda.device_count()
+        #self.num_gpu = torch.cuda.device_count()
 
         """ model configuration """
         # detetion
-        self.net = CRAFT(self)  # initialize
+        self.net = CRAFT(self).to(self.device)  # initialize
         print('Loading detection weights from checkpoint ' + self.craft_trained_model)
         self.net.load_state_dict(copyStateDict(torch.load(self.craft_trained_model, map_location=self.device)))
-        self.net = torch.nn.DataParallel(self.net).to(self.device)
-
+        #self.net = torch.nn.DataParallel(self.net).to(self.device)
+        self.net.to(self.device)
 
         self.converter = AttnLabelConverter(self.character)
         self.num_class = len(self.converter.character)
 
         if self.rgb:
             self.input_channel = 3
-        self.model = Model(self, self.num_class)
+        self.model = Model(self, self.num_class).to(self.device)
         # print('model input parameters', self.imgH, self.imgW, self.num_fiducial, self.input_channel, self.output_channel,
         #       self.hidden_size, self.num_class, self.batch_max_length)
 
         # load model
-        self.model = torch.nn.DataParallel(self.model).to(self.device)
+        #self.model = torch.nn.DataParallel(self.model).to(self.device)
         print('Loading recognition weights from checkpoint %s' % self.saved_model)
-        self.model.load_state_dict(torch.load(self.saved_model, map_location=self.device))
+        ckpt = torch.load(self.saved_model, map_location=self.device)
+        self.model.load_state_dict(ckpt)
+        self.model.to(self.device)
 
         if torch.cuda.is_available():
             self.model = self.model.cuda()
@@ -191,7 +199,7 @@ class OCRRecognizer:
 
 
 
-    def apply(self, image, timestamp,save_img=False):
+    def apply(self, image, timestamp, save_img=False):
         #coordinate : list
         pred, timestamp = detect_ocr(self, image, timestamp,save_img)
         return pred, timestamp
