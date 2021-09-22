@@ -93,16 +93,16 @@ class OCRRecognizer:
         if torch.cuda.is_available():
             self.device = torch.device('cuda')
             self.cuda = True
+            cudnn.benchmark = False
         else:
             self.device = torch.device('cpu')
             self.cuda = False
+            cudnn.benchmark = True
 
 
         """ vocab / character number configuration """
         # if self.sensitive:
         #     self.character = string.printable[:-6]  # same with ASTER setting (use 94 char).
-
-        cudnn.benchmark = True
         cudnn.deterministic = True
 
         #self.num_gpu = torch.cuda.device_count()
@@ -121,22 +121,13 @@ class OCRRecognizer:
         if self.rgb:
             self.input_channel = 3
         self.model = Model(self, self.num_class).to(self.device)
-        # print('model input parameters', self.imgH, self.imgW, self.num_fiducial, self.input_channel, self.output_channel,
-        #       self.hidden_size, self.num_class, self.batch_max_length)
-
         # load model
         #self.model = torch.nn.DataParallel(self.model).to(self.device)
         print('Loading recognition weights from checkpoint %s' % self.saved_model)
-        ckpt = torch.load(self.saved_model, map_location=self.device)
-        self.model.load_state_dict(ckpt)
+        #ckpt = torch.load(self.saved_model, map_location=self.device)
+        self.model.load_state_dict(torch.load(self.saved_model, map_location=self.device))
         self.model.to(self.device)
-
-        if torch.cuda.is_available():
-            self.model = self.model.cuda()
-            self.net = self.net.cuda()
-            cudnn.benchmark = False
-
-        # print('Initialization Done! It tooks {:.2f} mins.\n'.format((time.time() - start) / 60))
+        
         print('Initialization Done! It tooks {:.2f} sec.\n'.format(time.time() - start))
         return True
 
