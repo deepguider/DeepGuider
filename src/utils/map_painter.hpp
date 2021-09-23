@@ -102,6 +102,8 @@ public:
             cv::Point center = (cvtValue2Pixel(*n) - offset) * zoom;
             if(n->type == dg::Node::NODE_JUNCTION)
                 cv::circle(image, center, radius, m_junction_color, thickness);
+            else if (n->type == dg::Node::NODE_DOOR)
+                cv::circle(image, center, radius, cx::COLOR_BLUE, thickness);
             else
                 cv::circle(image, center, radius, color, thickness);
             if (font_scale > 0)
