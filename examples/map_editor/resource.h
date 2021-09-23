@@ -20,8 +20,9 @@
 #define IDC_LIST_TYPE                   1006
 #define IDC_EDIT_NAME                   1006
 #define IDC_EDIT_FLOOR                  1007
+#define IDC_LIST_TYPE2                  1007
+#define IDC_LIST_LR                     1007
 #define IDC_LIST_EDGES                  1008
-#define IDC_EDIT_FLOOR2                 1008
 #define IDC_EDIT_HEADING                1008
 #define IDC_EDIT_NODE1                  1012
 #define IDC_EDIT_NODE2                  1013

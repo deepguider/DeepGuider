@@ -32,4 +32,5 @@ public:
 	double length;
 	BOOL directed;
 	virtual BOOL OnInitDialog();
+	CListBox m_listLR;
 };

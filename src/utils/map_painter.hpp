@@ -130,8 +130,8 @@ public:
         {
             double theta_p = theta + CV_PI / 6;
             double theta_m = theta - CV_PI / 6;
-            cv::line(image, q, q - arrow_length * Point2(cos(theta_p), sin(theta_p)), color, thickness);
-            cv::line(image, q, q - arrow_length * Point2(cos(theta_m), sin(theta_m)), color, thickness);
+            cv::line(image, q, q - arrow_length * zoom * Point2(cos(theta_p), sin(theta_p)), color, thickness);
+            cv::line(image, q, q - arrow_length * zoom * Point2(cos(theta_m), sin(theta_m)), color, thickness);
         }
         return true;
     }
