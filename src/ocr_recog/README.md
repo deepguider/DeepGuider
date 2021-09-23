@@ -1,15 +1,15 @@
 ## OCR Recognition
 
-We train text recognition(OCR) classifier based on [CRAFT](https://github.com/clovaai/CRAFT-pytorch) and [deep-text-recognition-benchmark](https://github.com/clovaai/deep-text-recognition-benchmark)
+We modified and trained text recognition (OCR) classifier based on [CRAFT](https://github.com/clovaai/CRAFT-pytorch) and [deep-text-recognition-benchmark](https://github.com/clovaai/deep-text-recognition-benchmark).
 
 ## Getting Started
 
 
 ### Dependency
-- Expriments were performed with **python 3.6, PyTorch 1.2.0, torchvision 0.4.0, CUDA 9.0**.
-- requirements : lmdb, pillow, torchvision, nltk, natsort
+- Expriments were performed with **python 3.8, PyTorch 1.9.0, torchvision 0.10.0, CUDA 10.1**.
+- Requirements : lmdb, pillow, torchvision, nltk, natsort, scikit-learn, opencv-python
 
-### Download dataset for traininig and evaluation from [here](https://drive.google.com/open?id=1hywOh26U5BrX6a9depZ2JbEsUktlDbbM) 
+### Download dataset for traininig and evaluation from [here](https://drive.google.com/open?id=1hywOh26U5BrX6a9depZ2JbEsUktlDbbM). 
 data_lmdb_release.zip contains below. <br>
 training datasets : [MJSynth (MJ)](http://www.robots.ox.ac.uk/~vgg/data/text/), [SynthText (ST)](http://www.robots.ox.ac.uk/~vgg/data/scenetext/), SynthText (Kr) from [IC19](https://rrc.cvc.uab.es/?ch=15&com=tasks) and the union of the training sets [IC13](http://rrc.cvc.uab.es/?ch=2), [IC15](http://rrc.cvc.uab.es/?ch=4), [IIIT](http://cvit.iiit.ac.in/projects/SceneTextUnderstanding/IIIT5K.html), [SVT](http://www.iapr-tc11.org/mediawiki/index.php/The_Street_View_Text_Dataset) and Korean from [IC19](https://rrc.cvc.uab.es/?ch=15&com=tasks).\
 validation/evaluation datasets : benchmark evaluation datasets, [IC13](http://rrc.cvc.uab.es/?ch=2) and Korean from [IC19](https://rrc.cvc.uab.es/?ch=15&com=tasks).
@@ -17,7 +17,7 @@ validation/evaluation datasets : benchmark evaluation datasets, [IC13](http://rr
 
 ### For training and testing
 
-1. Train Model
+1. Train model.
 ```
 python train.py --experiment_name ocr_train \
 --train_data data_lmdb_release/training --valid_data data_lmdb_release/validation \
@@ -31,10 +31,9 @@ python test.py --eval_data data_lmdb_release/evaluation --benchmark_all_eval --s
 ```
 
 ### Run demo 
-1. Download pretrained models from [detection](https://drive.google.com/file/d/1R3hzHWwDJ_cKp__KcIvDg4V1hikT9MvU/view?usp=sharing), [recognition](https://drive.google.com/file/d/1hTjJDJNY98CZRrADNpCOOVZsbZwBE4zC/view?usp=sharing)
-2. set image files path 
-3. Run test_wrapper.py
-4. check ./data_ocr/result.jpg
+1. Download pretrained models from [here](https://drive.google.com/drive/folders/12b60GO8rAMXV5-bbXJyR4x5hYwwqltmZ). <!--[detection](https://drive.google.com/file/d/1R3hzHWwDJ_cKp__KcIvDg4V1hikT9MvU/view?usp=sharing), [recognition](https://drive.google.com/file/d/1hTjJDJNY98CZRrADNpCOOVZsbZwBE4zC/view?usp=sharing) -->
+3. Set image path and run test_wrapper.py
+4. Check ./data_ocr/result.jpg
 ```
 python test_wrapper.py
 ```
@@ -44,4 +43,4 @@ python test_wrapper.py
 
 Model |  IC13_857 | IC13_1015 | avg 
 -- | -- | -- | -- | 
-Our best model   | 94.749 | 93.892 | 94.284  
+Our best model   | 95.333 | 93.990 | 94.605  
