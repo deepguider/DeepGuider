@@ -10,6 +10,6 @@ start = time.time()
 
 test = OCRRecognizer()
 test.initialize()
-pred, timestamp = test.apply(imagepath,start,True)
+pred, timestamp = test.apply(imagepath, start, True)
 
 print('\nDone! It tooks {:.2f} sec.\n'.format((time.time() - start)))

@@ -47,7 +47,7 @@ def saveResult(img,boxes,pred_list,dirname,res_imagefileName):
     print('\ncheck result : ' + res_img_file)
 
 #per image
-def detect_ocr(config, image, timestamp,save_img):
+def detect_ocr(config, image, timestamp, save_img):
 
     detection_list,img,boxes = Detection_txt(config,image,config.net)
 
@@ -55,7 +55,7 @@ def detect_ocr(config, image, timestamp,save_img):
     t = time.time()
 
     device = config.device
-    # print("config device", device)
+    #print("config device", device)
     model = config.model
     converter = config.converter
 
