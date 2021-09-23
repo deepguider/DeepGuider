@@ -23,7 +23,7 @@ import getpass
 from tensorboardX import SummaryWriter
 """ Transformation : TPS, FeatureExtraction : RestNet , SequenceModeling : BiLSTM , Prediction : Attn """
 
-save_dir = '/home_hongdo/sungeun.kim/checkpoints/ocr'
+save_dir = 'checkpoints'
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
