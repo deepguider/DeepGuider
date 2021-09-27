@@ -252,5 +252,7 @@ void MapEditorDlg::OnBnClickedCheckStreetview()
 
 void MapEditorDlg::OnBnClickedButtonDownload()
 {
+	BeginWaitCursor();
 	if (m_editor) m_editor->download();
+	EndWaitCursor();
 }

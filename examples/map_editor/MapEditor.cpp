@@ -25,7 +25,7 @@ int MapEditor::configure(std::string site)
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
     ETRI.image_file = "data/ETRI/NaverMap_ETRI(Satellite).png";
-    ETRI.map_file = "data/ETRI/TopoMap_ETRI_210803.csv";
+    ETRI.map_file = "data/ETRI/TopoMap_ETRI.csv";
     ETRI.origin_latlon = dg::LatLon(36.379208, 127.364585);
     ETRI.origin_px = cv::Point2d(1344, 1371);
     ETRI.image_scale = cv::Point2d(1.2474, 1.2474);
@@ -45,7 +45,7 @@ int MapEditor::configure(std::string site)
     COEX.origin_px = cv::Point2d(1090, 1018);
     COEX.map_radius = 1500; // meter
     COEX.grid_unit_pos = cv::Point(-230, -16);
-    COEX.map_file = "data/COEX/TopoMap_COEX_210803.csv";
+    COEX.map_file = "data/COEX/TopoMap_COEX.csv";
     COEX.video_resize = 0.4;
     COEX.video_offset = cv::Point(10, 50);
     COEX.result_resize = 0.6;
@@ -58,7 +58,7 @@ int MapEditor::configure(std::string site)
     Bucheon.origin_px = cv::Point2d(1535, 1157);
     Bucheon.map_radius = 1500; // meter
     Bucheon.grid_unit_pos = cv::Point(-215, -6);
-    Bucheon.map_file = "data/Bucheon/TopoMap_Bucheon_210803.csv";
+    Bucheon.map_file = "data/Bucheon/TopoMap_Bucheon.csv";
     Bucheon.video_resize = 0.25;
     Bucheon.video_offset = cv::Point(270, 638);
     Bucheon.result_resize = 0.4;
@@ -396,9 +396,10 @@ void MapEditor::download()
 {
     cv::AutoLock lock(m_mutex_data);
     dg::MapManager manager;
-    manager.initialize("129.254.81.204");
+    if (!manager.initialize("129.254.81.204")) return;
     dg::LatLon ll = m_guiprop.origin_latlon;
-    double radius = 50000;  // 50 km
+    manager.setReference(ll);
+    double radius = 5000;  // 5 km
     if (manager.getMapAll(ll.lat, ll.lon, radius, m_map))
     {
         drawMap();
