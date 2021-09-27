@@ -831,7 +831,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         if(!m_logo_image.empty())
         {
             double fy = (double)win_rect.height / m_logo_image.rows;
-            cv::resize(m_logo_image, result_image, cv::Size(), fy, fy);
+            cv::resize(m_logo_image, result_image, cv::Size(), fy * 0.8, fy);
         }
         m_logo_mutex.unlock();
 
@@ -850,7 +850,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         if (!m_ocr_image.empty())
         {
             double fy = (double)win_rect.height / m_ocr_image.rows;
-            cv::resize(m_ocr_image, result_image, cv::Size(), fy, fy);
+            cv::resize(m_ocr_image, result_image, cv::Size(), fy * 0.8, fy);
         }
         m_ocr_mutex.unlock();
 
@@ -1132,6 +1132,11 @@ bool DeepGuider::procIntersectionClassifier()
         m_intersection_mutex.unlock();
         return true;
     }
+    else
+    {
+        m_intersection.print();
+    }
+
     return false;
 }
 
@@ -1164,6 +1169,11 @@ bool DeepGuider::procLogo()
         m_logo_mutex.unlock();
         return true;
     }
+    else
+    {
+        m_logo.print();
+    }
+
     return false;
 }
 
@@ -1196,6 +1206,11 @@ bool DeepGuider::procOcr()
         m_ocr_mutex.unlock();
         return true;
     }
+    else
+    {
+        m_ocr.print();
+    }
+
     return false;
 }
 
@@ -1223,6 +1238,11 @@ bool DeepGuider::procRoadTheta()
         m_roadtheta_mutex.unlock();
         return true;
     }
+    else
+    {
+        m_roadtheta.print();
+    }
+
     return false;
 }
 
@@ -1258,6 +1278,11 @@ bool DeepGuider::procVps()
         }
         return true;
     }
+    else
+    {
+        m_vps.print();
+    }
+
     return false;
 }
 
@@ -1286,6 +1311,11 @@ bool DeepGuider::procLRPose()
         m_lrpose_mutex.unlock();
         return true;
     }
+    else
+    {
+        m_lrpose.print();
+    }
+
     return false;
 }
 
