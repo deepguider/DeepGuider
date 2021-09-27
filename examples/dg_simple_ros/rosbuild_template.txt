@@ -71,8 +71,6 @@ function func_copy_src_to_catkin_ws(){
 	ln -sf $DGDIR/src/logo_recog/logo_data $ROSDIR/
 	ln -sf $DGDIR/src/logo_recog/model $ROSDIR/
 	ln -sf $DGDIR/src/ocr_recog/data_ocr $ROSDIR/
-	ln -sf $DGDIR/src/poi_recog/data_poi $ROSDIR/
-	ln -sf $DGDIR/src/poi_recog/model_poi $ROSDIR/
 
 	## Copy machine-specific files from template to local
 	#cp $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt $DGDIR/examples/dg_simple_ros/CMakeLists.txt
