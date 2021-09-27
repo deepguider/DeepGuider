@@ -209,6 +209,9 @@ void MapEditorDlg::runEditor(std::string site)
 		m_editor->stop();
 		delete m_editor;
 	}
+	m_show_poi = FALSE;
+	m_show_streetview = FALSE;
+	UpdateData(FALSE);
 	m_editor = new MapEditor();
 	m_editor->configure(site);
 	m_editor->run();

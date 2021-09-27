@@ -324,11 +324,25 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                 cv::imshow(m_winname, view_image);
                 int key = cv::waitKey(1);
 
-                cv::Mat sv_image;
-                dg::MapManager::getStreetViewImage(sv->id, sv_image);
-                if (!sv_image.empty())
+                cv::Mat sv_front;
+                dg::MapManager::getStreetViewImage(sv->id, sv_front, "f");
+                if (!sv_front.empty())
                 {
-                    cv::imshow("streetview", sv_image);
+                    if (flags & cv::EVENT_FLAG_SHIFTKEY)
+                    {
+                        cv::Mat sv_image;
+                        dg::MapManager::getStreetViewImage(sv->id, sv_image);
+                        if (!sv_image.empty()) cv::namedWindow("streetview", cv::WINDOW_NORMAL);
+                        if (!sv_image.empty()) cv::imshow("streetview", sv_image);
+                    }
+                    std::string str_id = cv::format("ID: %zu", sv->id);
+                    std::string str_heading = cv::format("Heading: %.0f degree", sv->heading);
+                    cv::putText(sv_front, str_id.c_str(), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 255), 5);
+                    cv::putText(sv_front, str_id.c_str(), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
+                    cv::putText(sv_front, str_heading.c_str(), cv::Point(10, 80), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 255), 5);
+                    cv::putText(sv_front, str_heading.c_str(), cv::Point(10, 80), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
+                    cv::namedWindow("streetview_front", cv::WINDOW_NORMAL);
+                    cv::imshow("streetview_front", sv_front);
                     int key = cv::waitKey(1);
                 }
             }
