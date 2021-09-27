@@ -301,7 +301,7 @@ bool DeepGuider::initialize(std::string config_file)
     if(ok) printf("\tConfiguration %s loaded!\n", config_file.c_str());
 
     // initialize python
-    bool enable_python = m_enable_vps || m_enable_ocr || m_enable_logo || m_enable_intersection || m_enable_exploration;
+    bool enable_python = m_enable_vps || m_enable_lrpose || m_enable_ocr || m_enable_logo || m_enable_intersection || m_enable_exploration;
     if (enable_python && !init_python_environment("python3", "", m_threaded_run_python)) return false;
     if(enable_python) printf("\tPython environment initialized!\n");
 

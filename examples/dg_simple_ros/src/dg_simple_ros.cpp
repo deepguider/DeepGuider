@@ -182,6 +182,7 @@ int DeepGuiderROS::run()
 
     // start recognizer threads
     if (m_enable_vps) vps_thread = new std::thread(threadfunc_vps, this);
+    if (m_enable_lrpose) lrpose_thread = new std::thread(threadfunc_lrpose, this);
     if (m_enable_ocr) ocr_thread = new std::thread(threadfunc_ocr, this);    
     if (m_enable_logo) logo_thread = new std::thread(threadfunc_logo, this);
     if (m_enable_intersection) intersection_thread = new std::thread(threadfunc_intersection, this);

@@ -335,6 +335,7 @@ namespace dg
         {
             cv::AutoLock lock(m_mutex);
             saveObservation(ObsData::OBS_LR, lr_result, time, confidence);
+            saveEKFState(m_ekf, time);
             // TODO: apply the result to path projector
             return true;
         }
