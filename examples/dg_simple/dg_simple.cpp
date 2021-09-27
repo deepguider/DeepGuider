@@ -47,7 +47,7 @@ protected:
     std::string m_recording_header_name = "dg_simple_";
 
     std::string m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
-    std::string m_map_data_path = "data/ETRI/TopoMap_ETRI_210803.csv";
+    std::string m_map_data_path = "data/ETRI/TopoMap_ETRI.csv";
     dg::LatLon m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
     dg::Point2 m_map_ref_point_pixel = dg::Point2(347, 297);
     double m_map_pixel_per_meter = 1.039;

@@ -50,7 +50,7 @@ KETI_ROBOT:
 ## Pre-defined Place Settings
 TEST_ETRI:
   map_image_path: "data/ETRI/NaverMap_ETRI(Satellite).png"
-  map_data_path: "data/ETRI/TopoMap_ETRI_210803.csv"
+  map_data_path: "data/ETRI/TopoMap_ETRI.csv"
   map_ref_point_latlon: [36.379208, 127.364585]
   map_ref_point_pixel: [1344, 1371]
   map_pixel_per_meter: 1.2474
@@ -62,7 +62,7 @@ TEST_ETRI:
 
 ETRI:
   map_image_path: "data/NaverMap_ETRI(Satellite)_191127.png"
-  map_data_path: "data/ETRI/TopoMap_ETRI_210803.csv"
+  map_data_path: "data/ETRI/TopoMap_ETRI.csv"
   map_ref_point_latlon: [36.3838376, 127.3678808]
   map_ref_point_pixel: [347, 297]
   map_pixel_per_meter: 1.039
@@ -72,7 +72,7 @@ ETRI:
 
 COEX:
   map_image_path: "data/NaverMap_COEX(Satellite)_200929.png"
-  map_data_path: "data/COEX/TopoMap_COEX_210803.csv"
+  map_data_path: "data/COEX/TopoMap_COEX.csv"
   map_ref_point_latlon: [37.506207, 127.05482]
   map_ref_point_pixel: [1090, 1018]
   map_pixel_per_meter: 1.055
@@ -82,7 +82,7 @@ COEX:
 
 Bucheon:
   map_image_path: "data/NaverMap_Bucheon(Satellite).png" 
-  map_data_path: "data/Bucheon/TopoMap_Bucheon_210803.csv"
+  map_data_path: "data/Bucheon/TopoMap_Bucheon.csv"
   map_ref_point_latlon: [37.510928, 126.764344]
   map_ref_point_pixel: [1535, 1157]
   map_pixel_per_meter: 1.056

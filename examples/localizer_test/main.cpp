@@ -317,7 +317,7 @@ int runLocalizer()
     ETRI.origin_px = cv::Point2d(347, 297);
     ETRI.map_radius = 1500; // meter
     ETRI.grid_unit_pos = cv::Point(-215, -6);
-    ETRI.map_file = "data/ETRI/TopoMap_ETRI_210803.csv";
+    ETRI.map_file = "data/ETRI/TopoMap_ETRI.csv";
     ETRI.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
     ETRI.video_resize = 0.25;
     ETRI.video_offset = cv::Point(270, 638);
@@ -333,7 +333,7 @@ int runLocalizer()
     COEX.origin_px = cv::Point2d(1090, 1018);
     COEX.map_radius = 1500; // meter
     COEX.grid_unit_pos = cv::Point(-230, -16);
-    COEX.map_file = "data/COEX/TopoMap_COEX_210803.csv";
+    COEX.map_file = "data/COEX/TopoMap_COEX.csv";
     COEX.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
     COEX.video_resize = 0.4;
     COEX.video_offset = cv::Point(10, 50);
