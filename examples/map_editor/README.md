@@ -8,3 +8,5 @@ A tool for editing offline map
 * shift+drag: move map object (topomap node, poi node, streetview node)
 * right click: show frontal streetview image
 * shift + right click: show full panorama streetview image
+* drag: shift view window
+* wheel: zoom in / out view window
