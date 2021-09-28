@@ -3,16 +3,18 @@
 
 function build_unit(){
 	local D=$1
+	CURR_DIR=`pwd`
 	cd ./$D
 	mkdir -p build
 	cd build
 	cmake ..
 	make install
-	cd ../../
+	cd ${CURR_DIR}
 }
 
 function build_script(){
 	local D=$1
+	CURR_DIR=`pwd`
 	cd ./$D
 	found_script=`ls *build*.sh 2> /dev/null|grep -v 'run'`
 	if [ ! -z "$found_script" ];then
@@ -23,11 +25,12 @@ function build_script(){
 		echo "[...] Run default build script because there is no build_script in $D"
 		eval "$2='-1'" # return value via second args
 	fi
-	cd ..
+	cd ${CURR_DIR}
 }
 
 function setup_script(){
 	local D=$1
+	CURR_DIR=`pwd`
 	cd ./$D
 	setup_switch=".setup.done"
 	found_script=`ls *setup*.sh 2> /dev/null`
@@ -42,7 +45,7 @@ function setup_script(){
 			touch .setup.done
 		fi
 	fi
-	cd ..
+	cd ${CURR_DIR}
 }
 
 ## Current directory is examples
