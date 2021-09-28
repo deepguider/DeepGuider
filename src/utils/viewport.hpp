@@ -139,6 +139,12 @@ public:
         }
     }
 
+    void setZoomRange(double z_min, double z_max)
+    {
+        m_virtual_zoom_min = z_min;
+        m_virtual_zoom_max = z_max;
+    }
+
 protected:
     void updateViewport(double view_sx, double view_sy, double virtual_zoom = -1)
     {
