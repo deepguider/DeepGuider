@@ -66,6 +66,13 @@ protected:
     cv::Size        m_view_size = cv::Size(1800, 1012);
     dg::Viewport    m_viewport;
 
+    // edit
+    enum {G_NODE, G_POI, G_STREETVIEW};
+    cv::Point       m_mouse_pt;
+    bool            m_mouse_drag = false;
+    dg::ID          m_gobj_id;
+    int             m_gobj_type;
+
 }; // End of 'MapEditor'
 
 

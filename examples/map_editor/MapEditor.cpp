@@ -137,16 +137,148 @@ void MapEditor::stop()
 void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
 {
     if (m_under_edit) return;
-    m_viewport.procMouseEvent(evt, x, y, flags);
-
-    if (evt == cv::EVENT_MOUSEMOVE)
+    bool is_shift = flags & cv::EVENT_FLAG_SHIFTKEY;
+    double zoom_prev = m_viewport.zoom();
+    if(!is_shift && !m_mouse_drag) m_viewport.procMouseEvent(evt, x, y, flags);
+    double zoom = m_viewport.zoom();
+    if (zoom != zoom_prev)
     {
+        if (zoom >= 4)
+        {
+            m_painter.setParamValue("node_radius", 2);
+            m_painter.setParamValue("edge_thickness", 1);
+        }
+        else
+        {
+            m_painter.setParamValue("node_radius", 3);
+            m_painter.setParamValue("edge_thickness", 2);
+        }
+        drawMap();
+    }
+
+    if (evt == cv::EVENT_MOUSEMOVE && m_mouse_drag)
+    {
+        if (x != m_mouse_pt.x || y != m_mouse_pt.y)
+        {
+            cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            cv::Point2d metric = m_painter.cvtPixel2Value(px);
+            if (m_gobj_type == G_NODE)
+            {
+                dg::Node* node = m_map.getNode(m_gobj_id);
+                if (node)
+                {
+                    node->x = metric.x;
+                    node->y = metric.y;
+                    for (auto it = node->edge_ids.begin(); it != node->edge_ids.end(); it++)
+                    {
+                        dg::Edge* edge = m_map.getEdge(*it);
+                        if (edge)
+                        {
+                            dg::Node* node2 = m_map.getConnectedNode(node, edge->id);
+                            if (node2) edge->length = norm(*node - *node2);
+                        }
+                    }
+                }
+            }
+            else if (m_gobj_type == G_POI)
+            {
+                dg::POI* poi = m_map.getPOI(m_gobj_id);
+                if (poi)
+                {
+                    poi->x = metric.x;
+                    poi->y = metric.y;
+                }
+            }
+            else if (m_gobj_type == G_STREETVIEW)
+            {
+                dg::StreetView* sv = m_map.getView(m_gobj_id);
+                if (sv)
+                {
+                    sv->x = metric.x;
+                    sv->y = metric.y;
+                }
+            }
+            m_mouse_pt = cv::Point(x, y);
+
+            drawMap();
+        }
+    }
+    else if (evt == cv::EVENT_LBUTTONDOWN && is_shift)
+    {
+        cv::AutoLock lock(m_mutex_data);
+        double dist_thr = 10;    // meter
+        cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+        cv::Point2d metric = m_painter.cvtPixel2Value(px);
+
+        bool update_gobj = false;
+        if (m_show_poi || m_show_streetview)
+        {
+            std::vector<dg::POI*> pois;
+            std::vector<dg::StreetView*> streetviews;
+            if (m_show_poi) pois = m_map.getNearPOIs(metric, dist_thr, true);
+            if (m_show_streetview) streetviews = m_map.getNearViews(metric, dist_thr, true);
+            if (!pois.empty() && (streetviews.empty() || norm(*(pois[0]) - metric) <= norm(*(streetviews[0]) - metric)))
+            {
+                dg::POI* poi = pois[0];
+                cv::Mat view_image;
+                double zoom = m_viewport.zoom();
+                m_viewport.getViewportImage(view_image);
+                m_painter.drawPoint(view_image, *poi, 4, cv::Vec3b(0, 0, 128), m_viewport.offset(), zoom, (int)(2 * zoom + 0.5));
+                cv::imshow(m_winname, view_image);
+                int key = cv::waitKey(1);
+
+                m_gobj_id = poi->id;
+                m_gobj_type = G_POI;
+                update_gobj = true;
+            }
+            if (!streetviews.empty() && (pois.empty() || norm(*(pois[0]) - metric) > norm(*(streetviews[0]) - metric)))
+            {
+                dg::StreetView* sv = streetviews[0];
+                cv::Mat view_image;
+                double zoom = m_viewport.zoom();
+                m_viewport.getViewportImage(view_image);
+                m_painter.drawPoint(view_image, *sv, 4, cv::Vec3b(128, 0, 0), m_viewport.offset(), zoom, (int)(2 * zoom + 0.5));
+                cv::imshow(m_winname, view_image);
+                int key = cv::waitKey(1);
+
+                m_gobj_id = sv->id;
+                m_gobj_type = G_STREETVIEW;
+                update_gobj = true;
+            }
+        }
+        else
+        {
+            dg::Node* node = m_map.getNearestNode(metric);
+            double d1 = norm(*node - metric);
+            bool update_node = node && d1 <= dist_thr;
+            if (update_node)
+            {
+                cv::Mat view_image;
+                double zoom = m_viewport.zoom();
+                m_viewport.getViewportImage(view_image);
+                m_painter.drawNode(view_image, *node, 4, 0, cv::Vec3b(0, 255, 255), m_viewport.offset(), zoom, (int)(2 * zoom + 0.5));
+                cv::imshow(m_winname, view_image);
+                int key = cv::waitKey(1);
+
+                m_gobj_id = node->id;
+                m_gobj_type = G_NODE;
+                update_gobj = true;
+            }
+        }
+
+        if (update_gobj)
+        {
+            m_mouse_pt = cv::Point(x, y);
+            m_mouse_drag = true;
+        }
     }
     else if (evt == cv::EVENT_LBUTTONDOWN)
     {
+        m_mouse_drag = false;
     }
     else if (evt == cv::EVENT_LBUTTONUP)
     {
+        m_mouse_drag = false;
     }
     else if (evt == cv::EVENT_LBUTTONDBLCLK)
     {
@@ -455,16 +587,20 @@ void MapEditor::drawMap()
     }
     if (m_show_poi)
     {
+        double zoom = m_viewport.zoom();
+        int radius = (zoom >= 4) ? 2 : 3;
         for (auto it = m_map.getHeadPOI(); it != m_map.getTailPOI(); it++)
         {
-            m_painter.drawPoint(m_bg_image, *it, 3, cv::Vec3b(0, 0, 255));
+            m_painter.drawPoint(m_bg_image, *it, radius, cv::Vec3b(0, 0, 255));
         }
     }
     if (m_show_streetview)
     {
+        double zoom = m_viewport.zoom();
+        int radius = (zoom >= 4) ? 2 : 3;
         for (auto it = m_map.getHeadView(); it != m_map.getTailView(); it++)
         {
-            m_painter.drawPoint(m_bg_image, *it, 3, cv::Vec3b(255, 0, 0));
+            m_painter.drawPoint(m_bg_image, *it, radius, cv::Vec3b(255, 0, 0));
         }
     }
 }
