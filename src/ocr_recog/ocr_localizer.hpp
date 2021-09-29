@@ -112,6 +112,29 @@ namespace dg
 			return true;
 		}
 
+		bool getLocClue(const Pose2& pose, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
+		{
+			cv::AutoLock lock(m_mutex);
+			if (m_shared == nullptr) return false;
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			Map* map = m_shared->getMap();
+			assert(map != nullptr);
+			for (int k = 0; k < m_result.size(); k++)
+			{
+				std::wstring poi_name = converter.from_bytes(m_result[k].label.c_str());
+				std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
+				if (!pois.empty())
+				{
+					POI* poi = pois[0];
+					poi_xys.push_back(*poi);
+					Polar2 relative = computeRelative(m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
+					relatives.push_back(relative);
+					poi_confidences.push_back(m_result[k].confidence);
+				}
+			}
+			return true;
+		}		
+
 
     protected:
         dg::Polar2 computeRelative(double x1, double y1, double x2, double y2)
