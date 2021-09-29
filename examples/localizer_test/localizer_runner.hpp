@@ -5,7 +5,9 @@
 #include "localizer/data_loader.hpp"
 #include "intersection_cls/intersection_localizer.hpp"
 #include "vps/vps_localizer.hpp"
+#include "lrpose_recog/lrpose_localizer.hpp"
 #include "ocr_recog/ocr_localizer.hpp"
+#include "dg_roadtheta.hpp"
 #include "utils/viewport.hpp"
 
 void onMouseEventLocalizer(int event, int x, int y, int flags, void* param);
@@ -20,8 +22,8 @@ protected:
     dg::IntersectionLocalizer m_intersection_localizer;
     dg::OCRLocalizer m_ocr_localizer;
     dg::VPSLocalizer m_vps_localizer;
-    //dg::LRLocalizer m_lr_localizer;
-
+    dg::LRLocalizer m_lr_localizer;
+    dg::RoadThetaLocalizer m_roadtheta;
 
 public:
     dg::Pose2 getPose(dg::Timestamp* timestamp = nullptr) const
@@ -64,7 +66,8 @@ public:
         m_intersection_localizer.initialize_without_python(this);
         m_ocr_localizer.initialize_without_python(this);
         m_vps_localizer.initialize_without_python(this);
-        //m_lr_localizer.initialize_without_python(this);
+        m_lr_localizer.initialize_without_python(this);
+        m_roadtheta.initialize(this);
 
         // Prepare the result trajectory and video
         FILE* out_traj = nullptr;
@@ -102,14 +105,21 @@ public:
         while (1)
         {
             int type;
-            std::vector<double> data;
+            std::vector<double> vdata;
+            std::vector<std::string> sdata;
             dg::Timestamp data_time;
-            if (data_loader.getNext(type, data, data_time) == false) break;
+            if (data_loader.getNext(type, vdata, sdata, data_time) == false) break;
 
             bool update_gui = false;
-            if (type == dg::DATA_GPS)
+            if (type == dg::DATA_IMU)
             {
-                dg::LatLon gps_datum(data[1], data[2]);
+                auto euler = cx::cvtQuat2EulerAng(vdata[1], vdata[2], vdata[3], vdata[4]);
+                bool success = localizer->applyIMUCompass(euler.z, data_time, 1);
+                if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
+            }
+            else if (type == dg::DATA_GPS)
+            {
+                dg::LatLon gps_datum(vdata[1], vdata[2]);
                 dg::Point2 gps_xy = toMetric(gps_datum);
                 bool success = localizer->applyGPS(gps_xy, data_time, 1);
                 if (!success) fprintf(stderr, "applyGPS() was failed.\n");
@@ -123,30 +133,47 @@ public:
                 cam_image = data_loader.getFrame(data_time);
                 update_gui = true;
             }
-            else if (type == dg::DATA_IMU)
+            else if (type == dg::DATA_OCR)
             {
-                auto euler = cx::cvtQuat2EulerAng(data[1], data[2], data[3], data[4]);
-                bool success = localizer->applyIMUCompass(euler.z, data_time, 1);
-                if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
+                std::string name = sdata[0];
+                double conf = vdata[1];
+                double xmin = vdata[2];
+                double ymin = vdata[3];
+                double xmax = vdata[4];
+                double ymax = vdata[5];
+                dg::Point2 clue_xy;
+                dg::Polar2 relative;
+                double confidence;
+                if (m_ocr_localizer.applyPreprocessed(name, xmin, ymin, xmax, ymax, conf, data_time, clue_xy, relative, confidence))
+                {
+                    bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
+                    if (!success) fprintf(stderr, "applyOCR() was failed.\n");
+                }
             }
             else if (type == dg::DATA_POI)
             {
-                //bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
-                //if (!success) fprintf(stderr, "applyPOI() was failed.\n");
+                dg::Point2 clue_xy(vdata[2], vdata[3]);
+                dg::Polar2 relative(vdata[4], vdata[5]);
+                double confidence = vdata[6];
+                bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
+                if (!success) fprintf(stderr, "applyPOI() was failed.\n");
             }
             else if (type == dg::DATA_VPS)
             {
-                //bool success = localizer->applyVPS(clue_xy, relative, data_time, confidence);
-                //if (!success) fprintf(stderr, "applyVPS() was failed.\n");
+                dg::Point2 clue_xy = toMetric(dg::LatLon(vdata[3], vdata[4]));
+                dg::Polar2 relative(vdata[5], vdata[6]);
+                double confidence = vdata[7];
+                bool success = localizer->applyVPS(clue_xy, relative, data_time, confidence);
+                if (!success) fprintf(stderr, "applyVPS() was failed.\n");
             }
             else if (type == dg::DATA_IntersectCls)
             {
-                double cls = data[1];
-                double cls_conf = data[2];
+                double cls = vdata[1];
+                double cls_conf = vdata[2];
                 dg::Point2 xy;
                 double xy_confidence;
                 bool xy_valid = false;
-                if (m_intersection_localizer.apply(data_time, cls, cls_conf, xy, xy_confidence, xy_valid) && xy_valid)
+                if (m_intersection_localizer.applyPreprocessed(cls, cls_conf, data_time, xy, xy_confidence, xy_valid) && xy_valid)
                 {
                     bool success = localizer->applyIntersectCls(xy, data_time, xy_confidence);
                     if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
@@ -154,13 +181,22 @@ public:
             }
             else if (type == dg::DATA_LR && dg_localizer)
             {
-                //bool success = dg_localizer->applyVPS_LR(lr_result, data_time, confidence);
-                //if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
+                double cls = vdata[1];
+                double cls_conf = vdata[2];
+                int lr_cls;
+                double lr_confidence;
+                if (m_lr_localizer.applyPreprocessed(cls, cls_conf, data_time, lr_cls, lr_confidence))
+                {
+                    bool success = dg_localizer->applyLRPose(lr_cls, data_time, lr_confidence);
+                    if (!success) fprintf(stderr, "applyLRPose() was failed.\n");
+                }
             }
             else if (type == dg::DATA_RoadTheta)
             {
-                //bool success = localizer->applyRoadTheta(theta, data_time, confidence);
-                //if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
+                double theta = vdata[3];
+                double confidence = vdata[4];
+                bool success = localizer->applyRoadTheta(theta, data_time, confidence);
+                if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
             }
 
             // Record the current state on the CSV file

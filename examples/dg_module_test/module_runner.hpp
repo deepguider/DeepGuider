@@ -11,7 +11,7 @@
 #include "roadtheta/roadtheta_localizer.hpp"
 #include "utils/viewport.hpp"
 
-enum { DG_VPS, DG_LR, DG_POI, DG_RoadTheta, DG_Intersection };
+enum { DG_VPS, DG_LR, DG_OCR, DG_POI, DG_RoadTheta, DG_Intersection };
 
 void onMouseEvent(int event, int x, int y, int flags, void* param);
 
@@ -33,7 +33,7 @@ public:
 
         // initialize module localizers
         if (module_sel == DG_VPS) m_vps_localizer = cv::makePtr<dg::VPSLocalizer>();
-        if (module_sel == DG_POI) m_ocr_localizer = cv::makePtr<dg::OCRLocalizer>();
+        if (module_sel == DG_OCR || module_sel == DG_POI) m_ocr_localizer = cv::makePtr<dg::OCRLocalizer>();
         if (module_sel == DG_Intersection) m_intersection_localizer = cv::makePtr<dg::IntersectionLocalizer>();
         if (module_sel == DG_RoadTheta) m_roadtheta_localizer = cv::makePtr<dg::RoadThetaLocalizer>();
         if (module_sel == DG_LR) m_lr_localizer = cv::makePtr<dg::LRLocalizer>();
@@ -78,7 +78,8 @@ public:
         cv::setMouseCallback("ModuleRunner::run()", onMouseEvent, this);
 
         int type;
-        std::vector<double> data;
+        std::vector<double> vdata;
+        std::vector<std::string> sdata;
         dg::Timestamp data_time;
         cv::Mat video_image;
         cv::Mat out_image;
@@ -89,17 +90,17 @@ public:
             cv::Mat result_image;
             if (use_saved_testset)
             {
-                if (data_loader.getNext(type, data, data_time) == false) break;
+                if (data_loader.getNext(type, vdata, sdata, data_time) == false) break;
 
                 if (type == dg::DATA_IMU)
                 {
-                    auto euler = cx::cvtQuat2EulerAng(data[1], data[2], data[3], data[4]);
+                    auto euler = cx::cvtQuat2EulerAng(vdata[1], vdata[2], vdata[3], vdata[4]);
                     bool success = localizer->applyIMUCompass(euler.z, data_time, 1);
                     if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
                 }
                 else if (type == dg::DATA_GPS)
                 {
-                    dg::LatLon gps_datum(data[1], data[2]);
+                    dg::LatLon gps_datum(vdata[1], vdata[2]);
                     dg::Point2 gps_xy = toMetric(gps_datum);
                     bool success = localizer->applyGPS(gps_xy, data_time, 1);
                     if (!success) fprintf(stderr, "applyGPS() was failed.\n");
@@ -107,94 +108,113 @@ public:
                 }
                 else if (module_sel == DG_Intersection && type == dg::DATA_IntersectCls)
                 {
-                    double cls = data[1];
-                    double cls_conf = data[2];
+                    double cls = vdata[1];
+                    double cls_conf = vdata[2];
                     dg::Point2 xy;
                     double xy_confidence;
                     bool xy_valid = false;
-                    if (m_intersection_localizer->apply(data_time, cls, cls_conf, xy, xy_confidence, xy_valid) && xy_valid)
+                    if (m_intersection_localizer->applyPreprocessed(cls, cls_conf, data_time, xy, xy_confidence, xy_valid) && xy_valid)
                     {
                         bool success = localizer->applyIntersectCls(xy, data_time, xy_confidence);
                         if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
                     }
-                    video_image = data_loader.getFrame(data_time);
-                    result_image = video_image.clone();
-                    m_intersection_localizer->draw(result_image);
-                    update_gui = true;
+                    if (show_gui)
+                    {
+                        video_image = data_loader.getFrame(data_time);
+                        result_image = video_image.clone();
+                        m_intersection_localizer->draw(result_image);
+                        update_gui = true;
+                    }
+                }
+                else if (module_sel == DG_OCR && type == dg::DATA_OCR)
+                {
+                    std::string name = sdata[0];
+                    double conf = vdata[1];
+                    double xmin = vdata[2];
+                    double ymin = vdata[3];
+                    double xmax = vdata[4];
+                    double ymax = vdata[5];
+                    dg::Point2 clue_xy;
+                    dg::Polar2 relative;
+                    double confidence;
+                    if (m_ocr_localizer->applyPreprocessed(name, xmin, ymin, xmax, ymax, conf, data_time, clue_xy, relative, confidence))
+                    {
+                        bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
+                        if (!success) fprintf(stderr, "applyOCR() was failed.\n");
+                    }
+                    if (show_gui)
+                    {
+                        video_image = data_loader.getFrame(data_time);
+                        result_image = video_image.clone();
+                        m_ocr_localizer->draw(result_image);
+                        update_gui = true;
+                    }
                 }
                 else if (module_sel == DG_POI && type == dg::DATA_POI)
                 {
-                    //if (m_ocr_localizer->apply(...))
-                    //{
-                        //bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
-                        //if (!success) fprintf(stderr, "applyPOI() was failed.\n");
-                    //}
-                    video_image = data_loader.getFrame(data_time);
-                    result_image = video_image.clone();
-                    m_ocr_localizer->draw(result_image);
-                    update_gui = true;
+                    dg::Point2 clue_xy(vdata[2], vdata[3]);
+                    dg::Polar2 relative(vdata[4], vdata[5]);
+                    double confidence = vdata[6];
+                    bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
+                    if (!success) fprintf(stderr, "applyPOI() was failed.\n");
+                    if (show_gui)
+                    {
+                        video_image = data_loader.getFrame(data_time);
+                        result_image = video_image.clone();
+                        m_ocr_localizer->draw(result_image);
+                        update_gui = true;
+                    }
                 }
                 else if (module_sel == DG_VPS && type == dg::DATA_VPS)
                 {
-                    /*** Input of m_vps_localizer->apply() ***/
-                    double t = data[0];
-                    dg::ID svid = (dg::ID)(data[1] + 0.5);
-                    double svidx = data[2];  // Which side db image was matched to query. 'f' means front, 'b', 'u', 'l', 'r'.
-                    double pred_lat = data[3];
-                    double pred_lon = data[4];                    
-                    double pred_distance = data[5];
-                    double pred_angle = data[6];
-                    double pred_confidence = data[7];
-                    dg::LatLon pred_ll;
-                    /*** Output of m_vps_localizer->apply() ***/
-                    dg::Point2 streetview_xy;
-                    dg::Polar2 relative;
-                    double streetview_confidence;
-                    dg::ID sv_id;
-                    cv::Mat sv_image;
-                    dg::VPSResult result;
-                    std::vector<dg::VPSResult> results;
-   
-                    pred_ll.lat = pred_lat;
-                    pred_ll.lon = pred_lon;
-                    video_image = data_loader.getFrame(data_time);
-
-                    if (m_vps_localizer->apply(video_image, data_time, svid, pred_ll, pred_distance, pred_angle, pred_confidence, streetview_xy, relative, streetview_confidence, sv_id, sv_image))
+                    dg::Point2 clue_xy = toMetric(dg::LatLon(vdata[3], vdata[4]));
+                    dg::Polar2 relative(vdata[5], vdata[6]);
+                    double confidence = vdata[7];
+                    bool success = localizer->applyVPS(clue_xy, relative, data_time, confidence);
+                    if (!success) fprintf(stderr, "applyVPS() was failed.\n");
+                    if (show_gui)
                     {
-                        bool success = localizer->applyVPS(streetview_xy, relative, data_time, streetview_confidence);
-                        if (!success) fprintf(stderr, "applyVPS() was failed.\n");
+                        video_image = data_loader.getFrame(data_time);
+                        dg::ID sv_id = (dg::ID)(vdata[1] + 0.5);
+                        if (dg::MapManager::getStreetViewImage(sv_id, result_image, "f") && !result_image.empty())
+                        {
+                            m_vps_localizer->draw(result_image);
+                        }
+                        update_gui = true;
                     }
-
-                    result_image = sv_image;
-                    result.confidence = streetview_confidence;
-                    result.id = sv_id;
-                    results.push_back(result);
-                    m_vps_localizer->set((const std::vector<dg::VPSResult>&)results, data_time, -1);
-                    m_vps_localizer->draw(result_image);
-                    update_gui = true;                      
                 }
                 else if (module_sel == DG_LR && type == dg::DATA_LR)
                 {
-                    //bool success = dg_localizer->applyVPS_LR(lr_result, data_time, confidence);
-                    //if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
-                    double cls = data[1];
-                    double cls_conf = data[2];
+                    double cls = vdata[1];
+                    double cls_conf = vdata[2];
+                    int lr_cls;
                     double lr_confidence;
-                    double lr_cls = 1;  // UNKNOWN_SIDE_OF_ROAD
-                    if (m_lr_localizer->apply(data_time, cls, cls_conf, lr_cls, lr_confidence))
+                    if (m_lr_localizer->applyPreprocessed(cls, cls_conf, data_time, lr_cls, lr_confidence))
                     {
-                        bool success = localizer->applyVPS_LR(lr_cls, data_time, lr_confidence);
-                        if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
+                        bool success = localizer->applyLRPose(lr_cls, data_time, lr_confidence);
+                        if (!success) fprintf(stderr, "applyLRPose() was failed.\n");
                     }
-                    video_image = data_loader.getFrame(data_time);
-                    result_image = video_image.clone();
-                    m_lr_localizer->draw(result_image);
-                    update_gui = true;                    
+                    if (show_gui)
+                    {
+                        video_image = data_loader.getFrame(data_time);
+                        result_image = video_image.clone();
+                        m_lr_localizer->draw(result_image);
+                        update_gui = true;
+                    }
                 }
                 else if (module_sel == DG_RoadTheta && type == dg::DATA_RoadTheta)
                 {
-                    //bool success = localizer->applyRoadTheta(theta, data_time, confidence);
-                    //if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
+                    double theta = vdata[3];
+                    double confidence = vdata[4];
+                    bool success = localizer->applyRoadTheta(theta, data_time, confidence);
+                    if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
+                    if (show_gui)
+                    {
+                        video_image = data_loader.getFrame(data_time);
+                        result_image = video_image.clone();
+                        m_roadtheta_localizer->draw(result_image);
+                        update_gui = true;
+                    }
                 }
             }
             else  // run modules online
@@ -204,17 +224,17 @@ public:
                 if (video_image.empty()) break;
                 update_gui = true;
 
-                while (data_loader.getNextUntil(capture_time, type, data, data_time))
+                while (data_loader.getNextUntil(capture_time, type, vdata, sdata, data_time))
                 {
                     if (type == dg::DATA_IMU)
                     {
-                        auto euler = cx::cvtQuat2EulerAng(data[1], data[2], data[3], data[4]);
+                        auto euler = cx::cvtQuat2EulerAng(vdata[1], vdata[2], vdata[3], vdata[4]);
                         bool success = localizer->applyIMUCompass(euler.z, data_time, 1);
                         if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
                     }
                     else if (type == dg::DATA_GPS)
                     {
-                        dg::LatLon gps_datum(data[1], data[2]);
+                        dg::LatLon gps_datum(vdata[1], vdata[2]);
                         dg::Point2 gps_xy = toMetric(gps_datum);
                         bool success = localizer->applyGPS(gps_xy, data_time, 1);
                         if (!success) fprintf(stderr, "applyGPS() was failed.\n");
@@ -238,7 +258,7 @@ public:
                         m_intersection_localizer->draw(result_image);
                     }
                 }
-                else if (module_sel == DG_POI)
+                else if (module_sel == DG_OCR || module_sel == DG_POI)
                 {
                     std::vector<dg::Point2> poi_xys;
                     std::vector<dg::Polar2> relatives;
@@ -262,27 +282,28 @@ public:
                     dg::Point2 streetview_xy;
                     dg::Polar2 relative;
                     double streetview_confidence;
-                    dg::ID sv_id;
-                    cv::Mat sv_image;
-                    if (m_vps_localizer->apply(video_image, capture_time, streetview_xy, relative, streetview_confidence, sv_id, sv_image))
+                    if (m_vps_localizer->apply(video_image, capture_time, streetview_xy, relative, streetview_confidence))
                     {
                         bool success = localizer->applyVPS(streetview_xy, relative, data_time, streetview_confidence);
                         if (!success) fprintf(stderr, "applyVPS() was failed.\n");
                     }
                     if (show_gui)
                     {
-                        result_image = sv_image;
-                        m_vps_localizer->draw(result_image);
+                        result_image = m_vps_localizer->getViewImage();
+                        if (!result_image.empty())
+                        {
+                            m_vps_localizer->draw(result_image);
+                        }
                     }
                 }
                 else if (module_sel == DG_LR)
                 {
+                    int lr_cls = 1;  // UNKNOWN_SIDE_OF_ROAD
                     double lr_confidence;
-                    double lr_cls = 1;  // UNKNOWN_SIDE_OF_ROAD
                     if (m_lr_localizer->apply(video_image, capture_time, lr_cls, lr_confidence))
                     {
-                        bool success = localizer->applyVPS_LR(lr_cls, data_time, lr_confidence);
-                        if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
+                        bool success = localizer->applyLRPose(lr_cls, data_time, lr_confidence);
+                        if (!success) fprintf(stderr, "applyLRPose() was failed.\n");
                     }
                     if (show_gui)
                     {

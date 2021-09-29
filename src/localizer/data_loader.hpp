@@ -31,7 +31,10 @@ enum
     DATA_LR = 5,
 
     /** RoadTheta data */
-    DATA_RoadTheta = 6
+    DATA_RoadTheta = 6,
+
+    /** OCR data */
+    DATA_OCR = 7
 };
 
 /**
@@ -42,7 +45,7 @@ enum
 class DataLoader
 {
 public:
-    bool load(const std::string& video_file, const std::string& gps_file, const std::string& ahrs_file = "", const std::string& poi_file = "", const std::string& vps_file = "", const std::string& intersection_file = "", const std::string& lr_file = "", const std::string& roadtheta_file = "")
+    bool load(const std::string& video_file, const std::string& gps_file, const std::string& ahrs_file = "", const std::string& ocr_file = "", const std::string& poi_file = "", const std::string& vps_file = "", const std::string& intersection_file = "", const std::string& lr_file = "", const std::string& roadtheta_file = "")
     {
         clear();
 
@@ -60,6 +63,11 @@ public:
         {
             m_ahrs_data = readROSAHRS(ahrs_file);
             if (m_ahrs_data.empty()) return false;
+        }
+        if (!ocr_file.empty())
+        {
+            m_ocr_vdata = readOCR(ocr_file, m_ocr_sdata);
+            if (m_ocr_vdata.empty()) return false;
         }
         if (!poi_file.empty())
         {
@@ -121,10 +129,11 @@ public:
      * @param[out] data The returned data
      * @param[out] timestamp The timestamp of the returned data
      */
-    bool getNext(int& type, std::vector<double>& data, dg::Timestamp& timestamp)
+    bool getNext(int& type, std::vector<double>& vdata, std::vector<std::string>& sdata, dg::Timestamp& timestamp)
     {
         double min_time = DBL_MAX;
         cx::CSVReader::Double2D* min_data = nullptr;
+        cx::CSVReader::String2D* min_sdata = nullptr;
         size_t* min_index = nullptr;
         int min_type = -1;
 
@@ -142,13 +151,21 @@ public:
             min_index = &m_ahrs_index;
             min_type = DATA_IMU;
         }
-        // if (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] < min_time)
-        // {
-        //     min_time = m_poi_data[m_poi_index][0];
-        //     min_data = &m_poi_data;
-        //     min_index = &m_poi_index;
-        //     min_type = DATA_POI;
-        // }
+        if (m_ocr_index < m_ocr_vdata.size() && m_ocr_vdata[m_ocr_index][0] < min_time)
+        {
+            min_time = m_ocr_vdata[m_ocr_index][0];
+            min_data = &m_ocr_vdata;
+            min_sdata = &m_ocr_sdata;
+            min_index = &m_ocr_index;
+            min_type = DATA_OCR;
+        }
+        if (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] < min_time)
+        {
+            min_time = m_poi_data[m_poi_index][0];
+            min_data = &m_poi_data;
+            min_index = &m_poi_index;
+            min_type = DATA_POI;
+        }
         if (m_vps_index < m_vps_data.size() && m_vps_data[m_vps_index][0] < min_time)
         {
             min_time = m_vps_data[m_vps_index][0];
@@ -180,39 +197,8 @@ public:
 
         if (min_data)
         {
-            data = (*min_data)[*min_index];
-            type = min_type;
-            timestamp = min_time;
-            (*min_index)++;
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Get next datum in the order of time squence
-     * @param[out] type The returned data type
-     * @param[out] data The returned data (string)
-     * @param[out] timestamp The timestamp of the returned data
-     */
-    bool getNext(int& type, std::vector<std::string>& data, dg::Timestamp& timestamp)
-    {
-        double min_time = DBL_MAX;
-        cx::CSVReader::String2D* min_data = nullptr;
-        size_t* min_index = nullptr;
-        int min_type = -1;
-
-        if (m_poi_index < m_poi_data.size() && std::stod(m_poi_data[m_poi_index][0]) < min_time)
-        {
-            min_time = std::stod(m_poi_data[m_poi_index][0]);
-            min_data = &m_poi_data;
-            min_index = &m_poi_index;
-            min_type = DATA_POI;
-        }
-
-        if (min_data)
-        {
-            data = (*min_data)[*min_index];
+            if (min_sdata) sdata = (*min_sdata)[*min_index];
+            vdata = (*min_data)[*min_index];
             type = min_type;
             timestamp = min_time;
             (*min_index)++;
@@ -228,10 +214,11 @@ public:
      * @param[out] data The returned data
      * @param[out] timestamp The timestamp of the returned data
      */
-    bool getNextUntil(dg::Timestamp ref_time, int& type, std::vector<double>& data, dg::Timestamp& timestamp)
+    bool getNextUntil(dg::Timestamp ref_time, int& type, std::vector<double>& vdata, std::vector<std::string>& sdata, dg::Timestamp& timestamp)
     {
         double min_time = ref_time;
         cx::CSVReader::Double2D* min_data = nullptr;
+        cx::CSVReader::String2D* min_sdata = nullptr;
         size_t* min_index = nullptr;
         int min_type = -1;
 
@@ -249,13 +236,21 @@ public:
             min_index = &m_ahrs_index;
             min_type = DATA_IMU;
         }
-        // if (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] <= min_time)
-        // {
-        //     min_time = m_poi_data[m_poi_index][0];
-        //     min_data = &m_poi_data;
-        //     min_index = &m_poi_index;
-        //     min_type = DATA_POI;
-        // }
+        if (m_ocr_index < m_ocr_vdata.size() && m_ocr_vdata[m_ocr_index][0] <= min_time)
+        {
+            min_time = m_ocr_vdata[m_ocr_index][0];
+            min_data = &m_ocr_vdata;
+            min_sdata = &m_ocr_sdata;
+            min_index = &m_ocr_index;
+            min_type = DATA_OCR;
+        }
+        if (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] <= min_time)
+        {
+            min_time = m_poi_data[m_poi_index][0];
+            min_data = &m_poi_data;
+            min_index = &m_poi_index;
+            min_type = DATA_POI;
+        }
         if (m_vps_index < m_vps_data.size() && m_vps_data[m_vps_index][0] <= min_time)
         {
             min_time = m_vps_data[m_vps_index][0];
@@ -287,40 +282,8 @@ public:
 
         if (min_data)
         {
-            data = (*min_data)[*min_index];
-            type = min_type;
-            timestamp = min_time;
-            (*min_index)++;
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Get next datum as long as its timestamp doesn't exceed a given reference time.
-     * @param[in] ref_time A givan reference time
-     * @param[out] type The returned data type
-     * @param[out] data The returned data (string)
-     * @param[out] timestamp The timestamp of the returned data
-     */
-    bool getNextUntil(dg::Timestamp ref_time, int& type, std::vector<std::string>& data, dg::Timestamp& timestamp)
-    {
-        double min_time = ref_time;
-        cx::CSVReader::String2D* min_data = nullptr;
-        size_t* min_index = nullptr;
-        int min_type = -1;
-
-        if (m_poi_index < m_poi_data.size() && std::stod(m_poi_data[m_poi_index][0]) <= min_time)
-        {
-            min_time = std::stod(m_poi_data[m_poi_index][0]);
-            min_data = &m_poi_data;
-            min_index = &m_poi_index;
-            min_type = DATA_POI;
-        }
-
-        if (min_data)
-        {
-            data = (*min_data)[*min_index];
+            if (min_sdata) sdata = (*min_sdata)[*min_index];
+            vdata = (*min_data)[*min_index];
             type = min_type;
             timestamp = min_time;
             (*min_index)++;
@@ -375,6 +338,7 @@ public:
         m_intersection_index = 0;
         m_vps_index = 0;
         m_lr_index = 0;
+        m_ocr_index = 0;
         m_poi_index = 0;
         m_roadtheta_index = 0;
         m_frame_index = 0;
@@ -390,9 +354,13 @@ public:
         {
             while (m_ahrs_index < m_ahrs_data.size() && m_ahrs_data[m_ahrs_index][0] < start_time) m_ahrs_index++;
         }
+        if (!m_ocr_vdata.empty())
+        {
+            while (m_ocr_index < m_ocr_vdata.size() && m_ocr_vdata[m_ocr_index][0] < start_time) m_ocr_index++;
+        }
         if (!m_poi_data.empty())
         {
-            while (m_poi_index < m_poi_data.size() && std::stod(m_poi_data[m_poi_index][0]) < start_time) m_poi_index++;
+            while (m_poi_index < m_poi_data.size() && m_poi_data[m_poi_index][0] < start_time) m_poi_index++;
         }
         if (!m_vps_data.empty())
         {
@@ -420,7 +388,7 @@ public:
 
     bool empty() const
     {
-        return !m_camera_data.isOpened() && m_gps_data.empty() && m_ahrs_data.empty() && m_poi_data.empty() && m_vps_data.empty() && m_intersection_data.empty() && m_lr_data.empty() && m_roadtheta_data.empty();
+        return !m_camera_data.isOpened() && m_gps_data.empty() && m_ahrs_data.empty() && m_ocr_sdata.empty() && m_ocr_vdata.empty() && m_poi_data.empty() && m_vps_data.empty() && m_intersection_data.empty() && m_lr_data.empty() && m_roadtheta_data.empty();
     }
 
 protected:
@@ -429,6 +397,8 @@ protected:
         m_camera_data.release();
         m_gps_data.clear();
         m_ahrs_data.clear();
+        m_ocr_vdata.clear();
+        m_ocr_sdata.clear();
         m_poi_data.clear();
         m_vps_data.clear();
         m_intersection_data.clear();
@@ -437,6 +407,7 @@ protected:
 
         m_gps_index = 0;
         m_ahrs_index = 0;
+        m_ocr_index = 0;
         m_poi_index = 0;
         m_vps_index = 0;
         m_intersection_index = 0;
@@ -501,6 +472,7 @@ protected:
         cx::CSVReader csv;
         if (csv.open(ahrs_file))
         {
+            // time,seq,secs,nsecs,frame_id,orientation.x,orientation.y,orientation.z,.orientation.w
             cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 2, 3, 5, 6, 7, 8 }); // Skip the header
             if (!raw_data.empty())
             {
@@ -516,104 +488,84 @@ protected:
 
     cx::CSVReader::Double2D readIntersection(const std::string& clue_file)
     {
-        cx::CSVReader::Double2D data;
         cx::CSVReader csv;
         if (csv.open(clue_file))
         {
-            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 0, 1, 2, 3 }); // Skip the header
-            if (!raw_data.empty())
-            {
-                for (auto row = raw_data.begin(); row != raw_data.end(); row++)
-                {
-                    data.push_back({ row->at(1), row->at(2), row->at(3) }); // t, v, conf
-                }
-            }
+            // framenumber,timestamp,v,confidence
+            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 1, 2, 3 }); // Skip the header
+            return raw_data;
         }
-        return data;
+        return cx::CSVReader::Double2D();
     }
 
     cx::CSVReader::Double2D readVPS_LR(const std::string& clue_file)
     {
-        cx::CSVReader::Double2D data;
         cx::CSVReader csv;
         if (csv.open(clue_file))
         {
-            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 0, 1, 2, 3 }); // Skip the header
-            if (!raw_data.empty())
-            {
-                for (auto row = raw_data.begin(); row != raw_data.end(); row++)
-                {
-                    data.push_back({ row->at(1), row->at(2), row->at(3) }); // t, v, conf
-                }
-            }
+            // fnumber,timestamp,v,confidence,lr_side(string)
+            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 1, 2, 3 }); // Skip the header
+            return raw_data;
         }
-        return data;
+        return cx::CSVReader::Double2D();
     }
 
     cx::CSVReader::Double2D readRoadTheta(const std::string& clue_file)
     {
-        return cx::CSVReader::Double2D();
-    }
-
-    cx::CSVReader::String2D readPOI(const std::string& clue_file)
-    {
-        cx::CSVReader::String2D data;
         cx::CSVReader csv;
         if (csv.open(clue_file))
         {
-            std::size_t pos = clue_file.rfind('_');
-            std::string type = clue_file.substr(pos + 1, 3);
-            
-            if(type == "poi")
-            {
-                cx::CSVReader::String2D raw_data = csv.extString2D(1, { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 }); // Skip the header
-                if (!raw_data.empty())
-                {
-                    for (auto row = raw_data.begin(); row != raw_data.end(); row++)
-                    {
-                        std::vector<std::string> datum = { row->at(0), row->at(1), row->at(2), row->at(3), row->at(4), row->at(5), row->at(6), row->at(7), row->at(8), row->at(9), row->at(10), row->at(11), row->at(12), row->at(13), row->at(14), row->at(15), row->at(16) };
-                        data.push_back(datum); // fnumber,timestamp,dname,x,y,w,h,poi_id,poi_name,poi_x,poi_y,poi_floor,distance,angle,confidence,cam_lat,cam_lon
-                    }
-                }
-            }
-            else if(type == "ocr")
-            {
-                cx::CSVReader::String2D raw_data = csv.extString2D(1, { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 }); // Skip the header
-                if (!raw_data.empty())
-                {
-                    for (auto row = raw_data.begin(); row != raw_data.end(); row++)
-                    {
-                        std::vector<std::string> datum = { row->at(0), row->at(1), row->at(2), row->at(3), row->at(4), row->at(5), row->at(6), row->at(7), row->at(8), row->at(9) };
-                        data.push_back(datum); // fnumber,timestamp,dname,confidence,xmin,ymin,xmax,ymax,lat,lon
-                    }
-                }
-            }
+            // fnumber,timestamp,vx,vy,theta,confidence
+            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 1, 2, 3, 4, 5 }); // Skip the header
+            return raw_data;
         }
-        return data;       
+        return cx::CSVReader::Double2D();
+    }
+
+    cx::CSVReader::Double2D readOCR(const std::string& clue_file, cx::CSVReader::String2D& sdata)
+    {
+        cx::CSVReader csv;
+        sdata.clear();
+        if (csv.open(clue_file))
+        {    
+            // fnumber,timestamp,dname,confidence,xmin,ymin,xmax,ymax,lat,lon
+            sdata = csv.extString2D(1, { 2 }); // Skip the header
+            cx::CSVReader::Double2D raw_vdata = csv.extDouble2D(1, { 1, 3, 4, 5, 6, 7 }); // Skip the header
+            return raw_vdata;
+        }
+        return cx::CSVReader::Double2D();
+    }
+
+    cx::CSVReader::Double2D readPOI(const std::string& clue_file)
+    {
+        cx::CSVReader csv;
+        if (csv.open(clue_file))
+        {
+            // fnumber,timestamp,poi_id,poi_x,poi_y,distance,angle,confidence
+            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 1, 2, 3, 4, 5, 6, 7 }); // Skip the header
+            return raw_data;
+        }
+        return cx::CSVReader::Double2D();
     }
 
     cx::CSVReader::Double2D readVPS(const std::string& clue_file)
     {
-        cx::CSVReader::Double2D data;
         cx::CSVReader csv;
         if (csv.open(clue_file))
         {
-            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}); // Skip the header
-            if (!raw_data.empty())
-            {
-                for (auto row = raw_data.begin(); row != raw_data.end(); row++)
-                {
-                    data.push_back({ row->at(1), row->at(2), row->at(3), row->at(4), row->at(5), row->at(6), row->at(7), row->at(8)}); // timestamp,svid,svidx,pred_lat,pred_lon,distance,angle,confidence
-                }
-            }
+            // fnumber,timestamp,svid,svidx,pred_lat,pred_lon,distance,angle,confidence,curr_lat,curr_lon,utm_err
+            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 1, 2, 3, 4, 5, 6, 7, 8 }); // Skip the header
+            return raw_data;
         }
-        return data;        
+        return cx::CSVReader::Double2D();
     }
 
     cv::VideoCapture m_camera_data;
     cx::CSVReader::Double2D m_gps_data;
     cx::CSVReader::Double2D m_ahrs_data;
-    cx::CSVReader::String2D m_poi_data;
+    cx::CSVReader::String2D m_ocr_sdata;
+    cx::CSVReader::Double2D m_ocr_vdata;
+    cx::CSVReader::Double2D m_poi_data;
     cx::CSVReader::Double2D m_vps_data;
     cx::CSVReader::Double2D m_intersection_data;
     cx::CSVReader::Double2D m_lr_data;
@@ -621,6 +573,7 @@ protected:
 
     size_t m_gps_index = 0;
     size_t m_ahrs_index = 0;
+    size_t m_ocr_index = 0;
     size_t m_poi_index = 0;
     size_t m_vps_index = 0;
     size_t m_intersection_index = 0;

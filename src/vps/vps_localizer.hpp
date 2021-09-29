@@ -21,7 +21,6 @@ namespace dg
             m_shared = shared;
             m_server_ipaddr = server_ipaddr;
             if (!VPS::initialize("vps", py_module_path.c_str())) return false;
-            //MapManager::setIP((const std::string)server_ipaddr);
             return (m_shared != nullptr);
         }
 
@@ -30,57 +29,47 @@ namespace dg
             cv::AutoLock lock(m_mutex);
             m_shared = shared;
             m_server_ipaddr = server_ipaddr;
-            //MapManager::setIP((const std::string)m_server_ipaddr);
             return (m_shared != nullptr);
         }
 
-        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence, dg::ID& sv_id, cv::Mat& sv_image)
+        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence)
         {
             cv::AutoLock lock(m_mutex);
             if (m_shared == nullptr) return false;
 
+            // reset interval variables
+            m_sv_id = 0;
+            m_sv_image = cv::Mat();
+
+            // apply recognizer
             int N = 1;  // top-1
             Pose2 pose = m_shared->getPose();
-            double pose_confidence = m_shared->getPoseConfidence(); // 0: vps search radius = 230m ~ 1: search radius = 30m
-            pose_confidence = 1;
+            // double pose_confidence = m_shared->getPoseConfidence(); // 0: vps search radius = 230m ~ 1: search radius = 30m
+            double pose_confidence = 1;
             LatLon ll = m_shared->toLatLon(pose);
             if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str())) return false;
-            if (m_result.empty()) return false;
-            sv_id = m_result[0].id;  
-            if (sv_id == 0) return false;  // no valid matching between query and streetveiw due to lack of db images around query.
 
             Map* map = m_shared->getMap();
-            assert(map != nullptr);
-            StreetView* view = map->getView(sv_id);
-            streetview_xy = *view;
-            relative = computeRelative(image, sv_id, sv_image);
+            if (map == nullptr) return false;
+            if (m_result.empty()) return false;
+            m_sv_id = m_result[0].id;
+            if (m_sv_id == 0) return false;  // no valid matching between query and streetveiw due to lack of db images around query.
+            StreetView* sv = map->getView(m_sv_id);
+            if (sv == nullptr) return false;
+            streetview_xy = *sv;
+            relative = computeRelative(image, m_sv_id, m_sv_image);
             streetview_confidence = m_result[0].confidence;
             return true;
         }
 
-        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::ID svid, dg::LatLon& pred_ll, double pred_distance, double pred_angle, double &pred_confidence, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence, dg::ID& sv_id, cv::Mat& sv_image)
-        {
-            /*
-             Input :
-                const cv::Mat image, const dg::Timestamp image_time, double svid, dg::LatLon& pred_ll, double pred_distance, double pred_angle, double pred_confidence,
+        dg::ID getViewID() { return m_sv_id; }
 
-             Output :
-                 dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence, dg::ID& sv_id, cv::Mat& sv_image
-            */
-            cv::AutoLock lock(m_mutex);
-            if (m_shared == nullptr) return false;
-            streetview_xy = m_shared->toMetric(pred_ll);
-            sv_id = svid;
-            relative = computeRelative(image, sv_id, sv_image);
-            streetview_confidence = pred_confidence;
-            return true;
-        }
+        cv::Mat getViewImage() { return m_sv_image; }
 
     protected:
         dg::Polar2 computeRelative(const cv::Mat image, ID sv_id, cv::Mat& sv_image)
         {
             dg::Polar2 relative = dg::Polar2(-1, CV_PI);
-
             if (MapManager::getStreetViewImage(sv_id, sv_image, "f") && !sv_image.empty())
             {
                 // TODO: compute relative pose of matched streetview image w.r.t. camera image
@@ -92,6 +81,8 @@ namespace dg
         SharedInterface* m_shared = nullptr;
         mutable cv::Mutex m_mutex;
         std::string m_server_ipaddr;
+        dg::ID m_sv_id = 0;
+        cv::Mat m_sv_image;
     };
 
 } // End of 'dg'

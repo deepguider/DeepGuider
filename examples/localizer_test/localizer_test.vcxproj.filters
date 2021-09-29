@@ -30,6 +30,9 @@
     <ClCompile Include="..\..\src\utils\python_embedding.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\roadtheta\roadtheta.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\core\basic_type.hpp">
@@ -115,6 +118,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\utils\viewport.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\lrpose_recog\lrpose_localizer.hpp">
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

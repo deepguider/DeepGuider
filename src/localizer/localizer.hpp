@@ -328,13 +328,13 @@ namespace dg
         }
 
         /**
-         * Apply VPS_LR result
-         * @param lr_result The lateral position of camera w.r.t. road (0: left sideway, 1: uncertain, 2: right sideway)
+         * Apply LRPose result
+         * @param lr_cls The lateral position of camera w.r.t. road (0: LEFT_SIDE_OF_ROAD, 1: uncertain, 2: RIGHT_SIDE_OF_ROAD)
          */
-        virtual bool applyVPS_LR(double lr_result, Timestamp time = -1, double confidence = -1)
+        virtual bool applyLRPose(int lr_cls, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
-            saveObservation(ObsData::OBS_LR, lr_result, time, confidence);
+            saveObservation(ObsData::OBS_LR, lr_cls, time, confidence);
             saveEKFState(m_ekf, time);
             // TODO: apply the result to path projector
             return true;

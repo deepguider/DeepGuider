@@ -297,10 +297,11 @@ int runLocalizer()
 {
     std::string rec_video_file = "";
     const std::string rec_traj_file = "";
-    std::string gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+    std::string gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
     bool enable_gps = true;
     bool use_novatel = false;
     bool enable_imu = false;
+    bool enable_ocr = false;
     bool enable_poi = false;
     bool enable_vps = false;
     bool enable_intersection = false;
@@ -366,6 +367,7 @@ int runLocalizer()
 
     enable_imu = true;
     //use_novatel = true;
+    //enable_ocr = true;
     //enable_poi = true;
     //enable_vps = true;
     //enable_intersection = true;
@@ -393,6 +395,7 @@ int runLocalizer()
     if (enable_gps && !use_novatel) gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
     if (enable_gps && use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
     if (enable_imu) imu_file = data_head[data_sel][0] + "_imu_data.csv";
+    if (enable_ocr) ocr_file = data_head[data_sel][0] + "_ocr.csv";
     if (enable_poi) poi_file = data_head[data_sel][0] + "_poi.csv";
     if (enable_vps) vps_file = data_head[data_sel][0] + "_vps.csv";
     if (enable_intersection) intersection_file = data_head[data_sel][0] + "_intersect.csv";
@@ -400,7 +403,7 @@ int runLocalizer()
     if (enable_roadtheta) roadtheta_file = data_head[data_sel][0] + "_roadtheta.csv";
 
     dg::DataLoader data_loader;
-    if (!data_loader.load(video_file, gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
+    if (!data_loader.load(video_file, gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
     {
         printf("Failed to load data file\n");
         return -1;

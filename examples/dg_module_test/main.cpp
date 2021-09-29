@@ -128,7 +128,7 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
 int runModule()
 {
     std::string rec_video_file = "";
-    std::string gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+    std::string gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
 
     bool enable_gps = true;
     bool use_novatel = false;
@@ -136,9 +136,10 @@ int runModule()
 
     bool use_saved_testset = true;
 
-    int module_sel = DG_Intersection;
-    // int module_sel = DG_VPS;
-    // int module_sel = DG_LR;
+    //int module_sel = DG_Intersection;
+    //int module_sel = DG_VPS;
+    //int module_sel = DG_LR;
+    int module_sel = DG_OCR;
     //int module_sel = DG_POI;
     //int module_sel = DG_RoadTheta;
 
@@ -161,6 +162,7 @@ int runModule()
     if (enable_gps && !use_novatel) gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
     if (enable_gps && use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
     if (enable_imu) imu_file = data_head[data_sel][0] + "_imu_data.csv";
+    if (use_saved_testset && module_sel == DG_OCR) ocr_file = data_head[data_sel][0] + "_ocr.csv";
     if (use_saved_testset && module_sel == DG_POI) poi_file = data_head[data_sel][0] + "_poi.csv";
     if (use_saved_testset && module_sel == DG_VPS) vps_file = data_head[data_sel][0] + "_vps.csv";
     if (use_saved_testset && module_sel == DG_Intersection) intersection_file = data_head[data_sel][0] + "_intersect.csv";
@@ -168,7 +170,7 @@ int runModule()
     if (use_saved_testset && module_sel == DG_RoadTheta) roadtheta_file = data_head[data_sel][0] + "_roadtheta.csv";
 
     dg::DataLoader data_loader;
-    if (!data_loader.load(video_file, gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
+    if (!data_loader.load(video_file, gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
     {
         printf("Failed to load data file\n");
         return -1;

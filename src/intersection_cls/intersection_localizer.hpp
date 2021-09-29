@@ -64,7 +64,7 @@ namespace dg
             return true;
         }
 
-        bool apply(const dg::Timestamp image_time, double cls, double cls_conf, dg::Point2& xy, double& xy_confidence, bool& xy_valid)
+        bool applyPreprocessed(double cls, double cls_conf, const dg::Timestamp data_time, dg::Point2& xy, double& xy_confidence, bool& xy_valid)
         {
             cv::AutoLock lock(m_mutex);
             if (m_shared == nullptr) return false;
@@ -73,6 +73,7 @@ namespace dg
 
             m_result.cls = (int)(cls + 0.5);
             m_result.confidence = cls_conf;
+            m_timestamp = data_time;
 
             // apply state filtering
             int observed_cls = (int)(cls + 0.5);

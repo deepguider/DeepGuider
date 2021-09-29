@@ -486,15 +486,16 @@ int DeepGuider::run()
 
         // get next data
         int type;
-        std::vector<double> data;
+        std::vector<double> vdata;
+        std::vector<std::string> sdata;
         dg::Timestamp data_time;
-        if (data_loader.getNext(type, data, data_time) == false) break;
+        if (data_loader.getNext(type, vdata, sdata, data_time) == false) break;
 
         // process data
         bool update_gui = false;
         if (type == dg::DATA_GPS)
         {
-            const dg::LatLon gps_datum(data[1], data[2]);
+            const dg::LatLon gps_datum(vdata[1], vdata[2]);
             procGpsData(gps_datum, data_time);
             m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_color);
             printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, data_time);
@@ -504,44 +505,44 @@ int DeepGuider::run()
         }
         else if (type == dg::DATA_IMU)
         {
-            auto euler = cx::cvtQuat2EulerAng(data[1], data[2], data[3], data[4]);
-            procImuData(data[1], data[2], data[3], data[4], data_time);
+            auto euler = cx::cvtQuat2EulerAng(vdata[1], vdata[2], vdata[3], vdata[4]);
+            procImuData(vdata[1], vdata[2], vdata[3], vdata[4], data_time);
         }
         else if (type == dg::DATA_POI)
         {
-            dg::Point2 clue_xy(data[1], data[2]);
-            dg::Polar2 relative(data[3], data[4]);
-            double confidence = data[5];
+            dg::Point2 clue_xy(vdata[1], vdata[2]);
+            dg::Polar2 relative(vdata[3], vdata[4]);
+            double confidence = vdata[5];
             //bool success = m_localizer.applyPOI(clue_xy, relative, data_time, confidence);
             //if (!success) fprintf(stderr, "applyPOI() was failed.\n");
         }
         else if (type == dg::DATA_VPS)
         {
-            dg::Point2 clue_xy(data[1], data[2]);
-            dg::Polar2 relative(data[3], data[4]);
-            double confidence = data[5];
+            dg::Point2 clue_xy(vdata[1], vdata[2]);
+            dg::Polar2 relative(vdata[3], vdata[4]);
+            double confidence = vdata[5];
             //bool success = m_localizer.applyVPS(clue_xy, relative, data_time, confidence);
             //if (!success) fprintf(stderr, "applyVPS() was failed.\n");
         }
         else if (type == dg::DATA_IntersectCls)
         {
-            dg::Point2 clue_xy(data[1], data[2]);
-            dg::Polar2 relative(data[3], data[4]);
-            double confidence = data[5];
+            dg::Point2 clue_xy(vdata[1], vdata[2]);
+            dg::Polar2 relative(vdata[3], vdata[4]);
+            double confidence = vdata[5];
             //bool success = m_localizer.applyIntersectCls(clue_xy, relative, data_time, confidence);
             //if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
         }
         else if (type == dg::DATA_LR)
         {
-            double lr_result = data[1];
-            double confidence = data[2];
+            double lr_result = vdata[1];
+            double confidence = vdata[2];
             //bool success = m_localizer.applyVPS_LR(lr_result, data_time, confidence);
             //if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
         }
         else if (type == dg::DATA_RoadTheta)
         {
-            double theta = data[1];
-            double confidence = data[2];
+            double theta = vdata[1];
+            double confidence = vdata[2];
             //bool success = m_localizer.applyRoadTheta(theta, data_time, confidence);
             //if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
         }
@@ -1260,19 +1261,18 @@ bool DeepGuider::procVps()
 
     dg::Point2 sv_xy;
     dg::Polar2 relative;
-    ID sv_id;
-    cv::Mat sv_image;
     double sv_confidence;
-    if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, sv_id, sv_image))
+    if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence))
     {
         m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
 
+        cv::Mat sv_image = m_vps.getViewImage().clone();
         if(!sv_image.empty())
         {
             m_vps.draw(sv_image);
             m_vps_mutex.lock();
-            m_vps_id = sv_id;
+            m_vps_id = m_vps.getViewID();
             m_vps_image = sv_image;
             m_vps_mutex.unlock();
         }
@@ -1298,11 +1298,11 @@ bool DeepGuider::procLRPose()
     cv::Mat cam_image = m_cam_image.clone();
     m_cam_mutex.unlock();
 
-    double lr_pose;
+    int lr_pose;
     double lr_confidence;
     if (m_lrpose.apply(cam_image, capture_time, lr_pose, lr_confidence))
     {
-        m_localizer.applyVPS_LR(lr_pose, capture_time, lr_confidence);
+        m_localizer.applyLRPose(lr_pose, capture_time, lr_confidence);
         m_lrpose.print();
 
         m_lrpose.draw(cam_image);

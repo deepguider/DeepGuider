@@ -94,6 +94,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\EXTERNAL\qgroundcontrol\UTM.cpp" />
     <ClCompile Include="..\..\src\core\map.cpp" />
+    <ClCompile Include="..\..\src\roadtheta\roadtheta.cpp" />
     <ClCompile Include="..\..\src\utils\python_embedding.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
@@ -111,6 +112,7 @@
     <ClInclude Include="..\..\src\localizer\localizer_ekf_variants.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_interface.hpp" />
     <ClInclude Include="..\..\src\localizer\path_projector.hpp" />
+    <ClInclude Include="..\..\src\lrpose_recog\lrpose_localizer.hpp" />
     <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp" />
     <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp" />
     <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp" />
