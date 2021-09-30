@@ -44,7 +44,7 @@ public:
     void showStreetView(bool show);
 
 protected:
-    void drawMap();
+    void drawMap(cv::Mat view_image, cv::Point2d offset, double zoom);
 
     dg::MapPainter  m_painter;
     cv::Mat         m_bg_image;
@@ -61,12 +61,14 @@ protected:
     std::string     m_site = "etri";
     bool            m_show_poi = false;
     bool            m_show_streetview = false;
+    double          m_node_radius = 3;
+    double          m_edge_thickness = 2;
 
     cv::Point       m_view_offset = cv::Point(0, 0);
     cv::Size        m_view_size = cv::Size(1800, 1012);
     dg::Viewport    m_viewport;
 
-    // edit
+    // interactive edit
     enum {G_NODE, G_POI, G_STREETVIEW};
     cv::Point       m_mouse_pt;
     bool            m_mouse_drag = false;
