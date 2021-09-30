@@ -53,15 +53,17 @@ MapEditorDlg::MapEditorDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_MAP_EDITOR_DIALOG, pParent)
     , m_show_poi(FALSE)
     , m_show_streetview(FALSE)
+	, m_show_error(FALSE)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
 void MapEditorDlg::DoDataExchange(CDataExchange* pDX)
 {
-    CDialogEx::DoDataExchange(pDX);
-    DDX_Check(pDX, IDC_CHECK_POI, m_show_poi);
-    DDX_Check(pDX, IDC_CHECK_STREETVIEW, m_show_streetview);
+	CDialogEx::DoDataExchange(pDX);
+	DDX_Check(pDX, IDC_CHECK_POI, m_show_poi);
+	DDX_Check(pDX, IDC_CHECK_STREETVIEW, m_show_streetview);
+	DDX_Check(pDX, IDC_CHECK_SHOW_ERROR, m_show_error);
 }
 
 BEGIN_MESSAGE_MAP(MapEditorDlg, CDialogEx)
@@ -79,6 +81,8 @@ BEGIN_MESSAGE_MAP(MapEditorDlg, CDialogEx)
     ON_BN_CLICKED(IDC_CHECK_POI, &MapEditorDlg::OnBnClickedCheckPoi)
 	ON_BN_CLICKED(IDC_CHECK_STREETVIEW, &MapEditorDlg::OnBnClickedCheckStreetview)
 	ON_BN_CLICKED(IDC_BUTTON_DOWNLOAD, &MapEditorDlg::OnBnClickedButtonDownload)
+    ON_BN_CLICKED(IDC_BUTTON_VERIFY_MAP, &MapEditorDlg::OnBnClickedButtonVerifyMap)
+	ON_BN_CLICKED(IDC_CHECK_SHOW_ERROR, &MapEditorDlg::OnBnClickedCheckShowError)
 END_MESSAGE_MAP()
 
 
@@ -255,4 +259,25 @@ void MapEditorDlg::OnBnClickedButtonDownload()
 	BeginWaitCursor();
 	if (m_editor) m_editor->download();
 	EndWaitCursor();
+}
+
+
+void MapEditorDlg::OnBnClickedButtonVerifyMap()
+{
+	BeginWaitCursor();
+	if (m_editor)
+	{
+		m_editor->verify();
+		m_editor->showMapError(true);
+		m_show_error = TRUE;
+		UpdateData(FALSE);
+	}
+	EndWaitCursor();
+}
+
+
+void MapEditorDlg::OnBnClickedCheckShowError()
+{
+	UpdateData();
+	if (m_editor) m_editor->showMapError(m_show_error == TRUE);
 }

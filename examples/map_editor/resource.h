@@ -37,6 +37,9 @@
 #define IDC_CHECK_STREETVIEW            1022
 #define IDC_BUTTON_DOWNLOAD             1023
 #define IDC_EDIT_DATE                   1024
+#define IDC_BUTTON_VERIFY_MAP           1024
+#define IDC_CHECK_STREETVIEW2           1025
+#define IDC_CHECK_SHOW_ERROR            1025
 
 // Next default values for new objects
 // 

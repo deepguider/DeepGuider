@@ -42,6 +42,8 @@ public:
     void saveAs();
     void showPoi(bool show);
     void showStreetView(bool show);
+    void showMapError(bool show);
+    void verify();
 
 protected:
     void drawMap(cv::Mat view_image, cv::Point2d offset, double zoom);
@@ -74,6 +76,11 @@ protected:
     bool            m_mouse_drag = false;
     dg::ID          m_gobj_id;
     int             m_gobj_type;
+
+    // error check
+    bool m_show_map_error = false;
+    std::vector<dg::Node*> m_error_nodes;
+    std::vector<dg::Edge*> m_error_edges;
 
 }; // End of 'MapEditor'
 

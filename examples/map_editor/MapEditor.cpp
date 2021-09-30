@@ -532,6 +532,11 @@ void MapEditor::showStreetView(bool show)
     m_show_streetview = show;
 }
 
+void MapEditor::showMapError(bool show)
+{
+    m_show_map_error = show;
+}
+
 void MapEditor::drawMap(cv::Mat view_image, cv::Point2d offset, double zoom)
 {
     if (m_map.isEmpty()) return;
@@ -569,6 +574,21 @@ void MapEditor::drawMap(cv::Mat view_image, cv::Point2d offset, double zoom)
                 m_painter.drawEdge(view_image, p1, p2, node_radius, cv::Vec3b(0, 255, 0), edge_thickness, offset, zoom);
             }
         }
+
+        // display error data
+        if (m_show_map_error)
+        {
+            for (auto it = m_error_nodes.begin(); it != m_error_nodes.end(); it++)
+            {
+                m_painter.drawPoint(view_image, **it, node_radius + 1, cv::Vec3b(0, 255, 255), offset, zoom);
+            }
+            for (auto it = m_error_edges.begin(); it != m_error_edges.end(); it++)
+            {
+                dg::Node* n1 = m_map.getNode((*it)->node_id1);
+                dg::Node* n2 = m_map.getNode((*it)->node_id2);
+                m_painter.drawEdge(view_image, *n1, *n2, node_radius, cv::Vec3b(0, 255, 255), edge_thickness + 1, offset, zoom);
+            }
+        }
     }
     else
     {
@@ -592,3 +612,62 @@ void MapEditor::drawMap(cv::Mat view_image, cv::Point2d offset, double zoom)
     }
 }
 
+
+void MapEditor::verify()
+{
+    m_error_nodes.clear();
+    m_error_edges.clear();
+    if (m_map.isEmpty()) return;
+
+    // check node
+    std::string msg;
+    for (auto node = m_map.getHeadNode(); node != m_map.getTailNode(); node++)
+    {
+        for (auto it = node->edge_ids.begin(); it != node->edge_ids.end(); it++)
+        {
+            dg::Edge* edge = m_map.getEdge(*it);
+            if (edge == nullptr)
+            {
+                m_error_nodes.push_back(&(*node));
+                msg += cv::format("node %zd: edge %zd doesn't exist\n", node->id, *it);
+            }
+        }
+        if (node->edge_ids.size() >= 3 && node->type != dg::Node::NODE_JUNCTION && node->type != dg::Node::NODE_ELEVATOR)
+        {
+            m_error_nodes.push_back(&(*node));
+            msg += cv::format("node %zd: type error\n", node->id);
+        }
+    }
+
+    // check edge
+    double d_err = 3;   // meter
+    for (auto edge = m_map.getHeadEdge(); edge != m_map.getTailEdge(); edge++)
+    {
+        dg::Node* n1 = m_map.getNode(edge->node_id1);
+        dg::Node* n2 = m_map.getNode(edge->node_id2);
+        if (n1 == nullptr) msg += cv::format("edge %zd: node1 %zd doesn't exist\n", edge->node_id1, n1->id);
+        if (n2 == nullptr) msg += cv::format("edge %zd: node2 %zd doesn't exist\n", edge->node_id1, n2->id);
+        if (n1 == nullptr || n2 == nullptr) m_error_edges.push_back(&(*edge));
+
+        if (n1 && n2)
+        {
+            double d = norm(*n1 - *n2);
+            if (fabs(d - edge->length) > d_err)
+            {
+                m_error_edges.push_back(&(*edge));
+                msg += cv::format("edge %zd: d=%.1lf, e.length=%.1lf\n", edge->id, d, edge->length);
+            }
+        }
+    }
+
+    if (msg.empty())
+    {
+        msg = "No error!";
+        return;
+    }
+
+    FILE* file = fopen("map_error_list.txt", "wt");
+    if (file == nullptr) return;
+    fprintf(file, "%s", msg.c_str());
+    fclose(file);
+}

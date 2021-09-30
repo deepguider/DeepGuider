@@ -49,4 +49,7 @@ public:
     afx_msg void OnBnClickedCheckPoi();
     afx_msg void OnBnClickedCheckStreetview();
     afx_msg void OnBnClickedButtonDownload();
+    afx_msg void OnBnClickedButtonVerifyMap();
+    BOOL m_show_error;
+    afx_msg void OnBnClickedCheckShowError();
 };
