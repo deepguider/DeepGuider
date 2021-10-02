@@ -676,6 +676,103 @@ std::vector<std::wstring> Map::getNearPOINames(const Point2& p, double search_ra
     return results;
 }
 
+inline bool file_exists(const std::string& name)
+{
+    struct stat buffer;
+    return (stat(name.c_str(), &buffer) == 0);
+}
+
+bool Map::registerPOIImage(ID id, cv::Mat image)
+{
+    std::string fpath;
+    int i = 0;
+    for (; i < 100; i++)
+    {
+        fpath = cv::format("data/poi_images/%zd_%02d.png", id, i);
+        if (!file_exists(fpath)) break;
+    }
+    if (i >= 100) return false;
+
+    return cv::imwrite(fpath, image);
+}
+
+bool Map::registerPOIImage(ID id, cv::Mat image, std::string& image_name)
+{
+    std::string fpath;
+    int i = 0;
+    for (; i < 100; i++)
+    {
+        fpath = cv::format("data/poi_images/%zd_%02d.png", id, i);
+        if (!file_exists(fpath)) break;
+    }
+    if (i >= 100) return false;
+
+    if (cv::imwrite(fpath, image))
+    {
+        image_name = cv::format("%zd_%02d.png", id, i);
+        return true;
+    }
+    return false;
+}
+
+int Map::getNumberOfRegisteredPOIImages(ID id) const
+{
+    int i = 0;
+    for (; i < 100; i++)
+    {
+        std::string fpath = cv::format("data/poi_images/%zd_%02d.png", id, i);
+        if (!file_exists(fpath)) break;
+    }
+    return i;
+}
+
+std::vector<cv::Mat> Map::getRegisteredPOIImages(ID id) const
+{
+    std::vector<cv::Mat> result;
+
+    for (int i = 0; i < 100; i++)
+    {
+        std::string fpath = cv::format("data/poi_images/%zd_%02d.png", id, i);
+        if (!file_exists(fpath)) break;
+
+        cv::Mat image = cv::imread(fpath);
+        if (!image.empty()) result.push_back(image);
+    }
+    return result;
+}
+
+cv::Mat Map::getRegisteredPOIImage(ID id, int index) const
+{
+    std::string fpath = cv::format("data/poi_images/%zd_%02d.png", id, index);
+    if (!file_exists(fpath)) return cv::Mat();
+
+    cv::Mat image = cv::imread(fpath);
+    return image;
+}
+
+std::vector<std::string> Map::getNameOfRegisteredPOIImages(ID id) const
+{
+    std::vector<std::string> image_names;
+
+    for (int i = 0; i < 100; i++)
+    {
+        std::string fpath = cv::format("data/poi_images/%zd_%02d.png", id, i);
+        if (!file_exists(fpath)) break;
+        image_names.push_back(cv::format("%zd_%02d.png", id, i));
+    }
+    return image_names;
+}
+
+void Map::clearRegisteredPOIImages(ID id)
+{
+    for (int i = 0; i < 100; i++)
+    {
+        std::string fpath = cv::format("data/poi_images/%zd_%02d.png", id, i);
+        if (!file_exists(fpath)) break;
+        std::remove(fpath.c_str());
+    }
+}
+
 int compare_view(const void* a, const void* b)
 {
     double x = ((std::pair<StreetView*, double>*)a)->second;

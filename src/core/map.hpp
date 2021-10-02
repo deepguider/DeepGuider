@@ -936,6 +936,58 @@ public:
     std::vector<std::wstring> getNearPOINames(const Point2& p, double search_radius);
 
     /**
+     * Register an image to POI node
+     * @param id ID of POI
+     * @param image An image to register
+     * @return True if successful (false if failed)
+     */
+    bool registerPOIImage(ID id, cv::Mat image);
+
+    /**
+     * Register an image to POI node
+     * @param id ID of POI
+     * @param image An image to register
+     * @param image_name Assigned image name of the registered image
+     * @return True if successful (false if failed)
+     */
+    bool registerPOIImage(ID id, cv::Mat image, std::string& image_name);
+
+    /**
+     * Get the number of registered POI images
+     * @param id ID of POI node
+     * @return The number of registered POI images
+     */
+    int getNumberOfRegisteredPOIImages(ID id) const;
+
+    /**
+     * Get images registered to a POI node
+     * @param id ID of POI node
+     * @return A list of images registered to the POI
+     */
+    std::vector<cv::Mat> getRegisteredPOIImages(ID id) const;
+
+    /**
+     * Get i-th image registered to a POI node
+     * @param id ID of POI node
+     * @param index index of POI image
+     * @return The i-th POI image
+     */
+    cv::Mat getRegisteredPOIImage(ID id, int index) const;
+
+    /**
+     * Get image names registered to a POI node
+     * @param id ID of POI node
+     * @return A list of image names registered to the POI
+     */
+    std::vector<std::string> getNameOfRegisteredPOIImages(ID id) const;
+
+    /**
+     * Remove all the images registered to a POI node
+     * @param id ID of POI node
+     */
+    void clearRegisteredPOIImages(ID id);
+
+    /**
 	 * Add a Street-view (time complexity: O(1))
 	 * @param view Street-view to add
 	 * @return A index of the added Street-view
