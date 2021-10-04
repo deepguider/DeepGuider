@@ -33,4 +33,6 @@ public:
 	BOOL directed;
 	virtual BOOL OnInitDialog();
 	CListBox m_listLR;
+    virtual BOOL PreTranslateMessage(MSG* pMsg);
+	bool erase = false;
 };

@@ -357,6 +357,44 @@ const Node* Map::getNearestNode(const Point2& p) const
     return node;
 }
 
+Node* Map::getNearestNode(const ID id)
+{
+    Node* node = nullptr;
+    Node* from = getNode(id);
+    if (from == nullptr) return node;
+    double min_d2 = DBL_MAX;
+    for (auto it = nodes.begin(); it != nodes.end(); it++)
+    {
+        if (it->id == id) continue;
+        double d2 = (from->x - it->x) * (from->x - it->x) + (from->y - it->y) * (from->y - it->y);
+        if (d2 < min_d2)
+        {
+            min_d2 = d2;
+            node = &(*it);
+        }
+    }
+    return node;
+}
+
+const Node* Map::getNearestNode(const ID id) const
+{
+    const Node* node = nullptr;
+    const Node* from = getNode(id);
+    if (from == nullptr) return node;
+    double min_d2 = DBL_MAX;
+    for (auto it = nodes.begin(); it != nodes.end(); it++)
+    {
+        if (it->id == id) continue;
+        double d2 = (from->x - it->x) * (from->x - it->x) + (from->y - it->y) * (from->y - it->y);
+        if (d2 < min_d2)
+        {
+            min_d2 = d2;
+            node = &(*it);
+        }
+    }
+    return node;
+}
+
 
 std::vector<Node*> Map::getNearNodes(const Point2& p, double search_radius)
 {

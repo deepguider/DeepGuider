@@ -91,3 +91,15 @@ BOOL DlgNode::OnInitDialog()
     return TRUE;  // return TRUE unless you set the focus to a control
 }
 
+BOOL DlgNode::PreTranslateMessage(MSG* pMsg)
+{
+    if (pMsg->message == WM_KEYDOWN)
+    {
+        if (pMsg->wParam == VK_DELETE)
+        {
+            erase = true;
+            CDialogEx::OnOK();
+        }
+    }
+    return CDialogEx::PreTranslateMessage(pMsg);
+}

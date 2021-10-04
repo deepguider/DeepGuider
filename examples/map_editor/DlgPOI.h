@@ -33,7 +33,7 @@ public:
     virtual BOOL OnInitDialog();
     CListBox m_listImages;
     afx_msg void OnSelchangeListImages();
-
-
     afx_msg void OnBnClickedBtnRegisterImage();
+    virtual BOOL PreTranslateMessage(MSG* pMsg);
+    bool erase = false;
 };

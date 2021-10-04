@@ -520,6 +520,30 @@ public:
     }
 
     /**
+     * Delete a node (time complexity: O(1))
+     * @param id Node ID to delete
+     */
+    void deleteNode(ID id)
+    {
+        auto found = lookup_nodes.find(id);
+        if (found == lookup_nodes.end()) return;
+        Node n = nodes[found->second];
+        for (auto it = n.edge_ids.begin(); it != n.edge_ids.end(); it++)
+        {
+            deleteEdge(*it);
+        }
+        nodes.erase(nodes.begin() + found->second);
+
+        lookup_nodes.clear();
+        for (auto idx = 0; idx < nodes.size(); idx++)
+        {
+            lookup_nodes.insert(std::make_pair(nodes[idx].id, idx));
+        }
+        m_router_valid = false;
+        m_map_rect_valid = false;
+    }
+
+    /**
      * Add an edge (time complexity: O(1))
      * @param edge Edge to add
      * @param auto_length Length of edge is set to be Euclidean distance between two nodes
@@ -584,13 +608,58 @@ public:
     }
 
     /**
+     * Delete an edge (time complexity: O(1))
+     * @param id Edge ID to delete
+     */
+    void deleteEdge(ID id)
+    {
+        auto found = lookup_edges.find(id);
+        if (found == lookup_edges.end()) return;
+        Edge e = edges[found->second];
+        Node* n1 = getNode(e.node_id1);
+        if (n1)
+        {
+            for (auto it = n1->edge_ids.begin(); it != n1->edge_ids.end(); it++)
+            {
+                if (*it == e.id)
+                {
+                    n1->edge_ids.erase(it);
+                    break;
+                }
+            }
+            if (n1->type == Node::NODE_JUNCTION && n1->edge_ids.size() <= 2) n1->type = Node::NODE_BASIC;
+        }
+        Node* n2 = getNode(e.node_id2);
+        if (n2)
+        {
+            for (auto it = n2->edge_ids.begin(); it != n2->edge_ids.end(); it++)
+            {
+                if (*it == e.id)
+                {
+                    n2->edge_ids.erase(it);
+                    break;
+                }
+            }
+            if (n2->type == Node::NODE_JUNCTION && n2->edge_ids.size() <= 2) n2->type = Node::NODE_BASIC;
+        }
+        edges.erase(edges.begin() + found->second);
+
+        lookup_edges.clear();
+        for (size_t idx = 0; idx < edges.size(); idx++)
+        {
+            lookup_edges.insert(std::make_pair(edges[idx].id, idx));
+        }
+        m_router_valid = false;
+        m_map_rect_valid = false;
+    }
+
+    /**
      * Find a node using ID (time complexity: O(1))
      * @param id ID to search
      * @return A pointer to the found node (`nullptr` if not exist)
      */
     Node* getNode(ID id)
     {
-        assert(nodes.size() == lookup_nodes.size() && lookup_nodes.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_nodes.find(id);
         if (found == lookup_nodes.end()) return nullptr;
         return &nodes[found->second];
@@ -603,7 +672,6 @@ public:
      */
     const Node* getNode(ID id) const
     {
-        assert(nodes.size() == lookup_nodes.size() && lookup_nodes.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_nodes.find(id);
         if (found == lookup_nodes.end()) return nullptr;
         return &nodes[found->second];
@@ -622,6 +690,20 @@ public:
      * @return A pointer to the found node (nullptr if not found)
      */
     const Node* getNearestNode(const Point2& p) const;
+
+    /**
+     * Find a nearest node from a given Node (time complexity: O(|N|))
+     * @param p A given node ID
+     * @return A pointer to the found node (nullptr if not found)
+     */
+    Node* getNearestNode(const ID id);
+
+    /**
+     * Find a nearest node from a given Node (time complexity: O(|N|))
+     * @param p A given node ID
+     * @return A pointer to the found node (nullptr if not found)
+     */
+    const Node* getNearestNode(const ID id) const;
 
     /**
      * Find nodes within a search radius from a point (time complexity: O(|N|))
@@ -868,6 +950,47 @@ public:
 	}
 
     /**
+     * Delete a POI (time complexity: O(1))
+     * @param id POI ID to delete
+     */
+    void deletePOI(ID id)
+    {
+        auto found = lookup_pois.find(id);
+        if (found == lookup_pois.end()) return;
+
+        size_t poi_idx = found->second;
+        POI poi = pois[found->second];
+        pois.erase(pois.begin() + found->second);
+
+        // update poi lookup
+        lookup_pois.clear();
+        for (auto idx = 0; idx < pois.size(); idx++)
+        {
+            lookup_pois.insert(std::make_pair(pois[idx].id, idx));
+        }
+
+        // update poi names lookup
+        lookup_poi_names.clear();
+        poi_names_data.clear();
+        for (auto idx = 0; idx < pois.size(); idx++)
+        {
+            auto found = lookup_poi_names.find(pois[idx].name);
+            if (found == lookup_poi_names.end())
+            {
+                size_t data_idx = poi_names_data.size();
+                lookup_poi_names.insert(std::make_pair(pois[idx].name, data_idx));
+                std::vector<size_t> data;
+                data.push_back(idx);
+                poi_names_data.push_back(data);
+            }
+            else
+            {
+                poi_names_data[found->second].push_back(idx);
+            }
+        }
+    }
+
+    /**
      * Find a POI using ID (time complexity: O(1))
      * @param id ID to search
      * @return A pointer to the found POI (`nullptr` if not exist)
@@ -1002,13 +1125,29 @@ public:
 	}
 
     /**
+     * Delete a Street-view (time complexity: O(1))
+     * @param id Street-view ID to delete
+     */
+    void deleteView(ID id)
+    {
+        auto found = lookup_views.find(id);
+        if (found == lookup_views.end()) return;
+        views.erase(views.begin() + found->second);
+
+        lookup_views.clear();
+        for (size_t idx = 0; idx < views.size(); idx++)
+        {
+            lookup_views.insert(std::make_pair(views[idx].id, idx));
+        }
+    }
+
+    /**
      * Find a streetview using ID (time complexity: O(1))
      * @param id ID to search
      * @return A pointer to the found node (`nullptr` if not exist)
      */
     StreetView* getView(ID id)
     {
-        assert(views.size() == lookup_views.size() && lookup_views.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_views.find(id);
         if (found == lookup_views.end()) return nullptr;
         return &views[found->second];

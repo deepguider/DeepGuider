@@ -73,6 +73,7 @@ int MapEditor::configure(std::string site)
     if (!guiprop.map_file.empty())
     {
         m_map.load(guiprop.map_file.c_str());
+        updateNextMapID();
     }
     if (m_map.isEmpty()) m_fpath.clear();
 
@@ -123,6 +124,16 @@ int MapEditor::run()
         cv::AutoLock lock(m_mutex_data);
         m_viewport.getViewportImage(view_image);
         drawMap(view_image, m_viewport.offset(), m_viewport.zoom());
+        if (m_gobj_highlight_nid > 0 || m_gobj_from > 0)
+        {
+            dg::Node* node = (m_gobj_highlight_nid > 0) ? m_map.getNode(m_gobj_highlight_nid) : m_map.getNode(m_gobj_from);
+            double zoom = m_viewport.zoom();
+            double scale_modifier = (zoom >= 4) ? zoom / 2 : 1;
+            double pt_radius = (m_node_radius + zoom) / scale_modifier;
+            double ln_thickness = (m_edge_thickness + 2) / scale_modifier;
+            int pt_thickness = (int)(ln_thickness + 0.5);
+            m_painter.drawNode(view_image, *node, pt_radius, 0, cv::Vec3b(0, 255, 255), m_viewport.offset(), zoom, pt_thickness);
+        }
         cv::imshow(m_winname, view_image);
         int key = cv::waitKey(10);
     }
@@ -141,7 +152,8 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
 {
     if (m_under_edit) return;
     bool is_shift = flags & cv::EVENT_FLAG_SHIFTKEY;
-    if(!is_shift && !m_mouse_drag) m_viewport.procMouseEvent(evt, x, y, flags);
+    bool is_ctrl = flags & cv::EVENT_FLAG_CTRLKEY;
+    if (!is_shift && !is_ctrl && !m_mouse_drag) m_viewport.procMouseEvent(evt, x, y, flags);
 
     double zoom = m_viewport.zoom();
     double scale_modifier = (zoom >= 4) ? zoom / 2 : 1;
@@ -174,6 +186,15 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                             if (node2) edge->length = norm(*node - *node2);
                         }
                     }
+
+                    if (node->edge_ids.size() == 1)
+                    {
+                        dg::Node* node2 = m_map.getNearestNode(node->id);
+                        if (norm(*node2 - metric) <= dist_thr) m_gobj_highlight_nid = node2->id;
+                        else m_gobj_highlight_nid = 0;
+                    }
+                    else
+                        m_gobj_highlight_nid = 0;
                 }
             }
             else if (m_gobj_type == G_POI)
@@ -212,29 +233,13 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
             if (m_show_streetview) streetviews = m_map.getNearViews(metric, dist_thr, true);
             if (!pois.empty() && (streetviews.empty() || norm(*(pois[0]) - metric) <= norm(*(streetviews[0]) - metric)))
             {
-                dg::POI* poi = pois[0];
-                cv::Mat view_image;
-                m_viewport.getViewportImage(view_image);
-                drawMap(view_image, m_viewport.offset(), m_viewport.zoom());
-                m_painter.drawPoint(view_image, *poi, pt_radius, cv::Vec3b(0, 0, 128), m_viewport.offset(), m_viewport.zoom(), pt_thickness);
-                cv::imshow(m_winname, view_image);
-                int key = cv::waitKey(1);
-
-                m_gobj_id = poi->id;
+                m_gobj_id = pois[0]->id;
                 m_gobj_type = G_POI;
                 update_gobj = true;
             }
             if (!streetviews.empty() && (pois.empty() || norm(*(pois[0]) - metric) > norm(*(streetviews[0]) - metric)))
             {
-                dg::StreetView* sv = streetviews[0];
-                cv::Mat view_image;
-                m_viewport.getViewportImage(view_image);
-                drawMap(view_image, m_viewport.offset(), m_viewport.zoom());
-                m_painter.drawPoint(view_image, *sv, pt_radius, cv::Vec3b(128, 0, 0), m_viewport.offset(), zoom, pt_thickness);
-                cv::imshow(m_winname, view_image);
-                int key = cv::waitKey(1);
-
-                m_gobj_id = sv->id;
+                m_gobj_id = streetviews[0]->id;
                 m_gobj_type = G_STREETVIEW;
                 update_gobj = true;
             }
@@ -242,18 +247,8 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
         else
         {
             dg::Node* node = m_map.getNearestNode(metric);
-            double d1 = norm(*node - metric);
-            bool update_node = node && d1 <= dist_thr;
-            if (update_node)
+            if (node && norm(*node - metric) <= dist_thr)
             {
-                cv::Mat view_image;
-                double zoom = m_viewport.zoom();
-                m_viewport.getViewportImage(view_image);
-                drawMap(view_image, m_viewport.offset(), m_viewport.zoom());
-                m_painter.drawNode(view_image, *node, pt_radius, 0, cv::Vec3b(0, 255, 255), m_viewport.offset(), zoom, pt_thickness);
-                cv::imshow(m_winname, view_image);
-                int key = cv::waitKey(1);
-
                 m_gobj_id = node->id;
                 m_gobj_type = G_NODE;
                 update_gobj = true;
@@ -265,14 +260,106 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
             m_mouse_pt = cv::Point(x, y);
             m_mouse_drag = true;
         }
+        m_gobj_from = 0;
+        m_gobj_highlight_nid = 0;
+    }
+    else if (evt == cv::EVENT_LBUTTONDOWN && is_ctrl && !m_show_poi && !m_show_streetview)
+    {
+        cv::AutoLock lock(m_mutex_data);
+        cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+        cv::Point2d metric = m_painter.cvtPixel2Value(px);
+
+        dg::Node* node = m_map.getNearestNode(metric);
+        if (node && norm(*node - metric) <= dist_thr)
+        {
+            if (m_gobj_from > 0)
+            {
+                dg::Edge edge;
+                edge.id = getNextMapID();
+                edge.type = 0;
+                edge.node_id1 = m_gobj_from;
+                edge.node_id2 = node->id;
+                m_map.addEdge(edge, true);
+
+                dg::Node* node1 = m_map.getNode(edge.node_id1);
+                dg::Node* node2 = m_map.getNode(edge.node_id2);
+                if (node1->edge_ids.size() >= 3 && node1->type == dg::Node::NODE_BASIC) node1->type = dg::Node::NODE_JUNCTION;
+                if (node2->edge_ids.size() >= 3 && node2->type == dg::Node::NODE_BASIC) node2->type = dg::Node::NODE_JUNCTION;
+
+                m_gobj_from = 0;
+            }
+            else
+            {
+                m_gobj_from = node->id;
+            }
+        }
+        m_mouse_drag = false;
+        m_gobj_highlight_nid = 0;
     }
     else if (evt == cv::EVENT_LBUTTONDOWN)
     {
         m_mouse_drag = false;
+        m_gobj_highlight_nid = 0;
     }
     else if (evt == cv::EVENT_LBUTTONUP)
     {
+        if (is_shift && m_mouse_drag && m_gobj_type == G_NODE)
+        {
+            cv::AutoLock lock(m_mutex_data);
+            cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            cv::Point2d metric = m_painter.cvtPixel2Value(px);
+            dg::Node* node = m_map.getNode(m_gobj_id);
+            if (node && node->edge_ids.size() == 1)
+            {
+                dg::Node* node2 = m_map.getNearestNode(node->id);
+                double d1 = norm(*node2 - metric);
+                if (d1 < dist_thr)
+                {
+                    node2->edge_ids.push_back(node->edge_ids[0]);
+                    dg::Edge* edge = m_map.getEdge(node->edge_ids[0]);
+                    if (edge->node_id1 == node->id) edge->node_id1 = node2->id;
+                    else edge->node_id2 = node2->id;
+                    if (edge && edge->type == dg::Edge::EDGE_CROSSWALK) node2->type = dg::Node::NODE_JUNCTION;
+                    if (node2->edge_ids.size() >= 3 && node2->type == dg::Node::NODE_BASIC) node2->type = dg::Node::NODE_JUNCTION;
+                    node->edge_ids.clear();
+                    m_map.deleteNode(node->id);
+                }
+            }
+        }
         m_mouse_drag = false;
+        m_gobj_highlight_nid = 0;
+    }
+    else if (evt == cv::EVENT_LBUTTONDBLCLK && is_ctrl && !m_show_poi && !m_show_streetview)
+    {
+        cv::AutoLock lock(m_mutex_data);
+        cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+        cv::Point2d metric = m_painter.cvtPixel2Value(px);
+
+        dg::Point2 ep;
+        dg::Edge* edge = m_map.getNearestEdge(metric, ep);
+        if (edge && norm(ep - metric) < dist_thr)
+        {
+            dg::Node* node1 = m_map.getNode(edge->node_id1);
+            dg::Node* node2 = m_map.getNode(edge->node_id2);
+            dg::Node n(getNextMapID(), ep, 0, node1->floor);
+            m_map.addNode(n);
+
+            dg::Edge e1 = *edge;
+            e1.id = getNextMapID();
+            e1.node_id1 = edge->node_id1;
+            e1.node_id2 = n.id;
+            dg::Edge e2 = *edge;
+            e2.id = getNextMapID();
+            e2.node_id1 = n.id;
+            e2.node_id2 = edge->node_id2;
+            m_map.deleteEdge(edge->id);
+            m_map.addEdge(e1, true);
+            m_map.addEdge(e2, true);
+        }
+
+        m_gobj_from = 0;
+        m_mouse_drag = false;
+        m_gobj_highlight_nid = 0;
     }
     else if (evt == cv::EVENT_LBUTTONDBLCLK)
     {
@@ -288,7 +375,7 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
             std::vector<dg::StreetView*> streetviews;
             if (m_show_poi) pois = m_map.getNearPOIs(metric, dist_thr, true);
             if (m_show_streetview) streetviews = m_map.getNearViews(metric, dist_thr, true);
-            if (!pois.empty() && (streetviews.empty() || norm(*(pois[0])-metric) <= norm(*(streetviews[0])-metric)))
+            if (!pois.empty() && (streetviews.empty() || norm(*(pois[0]) - metric) <= norm(*(streetviews[0]) - metric)))
             {
                 dg::POI* poi = pois[0];
                 cv::Mat view_image;
@@ -308,12 +395,19 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                 dlg.name = poi->name.c_str();
                 if (dlg.DoModal() == IDOK)
                 {
-                    dg::Point2 xy = m_map.toMetric(dg::LatLon(dlg.lat, dlg.lon));
-                    poi->id = dlg.ID;
-                    poi->x = xy.x;
-                    poi->y = xy.y;
-                    poi->floor = dlg.floor;
-                    poi->name = CT2CW(dlg.name);
+                    if (dlg.erase)
+                    {
+                        m_map.deletePOI(poi->id);
+                    }
+                    else
+                    {
+                        dg::Point2 xy = m_map.toMetric(dg::LatLon(dlg.lat, dlg.lon));
+                        poi->id = dlg.ID;
+                        poi->x = xy.x;
+                        poi->y = xy.y;
+                        poi->floor = dlg.floor;
+                        poi->name = CT2CW(dlg.name);
+                    }
                 }
             }
             if (!streetviews.empty() && (pois.empty() || norm(*(pois[0]) - metric) > norm(*(streetviews[0]) - metric)))
@@ -336,13 +430,20 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                 dlg.date = sv->date.c_str();
                 if (dlg.DoModal() == IDOK)
                 {
-                    dg::Point2 xy = m_map.toMetric(dg::LatLon(dlg.lat, dlg.lon));
-                    sv->id = dlg.ID;
-                    sv->x = xy.x;
-                    sv->y = xy.y;
-                    sv->floor = dlg.floor;
-                    sv->heading = dlg.heading;
-                    sv->date = CT2A(dlg.date);
+                    if (dlg.erase)
+                    {
+                        m_map.deleteView(sv->id);
+                    }
+                    else
+                    {
+                        dg::Point2 xy = m_map.toMetric(dg::LatLon(dlg.lat, dlg.lon));
+                        sv->id = dlg.ID;
+                        sv->x = xy.x;
+                        sv->y = xy.y;
+                        sv->floor = dlg.floor;
+                        sv->heading = dlg.heading;
+                        sv->date = CT2A(dlg.date);
+                    }
                 }
             }
         }
@@ -358,8 +459,8 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
             bool update_node = node && d1 <= dist_thr;
             if (update_node && d2 < d1 && d2 < d1_prj)
             {
-                if( d1_prj > edge->length / 3 ) update_node = false;
-                if (d1_prj > dist_thr/2) update_node = false;
+                if (d1_prj > edge->length / 3) update_node = false;
+                if (d1_prj > dist_thr / 2) update_node = false;
             }
             if (update_node)
             {
@@ -380,13 +481,20 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                 dlg.floor = node->floor;
                 if (dlg.DoModal() == IDOK)
                 {
-                    dg::Point2 xy = m_map.toMetric(dg::LatLon(dlg.lat, dlg.lon));
-                    node->id = dlg.ID;
-                    node->type = dlg.type;
-                    node->x = xy.x;
-                    node->y = xy.y;
-                    node->floor = dlg.floor;
-                    node->edge_ids = dlg.edge_ids;
+                    if (dlg.erase)
+                    {
+                        m_map.deleteNode(node->id);
+                    }
+                    else
+                    {
+                        dg::Point2 xy = m_map.toMetric(dg::LatLon(dlg.lat, dlg.lon));
+                        node->id = dlg.ID;
+                        node->type = dlg.type;
+                        node->x = xy.x;
+                        node->y = xy.y;
+                        node->floor = dlg.floor;
+                        node->edge_ids = dlg.edge_ids;
+                    }
                 }
             }
             else if (edge && d2 <= dist_thr)
@@ -410,16 +518,27 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                 dlg.node_id2 = edge->node_id2;
                 if (dlg.DoModal() == IDOK)
                 {
-                    edge->id = dlg.ID;
-                    edge->type = dlg.type;
-                    edge->length = dlg.length;
-                    edge->lr_side = dlg.lr_side;
-                    edge->node_id1 = dlg.node_id1;
-                    edge->node_id2 = dlg.node_id2;
-                    edge->directed = (dlg.directed == TRUE);
+                    if (dlg.erase)
+                    {
+                        m_map.deleteEdge(edge->id);
+                    }
+                    else
+                    {
+                        edge->id = dlg.ID;
+                        edge->type = dlg.type;
+                        edge->length = dlg.length;
+                        edge->lr_side = dlg.lr_side;
+                        edge->node_id1 = dlg.node_id1;
+                        edge->node_id2 = dlg.node_id2;
+                        edge->directed = (dlg.directed == TRUE);
+                    }
                 }
             }
         }
+        m_gobj_from = 0;
+        m_mouse_drag = false;
+        m_gobj_highlight_nid = 0;
+
         m_under_edit = false;
     }
     else if (evt == cv::EVENT_RBUTTONDOWN)
@@ -469,6 +588,10 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
             }
             m_under_edit = false;
         }
+
+        m_gobj_from = 0;
+        m_mouse_drag = false;
+        m_gobj_highlight_nid = 0;
     }
     else if (evt == cv::EVENT_RBUTTONUP)
     {
@@ -482,7 +605,7 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
 void MapEditor::save()
 {
     cv::AutoLock lock(m_mutex_data);
-    if(!m_fpath.empty()) m_map.save(m_fpath.c_str());
+    if (!m_fpath.empty()) m_map.save(m_fpath.c_str());
 }
 
 void MapEditor::saveAs()
@@ -508,6 +631,7 @@ void MapEditor::load()
         cv::AutoLock lock(m_mutex_data);
         m_fpath = CT2A(dlg.GetPathName().GetString());
         m_map.load(m_fpath.c_str());
+        updateNextMapID();
         if (m_map.isEmpty()) m_fpath.clear();
     }
 }
@@ -521,6 +645,7 @@ void MapEditor::download()
     manager.setReference(ll);
     double radius = 5000;  // 5 km
     manager.getMapAll(ll.lat, ll.lon, radius, m_map);
+    updateNextMapID();
 }
 
 void MapEditor::showPoi(bool show)
@@ -533,6 +658,11 @@ void MapEditor::showStreetView(bool show)
     m_show_streetview = show;
 }
 
+void MapEditor::showLRSide(bool show)
+{
+    m_show_lrside = show;
+}
+
 void MapEditor::showMapError(bool show)
 {
     m_show_map_error = show;
@@ -542,7 +672,7 @@ void MapEditor::drawMap(cv::Mat view_image, cv::Point2d offset, double zoom)
 {
     if (m_map.isEmpty()) return;
 
-    double scale_modifier = (zoom >= 4) ? zoom/ 2 : 1;
+    double scale_modifier = (zoom >= 4) ? zoom / 2 : 1;
     double node_radius = m_node_radius / scale_modifier;
     double edge_thickness = m_edge_thickness / scale_modifier;
     m_painter.setParamValue("node_radius", node_radius);
@@ -552,27 +682,30 @@ void MapEditor::drawMap(cv::Mat view_image, cv::Point2d offset, double zoom)
         m_painter.setParamValue("color_whitening", 1);
         m_painter.drawMap(view_image, &m_map, offset, zoom);
 
-        for (auto it = m_map.getHeadEdge(); it != m_map.getTailEdge(); it++)
+        if (m_show_lrside)
         {
-            if (it->lr_side == dg::Edge::LR_LEFT)
+            for (auto it = m_map.getHeadEdge(); it != m_map.getTailEdge(); it++)
             {
-                dg::Node* n1 = m_map.getNode(it->node_id1);
-                dg::Node* n2 = m_map.getNode(it->node_id2);
-                if (n1 == nullptr || n2 == nullptr) continue;
-                dg::Point2 p1(n2->y - n1->y, n1->x - n2->x);    // rotate n1n2 by -90 degree
-                p1 = *n1 + p1 * 4 / norm(p1);
-                dg::Point2 p2 = p1 + (*n2 - *n1);
-                m_painter.drawEdge(view_image, p1, p2, node_radius, cv::Vec3b(0, 255, 0), edge_thickness, offset, zoom);
-            }
-            if (it->lr_side == dg::Edge::LR_RIGHT)
-            {
-                dg::Node* n1 = m_map.getNode(it->node_id1);
-                dg::Node* n2 = m_map.getNode(it->node_id2);
-                if (n1 == nullptr || n2 == nullptr) continue;
-                dg::Point2 p1(n1->y - n2->y, n2->x - n1->x);    // rotate n1n2 by 90 degree
-                p1 = *n1 + p1 * 4 / norm(p1);
-                dg::Point2 p2 = p1 + (*n2 - *n1);
-                m_painter.drawEdge(view_image, p1, p2, node_radius, cv::Vec3b(0, 255, 0), edge_thickness, offset, zoom);
+                if (it->lr_side == dg::Edge::LR_LEFT)
+                {
+                    dg::Node* n1 = m_map.getNode(it->node_id1);
+                    dg::Node* n2 = m_map.getNode(it->node_id2);
+                    if (n1 == nullptr || n2 == nullptr) continue;
+                    dg::Point2 p1(n2->y - n1->y, n1->x - n2->x);    // rotate n1n2 by -90 degree
+                    p1 = *n1 + p1 * 2 / norm(p1);
+                    dg::Point2 p2 = p1 + (*n2 - *n1);
+                    m_painter.drawEdge(view_image, p1, p2, node_radius, cv::Vec3b(0, 255, 0), edge_thickness, offset, zoom);
+                }
+                if (it->lr_side == dg::Edge::LR_RIGHT)
+                {
+                    dg::Node* n1 = m_map.getNode(it->node_id1);
+                    dg::Node* n2 = m_map.getNode(it->node_id2);
+                    if (n1 == nullptr || n2 == nullptr) continue;
+                    dg::Point2 p1(n1->y - n2->y, n2->x - n1->x);    // rotate n1n2 by 90 degree
+                    p1 = *n1 + p1 * 2 / norm(p1);
+                    dg::Point2 p2 = p1 + (*n2 - *n1);
+                    m_painter.drawEdge(view_image, p1, p2, node_radius, cv::Vec3b(0, 255, 0), edge_thickness, offset, zoom);
+                }
             }
         }
 
@@ -671,4 +804,256 @@ void MapEditor::verify()
     if (file == nullptr) return;
     fprintf(file, "%s", msg.c_str());
     fclose(file);
+}
+
+void MapEditor::fixMapError()
+{
+    cv::AutoLock lock(m_mutex_data);
+    if (m_map.isEmpty()) return;
+
+    // fix node error
+    std::vector<dg::ID> invalid_nodes;
+    for (auto node = m_map.getHeadNode(); node != m_map.getTailNode(); node++)
+    {
+        // remove invalid edge ids
+        std::vector<dg::ID> edge_ids;
+        bool crosswalk = false;
+        for (auto it = node->edge_ids.begin(); it != node->edge_ids.end(); it++)
+        {
+            dg::Edge* edge = m_map.getEdge(*it);
+            if (edge == nullptr) continue;
+            edge_ids.push_back(*it);
+            if (edge->type == dg::Edge::EDGE_CROSSWALK) crosswalk = true;
+        }
+        node->edge_ids = edge_ids;
+
+        // correct node type
+        if (crosswalk) node->type = dg::Node::NODE_JUNCTION;
+        if (!crosswalk && node->edge_ids.size() <= 2 && node->type == dg::Node::NODE_JUNCTION) node->type = dg::Node::NODE_BASIC;
+        if (node->edge_ids.size() >= 3 && node->type == dg::Node::NODE_BASIC) node->type = dg::Node::NODE_JUNCTION;
+
+        // delete isolated nodes
+        if (node->edge_ids.empty()) invalid_nodes.push_back(node->id);
+    }
+    for (auto it = invalid_nodes.begin(); it != invalid_nodes.end(); it++)
+    {
+        m_map.deleteNode(*it);
+    }
+
+    // check edge
+    std::vector<dg::ID> invalid_edges;
+    for (auto edge = m_map.getHeadEdge(); edge != m_map.getTailEdge(); edge++)
+    {
+        dg::Node* n1 = m_map.getNode(edge->node_id1);
+        dg::Node* n2 = m_map.getNode(edge->node_id2);
+        if (n1 && n2) edge->length = norm(*n1 - *n2);
+        if (n1 == nullptr || n2 == nullptr) invalid_edges.push_back(edge->id);
+    }
+    for (auto it = invalid_edges.begin(); it != invalid_edges.end(); it++)
+    {
+        m_map.deleteEdge(*it);
+    }
+
+    m_error_nodes.clear();
+    m_error_edges.clear();
+}
+
+
+void MapEditor::updateLRSide()
+{
+    cv::AutoLock lock(m_mutex_data);
+    if (m_map.isEmpty()) return;
+    computeLRSide(m_map);
+}
+
+
+void MapEditor::computeLRSide(dg::Map& map)
+{
+    for (auto itr = map.getHeadEdge(); itr != map.getTailEdge(); itr++)
+    {
+        if (itr->type != dg::Edge::EDGE_SIDEWALK || itr->lr_side != dg::Edge::LR_NONE) continue;
+
+        int lr_side = dg::Edge::LR_NONE;
+        bool lr_consistent = true;
+
+        // initial edge
+        std::vector<dg::ID> node_list;
+        node_list.push_back(itr->node_id1);
+        node_list.push_back(itr->node_id2);
+
+        // backward search
+        dg::Node* from = map.getNode(itr->node_id1);
+        dg::Node* to = map.getNode(itr->node_id2);
+        dg::ID eid = itr->id;
+        while (1)
+        {
+            if (from->type == dg::Node::NODE_JUNCTION || from->edge_ids.size() != 2)
+            {
+                // check crosswalk
+                bool crosswalk = false;
+                for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
+                {
+                    if (*it == eid) continue;
+                    dg::Edge* edge = map.getEdge(*it);
+                    if (edge && edge->type == dg::Edge::EDGE_CROSSWALK && from->edge_ids.size() > 2)
+                    {
+                        crosswalk = true;
+                        break;
+                    }
+                }
+
+                // check lr
+                if (crosswalk)
+                {
+                    dg::Point2 ev = *to - *from;
+                    double min_theta = 2 * CV_PI;
+                    double max_theta = 0;
+                    dg::Edge* min_theta_edge = nullptr;
+                    dg::Edge* max_theta_edge = nullptr;
+                    for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
+                    {
+                        if (*it == eid) continue;
+                        dg::Edge* edge = map.getEdge(*it);
+                        dg::Node* n = map.getConnectedNode(from, *it);
+                        dg::Point2 v = *n - *from;
+                        double theta = acos(ev.ddot(v) / (norm(ev) * norm(v)));
+                        if (ev.cross(v) < 0) theta = 2 * CV_PI - theta;
+                        if (theta < min_theta)
+                        {
+                            min_theta = theta;
+                            min_theta_edge = edge;
+                        }
+                        if (theta > max_theta)
+                        {
+                            max_theta = theta;
+                            max_theta_edge = edge;
+                        }
+                    }
+                    if (min_theta_edge && min_theta_edge->type == dg::Edge::EDGE_CROSSWALK)
+                    {
+                        if (lr_side == dg::Edge::LR_LEFT) lr_consistent = false;
+                        lr_side = dg::Edge::LR_RIGHT;
+                    }
+                    else if (max_theta_edge && max_theta_edge->type == dg::Edge::EDGE_CROSSWALK)
+                    {
+                        if (lr_side == dg::Edge::LR_RIGHT) lr_consistent = false;
+                        lr_side = dg::Edge::LR_LEFT;
+                    }
+                }
+                break;
+            }
+            if (!lr_consistent) break;
+
+            eid = (from->edge_ids[0] == eid) ? from->edge_ids[1] : from->edge_ids[0];
+            if (eid == itr->id) break;
+            dg::Edge* edge = map.getEdge(eid);
+            if (edge == nullptr || edge->type != dg::Edge::EDGE_SIDEWALK) break;
+            to = from;
+            from = map.getConnectedNode(to, eid);
+            if (from == nullptr) break;
+            node_list.insert(node_list.begin(), from->id);
+        }
+
+        // forward search
+        from = map.getNode(itr->node_id1);
+        to = map.getNode(itr->node_id2);
+        eid = itr->id;
+        while (1)
+        {
+            if (to->type == dg::Node::NODE_JUNCTION || to->edge_ids.size() != 2)
+            {
+                // check crosswalk
+                bool crosswalk = false;
+                for (auto it = to->edge_ids.begin(); it != to->edge_ids.end(); it++)
+                {
+                    if (*it == eid) continue;
+                    dg::Edge* edge = map.getEdge(*it);
+                    if (edge && edge->type == dg::Edge::EDGE_CROSSWALK && to->edge_ids.size() > 2)
+                    {
+                        crosswalk = true;
+                        break;
+                    }
+                }
+
+                // check lr
+                if (crosswalk)
+                {
+                    dg::Point2 ev = *from - *to;
+                    double min_theta = 2 * CV_PI;
+                    double max_theta = 0;
+                    dg::Edge* min_theta_edge = nullptr;
+                    dg::Edge* max_theta_edge = nullptr;
+                    for (auto it = to->edge_ids.begin(); it != to->edge_ids.end(); it++)
+                    {
+                        if (*it == eid) continue;
+                        dg::Edge* edge = map.getEdge(*it);
+                        dg::Node* n = map.getConnectedNode(to, *it);
+                        dg::Point2 v = *n - *to;
+                        double theta = acos(ev.ddot(v) / (norm(ev) * norm(v)));
+                        if (ev.cross(v) < 0) theta = 2 * CV_PI - theta;
+                        if (theta < min_theta)
+                        {
+                            min_theta = theta;
+                            min_theta_edge = edge;
+                        }
+                        if (theta > max_theta)
+                        {
+                            max_theta = theta;
+                            max_theta_edge = edge;
+                        }
+                    }
+                    if (min_theta_edge && min_theta_edge->type == dg::Edge::EDGE_CROSSWALK)
+                    {
+                        if (lr_side == dg::Edge::LR_RIGHT) lr_consistent = false;
+                        lr_side = dg::Edge::LR_LEFT;
+                    }
+                    else if (max_theta_edge && max_theta_edge->type == dg::Edge::EDGE_CROSSWALK)
+                    {
+                        if (lr_side == dg::Edge::LR_LEFT) lr_consistent = false;
+                        lr_side = dg::Edge::LR_RIGHT;
+                    }
+                }
+                break;
+            }
+            if (!lr_consistent) break;
+
+            eid = (to->edge_ids[0] == eid) ? to->edge_ids[1] : to->edge_ids[0];
+            if (eid == itr->id) break;
+            dg::Edge* edge = map.getEdge(eid);
+            if (edge == nullptr || edge->type != dg::Edge::EDGE_SIDEWALK) break;
+            from = to;
+            to = map.getConnectedNode(to, eid);
+            if (to == nullptr) break;
+            node_list.push_back(to->id);
+        }
+
+        // update lr
+        if (lr_side != dg::Edge::LR_NONE && lr_consistent)
+        {
+            for (size_t i = 1; i < node_list.size(); i++)
+            {
+                dg::ID n1 = node_list[i - 1];
+                dg::ID n2 = node_list[i];
+                dg::Edge* edge = map.getEdge(n1, n2);
+                if (edge && edge->node_id1 == n1) edge->lr_side = lr_side;
+                if (edge && edge->node_id2 == n1) edge->lr_side = (lr_side == dg::Edge::LR_LEFT) ? dg::Edge::LR_RIGHT : dg::Edge::LR_LEFT;
+            }
+        }
+    }
+}
+
+void MapEditor::updateNextMapID()
+{
+    if (m_map.isEmpty()) return;
+
+    dg::ID max_id = 0;
+    for (auto it = m_map.getHeadNode(); it != m_map.getTailNode(); it++)
+    {
+        if (it->id > max_id) max_id = it->id;
+    }
+    for (auto it = m_map.getHeadEdge(); it != m_map.getTailEdge(); it++)
+    {
+        if (it->id > max_id) max_id = it->id;
+    }
+    m_next_id = max_id + 1;
 }

@@ -122,3 +122,16 @@ void DlgPOI::OnBnClickedBtnRegisterImage()
 		m_listImages.AddString(image_name.c_str());
 	}
 }
+
+BOOL DlgPOI::PreTranslateMessage(MSG* pMsg)
+{
+	if (pMsg->message == WM_KEYDOWN)
+	{
+		if (pMsg->wParam == VK_DELETE)
+		{
+			erase = true;
+			CDialogEx::OnOK();
+		}
+	}
+	return CDialogEx::PreTranslateMessage(pMsg);
+}

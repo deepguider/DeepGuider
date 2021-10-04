@@ -93,7 +93,7 @@ public:
         return true;
     }
 
-    bool drawNodes(cv::Mat& image, const Map* map, double radius, double font_scale, const cv::Vec3b& color, const cv::Point2d& offset = cv::Point2d(0, 0), double zoom = 1, int thickness = -1, int min_n_edge = 1) const
+    bool drawNodes(cv::Mat& image, const Map* map, double radius, double font_scale, const cv::Vec3b& color, const cv::Point2d& offset = cv::Point2d(0, 0), double zoom = 1, int thickness = -1) const
     {
         if (map == nullptr || image.empty()) return false;
         int iradius = (int)(radius * zoom + 0.5);
@@ -119,7 +119,6 @@ public:
 
         for (auto n = map->getHeadNodeConst(); n != map->getTailNodeConst(); n++)
         {
-            if (map->countEdges(&(*n)) < min_n_edge) continue;
             cv::Point center = (cvtValue2Pixel(*n) - offset) * zoom + cv::Point2d(0.5, 0.5);
             if(n->type == dg::Node::NODE_JUNCTION)
                 cv::circle(image, center, iradius, cr_junction, thickness);

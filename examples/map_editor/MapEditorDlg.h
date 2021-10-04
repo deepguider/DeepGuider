@@ -52,4 +52,9 @@ public:
     afx_msg void OnBnClickedButtonVerifyMap();
     BOOL m_show_error;
     afx_msg void OnBnClickedCheckShowError();
+    afx_msg void OnBnClickedButtonExportToJson();
+    afx_msg void OnBnClickedButtonFixMapError();
+    afx_msg void OnBnClickedCheckLrpose();
+    BOOL m_show_lrside;
+    afx_msg void OnBnClickedButtonUpdateLr();
 };

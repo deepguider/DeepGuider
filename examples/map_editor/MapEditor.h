@@ -42,11 +42,18 @@ public:
     void saveAs();
     void showPoi(bool show);
     void showStreetView(bool show);
+    void showLRSide(bool show);
     void showMapError(bool show);
     void verify();
+    void fixMapError();
+    void updateLRSide();
+    void computeLRSide(dg::Map& map);
 
 protected:
     void drawMap(cv::Mat view_image, cv::Point2d offset, double zoom);
+    dg::ID          m_next_id;
+    void updateNextMapID();
+    dg::ID getNextMapID() { return m_next_id++; }
 
     dg::MapPainter  m_painter;
     cv::Mat         m_bg_image;
@@ -63,6 +70,7 @@ protected:
     std::string     m_site = "etri";
     bool            m_show_poi = false;
     bool            m_show_streetview = false;
+    bool            m_show_lrside = false;
     double          m_node_radius = 3;
     double          m_edge_thickness = 2;
 
@@ -74,8 +82,10 @@ protected:
     enum {G_NODE, G_POI, G_STREETVIEW};
     cv::Point       m_mouse_pt;
     bool            m_mouse_drag = false;
-    dg::ID          m_gobj_id;
-    int             m_gobj_type;
+    dg::ID          m_gobj_id;                  // selected object for drag or edit
+    int             m_gobj_type;                // type of selected object
+    dg::ID          m_gobj_highlight_nid = 0;   // nearby object 
+    dg::ID          m_gobj_from = 0;            // selected first object for edge connecting
 
     // error check
     bool m_show_map_error = false;

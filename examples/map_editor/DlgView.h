@@ -29,4 +29,6 @@ public:
 	double heading;
 	CString date;
 	virtual BOOL OnInitDialog();
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
+	bool erase = false;
 };

@@ -33,4 +33,6 @@ public:
 	CListBox m_listEdges;
 	virtual BOOL OnInitDialog();
 	afx_msg void OnBnClickedOk();
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
+	bool erase = false;
 };

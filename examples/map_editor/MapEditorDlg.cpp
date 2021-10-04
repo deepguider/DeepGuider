@@ -54,6 +54,7 @@ MapEditorDlg::MapEditorDlg(CWnd* pParent /*=nullptr*/)
     , m_show_poi(FALSE)
     , m_show_streetview(FALSE)
 	, m_show_error(FALSE)
+	, m_show_lrside(FALSE)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -64,6 +65,7 @@ void MapEditorDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_POI, m_show_poi);
 	DDX_Check(pDX, IDC_CHECK_STREETVIEW, m_show_streetview);
 	DDX_Check(pDX, IDC_CHECK_SHOW_ERROR, m_show_error);
+	DDX_Check(pDX, IDC_CHECK_LRPose, m_show_lrside);
 }
 
 BEGIN_MESSAGE_MAP(MapEditorDlg, CDialogEx)
@@ -83,6 +85,10 @@ BEGIN_MESSAGE_MAP(MapEditorDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_DOWNLOAD, &MapEditorDlg::OnBnClickedButtonDownload)
     ON_BN_CLICKED(IDC_BUTTON_VERIFY_MAP, &MapEditorDlg::OnBnClickedButtonVerifyMap)
 	ON_BN_CLICKED(IDC_CHECK_SHOW_ERROR, &MapEditorDlg::OnBnClickedCheckShowError)
+    ON_BN_CLICKED(IDC_BUTTON_EXPORT_TO_JSON, &MapEditorDlg::OnBnClickedButtonExportToJson)
+	ON_BN_CLICKED(IDC_BUTTON_FIX_MAP_ERROR, &MapEditorDlg::OnBnClickedButtonFixMapError)
+	ON_BN_CLICKED(IDC_CHECK_LRPose, &MapEditorDlg::OnBnClickedCheckLrpose)
+	ON_BN_CLICKED(IDC_BUTTON_UPDATE_LR, &MapEditorDlg::OnBnClickedButtonUpdateLr)
 END_MESSAGE_MAP()
 
 
@@ -215,6 +221,7 @@ void MapEditorDlg::runEditor(std::string site)
 	}
 	m_show_poi = FALSE;
 	m_show_streetview = FALSE;
+	m_show_lrside = FALSE;
 	UpdateData(FALSE);
 	m_editor = new MapEditor();
 	m_editor->configure(site);
@@ -254,6 +261,13 @@ void MapEditorDlg::OnBnClickedCheckStreetview()
 }
 
 
+void MapEditorDlg::OnBnClickedCheckLrpose()
+{
+	UpdateData();
+	if (m_editor) m_editor->showLRSide(m_show_lrside == TRUE);
+}
+
+
 void MapEditorDlg::OnBnClickedButtonDownload()
 {
 	BeginWaitCursor();
@@ -276,8 +290,39 @@ void MapEditorDlg::OnBnClickedButtonVerifyMap()
 }
 
 
+void MapEditorDlg::OnBnClickedButtonFixMapError()
+{
+	BeginWaitCursor();
+	if (m_editor)
+	{
+		m_editor->fixMapError();
+	}
+	EndWaitCursor();
+}
+
+
 void MapEditorDlg::OnBnClickedCheckShowError()
 {
 	UpdateData();
 	if (m_editor) m_editor->showMapError(m_show_error == TRUE);
 }
+
+
+void MapEditorDlg::OnBnClickedButtonUpdateLr()
+{
+	BeginWaitCursor();
+	if (m_editor)
+	{
+		m_editor->updateLRSide();
+		m_editor->showLRSide(true);
+		m_show_lrside = TRUE;
+		UpdateData(FALSE);
+	}
+	EndWaitCursor();
+}
+
+
+void MapEditorDlg::OnBnClickedButtonExportToJson()
+{
+}
+

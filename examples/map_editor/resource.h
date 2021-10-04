@@ -42,6 +42,11 @@
 #define IDC_CHECK_SHOW_ERROR            1025
 #define IDC_BTN_REGISTER_IMAGE          1025
 #define IDC_LIST_IMAGES                 1026
+#define IDC_CHECK_LRPose                1026
+#define IDC_BUTTON_FIX_MAP_ERROR        1027
+#define IDC_BUTTON_EXPORT_TO_JSON       1028
+#define IDC_BUTTON_FIX_MAP_ERROR2       1029
+#define IDC_BUTTON_UPDATE_LR            1029
 
 // Next default values for new objects
 // 
