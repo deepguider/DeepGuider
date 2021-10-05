@@ -3,6 +3,7 @@
 #include <locale>
 #include <codecvt>
 #include <wchar.h>
+#include <sys/stat.h>
 
 #define MAP_BUF_SIZE               (1024)
 
