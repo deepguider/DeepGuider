@@ -12,8 +12,8 @@
 using namespace dg;
 using namespace std;
 
-//std::string map_server_ip = "129.254.87.96"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
-std::string map_server_ip = "localhost"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
+std::string map_server_ip = "129.254.81.204"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
+//std::string map_server_ip = "localhost"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
 
 
 void test_image_run(VPS& recognizer, bool recording = false, const char* image_file = "./data_vps/vps_query.jpg", int nItr = 5)
