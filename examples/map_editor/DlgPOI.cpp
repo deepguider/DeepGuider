@@ -87,6 +87,10 @@ BOOL DlgPOI::OnInitDialog()
 			m_listImages.AddString(it->c_str());
 		}
 	}
+	else
+	{
+		GetDlgItem(IDC_BTN_REGISTER_IMAGE)->EnableWindow(FALSE);
+	}
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 }
@@ -110,6 +114,7 @@ void DlgPOI::OnSelchangeListImages()
 
 void DlgPOI::OnBnClickedBtnRegisterImage()
 {
+	if (map == nullptr) return;
 	char szFile[1024] = "";  // buffer for file path
 	CString szFilter = "Image Files|*.bmp;*.png;*.jpg|All Files (*.*)|*.*||";
 	CFileDialog dlg(TRUE, 0, szFile, OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST, szFilter, NULL);

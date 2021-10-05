@@ -160,7 +160,6 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
     double ln_thickness = (m_edge_thickness + 2) / scale_modifier;
     double pt_radius = (m_node_radius + zoom) / scale_modifier;
     int pt_thickness = (int)(ln_thickness + 0.5);
-    double node_radius = (m_node_radius + 1) / scale_modifier;
     double dist_thr = (zoom >= 4) ? (2 + 24 / zoom) : 10;   // meter
 
     if (evt == cv::EVENT_MOUSEMOVE && m_mouse_drag)
@@ -329,32 +328,65 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
         m_mouse_drag = false;
         m_gobj_highlight_nid = 0;
     }
-    else if (evt == cv::EVENT_LBUTTONDBLCLK && is_ctrl && !m_show_poi && !m_show_streetview)
+    else if (evt == cv::EVENT_LBUTTONDBLCLK && is_ctrl)
     {
         cv::AutoLock lock(m_mutex_data);
         cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
         cv::Point2d metric = m_painter.cvtPixel2Value(px);
 
-        dg::Point2 ep;
-        dg::Edge* edge = m_map.getNearestEdge(metric, ep);
-        if (edge && norm(ep - metric) < dist_thr)
+        if (!m_show_poi && !m_show_streetview)
         {
-            dg::Node* node1 = m_map.getNode(edge->node_id1);
-            dg::Node* node2 = m_map.getNode(edge->node_id2);
-            dg::Node n(getNextMapID(), ep, 0, node1->floor);
-            m_map.addNode(n);
+            dg::Point2 ep;
+            dg::Edge* edge = m_map.getNearestEdge(metric, ep);
+            if (edge && norm(ep - metric) < dist_thr)
+            {
+                dg::Node* node1 = m_map.getNode(edge->node_id1);
+                dg::Node* node2 = m_map.getNode(edge->node_id2);
+                dg::Node n(getNextMapID(), ep, 0, node1->floor);
+                m_map.addNode(n);
 
-            dg::Edge e1 = *edge;
-            e1.id = getNextMapID();
-            e1.node_id1 = edge->node_id1;
-            e1.node_id2 = n.id;
-            dg::Edge e2 = *edge;
-            e2.id = getNextMapID();
-            e2.node_id1 = n.id;
-            e2.node_id2 = edge->node_id2;
-            m_map.deleteEdge(edge->id);
-            m_map.addEdge(e1, true);
-            m_map.addEdge(e2, true);
+                dg::Edge e1 = *edge;
+                e1.id = getNextMapID();
+                e1.node_id1 = edge->node_id1;
+                e1.node_id2 = n.id;
+                dg::Edge e2 = *edge;
+                e2.id = getNextMapID();
+                e2.node_id1 = n.id;
+                e2.node_id2 = edge->node_id2;
+                m_map.deleteEdge(edge->id);
+                m_map.addEdge(e1, true);
+                m_map.addEdge(e2, true);
+            }
+        }
+        if (m_show_poi)
+        {
+            dg::POI poi(getNextMapID(), metric, L"", 0);
+            cv::Mat view_image;
+            m_viewport.getViewportImage(view_image);
+            drawMap(view_image, m_viewport.offset(), m_viewport.zoom());
+            double node_radius = m_node_radius / scale_modifier;
+            m_painter.drawPoint(view_image, poi, node_radius, cv::Vec3b(0, 0, 255), m_viewport.offset(), zoom);
+            m_painter.drawPoint(view_image, poi, pt_radius, cv::Vec3b(0, 0, 128), m_viewport.offset(), zoom, pt_thickness);
+            cv::imshow(m_winname, view_image);
+            int key = cv::waitKey(1);
+
+            dg::LatLon ll = m_map.toLatLon(poi);
+            DlgPOI dlg;
+            dlg.ID = poi.id;
+            dlg.lat = ll.lat;
+            dlg.lon = ll.lon;
+            dlg.floor = poi.floor;
+            dlg.name = poi.name.c_str();
+            if (dlg.DoModal() == IDOK && !dlg.erase && !dlg.name.IsEmpty())
+            {
+                dg::Point2 xy = m_map.toMetric(dg::LatLon(dlg.lat, dlg.lon));
+                poi.id = dlg.ID;
+                poi.x = xy.x;
+                poi.y = xy.y;
+                poi.floor = dlg.floor;
+                poi.name = CT2CW(dlg.name);
+                m_map.addPOI(poi);
+            }
         }
 
         m_gobj_from = 0;
@@ -504,6 +536,7 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                 cv::Mat view_image;
                 m_viewport.getViewportImage(view_image);
                 drawMap(view_image, m_viewport.offset(), m_viewport.zoom());
+                double node_radius = (m_node_radius + 1) / scale_modifier;
                 m_painter.drawEdge(view_image, *from, *to, node_radius, cv::Vec3b(0, 255, 255), ln_thickness, m_viewport.offset(), m_viewport.zoom(), 4);
                 cv::imshow(m_winname, view_image);
                 int key = cv::waitKey(1);
