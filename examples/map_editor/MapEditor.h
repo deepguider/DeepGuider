@@ -48,11 +48,12 @@ public:
     void fixMapError();
     void updateLRSide();
     void computeLRSide(dg::Map& map);
+    void exportToJson();
 
 protected:
     void drawMap(cv::Mat view_image, cv::Point2d offset, double zoom);
     dg::ID          m_next_id;
-    void updateNextMapID();
+    void initializeNextMapID();
     dg::ID getNextMapID() { return m_next_id++; }
 
     dg::MapPainter  m_painter;

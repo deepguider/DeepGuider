@@ -73,7 +73,7 @@ int MapEditor::configure(std::string site)
     if (!guiprop.map_file.empty())
     {
         m_map.load(guiprop.map_file.c_str());
-        updateNextMapID();
+        initializeNextMapID();
     }
     if (m_map.isEmpty()) m_fpath.clear();
 
@@ -631,7 +631,7 @@ void MapEditor::load()
         cv::AutoLock lock(m_mutex_data);
         m_fpath = CT2A(dlg.GetPathName().GetString());
         m_map.load(m_fpath.c_str());
-        updateNextMapID();
+        initializeNextMapID();
         if (m_map.isEmpty()) m_fpath.clear();
     }
 }
@@ -645,7 +645,7 @@ void MapEditor::download()
     manager.setReference(ll);
     double radius = 5000;  // 5 km
     manager.getMapAll(ll.lat, ll.lon, radius, m_map);
-    updateNextMapID();
+    initializeNextMapID();
 }
 
 void MapEditor::showPoi(bool show)
@@ -859,20 +859,7 @@ void MapEditor::fixMapError()
 }
 
 
-void MapEditor::updateLRSide()
-{
-    cv::AutoLock lock(m_mutex_data);
-    if (m_map.isEmpty()) return;
-    computeLRSide(m_map);
-}
-
-
-void MapEditor::computeLRSide(dg::Map& map)
-{
-    // TBD
-}
-
-void MapEditor::updateNextMapID()
+void MapEditor::initializeNextMapID()
 {
     if (m_map.isEmpty()) return;
 
@@ -886,4 +873,24 @@ void MapEditor::updateNextMapID()
         if (it->id > max_id) max_id = it->id;
     }
     m_next_id = max_id + 1;
+}
+
+
+void MapEditor::updateLRSide()
+{
+    cv::AutoLock lock(m_mutex_data);
+    if (m_map.isEmpty()) return;
+    computeLRSide(m_map);
+}
+
+
+void MapEditor::computeLRSide(dg::Map& map)
+{
+    // TBD
+}
+
+
+void MapEditor::exportToJson()
+{
+    // TBD
 }

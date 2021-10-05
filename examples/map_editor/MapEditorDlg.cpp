@@ -324,5 +324,8 @@ void MapEditorDlg::OnBnClickedButtonUpdateLr()
 
 void MapEditorDlg::OnBnClickedButtonExportToJson()
 {
+	BeginWaitCursor();
+	if (m_editor) m_editor->exportToJson();
+	EndWaitCursor();
 }
 
