@@ -432,14 +432,11 @@ int main()
 
     int video_sel = 0;
     const char* video_path[] = {
-        "video/191115_ETRI.avi",
-        "video/etri_cart_200219_15h01m_2fps.avi",
-        "video/201007_taeheran1.avi",
-        "video/street-GOTOMall.mp4",
-        "video/street-Itaewon.mp4",
-        "video/street-MyeongDong.mp4",
-        "video/street-MyeongDongShoppingAlley.mp4",
-        "video/street-Shibuya.mp4"
+		"data/ETRI/191115_151140_images.avi",
+		"data/ETRI/200219_150153_images.avi",
+		"data/ETRI/200326_132938_images.avi",
+		"data/ETRI/200429_131714_images.avi",
+		"data/ETRI/200429_140025_images.avi"		
     };
 
 
