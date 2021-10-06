@@ -19,9 +19,11 @@ def saveResult(img, boxes, pred_list, dirname, res_imagefileName):
     #    res_img_file = res_imagefileName
     res_img_file = dirname + 'result_' + res_imagefileName
 
+    valid = []
     for i, box in enumerate(boxes):
         if pred_list[i][2] < 0.3:
             continue
+        valid.append(pred_list[i])
         poly = np.array(box).astype(np.int32).reshape((-1))
         poly = poly.reshape(-1, 2)
         cv2.polylines(img, [poly.reshape((-1, 1, 2))], True, color=(0, 255, 0), thickness=3)
@@ -45,6 +47,7 @@ def saveResult(img, boxes, pred_list, dirname, res_imagefileName):
 
     cv2.imwrite(res_img_file, img)
     print('\ncheck result : ' + res_img_file)
+    return valid
 
 #per image
 def detect_ocr(config, image, timestamp, save_img):
@@ -129,6 +132,7 @@ def detect_ocr(config, image, timestamp, save_img):
     # print("\nrun time (recognition) : {:.2f} , {:.2f} s".format(recog_time,config.recog_time))
 
     if save_img:
-        saveResult(img, boxes, pred_list, config.result_folder, basename)
-
+        pred_list = saveResult(img, boxes, pred_list, 
+                               config.result_folder, basename)
+        
     return  pred_list, timestamp

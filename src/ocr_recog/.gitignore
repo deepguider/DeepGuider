@@ -2,5 +2,5 @@ checkpoints
 data_lmdb_release
 data_ocr
 log
-results
+results*
 *.txt
