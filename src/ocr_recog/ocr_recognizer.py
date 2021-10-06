@@ -149,7 +149,7 @@ class OCRRecognizer:
         parser_craft.add_argument('--poly', default=False, action='store_true', help='enable polygon type')
         parser_craft.add_argument('--show_time', default=False, action='store_true', help='show processing time')
         parser_craft.add_argument('--test_folder', default='/data/', type=str, help='folder path to input images')
-        parser_craft.add_argument('--result_folder', default='./data_ocr/', type=str, help='result folder path')
+        parser_craft.add_argument('--result_folder', default='./results/', type=str, help='result folder path')
         parser_craft.add_argument('--refine', default=False, action='store_true', help='enable link refiner')
         parser_craft.add_argument('--refiner_model', default='weights/craft_refiner_CTW1500.pth', type=str,
                                   help='pretrained refiner model')
@@ -192,6 +192,5 @@ class OCRRecognizer:
 
     def apply(self, image, timestamp, save_img=False):
         #coordinate : list
-        pred, timestamp = detect_ocr(self, image, timestamp,save_img)
+        pred, timestamp = detect_ocr(self, image, timestamp, save_img)
         return pred, timestamp
-        

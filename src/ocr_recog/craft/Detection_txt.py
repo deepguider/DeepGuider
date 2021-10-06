@@ -159,7 +159,11 @@ def Detection_txt(args, image_path, net):
 
     # print("Test image : {:s}".format(image_path), end='\r')
     
-    bboxes, polys, score_text = test_net(net, args, image,args.text_threshold, args.link_threshold, args.low_text, args.cuda, args.poly, refine_net)
+    bboxes, polys, score_text = test_net(net, args, image,
+                                         args.text_threshold,
+                                         args.link_threshold, 
+                                         args.low_text, 
+                                         args.cuda, args.poly, refine_net)
 
     # save score text
     # filename, file_ext = os.path.splitext(os.path.basename(image_path))
@@ -174,7 +178,7 @@ def Detection_txt(args, image_path, net):
 
     # print("\nrun time (detection) : {:.2f} {:.2f} s".format(detect_time, args.detect_time ))
 
-    return detection_list,image[:,:,::-1],polys
+    return detection_list, image[:,:,::-1], polys
 
 if __name__ == '__main__':
 
