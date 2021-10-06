@@ -357,6 +357,11 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                 m_map.addEdge(e1, true);
                 m_map.addEdge(e2, true);
             }
+            else
+            {
+                dg::Node n(getNextMapID(), metric);
+                m_map.addNode(n);
+            }
         }
         if (m_show_poi)
         {
