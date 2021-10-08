@@ -1439,6 +1439,214 @@ public:
         return m_map_rect;
     }
 
+    bool findID(std::vector<ID> ids, ID eid)
+    {
+        for (std::vector<ID>::iterator iter = ids.begin(); iter != ids.end(); iter++)
+        {
+            if (*iter == eid)
+                return true;
+        }
+        return false;
+    }
+
+    int getDegree(Point2 p1, Point2 p2, Point2 p3)
+    {
+        Point2 v1 = p2 - p1;
+        Point2 v2 = p3 - p2;
+        if (norm(v1) <= 0 || norm(v2) <= 0) return 0;
+
+        double ang_rad = acos(v1.ddot(v2) / (norm(v1) * norm(v2)));
+        if (v1.cross(v2) < 0) ang_rad = -ang_rad;
+        double ang_deg = ang_rad * 180 / CV_PI;
+
+        return (int)ang_deg;
+    }
+
+    void setEdgeLR(const Edge* edge, int lr_side)
+    {
+        Edge* cur_edge = getEdge(edge->id);
+        cur_edge->lr_side = lr_side;
+    }
+
+    void addEdgeLR()
+    {
+        //lrpose
+        std::vector<ID> finished_edges;
+        for (auto e = getHeadEdgeConst(); e != getTailEdgeConst(); e++)
+        {
+            if (e->type == Edge::EDGE_CROSSWALK)
+            {
+                ID cross_edge1_id = e->id;
+                Node * node1, * node2, * node3;
+                for (int i = 0; i < 2; i++)
+                {
+                    //searching the other node of the crosswalk
+                    if (i != 0)
+                    {
+                        node1 = getNode(e->node_id2);
+                        node2 = getNode(e->node_id1);
+                    }
+                    else
+                    {
+                        node1 = getNode(e->node_id1);
+                        node2 = getNode(e->node_id2);
+                    }
+
+                    ID node3_id;
+                    Edge* edge1, * edge2;
+                    std::vector<ID> candidate_edges;
+
+                    //search first sidewalk connected to the crosswalk
+                    std::vector<ID> cross_conn_edges = node2->edge_ids;
+                    for (std::vector<ID>::iterator side1id = cross_conn_edges.begin(); side1id != cross_conn_edges.end(); side1id++)
+                    {
+                        if (*side1id != cross_edge1_id)
+                        {
+                            //get second edge
+                            edge2 = getEdge(*side1id);
+                            if (findID(finished_edges, edge2->id))
+                                continue;
+
+                            //get third node
+                            node3_id = (edge2->node_id1 == node2->id) ? edge2->node_id2 : edge2->node_id1;
+                            node3 = getNode(node3_id);
+                            int edges_deg = getDegree(Point2(node1->x, node1->y), Point2(node2->x, node2->y), Point2(node3->x, node3->y));
+
+                            //check degree
+                            if (edges_deg > 30 && edges_deg < 150)    //I'm on the right of the road
+                            {
+                                //save direction
+                                if (edge2->type == Edge::EDGE_SIDEWALK)
+                                {
+                                    //save direction
+                                    int lr_side;
+                                    if (edge2->node_id1 == node2->id)
+                                        lr_side = Edge::LR_RIGHT;
+                                    else
+                                        lr_side = Edge::LR_LEFT;
+                                    setEdgeLR(edge2, lr_side);
+                                    finished_edges.push_back(edge2->id);
+                                }
+
+                                //continue to next sidewalk
+                                node1 = node2;
+                                node2 = node3;
+                                edge1 = edge2;
+                                bool bFlag = true; int count = 0;
+                                while (bFlag && count < 20)
+                                {
+                                    bFlag = false; count++;
+                                    candidate_edges = node2->edge_ids;
+                                    for (std::vector<ID>::iterator side2 = candidate_edges.begin(); side2 != candidate_edges.end(); side2++)
+                                    {
+                                        if (*side2 == edge1->id)//pass edge1
+                                            continue;
+
+                                        edge2 = getEdge(*side2);
+                                        if (findID(finished_edges, edge2->id))//pass already done
+                                            continue;
+
+                                        node3_id = (edge2->node_id1 == node2->id) ? edge2->node_id2 : edge2->node_id1;
+                                        node3 = getNode(node3_id);
+                                        int edges_deg = getDegree(Point2(node1->x, node1->y), Point2(node2->x, node2->y), Point2(node3->x, node3->y));
+
+                                        //the sidewalk is connected to straight
+                                        if (edges_deg > -30 && edges_deg < 30)  //straight line
+                                        {
+                                            //save direction
+                                            if (edge2->type == Edge::EDGE_SIDEWALK)
+                                            {
+                                                int lr_side;
+                                                if (edge2->node_id1 == node2->id)
+                                                    lr_side = Edge::LR_RIGHT;
+                                                else
+                                                    lr_side = Edge::LR_LEFT;
+                                                setEdgeLR(edge2, lr_side);
+                                                finished_edges.push_back(edge2->id);
+                                            }
+
+                                            node1 = node2;
+                                            node2 = node3;
+                                            edge1 = edge2;
+                                            bFlag = true;
+
+                                            break;  //end for{}
+                                        }
+                                        else
+                                            bFlag = false;
+                                    }
+                                } //end while()
+                            }//end if (edges_deg > 30 && edges_deg < 150)  //I'm on the right of the road
+
+                            else if (edges_deg > -150 && edges_deg < -30) //I'm on the left side of the road
+                            {
+                                //save direction
+                                if (edge2->type == Edge::EDGE_SIDEWALK)
+                                {
+                                    int lr_side;
+                                    if (edge2->node_id1 == node2->id)
+                                        lr_side = Edge::LR_LEFT;
+                                    else
+                                        lr_side = Edge::LR_RIGHT;
+                                    setEdgeLR(edge2, lr_side);
+                                    finished_edges.push_back(edge2->id);
+                                }
+
+                                //continue to next sidewalk
+                                node1 = node2;
+                                node2 = node3;
+                                edge1 = edge2;
+                                bool bFlag = true; int count = 0;
+                                while (bFlag && count < 20)
+                                {
+                                    bFlag = false; count++;
+                                    candidate_edges = node2->edge_ids;
+                                    for (std::vector<ID>::iterator side2 = candidate_edges.begin(); side2 != candidate_edges.end(); side2++)
+                                    {
+                                        if (*side2 == edge1->id)//pass edge1
+                                            continue;
+
+                                        edge2 = getEdge(*side2);
+                                        if (findID(finished_edges, edge2->id))//pass already done
+                                            continue;
+
+                                        node3_id = (edge2->node_id1 == node2->id) ? edge2->node_id2 : edge2->node_id1;
+                                        node3 = getNode(node3_id);
+                                        int edges_deg = getDegree(Point2(node1->x, node1->y), Point2(node2->x, node2->y), Point2(node3->x, node3->y));
+
+                                        //the sidewalk is connected to straight
+                                        if (edges_deg > -30 && edges_deg < 30)  //straight line
+                                        {
+                                            //save direction
+                                            if (edge2->type == Edge::EDGE_SIDEWALK)
+                                            {
+                                                //save direction
+                                                int lr_side;
+                                                if (edge2->node_id1 == node2->id)
+                                                    lr_side = Edge::LR_LEFT;
+                                                else
+                                                    lr_side = Edge::LR_RIGHT;
+                                                setEdgeLR(edge2, lr_side);
+                                                finished_edges.push_back(edge2->id);
+                                            }
+                                            node1 = node2;
+                                            node2 = node3;
+                                            edge1 = edge2;
+                                            bFlag = true;
+                                            break;  //end for{}
+                                        }
+                                        else
+                                            bFlag = false;
+                                    }
+                                } //end while()
+                            }//end else if(edges_deg > -150 && edges_deg < -30) //I'm on the left of the road
+                        }//end of if (*iter != edge1_id)
+                    }//end of for (vector<ID>::iterator iter = candidate_edges.begin(); iter != candidate_edges.end(); iter++)
+                }//end for (int i = 0; i < 2; i++)
+            }//end if (e->type == Edge::EDGE_CROSSWALK)
+        }//end for (auto e = map.getHeadEdgeConst(); e != map.getTailEdgeConst(); e++)
+    }
+
 	/**
 	 * Get the union of two Map sets
 	 * @param set2 The given Map set of this union set
