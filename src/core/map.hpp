@@ -513,7 +513,7 @@ public:
         size_t node_idx = nodes.size();
         auto result = lookup_nodes.insert(std::make_pair(node.id, node_idx));
         if (!result.second) return false;
-        nodes.push_back(node);
+        nodes.push_back(Node(node.id, node.x, node.y, node.type, node.floor));
         m_router_valid = false;
         m_map_rect_valid = false;
         return true;
@@ -788,7 +788,6 @@ public:
      */
     Edge* getEdge(ID id)
     {
-        assert(edges.size() == lookup_edges.size() && lookup_edges.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_edges.find(id);
         if (found == lookup_edges.end()) return nullptr;
         return &edges[found->second];
@@ -801,7 +800,6 @@ public:
      */
     const Edge* getEdge(ID id) const
     {
-        assert(edges.size() == lookup_edges.size() && lookup_edges.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_edges.find(id);
         if (found == lookup_edges.end()) return nullptr;
         return &edges[found->second];
@@ -1160,7 +1158,6 @@ public:
      */
     const StreetView* getView(ID id) const
     {
-        assert(views.size() == lookup_views.size() && lookup_views.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_views.find(id);
         if (found == lookup_views.end()) return nullptr;
         return &views[found->second];

@@ -924,7 +924,7 @@ void MapEditor::updateLRSide()
 
 void MapEditor::computeLRSide(dg::Map& map)
 {
-    // TBD
+    map.addEdgeLR();
 }
 
 

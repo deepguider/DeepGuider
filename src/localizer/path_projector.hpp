@@ -11,6 +11,18 @@ namespace dg
 {
 
 /**
+ * @brief Pose2 with LR
+ *
+ * Data structure for saving pose with LR info
+ */
+struct Pose2LR : public Pose2
+{
+    int lr_side = Edge::LR_NONE;
+    Pose2LR(const Pose2& p = Pose2(0, 0), int lr = Edge::LR_NONE): Pose2(p), lr_side(lr) { }
+};
+
+
+/**
  * @brief Path Projection
  *
  * This implement interfaces and basic operations for path-based localization on a graph map.
@@ -20,14 +32,19 @@ class PathProjector
 protected:
     // configuable parameters
     double m_branchmap_search_radius = 100;     // Unit: [m]
-    double m_projection_search_radius = 60;     // Unit: [m]
-    double m_eval_pathlen_backward = 50;        // Unit: [m]
-    double m_eval_pathlen_forward = 25;         // Unit: [m]
+    double m_projection_search_radius = 100;    // Unit: [m]
     double m_min_alignscore_gap = 20;           // Unit: [m]
-    int m_min_eval_historylen = 10;
     double m_length_align_weight = 0.5;
     double m_error_tolerance = 0.01;            // Unit: [m]
-    bool m_enable_debugging_display = false;
+    bool m_enable_debugging_display = true;
+
+    double m_lr_mismatch_cost = 50;             // Unit: [m]
+    bool m_enable_lr_reject = false;
+    int m_lr_estimation_interval = 20;
+    int m_lr_continuous_n = 10;
+    double m_lr_reject_cost = 20;
+    bool m_enable_discontinuity_cost = true;
+    double m_discontinuity_weight = 0.5;
 
 public:
     virtual int readParam(const cv::FileNode& fn)
@@ -35,170 +52,251 @@ public:
         int n_read = 0;
         CX_LOAD_PARAM_COUNT(fn, "branchmap_search_radius", m_branchmap_search_radius, n_read);
         CX_LOAD_PARAM_COUNT(fn, "projection_search_radius", m_projection_search_radius, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "eval_pathlen_backward", m_eval_pathlen_backward, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "eval_pathlen_forward", m_eval_pathlen_forward, n_read);
         CX_LOAD_PARAM_COUNT(fn, "min_alignscore_gap", m_min_alignscore_gap, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "min_eval_historylen", m_min_eval_historylen, n_read);
         CX_LOAD_PARAM_COUNT(fn, "length_align_weight", m_length_align_weight, n_read);
         CX_LOAD_PARAM_COUNT(fn, "error_tolerance", m_error_tolerance, n_read);
         CX_LOAD_PARAM_COUNT(fn, "enable_debugging_display", m_enable_debugging_display, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "lr_mismatch_cost", m_lr_mismatch_cost, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "enable_lr_reject", m_enable_lr_reject, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "lr_reject_cost", m_lr_reject_cost, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "enable_discontinuity_cost", m_enable_discontinuity_cost, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "discontinuity_weight", m_discontinuity_weight, n_read);
         return n_read;
     }
 
     /**
      * Estimate best map-projected pose of a given pose
      * @param map Map data
-     * @param pose Current pose or newly estimated robot pose (it is usually an output of EKF localization)
-     * @param mappose_prev Latest map-projected pose
-     * @return Estimated best map pose
+     * @param pose Current pose or newly estimated pose (it is usually an output of EKF localization)
+     * @param pose_history Recent trajectory of poses (it is usually history of EKF localization outputs)
+     * @param projected_pose_history Recent trajectory of map-projected poses
+     * @return Estimated best map-projected pose
      */
-    Pose2 getMapPose(dg::Map* map, const Pose2& pose, const Pose2& mappose_prev, bool initial_pose = false)
+    Pose2 getMapPose(dg::Map* map, const Pose2& pose, RingBuffer<Pose2LR>& pose_history, RingBuffer<Pose2>& projected_pose_history)
     {
-        if (map == nullptr || map->isEmpty()) return pose;
-
-        // return nearest map point in case of initial pose
-        if (initial_pose)
-        {
-            m_localmap.removeAll();
-            m_localmap_center_nid = 0;
-
-            Point2 nearest_edge_point;
-            Edge* edge = map->getNearestEdge(pose, nearest_edge_point);
-            if (edge == nullptr) return pose;
-            return nearest_edge_point;
-        }
-
-        // find nearest node from the previous pose
-        Point2 nearest_edge_point;
-        Edge* edge = nullptr;
-        if(m_localmap.isEmpty())
-            edge = map->getNearestEdge(mappose_prev, nearest_edge_point);
-        else
-            edge = m_localmap.getNearestEdge(mappose_prev, nearest_edge_point);
-        if (edge == nullptr) return pose;
-
-        // build local branch map from the previous pose
-        ID center_nid = edge->node_id1;
-        Node* node = map->getNode(edge->node_id1);
-        if (node == nullptr) return pose;
-        double d1 = norm(nearest_edge_point - *node);
-        if (d1 > edge->length / 2)
-        {
-            center_nid = edge->node_id2;
-        }
-        if (m_localmap.isEmpty() || center_nid != m_localmap_center_nid)
-        {
-            bool ok = getLocalBranchMap(map, center_nid, m_localmap, m_branchmap_search_radius);
-            if (!ok) return pose;
-            m_localmap_center_nid = center_nid;
-        }
-
-        // find nearest edge point from the local map
-        edge = m_localmap.getNearestEdge(pose, nearest_edge_point);
-        if (edge == nullptr) return pose;
-        Pose2 pose_new = nearest_edge_point;
-        double theta = atan2(pose_new.y - mappose_prev.y, pose_new.x - mappose_prev.x);
-        pose_new.theta = cx::trimRad(theta);
-
-        return pose_new;
+        bool out_of_path;
+        return getPathPose(map, nullptr, pose, pose_history, projected_pose_history, out_of_path);
     }
 
     /**
      * Estimate best path-projected pose of a given pose and detect out of path
      * @param map Map data
      * @param path Current path to a destination
-     * @param pose Current pose or newly estimated robot pose (it is usually an output of EKF localization)
-     * @param pose_history Recent trajectory of robot poses
+     * @param pose Current pose or newly estimated pose (it is usually an output of EKF localization)
+     * @param pose_history Recent trajectory of poses (it is usually history of EKF localization outputs)
+     * @param projected_pose_history Recent trajectory of map-projected poses
      * @param out_of_path True if out of path is detected
-     * @return Estimated best path pose (it can be out-of-path pose in case out-of-path detected)
+     * @return Estimated best path-projected pose (it can be out-of-path pose in case out-of-path detected)
      */
-    Pose2 getPathPose(dg::Map* map, const Path& path, const Pose2& pose, const RingBuffer<Pose2T>& pose_history, bool& out_of_path)
+    Pose2 getPathPose(dg::Map* map, Path* path, const Pose2& pose, RingBuffer<Pose2LR>& pose_history, RingBuffer<Pose2>& projected_pose_history, bool& out_of_path)
     {
+        if (map == nullptr || map->isEmpty()) return pose;
         out_of_path = false;
-        if (map == nullptr || map->isEmpty() || path.empty()) return pose;
 
-        // path projection: 현재 위치를 path에 투영
-        int path_idx = -1;
-        Pose2 path_pose = findNearestPathPose(path, pose, path_idx);
-        if (path_idx < 0) return pose;
-
-        // just return path-projected pose in case of initial pose
-        if (pose_history.empty())
+        // return nearest map point in case of initial pose
+        bool initial_pose = projected_pose_history.empty();
+        if (initial_pose)
         {
             m_localmap.removeAll();
             m_localmap_center_nid = 0;
-            return path_pose;
+
+            if (path && !path->empty()) return map->getNearestPathPose(*path, pose);
+            else return map->getNearestMapPose(pose);
         }
 
-        // build local map: 직전 위치의 path 투영점과 연결된 local branch map
-        Pose2 pose_prev = pose_history.back();
-        int path_idx_prev = -1;
-        Pose2 path_pose_prev = findNearestPathPose(path, pose_prev, path_idx_prev);
-        if (path_idx_prev < 0)
+        // find nearest node from the previous pose
+        Pose2 mappose_prev = projected_pose_history.back();
+        Point2 nearest_edge_point;
+        Edge* edge = nullptr;
+        if (m_localmap.isEmpty())
+            edge = map->getNearestEdge(mappose_prev, nearest_edge_point);
+        else
+            edge = m_localmap.getNearestEdge(mappose_prev, nearest_edge_point);
+        if (edge == nullptr) return pose;
+
+        // build local branch map from the previous pose
+        ID localmap_center_nid = edge->node_id1;
+        Node* node = map->getNode(edge->node_id1);
+        if (node == nullptr) return pose;
+        double d1 = norm(nearest_edge_point - *node);
+        if (d1 > edge->length / 2)
         {
-            path_pose_prev = path_pose;
-            path_idx_prev = path_idx;
+            localmap_center_nid = edge->node_id2;
         }
-        dg::ID center_nid = path.pts[path_idx_prev].node_id;
-        if (center_nid <= 0 && path_idx_prev < (int)path.pts.size() - 1) center_nid = path.pts[path_idx_prev + 1].node_id;
-        if (m_localmap.isEmpty() || center_nid != m_localmap_center_nid)
+        if (m_localmap.isEmpty() || localmap_center_nid != m_localmap_center_nid)
         {
-            bool ok = getLocalBranchMap(map, center_nid, m_localmap, m_branchmap_search_radius);
-            if (!ok) return path_pose;
-            m_localmap_center_nid = center_nid;
+            bool ok = getLocalBranchMap(map, localmap_center_nid, m_localmap, m_branchmap_search_radius);
+            if (!ok) return pose;
+            m_localmap_center_nid = localmap_center_nid;
         }
 
-        // localmap projection: 현재 위치에서 도달 가능한 모든 branch로의 투영점들을 탐색
+        // find oldest pose in the local branch map
+        Node* center_node = m_localmap.getNode(localmap_center_nid);
+        int pose_eval_len = 0;
+        for (int i = projected_pose_history.data_count() - 1; i >= 0; i--)
+        {
+            if (norm(*center_node - projected_pose_history[i]) > m_branchmap_search_radius) break;
+            pose_eval_len++;
+        }
+        if (pose_eval_len < 1) return m_localmap.getNearestMapPose(pose);
+
+        // estimate LR decision of the latest pose interval
+        int lr_decision = Edge::LR_NONE;
+        int lr_cnt = 0;
+        for (int i = pose_history.data_count() - 1; i >= pose_history.data_count() - m_lr_estimation_interval && i >= 0; i--)
+        {
+            int lr = pose_history[i].lr_side;
+            if (lr == Edge::LR_NONE) continue;
+            if (lr_decision == Edge::LR_NONE) lr_decision = lr;
+            if (lr != lr_decision) break;
+            lr_cnt++;
+        }
+        if (lr_cnt < m_lr_continuous_n) lr_decision = Edge::LR_NONE;
+        if (m_enable_debugging_display && lr_decision == Edge::LR_LEFT) printf("LR_LEFT\n");
+        if (m_enable_debugging_display && lr_decision == Edge::LR_RIGHT) printf("LR_RIGHT\n");
+
+        // find candidate map poses
         std::vector<Pose2> map_poses = findProjectedMapPoses(&m_localmap, pose, m_projection_search_radius, m_error_tolerance);
+        int path_pose_idx = -1;
+        if (path && !path->empty())
+        {
+            Pose2 path_pose = map->getNearestPathPose(*path, pose);
+            for (size_t i = 0; i < map_poses.size(); i++)
+            {
+                if (norm(path_pose - map_poses[i]) < m_error_tolerance)
+                {
+                    path_pose_idx = (int)i;
+                    break;
+                }
+            }
+            if (path_pose_idx < 0)
+            {
+                map_poses.push_back(path_pose);
+                path_pose_idx = (int)map_poses.size() - 1;
+            }
+        }
+        if(map_poses.empty()) return m_localmap.getNearestMapPose(pose);
 
-        // evaluation: 각각의 후보 map 투영점(prj_pts)들에 대한 궤적 정합도 평가
+        // evaluate candidate map poses
         if (m_enable_debugging_display)
         {
-            m_best_align_score = 0;
             m_evalMapPath.clear();
             m_evalPoseHistory.clear();
-            m_evalMapPathStartIdx = 0;
         }
-        double max_align_score = -1;
-        Pose2 best_map_pose;
+        double min_align_cost = DBL_MAX;
+        Pose2 best_map_pose = pose;
+        int best_pose_idx = -1;
+        double path_pose_cost = -1;
+        Pose2 mappose_start = projected_pose_history[projected_pose_history.data_count() - pose_eval_len];
         for (int i = 0; i < (int)map_poses.size(); i++)
         {
             Pose2 map_pose = map_poses[i];
 
-            double align_score = -1;
-            int pose_eval_len = 0;
-            bool success = evaluateMapPose(&m_localmap, path, pose_history, map_pose, path_pose, path_idx, pose_eval_len, align_score);
-            bool valid_pose = success && (pose_eval_len >= m_min_eval_historylen) && (align_score > m_min_alignscore_gap);
-            if (valid_pose && (!out_of_path || align_score > max_align_score))
+            dg::Path local_path;
+            bool ok = m_localmap.getPath(mappose_start, map_pose, local_path);
+            if (!ok || local_path.empty()) continue;
+
+            int pose_start_k = pose_history.data_count() - pose_eval_len;
+            int lr_match = 0;
+            int lr_mismatch = 0;
+            std::vector<Point2> eval_path_points;
+            double align_cost = computeAlignCost(&m_localmap, local_path, 0, (int)local_path.pts.size() - 1, map_pose, pose_history, pose_start_k, -1, lr_match, lr_mismatch, eval_path_points);
+
+            // lr reject
+            bool lr_rejected = false;
+            if (lr_decision != Edge::LR_NONE)
             {
-                max_align_score = align_score;
-                out_of_path = true;
+                Point2 ep;
+                Edge* path_edge = m_localmap.getNearestEdge(map_pose, ep);
+                int path_idx = (int)local_path.pts.size() - 2;
+                ID path_nid = (path_idx >= 0) ? local_path.pts[path_idx].node_id : 0;
+                if (path_edge && path_edge->node_id1 == path_nid && path_edge->lr_side != Edge::LR_NONE && path_edge->lr_side != lr_decision) lr_rejected = true;
+                if (path_edge && path_edge->node_id2 == path_nid && path_edge->lr_side != Edge::LR_NONE && path_edge->lr_side == lr_decision) lr_rejected = true;
+            }
+            if (m_enable_lr_reject && lr_rejected) align_cost += m_lr_reject_cost;
+
+            // abrupt pose change
+            double discontinuity_cost = norm(map_pose - mappose_prev) * m_discontinuity_weight;
+            if (m_enable_discontinuity_cost) align_cost += discontinuity_cost;
+
+            // save best map pose
+            if (align_cost < min_align_cost)
+            {
+                min_align_cost = align_cost;
                 best_map_pose = map_pose;
+                best_pose_idx = i;
+
+                if (m_enable_debugging_display)
+                {
+                    m_evalMapPath = eval_path_points;
+                    m_evalPoseHistory.resize(pose_eval_len);
+                    int k = 0;
+                    for (int j = pose_start_k; j < pose_history.data_count(); j++, k++)
+                    {
+                        m_evalPoseHistory[k] = pose_history[j];
+                    }
+                }
+            }
+            if (path_pose_idx >= 0 && i == path_pose_idx) path_pose_cost = align_cost;
+            if (m_enable_debugging_display)
+            {
+                printf("[%d] algin_cost = %.1lf (path = %d, discont = %.1lf, lr_reject = %d, match = %d, mismatch = %d)\n", i, align_cost, i==path_pose_idx, discontinuity_cost, (int)lr_rejected, lr_match, lr_mismatch);
+            }
+        }
+        if (m_enable_debugging_display) printf("\n");
+
+        // compare to path pose and determine out-of-path
+        if (path_pose_idx >= 0 && best_pose_idx != path_pose_idx)
+        {
+            if ((path_pose_cost - min_align_cost) < m_min_alignscore_gap)
+            {
+                best_pose_idx = path_pose_idx;
+                best_map_pose = map_poses[best_pose_idx];
+            }
+            else
+            {
+                out_of_path = true;
             }
         }
 
-        if (out_of_path)
+        // update projected_pose_history to fit into best local path (remove past pose fluctuations)
+        if (best_pose_idx >= 0)
         {
-            dg::Path new_path;
-            bool ok = map->getPath(best_map_pose, path.pts.back(), new_path);
-            if (!ok || new_path.empty()) return path_pose;
-
-            int new_path_idx = -1;
-            Pose2 pose_new = findNearestPathPose(new_path, best_map_pose, new_path_idx);
-            return pose_new;
+            dg::Path best_path;
+            int start_j = projected_pose_history.data_count() - pose_eval_len;
+            Pose2 past_pose = projected_pose_history[start_j];
+            Pose2 best_pose = map_poses[best_pose_idx];
+            bool ok = m_localmap.getPath(past_pose, best_pose, best_path);
+            if (ok && !best_path.empty())
+            {
+                int j = projected_pose_history.data_count() - 1;
+                while (j >= start_j && j >= 0)
+                {
+                    Pose2 new_p = m_localmap.getNearestPathPose(best_path, projected_pose_history[j]);
+                    if (norm(new_p - projected_pose_history[j]) < m_error_tolerance) break;
+                    projected_pose_history[j] = new_p;
+                    j--;
+                }
+            }
         }
 
-        return path_pose;
-    }
+        // estimate heading (현재 map edge 방향으로 수정)
+        dg::Path best_path;
+        bool ok = m_localmap.getPath(mappose_start, best_map_pose, best_path);
+        if ((int)best_path.pts.size()>=2)
+        {
+            int last_i = (int)best_path.pts.size() - 1;
+            Point2 v = best_path.pts[last_i] - best_path.pts[last_i - 1];
+            best_map_pose.theta = atan2(v.y, v.x);
+        }
+        else
+        {
+            double theta = atan2(best_map_pose.y - mappose_prev.y, best_map_pose.x - mappose_prev.x);
+            best_map_pose.theta = cx::trimRad(theta);
+        }
+        best_map_pose.theta = cx::trimRad((best_map_pose.theta + projected_pose_history[projected_pose_history.data_count() - 1].theta) / 2);
 
-    void reset()
-    {
-        m_localmap.removeAll();
-        m_localmap_center_nid = 0;
-        m_best_align_score = -1;
-        m_evalMapPath.clear();
-        m_evalMapPathStartIdx = -1;
-        m_evalPoseHistory.clear();
+        return best_map_pose;
     }
 
     /**
@@ -238,7 +336,12 @@ public:
 
                 // check duplication
                 auto node = localmap.getNode(to->id);
-                if (node) continue;
+                if (node)
+                {
+                    Edge* edge = map->getEdge(*it);
+                    localmap.addEdge(*edge);
+                    continue;
+                }
 
                 open.push_back(to);
                 localmap.addNode(*to);
@@ -268,21 +371,18 @@ public:
         {
             if (map->countEdges(&(*from)) == 0) continue;
 
-            // check search_radius
             double d = norm(*from - p);
             if (d > search_radius) continue;
 
-            // check node projection: 해당 node(from)가 gps의 투영점이 될 수 있는지 조사
+            // check edge projection: 해당 edge(from)가 gps의 투영점이 될 수 있는지 조사
             Point2 nv = p - *from;
             bool proj_node = true;
             for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
             {
                 Node* to = map->getConnectedNode(&(*from), *it);
                 if (to == nullptr) continue;
-
                 Point2 ev = *to - *from;
-                double theta = acos(nv.ddot(ev) / (norm(nv) * norm(ev)));
-                if (theta < CV_PI / 2)
+                if (nv.ddot(ev) > 0)
                 {
                     proj_node = false;
                     break;
@@ -301,33 +401,46 @@ public:
                     }
                 }
                 if (!already_exist) results.push_back(Pose2(np));
+                //if (!already_exist) printf("prj_map: nid = %zd\n", from->id);
                 continue;
             }
 
+
             // check edge projection: 해당 edge(from)가 gps의 투영점이 될 수 있는지 조사
+            double min_dist2 = DBL_MAX;
+            Node* min_to = nullptr;
+            ID min_eid = 0;
+            Point2 min_ep;
             for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
             {
                 Node* to = map->getConnectedNode(&(*from), *it);
                 if (to == nullptr) continue;
-
                 auto dist2 = calcDist2FromLineSeg(*from, *to, p);
-                if (dist2.first > search_radius2) continue;
-
-                double d1 = norm(dist2.second - *from);
-                double d2 = norm(dist2.second - *to);
+                if (dist2.first <= search_radius2 && dist2.first < min_dist2)
+                {
+                    min_dist2 = dist2.first;
+                    min_to = to;
+                    min_ep = dist2.second;
+                    min_eid = *it;
+                }
+            }
+            if (min_to)
+            {
+                double d1 = norm(min_ep - *from);
+                double d2 = norm(min_ep - *min_to);
                 if (d1 > 0 && d2 > 0)
                 {
-                    Point2 ep = dist2.second;
                     bool already_exist = false;
                     for (int k = 0; k < (int)results.size(); k++)
                     {
-                        if (norm(ep - results[k]) <= error_tolerance)
+                        if (norm(min_ep - results[k]) <= error_tolerance)
                         {
                             already_exist = true;
                             break;
                         }
                     }
-                    if (!already_exist) results.push_back(Pose2(ep));
+                    if (!already_exist) results.push_back(Pose2(min_ep));
+                    //if (!already_exist) printf("prj_map: edge_id = %zd\n", min_eid);
                 }
             }
         }
@@ -335,138 +448,53 @@ public:
         return results;
     }
 
-protected:
-    // cache memory for speeding up the process
-    dg::Map m_localmap;
-    ID m_localmap_center_nid = 0;
-
-    /** temporal variables for debugging display */
-    double m_best_align_score;
-    dg::Path m_evalMapPath;
-    int m_evalMapPathStartIdx;
-    std::vector<Point2> m_evalPoseHistory;
-
-    /**
-     * Evaluate if a given map pose is valid pose<br>
-     * A map pose is valid if a path to the map pose is aligned to the pose history better than the current path with large margin.
-     * @param map Map data
-     * @param path Current path
-     * @param pose_history Recent trajectory of robot pose (It can be a history of EKF localization result)
-     * @param map_pose A candidate map pose to be evaluated
-     * @param path_pose Pose when the robot is assumed on the current path
-     * @param path_idx Index of path node where the path_pose belongs to (in the current path)
-     * @param pose_eval_len Length of the pose history interval used in the path evaluation
-     * @param align_score Computed align score of a givien map pose (align_score = align_cost(path_pose,pose_history) - align_cost(map_pose, pose_history))
-     * @return Return True if successful
-     */
-    bool evaluateMapPose(dg::Map* map, const dg::Path& path, const RingBuffer<Pose2T>& pose_history, const Pose2& map_pose, const Pose2& path_pose, const int path_idx, int& pose_eval_len, double& align_score)
+    static Pose2 findNearestPathPose(const Path& path, const Pose2& pose, int& path_idx, double turn_weight = 0)
     {
-        // check if map pose is on the path
-        if (map == nullptr || map->isEmpty() || path_idx < 0) return false;
-        if (norm(map_pose - path_pose) <= m_error_tolerance) return false;
+        path_idx = -1;
+        if (path.empty()) return pose;
 
-        int npath = (int)path.pts.size();
-
-        // set evaluation path interval: [path_pose - m_eval_pathlen_backward, path_pose + m_eval_pathlen_forward]
-        int path_idx1 = path_idx;
-        double len_backward = norm(Point2(path.pts[path_idx]) - path_pose);
-        while (path_idx1 > 0 && len_backward < m_eval_pathlen_backward)
+        // Find the nearest path point
+        int min_path_idx = 0;
+        std::pair<double, Point2> min_dist2 = std::make_pair(DBL_MAX, Point2());
+        for (int i = 0; i < (int)path.pts.size() - 1; i++)
         {
-            path_idx1--;
-            len_backward += norm(path.pts[path_idx1] - path.pts[path_idx1 + 1]);
-        }
-        int path_idx2 = path_idx;
-        double len_forward = -norm(Point2(path.pts[path_idx]) - path_pose);
-        while (path_idx2 < npath - 1 && len_forward < m_eval_pathlen_forward)
-        {
-            path_idx2++;
-            len_forward += norm(path.pts[path_idx2 - 1] - path.pts[path_idx2]);
-        }
-
-        // expand path interval by one unit at both ends (to check path branching)
-        if (path_idx1 > 0) path_idx1--;
-        if (path_idx2 < npath - 1) path_idx2++;
-
-        // find local path from path_idx1 to the map_pose
-        dg::Path eval_path;
-        bool ok = map->getPath(path.pts[path_idx1], map_pose, eval_path);
-        if (!ok || eval_path.empty()) return false;
-
-        // check if the eval_path is valid (it should be branched in the evaluation interval)
-        int max_match_k = -1;
-        for (int k = 0; k < (int)eval_path.pts.size(); k++)
-        {
-            if (path_idx1 + k > path_idx2) break;
-            if (eval_path.pts[k].node_id != path.pts[path_idx1 + k].node_id) break;
-            max_match_k = k;
-        }
-        bool path_valid = (path_idx1 == 0 && max_match_k == 0 || max_match_k > 0 && path_idx1 + max_match_k < path_idx2);
-        if (!path_valid) return false;
-
-        // Set evaluation interval of path (path: current path, evalpath: newly searched path to map pose)
-        // - start_path_idx: original path에서의 evaluation start index
-        // - start_evalpath_idx: new path에서의 evaluation start index
-        int start_path_idx = path_idx1 + max_match_k;
-        if (start_path_idx < 0) start_path_idx = 0;
-        if (path_idx < start_path_idx) start_path_idx = path_idx; // extend eval interval so that it includes path_pose
-        int start_evalpath_idx = start_path_idx - path_idx1;
-        if (start_evalpath_idx < 0) start_evalpath_idx = 0;
-
-        // Determine evaluation interval of pose_history
-        // - find the latest point that belongs to the original path
-        // - 기존 path의 evaluation 시작점 edge segment와 가장 가까운 pose_history 점 선택
-        int pose_start_k = 0;
-        double d_min = DBL_MAX;
-        Point2 path_p = path.pts[start_path_idx];
-        for (int k = 0; k < pose_history.data_count(); k++)
-        {
-            Point2 pose_p = pose_history[k];
-            double d = norm(pose_p - path_p);
-            if (d < d_min)
+            auto dist2 = calcDist2FromLineSeg(path.pts[i], path.pts[i + 1], pose, turn_weight);
+            if (dist2.first < min_dist2.first)
             {
-                d_min = d;
-                pose_start_k = k;
+                min_dist2 = dist2;
+                min_path_idx = i;
             }
         }
 
-        // calc. pose_history - eval_map_path alignment score
-        double align_cost_path = 0;
-        double align_cost_map = 0;
-        align_cost_path = computeAlignCost(path, start_path_idx, path_idx, path_pose, pose_history, pose_start_k);
-        align_cost_map = computeAlignCost(eval_path, start_evalpath_idx, (int)eval_path.pts.size() - 1, map_pose, pose_history, pose_start_k);
-
-        pose_eval_len = pose_history.data_count() - pose_start_k;
-        align_score = align_cost_path - align_cost_map;
-
-        // save current evaluation set for debugging display
-        if (m_enable_debugging_display && pose_eval_len >= m_min_eval_historylen && align_score > m_best_align_score)
+        // Set the pose to nearest path pose
+        Pose2 path_pose = pose;
+        if (min_path_idx < (int)path.pts.size() - 1)
         {
-            m_evalMapPath = eval_path;
-            m_evalMapPathStartIdx = start_evalpath_idx;
-            m_evalPoseHistory.resize(pose_eval_len);
-            int k = 0;
-            for (int i = pose_start_k; i < pose_history.data_count(); i++, k++)
-            {
-                m_evalPoseHistory[k] = pose_history[i];
-            }
-            m_best_align_score = align_score;
+            path_pose.x = min_dist2.second.x;
+            path_pose.y = min_dist2.second.y;
+            double dx = path.pts[min_path_idx + 1].x - path.pts[min_path_idx].x;
+            double dy = path.pts[min_path_idx + 1].y - path.pts[min_path_idx].y;
+            path_pose.theta = cx::trimRad(atan2(dy, dx));
         }
+        path_idx = min_path_idx;
 
-        return true;
+        return path_pose;
     }
 
-    /**
-     * Compute align cost between a path interval and a pose history
-     * @param path Path to evaluate
-     * @param path_idx1 Starting index of evaluation path interval
-     * @param path_idx2 Ending index of evaluation path interval
-     * @param projected_path_pose Projected pose on the evaluation path
-     * @param pose_history Recent trajectory of robot pose
-     * @param pose_idx1 Index of starting point of evaluation gps interval
-     * @param pose_idx2 Index of ending point of evaluation gps interval
-     * @return Computed align cost
-     */
-    double computeAlignCost(const dg::Path& path, int path_idx1, int path_idx2, const Pose2& projected_path_pose, const RingBuffer<Pose2T>& pose_history, int pose_idx1 = 0, int pose_idx2 = -1)
+    void reset()
+    {
+        m_localmap.removeAll();
+        m_localmap_center_nid = 0;
+        m_evalMapPath.clear();
+        m_evalPoseHistory.clear();
+    }
+
+    std::vector<Point2>& getEvalPath() { return m_evalMapPath; }
+
+    std::vector<Point2>& getEvalPoseHistory() { return m_evalPoseHistory; }
+
+protected:
+    double computeAlignCost(dg::Map* map, const dg::Path& path, int path_idx1, int path_idx2, const Pose2& projected_path_pose, const RingBuffer<Pose2LR>& pose_history, int pose_idx1, int pose_idx2, int& n_lr_match, int& n_lr_mismatch, std::vector<Point2>& eval_path_points)
     {
         if (pose_idx2 < 0) pose_idx2 = pose_history.data_count() - 1;
         if (pose_idx1 < 0) pose_idx1 = 0;
@@ -513,8 +541,29 @@ protected:
             }
             double target_edge_len = target_path_len - path_len_upto;
             Point2 path_point = (edge_len > 0 && path_points_idx < (int)path_node_points.size() - 1) ? path_node_points[path_points_idx] + (path_node_points[path_points_idx + 1] - path_node_points[path_points_idx]) * target_edge_len / edge_len : path_node_points[path_points_idx];
+            eval_path_points.push_back(path_point);
 
+            // distance cost
             align_cost += norm(pose_history[k] - path_point);
+
+            // lr cost
+            Edge* edge = map->getEdge(path.pts[path_points_idx].edge_id);
+            if (pose_history[k].lr_side != Edge::LR_NONE && edge && edge->lr_side != Edge::LR_NONE)
+            {
+                bool lr_mismatch = false;
+                if (edge->node_id1 == path.pts[path_points_idx].node_id && edge->lr_side != pose_history[k].lr_side) lr_mismatch = true;
+                if (edge->node_id2 == path.pts[path_points_idx].node_id && edge->lr_side == pose_history[k].lr_side) lr_mismatch = true;
+                if (lr_mismatch)
+                {
+                    align_cost += m_lr_mismatch_cost;
+                    n_lr_mismatch++;
+                }
+                else
+                {
+                    align_cost -= m_lr_mismatch_cost;
+                    n_lr_match++;
+                }
+            }
         }
         double average_align_cost = align_cost / (pose_idx2 - pose_idx1 + 1);
         double length_cost = fabs(path_len_total - pose_len_total);
@@ -522,38 +571,13 @@ protected:
         return (average_align_cost + m_length_align_weight * length_cost);
     }
 
-    static Pose2 findNearestPathPose(const Path& path, const Pose2& pose, int& path_idx, double turn_weight = 0)
-    {
-        path_idx = -1;
-        if (path.empty()) return pose;
+    // cache memory for speeding up the process
+    Map m_localmap;
+    ID m_localmap_center_nid = 0;
 
-        // Find the nearest path point
-        int min_path_idx = 0;
-        std::pair<double, Point2> min_dist2 = std::make_pair(DBL_MAX, Point2());
-        for (int i = 0; i < (int)path.pts.size() - 1; i++)
-        {
-            auto dist2 = calcDist2FromLineSeg(path.pts[i], path.pts[i + 1], pose, turn_weight);
-            if (dist2.first < min_dist2.first)
-            {
-                min_dist2 = dist2;
-                min_path_idx = i;
-            }
-        }
-
-        // Set the pose to nearest path pose
-        Pose2 path_pose = pose;
-        if (min_path_idx < (int)path.pts.size() - 1)
-        {
-            path_pose.x = min_dist2.second.x;
-            path_pose.y = min_dist2.second.y;
-            double dx = path.pts[min_path_idx + 1].x - path.pts[min_path_idx].x;
-            double dy = path.pts[min_path_idx + 1].y - path.pts[min_path_idx].y;
-            path_pose.theta = cx::trimRad(atan2(dy, dx));
-        }
-        path_idx = min_path_idx;
-
-        return path_pose;
-    }
+    /** temporal variables for debugging display */
+    std::vector<Point2> m_evalMapPath;
+    std::vector<Point2> m_evalPoseHistory;
 
 }; // End of 'PathProjector'
 

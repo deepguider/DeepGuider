@@ -368,9 +368,16 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("search_turn_weight", 100);
     m_localizer.setParamValue("track_near_radius", 20);
     m_localizer.setParamValue("enable_path_projection", true);
-    m_localizer.setParamValue("enable_map_projection", false);
+    m_localizer.setParamValue("enable_map_projection", true);
     m_localizer.setParamValue("enable_backtracking_ekf", true);
     m_localizer.setParamValue("enable_gps_smoothing)", true);
+    m_localizer.setParamValue("enable_debugging_display", false);
+    m_localizer.setParamValue("lr_mismatch_cost", 50);
+    m_localizer.setParamValue("enable_lr_reject", false);
+    m_localizer.setParamValue("lr_reject_cost", 20);             // 20
+    m_localizer.setParamValue("enable_discontinuity_cost", true);
+    m_localizer.setParamValue("discontinuity_weight", 0.5);      // 0.5
+
     printf("\tLocalizer initialized!\n");
 
     // initialize guidance
