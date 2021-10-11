@@ -48,9 +48,11 @@ sed -i "s|/home/dgtest/deepguider|$DGDIR|g" $ROSDIR/dg_ros.yml
 ## Copy example shell scripts to ROS workspace
 cp $DGDIR/examples/dg_simple_ros/dg_run.sh $ROSDIR/
 cp $DGDIR/examples/dg_simple_ros/dg_databag.sh $ROSDIR/
+cp $DGDIR/examples/dg_simple_ros/dg_cart_sensor_install.sh $ROSDIR/
 cp $DGDIR/examples/dg_simple_ros/dg_cart_sensor_run.sh $ROSDIR/
 chmod a+x $ROSDIR/dg_run.sh
 chmod a+x $ROSDIR/dg_databag.sh
+chmod a+x $ROSDIR/dg_cart_sensor_install.sh
 chmod a+x $ROSDIR/dg_cart_sensor_run.sh
 
 echo "Run:"
