@@ -795,6 +795,13 @@ void MapEditor::verify()
     std::string msg;
     for (auto node = m_map.getHeadNode(); node != m_map.getTailNode(); node++)
     {
+        dg::Node* self = m_map.getNode(node->id);
+        if (self == nullptr || self->id != node->id)
+        {
+            m_error_nodes.push_back(&(*node));
+            if(self) msg += cv::format("node %zd: mismatch to getNode\n", node->id);
+            else msg += cv::format("node %zd: nullptr returned at getNode\n", node->id);
+        }
         for (auto it = node->edge_ids.begin(); it != node->edge_ids.end(); it++)
         {
             dg::Edge* edge = m_map.getEdge(*it);
@@ -924,7 +931,7 @@ void MapEditor::updateLRSide()
 
 void MapEditor::computeLRSide(dg::Map& map)
 {
-    map.addEdgeLR();
+    map.updateEdgeLR();
 }
 
 

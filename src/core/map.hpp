@@ -1465,16 +1465,22 @@ public:
         cur_edge->lr_side = lr_side;
     }
 
-    void addEdgeLR()
+    void updateEdgeLR()
     {
-        //lrpose
+        // reset lrpose
+        for (auto e = getHeadEdge(); e != getTailEdge(); e++)
+        {
+            e->lr_side = Edge::LR_NONE;
+        }
+
+        // compute lrpose
         std::vector<ID> finished_edges;
         for (auto e = getHeadEdgeConst(); e != getTailEdgeConst(); e++)
         {
             if (e->type == Edge::EDGE_CROSSWALK)
             {
                 ID cross_edge1_id = e->id;
-                Node * node1, * node2, * node3;
+                Node * node1 = nullptr, * node2 = nullptr, * node3 = nullptr;
                 for (int i = 0; i < 2; i++)
                 {
                     //searching the other node of the crosswalk
@@ -1488,6 +1494,9 @@ public:
                         node1 = getNode(e->node_id1);
                         node2 = getNode(e->node_id2);
                     }
+                    if (node1 == nullptr || node2 == nullptr) continue;
+                    Node* node1_original = node1;
+                    Node* node2_original = node2;
 
                     ID node3_id;
                     Edge* edge1, * edge2;
@@ -1497,6 +1506,9 @@ public:
                     std::vector<ID> cross_conn_edges = node2->edge_ids;
                     for (std::vector<ID>::iterator side1id = cross_conn_edges.begin(); side1id != cross_conn_edges.end(); side1id++)
                     {
+                        node1 = node1_original;
+                        node2 = node2_original;
+
                         if (*side1id != cross_edge1_id)
                         {
                             //get second edge
