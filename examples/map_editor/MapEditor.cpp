@@ -609,7 +609,7 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                         cv::Mat sv_image;
                         dg::MapManager::getStreetViewImage(sv->id, sv_image);
                         if (!sv_image.empty()) cv::namedWindow("streetview", cv::WINDOW_NORMAL);
-                        if (!sv_image.empty()) cv::setWindowProperty("streetview", cv::WND_PROP_TOPMOST, 1);
+                        if (!sv_image.empty()) cv::setWindowProperty("streetview", 5, 1); // cv::WND_PROP_TOPMOST = 5
                         if (!sv_image.empty()) cv::imshow("streetview", sv_image);
                     }
                     std::string str_id = cv::format("ID: %zu", sv->id);
@@ -619,7 +619,7 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                     cv::putText(sv_front, str_heading.c_str(), cv::Point(10, 80), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 255), 5);
                     cv::putText(sv_front, str_heading.c_str(), cv::Point(10, 80), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
                     cv::namedWindow("streetview_front", cv::WINDOW_NORMAL);
-                    cv::setWindowProperty("streetview_front", cv::WND_PROP_TOPMOST, 1);
+                    cv::setWindowProperty("streetview_front", 5, 1); // cv::WND_PROP_TOPMOST = 5
                     cv::imshow("streetview_front", sv_front);
                     int key = cv::waitKey(1);
                 }
