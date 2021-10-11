@@ -59,9 +59,11 @@ protected:
     ros::Publisher pub_guide;
     ros::Publisher pub_path;
     ros::Publisher pub_pose;
+    ros::Publisher pub_subgoal;
     void publishGuidance();
     void publishPath();
     void publishDGPose();
+    void publishSubGoal();
 
     // A node handler
     ros::NodeHandle& nh_dg;
@@ -172,6 +174,7 @@ bool DeepGuiderROS::initialize(std::string config_file)
     pub_guide = nh_dg.advertise<dg_simple_ros::guidance>("dg_guide", 1, true);
     pub_path = nh_dg.advertise<nav_msgs::Path>("dg_path", 1, true);
     pub_pose = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_pose_utm", 1, true);
+    pub_subgoal = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_goal_utm", 1, true);
 
     return true;
 }
@@ -223,6 +226,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     publishGuidance();
     publishPath();
     publishDGPose();
+    publishSubGoal();
     
     // draw GUI display
     cv::Mat gui_image;
@@ -466,13 +470,38 @@ void DeepGuiderROS::publishGuidance()
 void DeepGuiderROS::publishDGPose()
 {
     geometry_msgs::PoseStamped rosps;
-    dg::Point2UTM cur_pose = m_localizer.getPoseUTM();
+    dg::Timestamp  cur_time;
+    dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&cur_time);
+    rosps.header.stamp.fromSec(cur_time);
     rosps.pose.position.x = cur_pose.x;
-    rosps.pose.position.y = cur_pose.y;
-    
+    rosps.pose.position.y = cur_pose.y;    
     //printf("cur_pose.x: %f, cur_pose.y: %f\n", cur_pose.x, cur_pose.y);
-
+    //printf("cur_pose.t: %f\n", cur_time);
     pub_pose.publish(rosps);    
+}
+
+void DeepGuiderROS::publishSubGoal()
+{
+    GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
+    ID nid = cur_guide.heading_node_id;
+    Map* map = getMapLocked();
+    Node* hNode = map->getNode(nid);
+    printf("ID: %zd\n",nid); 
+
+    geometry_msgs::PoseStamped rosps;
+    if (hNode!=nullptr)
+    {
+        Pose2 metric = Pose2(hNode->x, hNode->y); 
+        dg::Point2UTM node_utm = cvtLatLon2UTM(toLatLon(metric));
+        printf("node_utm.x: %f, node_utm.y: %f\n", node_utm.x, node_utm.y); 
+
+        geometry_msgs::PoseStamped rosps;
+        rosps.pose.position.x = node_utm.x;
+        rosps.pose.position.y = node_utm.y;
+        rosps.pose.position.z = nid;
+       
+        pub_subgoal.publish(rosps);  
+    }   
 }
 
 void DeepGuiderROS::publishPath()

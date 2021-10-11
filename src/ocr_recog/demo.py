@@ -11,6 +11,7 @@ import numpy as np
 from craft.Detection_txt import Detection_txt
 import cv2
 from PIL import ImageFont,Image,ImageDraw
+from ipdb import set_trace as bp
 
 def saveResult(img, boxes, pred_list, dirname, res_imagefileName):
     img = np.array(img)
@@ -52,7 +53,8 @@ def saveResult(img, boxes, pred_list, dirname, res_imagefileName):
 #per image
 def detect_ocr(config, image, timestamp, save_img):
     
-    basename = os.path.basename(image)
+    if save_img:
+        basename = os.path.basename(image)
     detection_list, img, boxes = Detection_txt(config,image,config.net)
 
     # print(detection_list)
