@@ -204,17 +204,31 @@ public:
             dg::ID node_id = path->pts[idx].node_id;
             const Node* node = map->getNode(node_id);
             if (node) {
-                if (node_prev) drawEdge(image, *node_prev, *node, 0, ecolor, ethickness, offset, zoom);
                 if (node_prev)
                 {
+                    drawEdge(image, *node_prev, *node, 0, ecolor, ethickness, offset, zoom);
                     int rdelta = (node_prev->type == Node::NODE_JUNCTION) ? 1 : 0;
                     drawNode(image, *node_prev, nradius + rdelta, 0, ncolor, offset, zoom);
                     if (node_prev->type == Node::NODE_JUNCTION) drawNode(image, *node_prev, nradius - 1, 0, ncolor / 3, offset, zoom);
+                }
+                else if (idx > 0)
+                {
+                    drawEdge(image, path->pts[idx - 1], path->pts[idx], 0, ecolor / 3, ethickness, offset, zoom);
                 }
                 int rdelta = (node->type == Node::NODE_JUNCTION) ? 1 : 0;
                 drawNode(image, *node, nradius + rdelta, 0, ncolor, offset, zoom);
                 if (node->type == Node::NODE_JUNCTION) drawNode(image, *node, nradius - 1, 0, ncolor / 3, offset, zoom);
                 node_prev = node;
+            }
+            else if(node_prev)
+            {
+                drawEdge(image, *node_prev, path->pts[idx], 0, ecolor/3, ethickness, offset, zoom);
+                int rdelta = (node_prev->type == Node::NODE_JUNCTION) ? 1 : 0;
+                drawNode(image, *node_prev, nradius + rdelta, 0, ncolor, offset, zoom);
+                if (node_prev->type == Node::NODE_JUNCTION) drawNode(image, *node_prev, nradius - 1, 0, ncolor / 3, offset, zoom);
+
+                drawPoint(image, path->pts[idx], nradius + 1, ncolor, offset, zoom);
+                drawPoint(image, path->pts[idx], nradius - 1, cx::COLOR_RED, offset, zoom);
             }
         }
         return true;

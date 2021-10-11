@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 import numpy as np 
 # import tensorflow as tf
-from ov_utils.myutils import make_mask, template_matching, get_surfacenormal, get_bbox, get_depth, get_img
+# from ov_utils.myutils import make_mask, template_matching, get_surfacenormal, get_bbox, get_depth, get_img
 from ov_utils.config import normal_vector
-import ov_utils.file_utils as file_utils
-#import eVM_utils.utils as eVM_utils
-import eVM_utils.augmentations as eVM_utils
+# import ov_utils.file_utils as file_utils
+import eVM_utils.utils as eVM_utils
 from eVM_utils.eVM_model import CNN, encodeVisualMemory, encodeVisualMemoryRelatedPath
 from recovery_policy import Recovery
 import torch
@@ -16,7 +15,11 @@ import os
 import joblib
 import cv2
 from PIL import Image
-import ov_utils.file_utils as file_utils
+
+from ove_policy import ImageNavHFNetPolicyQ, HFNet
+from torchvision import transforms
+from pathlib import Path
+import copy
 
 """
 Active Navigation Module:
@@ -29,7 +32,7 @@ Yunho Choi, Obin Kwon, Nuri Kim, Hwiyeon Yoo
 
 class ActiveNavigationModule():
     """Active Navigation Module"""
-    def __init__(self, args):
+    def __init__(self, path_direction='homing', cuda=True):
         # map_manager = MapManager()
         # self.map = map_manager.getMap()
         # self.args = args
@@ -43,15 +46,20 @@ class ActiveNavigationModule():
         self.vis_mem = []
         self.feats_along_path = []
         self.rel_pose = None
-        self.path_direction = args.path_direction
-        self.cuda = args.cuda
+        self.path_direction = path_direction
+        self.cuda = cuda
         self.encode_im = CNN(self.feature_dim, self.img_size)
         if self.path_direction=='following':
             self.vis_mem_encoder = encodeVisualMemory(self.action_dim, self.memory_dim, self.feature_dim)
         if self.path_direction=='homing':
             self.vis_mem_encoder = encodeVisualMemoryRelatedPath(self.action_dim, self.memory_dim, self.feature_dim)
         self.vis_mem_encoder_model = './data_exp/model/{}/best.pth'.format(self.path_direction)
-        
+        self.ove_policy = ImageNavHFNetPolicyQ()
+        self.ove_policy_model = './data_exp/model/periodic_500000.q_net'
+        self.ove_extractor_model = './data_exp/model/hfnet'
+        self.num_keypoints = 48
+        self.outputs = ['global_descriptor', 'keypoints', 'local_descriptors', 'scores','local_descriptor_map' ]
+                
         self.enable_recovery = False
         self.recovery_policy = Recovery(self.action_dim, self.memory_dim, self.feature_dim, self.GRU_size)
         self.recovery_guidance = None
@@ -72,16 +80,16 @@ class ActiveNavigationModule():
         self.rotation_list = []
         for quat in rotation_quat:
             self.rotation_list.append(2*np.arctan2(np.linalg.norm(quat[1:]), quat[0]))
-        if self.enable_ove:
-            self.ove_data_folder = './data_exp/optimal_viewpoint/'
-            image_list, sf_list, bbox_list, depth_list = file_utils.get_files(self.ove_data_folder)
-            self.im_paths, self.target_pois = file_utils.get_annos(self.ove_data_folder + 'anno/')
+        # if self.enable_ove:
+        #     self.ove_data_folder = './data_exp/optimal_viewpoint/'
+        #     image_list, sf_list, bbox_list, depth_list = file_utils.get_files(self.ove_data_folder)
+        #     self.im_paths, self.target_pois = file_utils.get_annos(self.ove_data_folder + 'anno/')
 
-        self.initialize()
+        # self.initialize()
 
     def initialize(self):
         try:
-            model_dict = torch.load(self.vis_mem_encoder_model)
+            model_dict = torch.load(self.vis_mem_encoder_model, map_location='cpu')
             im_encoder_model_dict = {}
             vis_mem_encoder_model_dict = {}
             recovery_policy_model_dict = {}
@@ -96,6 +104,18 @@ class ActiveNavigationModule():
             self.encode_im.load_state_dict(im_encoder_model_dict)
             self.vis_mem_encoder.load_state_dict(vis_mem_encoder_model_dict)
             self.recovery_policy.load_state_dict(recovery_policy_model_dict)
+            # self.encode_im.cuda()
+            # self.vis_mem_encoder.cuda()
+            # self.recovery_policy.cuda()
+            self.encode_im.eval()
+            self.vis_mem_encoder.eval()
+            self.recovery_policy.eval()
+
+            ove_policy_state_dict = torch.load(self.ove_policy_model, map_location='cpu')
+            self.ove_policy.load_state_dict(ove_policy_state_dict)
+            self.ove_policy.eval()
+            self.ove_extractor = HFNet(self.ove_extractor_model, self.outputs)
+            print("load pretrained encodeVisualMemory model")
         except:
             print("Cannot load pretrained encodeVisualMemory model")
             pass
@@ -124,11 +144,12 @@ class ActiveNavigationModule():
             onehot_test_act = np.zeros(self.action_dim)
             onehot_test_act[test_act] = 1
             tensor_action = torch.tensor(onehot_test_act, dtype=torch.float32)
-            tensor_img = torch.tensor(eVM_utils.img_transform(img)).unsqueeze(0)
+            tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
             if self.cuda:
                 tensor_img = tensor_img.cuda()
                 tensor_action = tensor_action.cuda()
-            feat = self.encode_im(tensor_img)
+            with torch.no_grad():
+                feat = self.encode_im(tensor_img)
             self.list2encode.append([feat, tensor_action])
 
         else:
@@ -140,12 +161,14 @@ class ActiveNavigationModule():
             elif exp_active is False:
                 action = np.zeros(self.action_dim)
                 action[guidance-1] = 1
-                tensor_img = torch.tensor(eVM_utils.img_transform(img)).unsqueeze(0)
+                tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
                 tensor_action = torch.tensor(action, dtype=torch.float32)
                 if self.cuda:
                     tensor_action = tensor_action.cuda()
                     tensor_img = tensor_img.cuda()
-                feat = self.encode_im(tensor_img)
+
+                with torch.no_grad():
+                    feat = self.encode_im(tensor_img.cuda())
                 self.list2encode.append([feat, tensor_action])
 
         self.path_length = len(self.list2encode)
@@ -174,10 +197,11 @@ class ActiveNavigationModule():
                 print('Nothing to encode or calculate because there was no input at all')
                 raise Exception
             # encode the input image            
-            tensor_img = torch.tensor(eVM_utils.img_transform(img)).unsqueeze(0)
+            tensor_img = eVM_utils.img_transform(img).unsqueeze(0)
             if self.cuda:
                 tensor_img = tensor_img.cuda()
-            img_feature = self.encode_im(tensor_img)
+            with torch.no_grad():
+                img_feature = self.encode_im(tensor_img)
             #_, img_feature = self.vis_mem_encoder(tensor_img, tensor_action)
 
             if len(self.vis_mem) == 0:
@@ -206,7 +230,9 @@ class ActiveNavigationModule():
                     rotations = rotations.cuda().float()
 
                 rel_pos = torch.unsqueeze(positions, 0) - torch.unsqueeze(positions, 1)
-                rel_pos_dist = torch.norm(rel_pos, dim=-1)  
+                rel_pos_dist = torch.norm(rel_pos, dim=-1)
+
+                print(rel_pos.shape, rotations.shape)
                 rel_pos_theta = torch.atan2(rel_pos[...,1], rel_pos[...,0]) - rotations.repeat(1,self.path_length)
                 rel_pos_theta_cos = torch.cos(rel_pos_theta)
                 rel_pos_theta_sin = torch.sin(rel_pos_theta)
@@ -223,7 +249,8 @@ class ActiveNavigationModule():
                     vis_mem_seg, _ = self.vis_mem_encoder(self.list2encode[ts][1], [self.list2encode[t][0] for t in range(self.path_length)], self.rel_pose[ts,...])
                     self.vis_mem.append(vis_mem_seg)
 
-            action = self.recovery_policy(self.vis_mem, img_feature)
+            with torch.no_grad():
+                action = self.recovery_policy(self.vis_mem, img_feature)
             self.recovery_guidance = action
         """
         if info is False:
@@ -293,120 +320,164 @@ class ActiveNavigationModule():
     #     else:
     #         self.enable_ove = False
 
-    def calcOptimalViewpointGuidance(self, img_path, target_poi):
+    # def calcOptimalViewpointGuidance(self, img_path, target_poi):
+    #     """
+    #     Optimal Viewpoint Guidance Provider Submodule:
+    #     A module that provides an optimal viewpoint guidance for enhancing POI detection.
+    #     Input:
+    #     - img: current image input
+    #     - target_poi: target PoI (searching object)
+    #     Output:
+    #     - Action(s) guides to find an optimal viewpoint
+    #     """
+
+    #     if self.enable_ove:
+    #         self.ov_guidance = self.optimal_viewpoint(img_path, target_poi)
+
+    def calcOptimalViewpointGuidance(self, obs_rgb, targ_rgb):
         """
         Optimal Viewpoint Guidance Provider Submodule:
         A module that provides an optimal viewpoint guidance for enhancing POI detection.
         Input:
-        - img: current image input
-        - target_poi: target PoI (searching object)
+        - obs_rgb, targ_rgb: current and target image input, PIL Image
         Output:
         - Action(s) guides to find an optimal viewpoint
         """
+        print(obs_rgb.size, targ_rgb.size)
+        # Crop center
+        obs_crop_size = min(obs_rgb.size)
+        obs_crop = transforms.CenterCrop(obs_crop_size)
+        obs_rgb = obs_crop(obs_rgb).resize((256,256))
 
-        if self.enable_ove:
-            self.ov_guidance = self.optimal_viewpoint(img_path, target_poi)
+        targ_crop_size = min(targ_rgb.size)
+        targ_crop = transforms.CenterCrop(targ_crop_size)
+        targ_rgb = targ_crop(targ_rgb).resize((256,256))
 
-    def optimal_viewpoint(self, file_path=None, target_poi=None):
-        if file_path and target_poi is None:
-            file_path, target_poi = self.im_paths[0], self.target_pois[0]
-        heading1 = D1 = heading2 = 0
-        templates, main_template, opt_ratio = file_utils.get_templates(self.ove_data_folder, targetPOI=target_poi)
-        img = get_img(self.ove_data_folder, file_path)
-        depth_ = get_depth(self.ove_data_folder, file_path)
-        bbox = get_bbox(self.ove_data_folder, file_path)
-        h, w, _ = img.shape
+        observation={}
+        observation["targ_rgb"] = np.asarray(targ_rgb)
+        pred_targ = self.ove_extractor.inference(observation["targ_rgb"], num_keypoints=self.num_keypoints)
+        observation["targ_desc_glob"], observation["targ_desc"], observation["targ_det"], observation["targ_score"] = \
+            torch.tensor(pred_targ['global_descriptor'][None]), torch.tensor(pred_targ['local_descriptors'][None]), \
+            torch.tensor(pred_targ['keypoints'].astype(np.float32)[None]), torch.tensor(pred_targ['scores'][None])
+        observation["rgb"]= np.asarray(obs_rgb)
+        pred_obs = self.ove_extractor.inference(observation["rgb"], num_keypoints=self.num_keypoints)
+        observation["obs_desc_glob"], observation["obs_desc"], observation["obs_det"], observation["obs_score"] = \
+                torch.tensor(pred_obs['global_descriptor'][None]), torch.tensor(pred_obs['local_descriptors'][None]), \
+                torch.tensor(pred_obs['keypoints'].astype(np.float32)[None]), torch.tensor(pred_obs['scores'][None])
+        observation["rgb"]= torch.tensor(np.asarray(obs_rgb)[None])
 
-        if len(bbox) > 0:
-            bbs = []
-            for bb in bbox:
-                bbs.append(bb.rstrip().split(','))
-            bbs = np.stack([np.float32(bbs[i]) for i in range(len(bbs))])
-            bbs = np.reshape(bbs, [-1, 4, 2])
-            bbs = bbs.astype(np.int32)
+        logit = self.ove_policy.act(observation)
+        ind = logit.argmax().numpy()
+        if ind == 0:
+            action = "Move forward 0.25m"
+            self.ov_guidance = [0., 0.25, 0.]
+        elif ind == 1:
+            action = "Turn left 10 degree"
+            self.ov_guidance = [-10., 0., 0.]
+        else:
+            action = "Turn right 10 degree"
+            self.ov_guidance = [10., 0., 0.]  
 
-            # Find the bounding box for the target POI
-            template_matched, bbox, index, _ = template_matching(img, bbs, templates, main_template)
-            bbox = np.reshape(bbox, [-1, 4, 2])
-            mask = make_mask(bbox, shape=[h, w])
-            if np.sum(mask) > 0 and template_matched:
-                depth = depth_[mask == 1]
-                center_depth = np.mean(depth_[110:140, 235:265], (0,1))
+    # def optimal_viewpoint(self, file_path=None, target_poi=None):
+    #     if file_path and target_poi is None:
+    #         file_path, target_poi = self.im_paths[0], self.target_pois[0]
+    #     heading1 = D1 = heading2 = 0
+    #     templates, main_template, opt_ratio = file_utils.get_templates(self.ove_data_folder, targetPOI=target_poi)
+    #     img = get_img(self.ove_data_folder, file_path)
+    #     depth_ = get_depth(self.ove_data_folder, file_path)
+    #     bbox = get_bbox(self.ove_data_folder, file_path)
+    #     h, w, _ = img.shape
 
-                if np.mean(depth) <= 0.01 and len(bbs) > 1:
-                    indices = list(np.arange(len(bbs)))
-                    indices.pop(index)
-                    bbs = bbs[indices]
-                    bbs = np.reshape(bbs, [-1, 4, 2])
-                    template_matched, bbox, _, _ = template_matching(img, bbs, templates, main_template)
-                    bbox = np.reshape(bbox, [-1, 4, 2])
-                    mask = make_mask(bbox, shape=[h, w])
-                    depth = depth_[mask == 1]
+    #     if len(bbox) > 0:
+    #         bbs = []
+    #         for bb in bbox:
+    #             bbs.append(bb.rstrip().split(','))
+    #         bbs = np.stack([np.float32(bbs[i]) for i in range(len(bbs))])
+    #         bbs = np.reshape(bbs, [-1, 4, 2])
+    #         bbs = bbs.astype(np.int32)
 
-                if np.mean(depth) <= 0.01:
-                    depth = depth + 0.01
+    #         # Find the bounding box for the target POI
+    #         template_matched, bbox, index, _ = template_matching(img, bbs, templates, main_template)
+    #         bbox = np.reshape(bbox, [-1, 4, 2])
+    #         mask = make_mask(bbox, shape=[h, w])
+    #         if np.sum(mask) > 0 and template_matched:
+    #             depth = depth_[mask == 1]
+    #             center_depth = np.mean(depth_[110:140, 235:265], (0,1))
 
-                if np.mean(center_depth) <= 0.01:
-                    center_depth += 0.01
+    #             if np.mean(depth) <= 0.01 and len(bbs) > 1:
+    #                 indices = list(np.arange(len(bbs)))
+    #                 indices.pop(index)
+    #                 bbs = bbs[indices]
+    #                 bbs = np.reshape(bbs, [-1, 4, 2])
+    #                 template_matched, bbox, _, _ = template_matching(img, bbs, templates, main_template)
+    #                 bbox = np.reshape(bbox, [-1, 4, 2])
+    #                 mask = make_mask(bbox, shape=[h, w])
+    #                 depth = depth_[mask == 1]
 
-                # TODO: Estimate the exact distance
-                D = np.mean(depth) * 19.2  # d1
-                center_D = np.mean(center_depth) * 19.2  # d2
+    #             if np.mean(depth) <= 0.01:
+    #                 depth = depth + 0.01
 
-                # Decide the amount of the movement using depth
-                ratio = (abs(bbox[0, 3, 1] - bbox[0, 0, 1]) + abs(bbox[0, 1, 1] - bbox[0, 2, 1])) / 2 / h
+    #             if np.mean(center_depth) <= 0.01:
+    #                 center_depth += 0.01
 
-                # Decide the moving direction
-                sf = get_surfacenormal(self.ove_data_folder, file_path)
-                sf_norm = np.mean(sf[mask == 1], 0)
-                sf_norm = sf_norm * 2 - 1
-                sf_norm = sf_norm / np.linalg.norm(sf_norm, 2)
+    #             # TODO: Estimate the exact distance
+    #             D = np.mean(depth) * 19.2  # d1
+    #             center_D = np.mean(center_depth) * 19.2  # d2
 
-                POI_centloc = ("left", "right")[(bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 > w / 2] #Left: Logos on the left from center, Right: Logos on the right from center
+    #             # Decide the amount of the movement using depth
+    #             ratio = (abs(bbox[0, 3, 1] - bbox[0, 0, 1]) + abs(bbox[0, 1, 1] - bbox[0, 2, 1])) / 2 / h
 
-                # Rotate the agent until the POI is locate on the center
-                center_sf_norm = np.mean(sf[110:140, 235:265], (0, 1))
-                center_sf_norm = center_sf_norm * 2 - 1
-                center_sf_norm = center_sf_norm / np.linalg.norm(center_sf_norm, 2)
+    #             # Decide the moving direction
+    #             sf = get_surfacenormal(self.ove_data_folder, file_path)
+    #             sf_norm = np.mean(sf[mask == 1], 0)
+    #             sf_norm = sf_norm * 2 - 1
+    #             sf_norm = sf_norm / np.linalg.norm(sf_norm, 2)
 
-                # Check that the bounding box is on the left or right buildings (not street or sky)
-                if abs(sf_norm[1]) < 0.8:
-                    center_poi_theta = np.arccos(np.dot(sf_norm, center_sf_norm))
+    #             POI_centloc = ("left", "right")[(bbox[0, 2, 0] + bbox[0, 0, 0]) / 2 > w / 2] #Left: Logos on the left from center, Right: Logos on the right from center
 
-                    # Align the POI and the camera center
-                    heading = 180 / np.pi * center_poi_theta
-                    if POI_centloc == "left":
-                        heading = -heading
+    #             # Rotate the agent until the POI is locate on the center
+    #             center_sf_norm = np.mean(sf[110:140, 235:265], (0, 1))
+    #             center_sf_norm = center_sf_norm * 2 - 1
+    #             center_sf_norm = center_sf_norm / np.linalg.norm(center_sf_norm, 2)
 
-                    if abs(heading) > 15:
-                        return [0, 0, heading]
+    #             # Check that the bounding box is on the left or right buildings (not street or sky)
+    #             if abs(sf_norm[1]) < 0.8:
+    #                 center_poi_theta = np.arccos(np.dot(sf_norm, center_sf_norm))
 
-                theta_ = np.arccos(np.dot(center_sf_norm, normal_vector)) # center point
-                theta_tilde = np.arctan(D*np.tan(theta_)/np.abs(center_D-D))
-                cond = (center_D > D)
-                theta = (theta_ + theta_tilde - np.pi/2) if cond else (theta_ + np.pi/2 - theta_tilde)
-                D = D / np.sin(theta_tilde) # distance between the robot and signage, not depth of the signage
-                D0 = D * (1 - np.maximum(ratio / opt_ratio, 0.95))
-                thetad = np.arctan(((D - D0) * np.sin(theta)) / (D - (D - D0) * np.cos(theta)))
+    #                 # Align the POI and the camera center
+    #                 heading = 180 / np.pi * center_poi_theta
+    #                 if POI_centloc == "left":
+    #                     heading = -heading
 
-                #Rotate before going straight
-                if cond:
-                    heading1 = 180 / np.pi * (thetad - (np.pi/2 - theta_tilde)) 
-                    heading1 = (heading1, -heading1)[POI_centloc == "right"]
-                else:
-                    heading1 = 180 / np.pi * (thetad + (np.pi/2 - theta_tilde))
-                    heading1 = (-heading1, heading1)[POI_centloc == "right"]
-                D1 = ((D - D0)*np.sin(theta)/(np.sin(thetad)), D - D0)[thetad == 0] # Sine Law
+    #                 if abs(heading) > 15:
+    #                     return [0, 0, heading]
 
-                # Rotate to see the POI
-                if cond:
-                    heading2 = 180 / np.pi * (theta + thetad)
-                    heading2 = (-abs(heading2), abs(heading2))[POI_centloc == "right"]
-                else:
-                    heading2 = 180 / np.pi * (theta + thetad)
-                    heading2 = (abs(heading2), -abs(heading2))[POI_centloc == "right"]
+    #             theta_ = np.arccos(np.dot(center_sf_norm, normal_vector)) # center point
+    #             theta_tilde = np.arctan(D*np.tan(theta_)/np.abs(center_D-D))
+    #             cond = (center_D > D)
+    #             theta = (theta_ + theta_tilde - np.pi/2) if cond else (theta_ + np.pi/2 - theta_tilde)
+    #             D = D / np.sin(theta_tilde) # distance between the robot and signage, not depth of the signage
+    #             D0 = D * (1 - np.maximum(ratio / opt_ratio, 0.95))
+    #             thetad = np.arctan(((D - D0) * np.sin(theta)) / (D - (D - D0) * np.cos(theta)))
 
-        return [heading1, D1, heading2]
+    #             #Rotate before going straight
+    #             if cond:
+    #                 heading1 = 180 / np.pi * (thetad - (np.pi/2 - theta_tilde)) 
+    #                 heading1 = (heading1, -heading1)[POI_centloc == "right"]
+    #             else:
+    #                 heading1 = 180 / np.pi * (thetad + (np.pi/2 - theta_tilde))
+    #                 heading1 = (-heading1, heading1)[POI_centloc == "right"]
+    #             D1 = ((D - D0)*np.sin(theta)/(np.sin(thetad)), D - D0)[thetad == 0] # Sine Law
+
+    #             # Rotate to see the POI
+    #             if cond:
+    #                 heading2 = 180 / np.pi * (theta + thetad)
+    #                 heading2 = (-abs(heading2), abs(heading2))[POI_centloc == "right"]
+    #             else:
+    #                 heading2 = 180 / np.pi * (theta + thetad)
+    #                 heading2 = (abs(heading2), -abs(heading2))[POI_centloc == "right"]
+
+    #     return [heading1, D1, heading2]
 
     def getVisualMemory(self):
         return self.vis_mem
@@ -420,14 +491,27 @@ class ActiveNavigationModule():
     def isOptimalViewpointGuidanceEnabled(self):
         return self.enable_ove
 
-    def getExplorationGuidance(self, img, guidance, flush, exp_active, im_path=None, target_poi=None):
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    def getExplorationGuidance(self, img, guidance, flush, exp_active, ove, im_path=None, target_poi=None):
+        # import pdb
+        # pdb.set_trace()
+        # print(flush, exp_active, guidance)
+        img_orig = copy.deepcopy(img)#cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        curr_img_orig = Image.fromarray(img_orig)
+        img = cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), (256,256))
         curr_img = Image.fromarray(img)
+        # curr_img = np.array(curr_img)
+        # curr_img = torch.from_numpy(curr_img).cuda().float()
+        # print(curr_img.shape)
         self.encodeVisualMemory(curr_img, guidance, flush=flush, exp_active=exp_active)
-
+        
         if exp_active is True:
-            if self.isOptimalViewpointGuidanceEnabled() and target_poi is not None:
-                    self.calcOptimalViewpointGuidance(im_path, target_poi)
+            if self.isOptimalViewpointGuidanceEnabled() and ove:
+                if os.path.isfile('./data_exp/optimal_viewpoint/target_poi.jpg'):
+                    target_poi = Image.open('./data_exp/optimal_viewpoint/target_poi.jpg')
+                if target_poi is None:
+                    return [[0., 0., 0.]], 'OptimalViewpoint'
+                else:
+                    self.calcOptimalViewpointGuidance(curr_img_orig, target_poi) # (im_path, target_poi)
                     guidance = self.ov_guidance
                     print("Optimal Guidance [theta1, d, theta2]: [%.2f degree, %.2fm, %.2f degree]" % (guidance[0], guidance[1], guidance[2]))
                     return [guidance], 'OptimalViewpoint'

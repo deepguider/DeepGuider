@@ -513,7 +513,7 @@ public:
         size_t node_idx = nodes.size();
         auto result = lookup_nodes.insert(std::make_pair(node.id, node_idx));
         if (!result.second) return false;
-        nodes.push_back(node);
+        nodes.push_back(Node(node.id, node.x, node.y, node.type, node.floor));
         m_router_valid = false;
         m_map_rect_valid = false;
         return true;
@@ -788,7 +788,6 @@ public:
      */
     Edge* getEdge(ID id)
     {
-        assert(edges.size() == lookup_edges.size() && lookup_edges.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_edges.find(id);
         if (found == lookup_edges.end()) return nullptr;
         return &edges[found->second];
@@ -801,7 +800,6 @@ public:
      */
     const Edge* getEdge(ID id) const
     {
-        assert(edges.size() == lookup_edges.size() && lookup_edges.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_edges.find(id);
         if (found == lookup_edges.end()) return nullptr;
         return &edges[found->second];
@@ -1160,7 +1158,6 @@ public:
      */
     const StreetView* getView(ID id) const
     {
-        assert(views.size() == lookup_views.size() && lookup_views.count(id) <= 1); // Verify ID uniqueness (comment this line if you want speed-up in DEBUG mode)
         auto found = lookup_views.find(id);
         if (found == lookup_views.end()) return nullptr;
         return &views[found->second];
@@ -1468,16 +1465,22 @@ public:
         cur_edge->lr_side = lr_side;
     }
 
-    void addEdgeLR()
+    void updateEdgeLR()
     {
-        //lrpose
+        // reset lrpose
+        for (auto e = getHeadEdge(); e != getTailEdge(); e++)
+        {
+            e->lr_side = Edge::LR_NONE;
+        }
+
+        // compute lrpose
         std::vector<ID> finished_edges;
         for (auto e = getHeadEdgeConst(); e != getTailEdgeConst(); e++)
         {
             if (e->type == Edge::EDGE_CROSSWALK)
             {
                 ID cross_edge1_id = e->id;
-                Node * node1, * node2, * node3;
+                Node * node1 = nullptr, * node2 = nullptr, * node3 = nullptr;
                 for (int i = 0; i < 2; i++)
                 {
                     //searching the other node of the crosswalk
@@ -1491,6 +1494,9 @@ public:
                         node1 = getNode(e->node_id1);
                         node2 = getNode(e->node_id2);
                     }
+                    if (node1 == nullptr || node2 == nullptr) continue;
+                    Node* node1_original = node1;
+                    Node* node2_original = node2;
 
                     ID node3_id;
                     Edge* edge1, * edge2;
@@ -1500,6 +1506,9 @@ public:
                     std::vector<ID> cross_conn_edges = node2->edge_ids;
                     for (std::vector<ID>::iterator side1id = cross_conn_edges.begin(); side1id != cross_conn_edges.end(); side1id++)
                     {
+                        node1 = node1_original;
+                        node2 = node2_original;
+
                         if (*side1id != cross_edge1_id)
                         {
                             //get second edge

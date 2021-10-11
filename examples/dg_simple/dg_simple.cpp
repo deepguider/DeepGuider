@@ -350,7 +350,11 @@ bool DeepGuider::initialize(std::string config_file)
         Map map;
         map.setReference(m_map_ref_point);
         bool ok = map.load(m_map_data_path.c_str());
-        if (ok) setMap(map);
+        if (ok)
+        {
+            map.updateEdgeLR();
+            setMap(map);
+        }
     }
 
     // initialize localizer
@@ -368,9 +372,16 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("search_turn_weight", 100);
     m_localizer.setParamValue("track_near_radius", 20);
     m_localizer.setParamValue("enable_path_projection", true);
-    m_localizer.setParamValue("enable_map_projection", false);
+    m_localizer.setParamValue("enable_map_projection", true);
     m_localizer.setParamValue("enable_backtracking_ekf", true);
     m_localizer.setParamValue("enable_gps_smoothing)", true);
+    m_localizer.setParamValue("enable_debugging_display", false);
+    m_localizer.setParamValue("lr_mismatch_cost", 50);
+    m_localizer.setParamValue("enable_lr_reject", false);
+    m_localizer.setParamValue("lr_reject_cost", 20);             // 20
+    m_localizer.setParamValue("enable_discontinuity_cost", true);
+    m_localizer.setParamValue("discontinuity_weight", 0.5);      // 0.5
+
     printf("\tLocalizer initialized!\n");
 
     // initialize guidance
@@ -467,7 +478,16 @@ int DeepGuider::run()
 {
     // load test dataset    
     dg::DataLoader data_loader;
-    if (!data_loader.load(m_video_input_path, m_gps_input_path))
+    std::string ahrs_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+    std::string data_header = "data/ETRI/191115_151140";
+    //ahrs_file = data_header + "_imu_data.csv";
+    //ocr_file = data_header + "_ocr.csv";
+    //poi_file = data_header + "_poi.csv";
+    //vps_file = data_header + "_vps.csv";
+    //intersection_file = data_header + "_intersect.csv";
+    //lr_file = data_header + "_vps_lr.csv";
+    //roadtheta_file = data_header + "_roadtheta.csv";
+    if (!data_loader.load(m_video_input_path, m_gps_input_path, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
     {
         printf("DeepGuider::run() - Fail to load test data. Exit program...\n");
         return -1;
@@ -505,46 +525,72 @@ int DeepGuider::run()
         }
         else if (type == dg::DATA_IMU)
         {
-            auto euler = cx::cvtQuat2EulerAng(vdata[1], vdata[2], vdata[3], vdata[4]);
             procImuData(vdata[1], vdata[2], vdata[3], vdata[4], data_time);
         }
         else if (type == dg::DATA_POI)
         {
-            dg::Point2 clue_xy(vdata[1], vdata[2]);
-            dg::Polar2 relative(vdata[3], vdata[4]);
-            double confidence = vdata[5];
-            //bool success = m_localizer.applyPOI(clue_xy, relative, data_time, confidence);
-            //if (!success) fprintf(stderr, "applyPOI() was failed.\n");
+            dg::Point2 clue_xy(vdata[2], vdata[3]);
+            dg::Polar2 relative(vdata[4], vdata[5]);
+            double confidence = vdata[6];
+            bool success = m_localizer.applyPOI(clue_xy, relative, data_time, confidence);
+            if (!success) fprintf(stderr, "applyPOI() was failed.\n");
+        }
+        else if (type == dg::DATA_OCR)
+        {
+            std::string name = sdata[0];
+            double conf = vdata[1];
+            double xmin = vdata[2];
+            double ymin = vdata[3];
+            double xmax = vdata[4];
+            double ymax = vdata[5];
+            dg::Point2 clue_xy;
+            dg::Polar2 relative;
+            double confidence;
+            if (m_ocr.applyPreprocessed(name, xmin, ymin, xmax, ymax, conf, data_time, clue_xy, relative, confidence))
+            {
+                bool success = m_localizer.applyPOI(clue_xy, relative, data_time, confidence);
+                if (!success) fprintf(stderr, "applyOCR() was failed.\n");
+            }
         }
         else if (type == dg::DATA_VPS)
         {
-            dg::Point2 clue_xy(vdata[1], vdata[2]);
-            dg::Polar2 relative(vdata[3], vdata[4]);
-            double confidence = vdata[5];
-            //bool success = m_localizer.applyVPS(clue_xy, relative, data_time, confidence);
-            //if (!success) fprintf(stderr, "applyVPS() was failed.\n");
+            dg::Point2 clue_xy = toMetric(dg::LatLon(vdata[3], vdata[4]));
+            dg::Polar2 relative(vdata[5], vdata[6]);
+            double confidence = vdata[7];
+            bool success = m_localizer.applyVPS(clue_xy, relative, data_time, confidence);
+            if (!success) fprintf(stderr, "applyVPS() was failed.\n");
         }
         else if (type == dg::DATA_IntersectCls)
         {
-            dg::Point2 clue_xy(vdata[1], vdata[2]);
-            dg::Polar2 relative(vdata[3], vdata[4]);
-            double confidence = vdata[5];
-            //bool success = m_localizer.applyIntersectCls(clue_xy, relative, data_time, confidence);
-            //if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
+            double cls = vdata[1];
+            double cls_conf = vdata[2];
+            dg::Point2 xy;
+            double xy_confidence;
+            bool xy_valid = false;
+            if (m_intersection.applyPreprocessed(cls, cls_conf, data_time, xy, xy_confidence, xy_valid) && xy_valid)
+            {
+                bool success = m_localizer.applyIntersectCls(xy, data_time, xy_confidence);
+                if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
+            }
         }
         else if (type == dg::DATA_LR)
         {
-            double lr_result = vdata[1];
-            double confidence = vdata[2];
-            //bool success = m_localizer.applyVPS_LR(lr_result, data_time, confidence);
-            //if (!success) fprintf(stderr, "applyVPS_LR() was failed.\n");
+            double cls = vdata[1];
+            double cls_conf = vdata[2];
+            int lr_cls;
+            double lr_confidence;
+            if (m_lrpose.applyPreprocessed(cls, cls_conf, data_time, lr_cls, lr_confidence))
+            {
+                bool success = m_localizer.applyLRPose(lr_cls, data_time, lr_confidence);
+                if (!success) fprintf(stderr, "applyLRPose() was failed.\n");
+            }
         }
         else if (type == dg::DATA_RoadTheta)
         {
-            double theta = vdata[1];
-            double confidence = vdata[2];
-            //bool success = m_localizer.applyRoadTheta(theta, data_time, confidence);
-            //if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
+            double theta = vdata[3];
+            double confidence = vdata[4];
+            bool success = m_localizer.applyRoadTheta(theta, data_time, confidence);
+            if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
         }
 
         // update
@@ -560,12 +606,12 @@ int DeepGuider::run()
             m_cam_mutex.unlock();
 
             // process vision modules
-            if (m_enable_ocr) procOcr();
-            if (m_enable_vps) procVps();
-            if (m_enable_lrpose) procLRPose();
+            if (m_enable_ocr && ocr_file.empty()) procOcr();
+            if (m_enable_vps && vps_file.empty()) procVps();
+            if (m_enable_lrpose && lr_file.empty()) procLRPose();
             if (m_enable_logo) procLogo();
-            if (m_enable_intersection) procIntersectionClassifier();
-            if (m_enable_roadtheta) procRoadTheta();
+            if (m_enable_intersection && intersection_file.empty()) procIntersectionClassifier();
+            if (m_enable_roadtheta && roadtheta_file.empty()) procRoadTheta();
 
             // process Guidance
             procGuidance(data_time);

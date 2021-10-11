@@ -45,7 +45,7 @@ class GRUNet(nn.Module):
 
     def init_hidden(self, batch_size):
         weight = next(self.parameters()).data
-        hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().cuda()
+        hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_()#.cuda()
         return hidden
 
 class Recovery(nn.Module):

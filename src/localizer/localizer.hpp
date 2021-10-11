@@ -111,7 +111,7 @@ namespace dg
     {
     protected:
         // configuable parameters
-        int m_history_size = 1000;
+        int m_history_size = 2000;
         bool m_enable_path_projection = true;
         bool m_enable_map_projection = false;
         bool m_enable_backtracking_ekf = true;
@@ -246,6 +246,7 @@ namespace dg
         virtual bool applyIMUCompass(double odometry_theta, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
+            if (m_pose_history.empty()) return false;
             if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
             {
                 if (!backtrackingEKF(time, ObsData(ObsData::OBS_IMU, odometry_theta, time, confidence))) return false;
@@ -261,6 +262,7 @@ namespace dg
         virtual bool applyRoadTheta(double theta, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
+            if (m_pose_history.empty()) return false;
             if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
             {
                 if (!backtrackingEKF(time, ObsData(ObsData::OBS_RoadTheta, theta, time, confidence))) return false;
@@ -306,15 +308,7 @@ namespace dg
         virtual bool applyIntersectCls(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
-            
-            cv::Mat cur_state = m_ekf->getState();
-            cur_state.at<double>(0) = xy.x;
-            cur_state.at<double>(1) = xy.y;
-            cur_state.at<double>(2) = 0.0;
-            cur_state.at<double>(3) = 0.0;
-            cur_state.at<double>(4) = 0.0;
-            m_ekf->initialize(cur_state);
-
+            if (m_pose_history.empty()) return false;
             if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
             {
                 if (!backtrackingEKF(time, ObsData(ObsData::OBS_IntersectCls, xy, time, confidence))) return false;
@@ -334,9 +328,8 @@ namespace dg
         virtual bool applyLRPose(int lr_cls, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
-            saveObservation(ObsData::OBS_LR, lr_cls, time, confidence);
-            saveEKFState(m_ekf, time);
-            // TODO: apply the result to path projector
+            if (lr_cls == Edge::LR_NONE || m_pose_history.empty()) return false;
+            m_pose_history.back().lr_side = lr_cls;
             return true;
         }
 
@@ -386,6 +379,7 @@ namespace dg
             m_state_history.resize(m_history_size);
             m_observation_history.resize(m_history_size);
             m_pose_history.resize(m_history_size);
+            m_projected_pose_history.resize(m_history_size);
             m_gps_state = Point2T(Point2(0, 0), 0);
             m_gps_velocity = Point2(0, 0);
             return true;
@@ -407,7 +401,7 @@ namespace dg
         {
             m_pose = pose;
             m_timestamp = timestamp;
-            if (!m_enable_path_projection) return true;
+            if (!m_enable_path_projection && !m_enable_map_projection) return true;
             if (m_shared == nullptr) return false;
 
             bool out_of_path = false;
@@ -415,12 +409,13 @@ namespace dg
             if (map)
             {
                 Path* path = m_shared->getPathLocked();
-                if (path) m_pose = getPathPose(map, *path, pose, m_pose_history, out_of_path);
-                else if (m_enable_map_projection) m_pose = getMapPose(map, pose, m_pose, m_pose_history.empty());
+                if (path && m_enable_path_projection) m_pose = getPathPose(map, path, pose, m_pose_history, m_projected_pose_history, out_of_path);
+                else if (m_enable_map_projection) m_pose = getMapPose(map, pose, m_pose_history, m_projected_pose_history);
                 m_shared->releasePathLock();
             }
             m_shared->releaseMapLock();
             if (out_of_path) m_shared->procOutOfPath(m_pose);
+            m_projected_pose_history.push_back(m_pose);
 
             return true;
         }
@@ -527,7 +522,8 @@ namespace dg
         cv::Ptr<dg::EKFLocalizer> m_ekf;
         RingBuffer<EKFState> m_state_history;
         RingBuffer<ObsData> m_observation_history;
-        RingBuffer<Pose2T> m_pose_history;
+        RingBuffer<Pose2LR> m_pose_history;
+        RingBuffer<Pose2> m_projected_pose_history;
         Point2T m_gps_state;
         Point2 m_gps_velocity;
 
