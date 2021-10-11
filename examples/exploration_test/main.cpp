@@ -35,7 +35,7 @@ void test_image_run(ActiveNavigation& active_nav, GuidanceManager::Guidance guid
 int main()
 {
     // Initialize the Python interpreter
-    init_python_environment("python3", nullptr, false);
+    init_python_environment("python3", "", false);
 
     // Initialize Python module
     ActiveNavigation active_nav;
@@ -48,7 +48,13 @@ int main()
     printf("Initialization: it took %lf seconds\n", t2 - t1);
 
     // Run the Python module
-    // test_image_run(active_nav, guidance);
+    GuidanceManager::Guidance guidance;  
+    std::vector<GuidanceManager::Action> actionss;
+    GuidanceManager::Action action;
+    actionss.push_back(action);
+    guidance.actions = actionss;
+    guidance.guide_status = GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW;
+    test_image_run(active_nav, guidance);
 
     // Clear the Python module
     active_nav.clear();
