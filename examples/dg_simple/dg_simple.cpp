@@ -35,6 +35,9 @@ protected:
     bool m_enable_imu = true;
     bool m_enable_mapserver = true;
 
+    int m_exploration_state_count = 0;
+    const int m_exploration_state_count_max = 10;    
+
     std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
     std::string m_srcdir = "./../src";      // path of deepguider/src (required for python embedding)
     bool m_enable_tts = false;
@@ -89,6 +92,7 @@ protected:
     void procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts);
     void procGuidance(dg::Timestamp ts);
     bool procIntersectionClassifier();
+    bool procExploration();
     bool procLogo();
     bool procOcr();
     bool procVps();
@@ -148,18 +152,21 @@ protected:
     std::thread* logo_thread = nullptr;
     std::thread* intersection_thread = nullptr;
     std::thread* roadtheta_thread = nullptr;
+    std::thread* exploration_thread = nullptr;
     static void threadfunc_vps(DeepGuider* guider);
     static void threadfunc_lrpose(DeepGuider* guider);
     static void threadfunc_ocr(DeepGuider* guider);
     static void threadfunc_logo(DeepGuider* guider);
     static void threadfunc_intersection(DeepGuider* guider);
     static void threadfunc_roadtheta(DeepGuider* guider);
+    static void threadfunc_exploration(DeepGuider* guider);
     bool is_vps_running = false;
     bool is_lrpose_running = false;
     bool is_ocr_running = false;
     bool is_logo_running = false;
     bool is_intersection_running = false;
     bool is_roadtheta_running = false;
+    bool is_exploration_running = false;
     void terminateThreadFunctions();
 
     // shared variables for multi-threading
@@ -185,6 +192,9 @@ protected:
 
     cv::Mutex m_roadtheta_mutex;
     cv::Mat m_roadtheta_image;
+
+    cv::Mutex m_exploration_mutex;
+    cv::Mat m_exploration_image;
 
     cv::Mutex m_map_mutex;
     cv::Mutex m_guider_mutex;
@@ -446,6 +456,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_logo_image.release();
     m_ocr_image.release();
     m_intersection_image.release();
+    m_exploration_image.release();
     m_roadtheta_image.release();
     m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
     m_guidance_status = dg::GuidanceManager::GuideStatus::GUIDE_INITIAL;
@@ -478,7 +489,7 @@ int DeepGuider::run()
 {
     // load test dataset    
     dg::DataLoader data_loader;
-    std::string ahrs_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+    std::string ahrs_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file, exploration_file;
     std::string data_header = "data/ETRI/191115_151140";
     //ahrs_file = data_header + "_imu_data.csv";
     //ocr_file = data_header + "_ocr.csv";
@@ -612,6 +623,7 @@ int DeepGuider::run()
             if (m_enable_logo) procLogo();
             if (m_enable_intersection && intersection_file.empty()) procIntersectionClassifier();
             if (m_enable_roadtheta && roadtheta_file.empty()) procRoadTheta();
+            if (m_enable_exploration && exploration_file.empty()) procExploration();            
 
             // process Guidance
             procGuidance(data_time);
@@ -927,6 +939,24 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         }
     }
 
+    // draw exploration result
+    if (m_enable_exploration)
+    {
+        cv::Mat result_image;
+        m_exploration_mutex.lock();
+        if (!m_exploration_image.empty())
+        {
+            cv::resize(m_exploration_image, result_image, cv::Size(win_rect.height, win_rect.height));
+        }
+        m_exploration_mutex.unlock();
+
+        if (!result_image.empty())
+        {
+            win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
+            if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
+        }
+    }
+
     // current localization
     dg::Pose2 pose_metric = getPose();
     dg::TopometricPose pose_topo = getPoseTopometric();
@@ -1124,6 +1154,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         {
             printf("Arrived to destination!\n");
             if (m_enable_tts) putTTS("Arrived to destination!");
+            m_exploration_state_count = m_exploration_state_count_max;  //Enter exploration mode until state_count becomes 0 from count_max
         }
 
         // check out of path
@@ -1366,6 +1397,63 @@ bool DeepGuider::procLRPose()
 }
 
 
+bool DeepGuider::procExploration()
+{
+    if ( m_exploration_state_count <= 0)
+    {
+        m_exploration_state_count = 0;
+        return false;
+    }    
+    m_exploration_state_count--;
+
+    m_cam_mutex.lock();
+    dg::Timestamp capture_time = m_cam_capture_time;
+    if (m_cam_image.empty() || capture_time <= m_active_nav.timestamp())
+    {
+        m_cam_mutex.unlock();
+        return false;
+    }
+    cv::Mat cam_image = m_cam_image.clone();
+    m_cam_mutex.unlock();
+	
+	std::vector<ExplorationGuidance> actions;
+	GuidanceManager::GuideStatus status;
+    
+    GuidanceManager::Guidance guidance;  
+    std::vector<GuidanceManager::Action> actionss;
+    GuidanceManager::Action action;
+    actionss.push_back(action);
+    guidance.actions = actionss;
+    guidance.guide_status = GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW;
+
+	if (m_active_nav.apply(cam_image, guidance, capture_time))
+	{
+		m_active_nav.get(actions, status);
+
+		for (int k = 0; k < (int)actions.size(); k++)
+		{
+			printf("\t exploration action %d: [%lf, %lf, %lf]\n", k, actions[k].theta1, actions[k].d, actions[k].theta2);
+		}        
+        m_active_nav.print();
+        m_active_nav.draw(cam_image);
+        m_exploration_mutex.lock();
+        m_exploration_image = cam_image;
+        m_exploration_mutex.unlock();
+        
+        std::string msg = cv::format("Move %3.2f meters in %3.2f degree direction, and turn %3.2f degree.", actions[0].d, actions[0].theta1, actions[0].theta2);
+        putTTS((const char*)msg.c_str());
+        sleep(10);
+    
+        return true;        
+	}
+	else
+	{
+		m_active_nav.print();
+	}
+
+    return false;
+}
+
 // Thread fnuction for VPS
 void DeepGuider::threadfunc_vps(DeepGuider* guider)
 {
@@ -1444,6 +1532,21 @@ void DeepGuider::threadfunc_roadtheta(DeepGuider* guider)
     printf("\troadtheta thread ends\n");
 }
 
+
+// Thread fnuction for Exploration
+void DeepGuider::threadfunc_exploration(DeepGuider* guider)
+{
+    guider->is_exploration_running = true;
+    printf("\texploration thread starts\n");
+    while (guider->m_enable_exploration)
+    {
+        guider->procExploration();
+    }
+    guider->is_exploration_running = false;
+    printf("\texploration thread ends\n");
+}
+
+
 // Thread fnuction for tts
 void DeepGuider::threadfunc_tts(DeepGuider* guider)
 {
@@ -1479,7 +1582,7 @@ void DeepGuider::procTTS()
 
 void DeepGuider::terminateThreadFunctions()
 {
-    if (vps_thread == nullptr && lrpose_thread == nullptr && ocr_thread == nullptr && logo_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr && tts_thread == nullptr) return;
+    if (vps_thread == nullptr && lrpose_thread == nullptr && ocr_thread == nullptr && logo_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr && tts_thread == nullptr && exploration_thread == nullptr) return;
 
     // disable all thread running
     m_enable_vps = false;
@@ -1497,6 +1600,7 @@ void DeepGuider::terminateThreadFunctions()
     if (logo_thread && is_logo_running) logo_thread->join();
     if (intersection_thread && is_intersection_running) intersection_thread->join();
     if (roadtheta_thread && is_roadtheta_running) roadtheta_thread->join();
+    if (exploration_thread && is_exploration_running) exploration_thread->join();
     if (tts_thread && is_tts_running) tts_thread->join();
 
     // clear threads
@@ -1506,6 +1610,7 @@ void DeepGuider::terminateThreadFunctions()
     logo_thread = nullptr;
     intersection_thread = nullptr;
     roadtheta_thread = nullptr;
+    exploration_thread = nullptr;
     tts_thread = nullptr;
 }
 

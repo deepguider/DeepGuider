@@ -210,6 +210,45 @@ class ActiveNavigation : public PythonModuleWrapper
             t = m_timestamp;
         }
 
+        dg::Timestamp timestamp() const
+        {
+            return m_timestamp;
+        }
+
+        double procTime() const
+        {
+            return 0.0; //m_processing_time;
+        }
+
+      	void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
+        {
+            cv::Point2d pt1(image.cols / 2 - 190 * drawing_scale, 50 * drawing_scale);
+            cv::Point2d pt2(image.cols / 2 - 190 * drawing_scale, 100 * drawing_scale);            
+            for (size_t k = 0; k < m_actions.size(); k++)
+			{
+	            std::string msg1 = cv::format("exploration[Th1,D,Th2]");
+            	cv::putText(image, msg1, pt1, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 255, 0), (int)(6 * drawing_scale));
+            	cv::putText(image, msg1, pt1, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 0, 0), (int)(2 * drawing_scale));
+
+	            std::string msg2 = cv::format("[%3.2f, %3.2f, %3.2f]", m_actions[k].theta1, m_actions[k].d, m_actions[k].theta2);
+            	cv::putText(image, msg2, pt2, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 255, 0), (int)(6 * drawing_scale));
+            	cv::putText(image, msg2, pt2, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 0, 0), (int)(2 * drawing_scale));                
+                // printf("\t %s\n", msg);
+			}
+        }
+
+        void print() const
+        {
+            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
+			printf("\t action [%lf, %lf, %lf]\n", m_actions[0].theta1, m_actions[0].d, m_actions[0].theta2);
+        }
+
+        static const char* name()
+        {
+            return "exploration";
+        }
+		
+	  
     protected:
         std::vector<ExplorationGuidance> m_actions;
         GuidanceManager::GuideStatus m_status;
