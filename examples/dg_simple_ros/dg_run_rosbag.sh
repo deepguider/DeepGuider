@@ -21,6 +21,8 @@ pid=`pgrep rosbag`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
+gnome-terminal -- rosbag play --pause -s 500 -r 10 ./recordings/2020-02-19-15-01-53.bag
+echo "Press [Space] to start rosbag play on the gnome terminal"
 
 ## Start dg_simple_ros
 pid=`pgrep dg_simple_ros`
