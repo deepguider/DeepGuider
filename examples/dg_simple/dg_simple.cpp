@@ -372,7 +372,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("search_turn_weight", 100);
     m_localizer.setParamValue("track_near_radius", 20);
     m_localizer.setParamValue("enable_path_projection", true);
-    m_localizer.setParamValue("enable_map_projection", true);
+    m_localizer.setParamValue("enable_map_projection", false);
     m_localizer.setParamValue("enable_backtracking_ekf", true);
     m_localizer.setParamValue("enable_gps_smoothing)", true);
     m_localizer.setParamValue("enable_debugging_display", false);
@@ -934,8 +934,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     double pose_confidence = m_localizer.getPoseConfidence();
 
     // draw robot on the map
-    m_painter.drawPoint(image, pose_metric, 10, cx::COLOR_YELLOW, view_offset, view_zoom);
-    m_painter.drawPoint(image, pose_metric, 8, cx::COLOR_BLUE, view_offset, view_zoom);
+    m_painter.drawPoint(image, pose_metric, 10*2, cx::COLOR_YELLOW, view_offset, view_zoom);
+    m_painter.drawPoint(image, pose_metric, 8*2, cx::COLOR_BLUE, view_offset, view_zoom);
     cv::Point2d px = (m_painter.cvtValue2Pixel(pose_metric) - view_offset) * view_zoom;
     cv::line(image, px, px + 10 * view_zoom * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_YELLOW, (int)(2*view_zoom+0.5));
 

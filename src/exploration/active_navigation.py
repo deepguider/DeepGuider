@@ -366,7 +366,8 @@ class ActiveNavigationModule():
                 torch.tensor(pred_obs['keypoints'].astype(np.float32)[None]), torch.tensor(pred_obs['scores'][None])
         observation["rgb"]= torch.tensor(np.asarray(obs_rgb)[None])
 
-        logit = self.ove_policy.act(observation)
+        logit, n_matching = self.ove_policy.act(observation, debug=False)
+        # print(n_matching)
         ind = logit.argmax().numpy()
         if ind == 0:
             action = "Move forward 0.25m"
@@ -377,6 +378,10 @@ class ActiveNavigationModule():
         else:
             action = "Turn right 10 degree"
             self.ov_guidance = [10., 0., 0.]  
+        if n_matching[0] >= 15:
+            action = "stop"
+            self.ov_guidance = [0., 0., 0.]  
+
 
     # def optimal_viewpoint(self, file_path=None, target_poi=None):
     #     if file_path and target_poi is None:

@@ -14,6 +14,10 @@ from tensorflow.python.saved_model import tag_constants
 tf.contrib.resampler  # import C++ op
 import numpy as np
 from scipy.spatial.distance import cdist
+import matplotlib
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+import time
 
 def match_descriptors_gpu(descriptors1, descriptors2, p=2,
                       max_distance=np.inf, cross_check=True, max_ratio=1.0):
@@ -50,7 +54,7 @@ def match_descriptors_gpu(descriptors1, descriptors2, p=2,
 
 #     matches = np.column_stack((indices1, indices2))
     matches = torch.stack([indices1, indices2], dim=1)
-    best_distances = distances[indices1, indices2]
+    best_distances = best_distances[mask] #indices1, indices2]
     # best_distances /= len(indices1)
 
     return matches, indices1, indices2, -best_distances#, np.linalg.norm(best_distances)
@@ -140,6 +144,7 @@ class ImageNavHFNetPolicyQ(nn.Module):
         #prev_actions,
         #masks,
         deterministic=False,
+        debug=False,
     ):
         with torch.no_grad():
             #len_hid_states = int(rnn_hidden_states.shape[-1]/2)
@@ -152,8 +157,8 @@ class ImageNavHFNetPolicyQ(nn.Module):
                 observations#, rnn_hidden_states_glob, prev_actions, masks
             )
 
-            features_local, w_glob = self.net.forward_local( #, matching = self.net(
-                observations#, rnn_hidden_states_local, prev_actions, masks
+            features_local, w_glob, n_matching = self.net.forward_local( #, matching = self.net(
+                observations, debug #, rnn_hidden_states_local, prev_actions, masks
             )
 
         #rnn_hidden_states = torch.cat([rnn_hidden_states_glob,rnn_hidden_states_local], dim=-1)
@@ -163,7 +168,7 @@ class ImageNavHFNetPolicyQ(nn.Module):
         w_glob = (_w_glob + w_glob) / 2
         w_glob = w_glob.unsqueeze(-1)
         logits = w_glob*distribution_glob + (1.0-w_glob)*distribution_local #distribution_glob
-        return logits
+        return logits, n_matching
     
 class ImageNavHFNetQ(nn.Module, metaclass=abc.ABCMeta):
     #Q version of ImagenavHFNet, currently doesn't use RNN but might in the future.
@@ -251,21 +256,39 @@ class ImageNavHFNetQ(nn.Module, metaclass=abc.ABCMeta):
         
 
 
-    def forward_local(self, observations):
+    def forward_local(self, observations, debug=False):
 
-        desc1, kpts1, score1 = observations['obs_desc'], observations['obs_det'], observations['obs_score']
-        desc0, kpts0, score0 = observations['targ_desc'], observations['targ_det'], observations['targ_score']
+        desc1, kpts1_, score1 = observations['obs_desc'], observations['obs_det'], observations['obs_score']
+        desc0, kpts0_, score0 = observations['targ_desc'], observations['targ_det'], observations['targ_score']
         
         # Keypoint normalization.
-        kpts0 = self.normalize_keypoints(kpts0, observations['rgb'].permute(0,3,1,2).shape) 
-        kpts1 = self.normalize_keypoints(kpts1, observations['rgb'].permute(0,3,1,2).shape)
+        kpts0 = self.normalize_keypoints(kpts0_, observations['rgb'].permute(0,3,1,2).shape) 
+        kpts1 = self.normalize_keypoints(kpts1_, observations['rgb'].permute(0,3,1,2).shape)
         
         descs = []
         n_match = []
         assert kpts1.shape[0] == desc1.shape[0], 'batch number error!'
         for i in range(kpts1.shape[0]): # for each batch
             # matching
-            matches, mkpts0, mkpts1, mconf = match_descriptors_gpu(desc0[i], desc1[i], max_ratio=0.9)
+            matches, mkpts0, mkpts1, mconf = match_descriptors_gpu(desc0[i], desc1[i], max_ratio=0.8)
+            
+            if debug is True:
+                #print(desc0[i].shape,desc1[i].shape)
+                #print(matches)
+                #print(mkpts0)
+                #print(mkpts1)
+                #print(mconf)
+                color = cm.jet(mconf.cpu().numpy())
+                text = [
+                    'Keypoints: {}:{}'.format(len(kpts0.cpu().numpy()[0]), len(kpts1.cpu().numpy()[0])),
+                    'Matches: {}'.format(len(mkpts0)),
+                ]
+
+                make_matching_plot(
+                    observations["targ_rgb"]/255., observations["rgb"].cpu().numpy()[0,:,:,:]/255., kpts0_.cpu().numpy()[i], kpts1_.cpu().numpy()[0-i],
+                     kpts0_.cpu().numpy()[i][mkpts0], kpts1_.cpu().numpy()[i][mkpts1], color,
+                    text, 'matching'+str(time.time())+'.png', True,
+                    False, True)                
             
             n_match.append(len(mkpts0))
             if len(mkpts0) == 0:
@@ -282,6 +305,8 @@ class ImageNavHFNetQ(nn.Module, metaclass=abc.ABCMeta):
 
         graph_embedding_0 = torch.stack(descs, dim=0)
         n_match = np.array(n_match)
+        if debug is True:
+            print("n_match: ", n_match)
         n_match = (n_match >= 5).astype(np.float32) * n_match
         cos_dist = 1.0 - torch.Tensor(n_match)/48.0
 
@@ -290,5 +315,146 @@ class ImageNavHFNetQ(nn.Module, metaclass=abc.ABCMeta):
         x = graph_embedding_0
         #x, rnn_hidden_states = self.state_encoder(x, rnn_hidden_states, masks)
 
-        return x, cos_dist
+        return x, cos_dist, n_match
+
+
+def plot_image_pair(imgs, dpi=100, size=6, pad=.5):
+    n = len(imgs)
+    assert n == 2, 'number of images must be two'
+    figsize = (size*n, size*3/4) if size is not None else None
+    _, ax = plt.subplots(1, n, figsize=figsize, dpi=dpi)
+    for i in range(n):
+        # ax[i].imshow(imgs[i], cmap=plt.get_cmap('gray'), vmin=0, vmax=255)
+        ax[i].imshow(imgs[i])
+        ax[i].get_yaxis().set_ticks([])
+        ax[i].get_xaxis().set_ticks([])
+        for spine in ax[i].spines.values():  # remove frame
+            spine.set_visible(False)
+    plt.tight_layout(pad=pad)
+
+
+def plot_keypoints(kpts0, kpts1, color='w', ps=2):
+    ax = plt.gcf().axes
+    ax[0].scatter(kpts0[:, 0], kpts0[:, 1], c=color, s=ps)
+    ax[1].scatter(kpts1[:, 0], kpts1[:, 1], c=color, s=ps)
+
+
+def plot_matches(kpts0, kpts1, color, lw=1.5, ps=4):
+    fig = plt.gcf()
+    ax = fig.axes
+    fig.canvas.draw()
+
+    transFigure = fig.transFigure.inverted()
+    fkpts0 = transFigure.transform(ax[0].transData.transform(kpts0))
+    fkpts1 = transFigure.transform(ax[1].transData.transform(kpts1))
+
+    fig.lines = [matplotlib.lines.Line2D(
+        (fkpts0[i, 0], fkpts1[i, 0]), (fkpts0[i, 1], fkpts1[i, 1]), zorder=1,
+        transform=fig.transFigure, c=color[i], linewidth=lw)
+                 for i in range(len(kpts0))]
+    ax[0].scatter(kpts0[:, 0], kpts0[:, 1], c=color, s=ps)
+    ax[1].scatter(kpts1[:, 0], kpts1[:, 1], c=color, s=ps)
+
+def make_matching_plot(image0, image1, kpts0, kpts1, mkpts0, mkpts1,
+                       color, text, path, show_keypoints=False,
+                       fast_viz=False, display=False,
+                       opencv_title='matches', small_text=[]):
+
+    if fast_viz:
+        make_matching_plot_fast(image0, image1, kpts0, kpts1, mkpts0, mkpts1,
+                                color, text, path, show_keypoints, 10,
+                                display, opencv_title, small_text)
+        return
+
+    plot_image_pair([image0, image1])
+    if show_keypoints:
+        plot_keypoints(kpts0, kpts1, color='k', ps=4)
+        plot_keypoints(kpts0, kpts1, color='w', ps=2)
+    plot_matches(mkpts0, mkpts1, color)
+
+    fig = plt.gcf()
+    txt_color = 'k' if image0[:100, :150].mean() > 200 else 'w'
+    fig.text(
+        0.01, 0.99, '\n'.join(text), transform=fig.axes[0].transAxes,
+        fontsize=15, va='top', ha='left', color=txt_color)
+
+    txt_color = 'k' if image0[-100:, :150].mean() > 200 else 'w'
+    fig.text(
+        0.01, 0.01, '\n'.join(small_text), transform=fig.axes[0].transAxes,
+        fontsize=5, va='bottom', ha='left', color=txt_color)
+    if display is True:
+        plt.show()
+    else:
+        plt.savefig(str(path), bbox_inches='tight', pad_inches=0)
+    plt.close()
+
+
+def make_matching_plot_fast(image0, image1, kpts0, kpts1, mkpts0,
+                            mkpts1, color, text, path=None,
+                            show_keypoints=False, margin=10,
+                            opencv_display=False, opencv_title='',
+                            small_text=[]):
+    H0, W0 = image0.shape
+    H1, W1 = image1.shape
+    H, W = max(H0, H1), W0 + W1 + margin
+
+    out = 255*np.ones((H, W), np.uint8)
+    out[:H0, :W0] = image0
+    out[:H1, W0+margin:] = image1
+    out = np.stack([out]*3, -1)
+
+    if show_keypoints:
+        kpts0, kpts1 = np.round(kpts0).astype(int), np.round(kpts1).astype(int)
+        white = (255, 255, 255)
+        black = (0, 0, 0)
+        for x, y in kpts0:
+            cv2.circle(out, (x, y), 2, black, -1, lineType=cv2.LINE_AA)
+            cv2.circle(out, (x, y), 1, white, -1, lineType=cv2.LINE_AA)
+        for x, y in kpts1:
+            cv2.circle(out, (x + margin + W0, y), 2, black, -1,
+                       lineType=cv2.LINE_AA)
+            cv2.circle(out, (x + margin + W0, y), 1, white, -1,
+                       lineType=cv2.LINE_AA)
+
+    mkpts0, mkpts1 = np.round(mkpts0).astype(int), np.round(mkpts1).astype(int)
+    color = (np.array(color[:, :3])*255).astype(int)[:, ::-1]
+    for (x0, y0), (x1, y1), c in zip(mkpts0, mkpts1, color):
+        c = c.tolist()
+        cv2.line(out, (x0, y0), (x1 + margin + W0, y1),
+                 color=c, thickness=1, lineType=cv2.LINE_AA)
+        # display line end-points as circles
+        cv2.circle(out, (x0, y0), 2, c, -1, lineType=cv2.LINE_AA)
+        cv2.circle(out, (x1 + margin + W0, y1), 2, c, -1,
+                   lineType=cv2.LINE_AA)
+
+    # Scale factor for consistent visualization across scales.
+    sc = min(H / 640., 2.0)
+
+    # Big text.
+    Ht = int(30 * sc)  # text height
+    txt_color_fg = (255, 255, 255)
+    txt_color_bg = (0, 0, 0)
+    for i, t in enumerate(text):
+        cv2.putText(out, t, (int(8*sc), Ht*(i+1)), cv2.FONT_HERSHEY_DUPLEX,
+                    1.0*sc, txt_color_bg, 2, cv2.LINE_AA)
+        cv2.putText(out, t, (int(8*sc), Ht*(i+1)), cv2.FONT_HERSHEY_DUPLEX,
+                    1.0*sc, txt_color_fg, 1, cv2.LINE_AA)
+
+    # Small text.
+    Ht = int(18 * sc)  # text height
+    for i, t in enumerate(reversed(small_text)):
+        cv2.putText(out, t, (int(8*sc), int(H-Ht*(i+.6))), cv2.FONT_HERSHEY_DUPLEX,
+                    0.5*sc, txt_color_bg, 2, cv2.LINE_AA)
+        cv2.putText(out, t, (int(8*sc), int(H-Ht*(i+.6))), cv2.FONT_HERSHEY_DUPLEX,
+                    0.5*sc, txt_color_fg, 1, cv2.LINE_AA)
+
+    if path is not None:
+        cv2.imwrite(str(path), out)
+
+    if opencv_display:
+        cv2.imshow(opencv_title, out)
+        cv2.waitKey(1)
+
+    return out
+
 
