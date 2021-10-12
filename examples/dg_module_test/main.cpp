@@ -18,26 +18,8 @@ public:
     double      result_resize = 0;
 };
 
-int runModuleReal(int module_sel, bool use_saved_testset, const std::string& site, dg::DataLoader& data_loader, const std::string& rec_video_file = "")
+int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_saved_testset, const std::string& site, dg::DataLoader& data_loader, const std::string& rec_video_file = "")
 {
-    // Configure localizer
-    cv::Ptr<dg::DGLocalizer> localizer = cv::makePtr<dg::DGLocalizer>();
-    if (!localizer->setParamMotionNoise(1, 10)) return -1;      // linear_velocity(m), angular_velocity(deg)
-    if (!localizer->setParamGPSNoise(1)) return -1;             // position error(m)
-    if (!localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
-    if (!localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
-    if (!localizer->setParamPOINoise(1, 10, 1)) return -1;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
-    if (!localizer->setParamVPSNoise(1, 10, 1)) return -1;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
-    if (!localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
-    if (!localizer->setParamRoadThetaNoise(10, 0)) return -1;   // angle arror(deg), angle offset(deg)
-    if (!localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
-    localizer->setParamValue("gps_reverse_vel", -0.5);
-    localizer->setParamValue("search_turn_weight", 100);
-    localizer->setParamValue("track_near_radius", 20);
-    localizer->setParamValue("enable_path_projection", true);
-    localizer->setParamValue("enable_map_projection", false);
-    localizer->setParamValue("enable_backtracking_ekf", true);
-    localizer->setParamValue("enable_gps_smoothing)", true);
 
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
@@ -63,9 +45,23 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     COEX.map_radius = 1500; // meter
     COEX.grid_unit_pos = cv::Point(-230, -16);
     COEX.map_file = "data/COEX/TopoMap_COEX.csv";
-    COEX.video_resize = 0.4;
-    COEX.video_offset = cv::Point(10, 50);
-    COEX.result_resize = 0.6;
+    COEX.video_resize = 0.2;
+    COEX.video_offset = cv::Point(220, 700);
+    COEX.result_resize = 0.5;
+
+    MapGUIProp COEX2;
+    COEX2.image_file = "data/COEX/NaverMap_COEX(Satellite).png";
+    COEX2.image_scale = cv::Point2d(2.536, 2.536);
+    COEX2.image_rotation = cx::cvtDeg2Rad(1.0);
+    COEX2.origin_latlon = dg::LatLon(37.506994, 127.056676);
+    COEX2.origin_px = cv::Point2d(1373, 2484);
+    COEX2.map_view_offset = cv::Point(1010, 300);
+    COEX2.map_radius = 2000; // meter
+    COEX2.grid_unit_pos = cv::Point(-230, -16);
+    COEX2.map_file = "data/COEX/TopoMap_COEX.csv";
+    COEX2.video_resize = 0.2;
+    COEX2.video_offset = cv::Point(220, 700);
+    COEX2.result_resize = 0.4;
 
     MapGUIProp Bucheon;
     Bucheon.image_file = "data/NaverMap_Bucheon(Satellite).png";
@@ -80,7 +76,7 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     Bucheon.video_offset = cv::Point(270, 638);
     Bucheon.result_resize = 0.4;
 
-    MapGUIProp guiprop = (cx::toLowerCase(site) == "coex") ? COEX : (cx::toLowerCase(site) == "bucheon") ? Bucheon : ETRI;
+    MapGUIProp guiprop = (cx::toLowerCase(site) == "coex") ? COEX2 : (cx::toLowerCase(site) == "bucheon") ? Bucheon : ETRI;
 
     // Prepare a map if given
     dg::Map map;
@@ -89,6 +85,7 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     {
         VVS_CHECK_TRUE(map.load(guiprop.map_file.c_str()));
     }
+    map.updateEdgeLR();
 
     // Read the given background image
     cv::Mat bg_image = cv::imread(guiprop.image_file, cv::ImreadModes::IMREAD_COLOR);
@@ -130,21 +127,47 @@ int runModule()
     std::string rec_video_file = "";
     std::string gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
 
+    // Configure localizer
+    cv::Ptr<dg::DGLocalizer> localizer = cv::makePtr<dg::DGLocalizer>();
+    if (!localizer->setParamMotionNoise(1, 10)) return -1;      // linear_velocity(m), angular_velocity(deg)
+    if (!localizer->setParamGPSNoise(1)) return -1;             // position error(m)
+    if (!localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
+    if (!localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
+    if (!localizer->setParamPOINoise(1, 10, 1)) return -1;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
+    if (!localizer->setParamVPSNoise(1, 10, 1)) return -1;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
+    if (!localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
+    if (!localizer->setParamRoadThetaNoise(10, 0)) return -1;   // angle arror(deg), angle offset(deg)
+    if (!localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
+    localizer->setParamValue("gps_reverse_vel", -0.5);
+    localizer->setParamValue("search_turn_weight", 100);
+    localizer->setParamValue("track_near_radius", 20);
+    localizer->setParamValue("enable_path_projection", true);
+    localizer->setParamValue("enable_map_projection", true);
+    localizer->setParamValue("enable_backtracking_ekf", true);
+    localizer->setParamValue("enable_gps_smoothing", true);
+    localizer->setParamValue("enable_debugging_display", true);
+    localizer->setParamValue("lr_mismatch_cost", 50);
+    localizer->setParamValue("enable_lr_reject", false);
+    localizer->setParamValue("lr_reject_cost", 20);             // 20
+    localizer->setParamValue("enable_discontinuity_cost", true);
+    localizer->setParamValue("discontinuity_weight", 0.5);      // 0.5
+
     bool enable_gps = true;
     bool use_novatel = false;
-    bool enable_imu = true;
-
+    bool enable_imu = false;
     bool use_saved_testset = true;
 
-    int module_sel = DG_Intersection;
-    //int module_sel = DG_VPS;
-    //int module_sel = DG_LR;
-    //int module_sel = DG_OCR;
-    //int module_sel = DG_POI;
-    //int module_sel = DG_RoadTheta;
+    int module_sel = -1;
+    //module_sel = DG_Intersection;
+    //module_sel = DG_VPS;
+    module_sel = DG_LR;
+    //module_sel = DG_OCR;
+    //module_sel = DG_POI;
+    //module_sel = DG_RoadTheta;
 
-    int data_sel = 0;
-    double start_time = 450;     // time skip (seconds)
+    int data_sel = 8;
+    double start_time = 0;     // time skip (seconds)
+    start_time = 0;     // time skip (seconds)
     //rec_video_file = "result.mkv";
     std::vector<std::string> data_head[] = {
         {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
@@ -154,11 +177,12 @@ int runModule()
         {"data/ETRI/200429_140025", "1.6571"},  // 4, 28369 frames, 4701 sec, video_scale = 1.6571
         {"data/COEX/201007_142326", "2.8918"},  // 5, 12435 frames, 1240 sec, video_scale = 2.8918
         {"data/COEX/201007_145022", "2.869"},   // 6, 18730 frames, 1853 sec, video_scale = 2.869
-        {"data/COEX/201007_152840", "2.8902"}   // 7, 20931 frames, 2086 sec, video_scale = 2.8902
+        {"data/COEX/201007_152840", "2.8902"},  // 7, 20931 frames, 2086 sec, video_scale = 2.8902
+        {"data/COEX/211005_130940", "2.8902"}   // 8, 20931 frames, 2086 sec, video_scale = 2.8902
     };
     const int coex_idx = 5;
     const std::string site = (data_sel < coex_idx) ? "ETRI" : "COEX";
-    std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
+    std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.avi";
     if (enable_gps && !use_novatel) gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
     if (enable_gps && use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
     if (enable_imu) imu_file = data_head[data_sel][0] + "_imu_data.csv";
@@ -177,7 +201,7 @@ int runModule()
     }
     data_loader.setStartSkipTime(start_time);
 
-    return runModuleReal(module_sel, use_saved_testset, site, data_loader, rec_video_file);
+    return runModuleReal(localizer, module_sel, use_saved_testset, site, data_loader, rec_video_file);
 }
 
 int main()

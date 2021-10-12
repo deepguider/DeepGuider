@@ -81,7 +81,7 @@ class ActiveNavigation : public PythonModuleWrapper
         {
             // Set function arguments
             int arg_idx = 0;
-            PyObject* pArgs = PyTuple_New(4);
+            PyObject* pArgs = PyTuple_New(5);
 
             // Image
             import_array();
@@ -117,6 +117,13 @@ class ActiveNavigation : public PythonModuleWrapper
             // exp_active
             if (guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_LOST || guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_EXPLORATION ||
                                      guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_RECOVERY || guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW)
+                pValue = Py_True;
+            else
+                pValue = Py_False;
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+
+            // ove
+            if (guidance.guide_status == GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW)
                 pValue = Py_True;
             else
                 pValue = Py_False;

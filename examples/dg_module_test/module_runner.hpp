@@ -105,6 +105,7 @@ public:
                     bool success = localizer->applyGPS(gps_xy, data_time, 1);
                     if (!success) fprintf(stderr, "applyGPS() was failed.\n");
                     if (show_gui && gui_gps_radius > 0) gui_painter->drawPoint(bg_image, gps_xy, gui_gps_radius, gui_gps_color);
+                    if(module_sel < 0) update_gui = true;
                 }
                 else if (module_sel == DG_Intersection && type == dg::DATA_IntersectCls)
                 {
@@ -331,6 +332,7 @@ public:
             // Visualize and show the current state as an image
             if (show_gui && update_gui)
             {
+                // draw robot trajectory
                 dg::Pose2 pose = localizer->getPose();
                 if (robot_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, robot_traj_radius, gui_robot_color);
 
@@ -342,15 +344,25 @@ public:
                 gui_painter->drawPath(out_image, getMap(), path, m_viewport.offset(), m_viewport.zoom());
                 releasePathLock();
 
-                // draw robot position
+                // Draw robot position
                 if (gui_robot_radius > 0)
                 {
-                    gui_painter->drawPoint(out_image, pose, gui_robot_radius, gui_robot_color, m_viewport.offset(), m_viewport.zoom());                                         // Robot body
-                    gui_painter->drawPoint(out_image, pose, gui_robot_radius, cv::Vec3b(255, 255, 255) - gui_robot_color, m_viewport.offset(), m_viewport.zoom(), (int)(2*m_viewport.zoom() + 0.5));           // Robot outline
+                    double scaled_radius = (m_viewport.zoom() >= 2) ? gui_robot_radius * 2 / m_viewport.zoom() : gui_robot_radius;
+                    int scaled_thickness = (m_viewport.zoom() >= 4) ? 1 : 2;
+                    gui_painter->drawPoint(out_image, pose, scaled_radius, gui_robot_color, m_viewport.offset(), m_viewport.zoom());                                         // Robot body
+                    gui_painter->drawPoint(out_image, pose, scaled_radius, cv::Vec3b(255, 255, 255) - gui_robot_color, m_viewport.offset(), m_viewport.zoom(), scaled_thickness);           // Robot outline
                     cv::Point2d pose_px = (gui_painter->cvtValue2Pixel(pose) - cv::Point2d(m_viewport.offset())) * m_viewport.zoom();
-                    cv::Point2d head_px(gui_robot_radius* m_viewport.zoom() * cos(pose.theta), -gui_robot_radius * m_viewport.zoom() * sin(pose.theta));
-                    cv::line(out_image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, (int)(2 * m_viewport.zoom())); // Robot heading
+                    cv::Point2d head_px(scaled_radius* m_viewport.zoom() * cos(pose.theta), -scaled_radius * m_viewport.zoom() * sin(pose.theta));
+                    cv::line(out_image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, (int)(scaled_thickness * m_viewport.zoom())); // Robot heading
                 }
+
+                // Draw debugging info (localizer)
+                std::vector<dg::Point2> eval_path = localizer->getEvalPath();
+                for (auto it = eval_path.begin(); it != eval_path.end(); it++)
+                    gui_painter->drawPoint(out_image, *it, 1, cx::COLOR_BLUE, m_viewport.offset(), m_viewport.zoom());
+                std::vector<dg::Point2> eval_pose_history = localizer->getEvalPoseHistory();
+                for (auto it = eval_pose_history.begin(); it != eval_pose_history.end(); it++)
+                    gui_painter->drawPoint(out_image, *it, 1, cx::COLOR_BLACK, m_viewport.offset(), m_viewport.zoom());
 
                 // Draw the image given from the camera
                 cv::Rect video_rect;

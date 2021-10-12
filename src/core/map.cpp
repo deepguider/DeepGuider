@@ -593,7 +593,7 @@ Pose2 Map::getNearestPathPose(const Path& path, const Pose2& pose_m)
             min_path_idx = i;
         }
     }
-    if (min_path_idx <= 0) return pose_m;
+    if (min_path_idx < 0) return pose_m;
 
     // determine path direction
     Point2 v1 = path.pts[min_path_idx + 1] - path.pts[min_path_idx];
