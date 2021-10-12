@@ -5,7 +5,7 @@ scikit-learn
 pillow==6.2.2
 tensorflow-gpu==1.15.0
 keras==2.2.4
-opencv-contrib-python==3.4.2.17
+opencv-contrib-python==3.4.7.28
 tensorboardX
 matplotlib
 tqdm
