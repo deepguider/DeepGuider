@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pickle5 as pickle
 
-with open('./../src/ocr_recog/poinames_COEX.pickle', 'rb') as f:
+with open('data_ocr/poinames_COEX.pickle', 'rb') as f:
 	poinames = pickle.load(f)
 
 
