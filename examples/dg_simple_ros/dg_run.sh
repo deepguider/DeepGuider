@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ ! -n "$VIRTUAL_ENV" ];then
+	echo "You need to run $0 after entering virtualenv"
+	exit 0
+fi
+
 source /opt/ros/melodic/setup.bash
 catkin_make
 source devel/setup.bash

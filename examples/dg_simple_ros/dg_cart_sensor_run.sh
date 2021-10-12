@@ -1,5 +1,12 @@
 #!/bin/bash
 
+if [ -n "$VIRTUAL_ENV" ];then
+	echo "You need to run $0 after deactivate virtual environment"
+	echo "Run following"
+	echo "deactivate; $0"
+	exit 0
+fi
+
 source /opt/ros/melodic/setup.bash
 catkin_make
 source devel/setup.bash
