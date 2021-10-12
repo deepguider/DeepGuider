@@ -13,6 +13,9 @@ import cv2
 from PIL import ImageFont,Image,ImageDraw
 from ipdb import set_trace as bp
 
+#pred_filtering() by ETRI
+from match_poiname import pred_filtering
+
 def saveResult(img, boxes, pred_list, dirname, res_imagefileName):
     img = np.array(img)
     #res_img_file = dirname + 'result.jpg'
@@ -115,13 +118,27 @@ def detect_ocr(config, image, timestamp, save_img):
 
                 pred = pred[:pred_EOS]  # prune after "end of sentence" token ([s])
 
+
+#pred_filtering() by ETRI
+                thre_filter = 0.6
+                fitered_pred, dist_conf = pred_filtering(pred)
+
+
                 if pred_EOS == 0: 
                     confidence_score = 0.0
                 else:
                     pred_max_prob = pred_max_prob[:pred_EOS]
                     # calculate confidence score (= multiply of pred_max_prob)
                     confidence_score = pred_max_prob.cumprod(dim=0)[-1].item()
-                print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
+
+
+#pred_filtering() by ETRI
+                if dist_conf >= thre_filter:
+                    pred = fitered_pred
+                    confidence_score = dist_conf
+
+
+                #print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
                 coordinate = list(coordinate)
                 pred_list.append([coordinate, pred, confidence_score])
                 #print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
