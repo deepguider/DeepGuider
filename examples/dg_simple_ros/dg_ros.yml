@@ -12,12 +12,12 @@ enable_imu: 0
 enable_mapserver: 0
 
 ### Main Options
-site_index: 0            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, ...
+site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, ...
 site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX"]
 server_ip_index: 0          # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
 topic_name_index: 0         # 0: ETRI CART, 1: KETI ROBOT
-topic_names_set: ["ETRI_CART", "KETI_ROBOT"]
+topic_names_set: ["ETRI_CART", "KETI_ROBOT", "ETRI_CART_VER1"]
 
 dg_srcdir: "/home/dgtest/deepguider/src"  # path of deepguider/src folder (required for python embedding)
 enable_tts: 1
