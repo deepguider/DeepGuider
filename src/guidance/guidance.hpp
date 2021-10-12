@@ -41,6 +41,17 @@ namespace dg
             TYPE_NUM			//The number of GuideStatus
         };
 
+        enum class RobotStatus
+        {
+            READY = 0,
+            RUN_MANUAL,
+            RUN_AUTO,
+            ARRIVED_NODE,
+            ARRIVED_GOAL,
+
+            TYPE_NUM
+        };
+
         /** Moving status based on localization info*/
         enum class MovingStatus
         {
@@ -181,6 +192,7 @@ namespace dg
 
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
         Guidance getGuidance() const { return m_curguidance; };
+        void setRobotStatus(RobotStatus status) { m_robot_status = status; };
 
     protected:
         SharedInterface* m_shared = nullptr;
@@ -215,6 +227,7 @@ namespace dg
         double m_approachingThreshold = 10.0;
         bool m_arrival = false;
         bool m_juctionguide = true;
+        RobotStatus m_robot_status;
 
         std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
         std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
