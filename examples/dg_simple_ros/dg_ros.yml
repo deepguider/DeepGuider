@@ -33,7 +33,7 @@ recording_header_name: "dg_ros_"
 ### Topic Names Set
 ETRI_CART:
   topic_cam: "/uvc_camera/image_raw/compressed"
-  topic_gps: "/asen_gps/fix"
+  topic_gps: "/ascen_gps/fix"
   topic_dgps: "/gps/fix"
   topic_imu: "/imu/data"
   topic_rgbd_image: "/camera/color/image_raw/compressed"
@@ -41,7 +41,7 @@ ETRI_CART:
 
 ETRI_CART_VER1:
   topic_cam: "/uvc_image_raw/compressed"
-  topic_gps: "/asen_fix"
+  topic_gps: "/ascen_fix"
   topic_dgps: "/novatel_fix"
   topic_imu: "/imu/data"
   topic_rgbd_image: "/camera/color/image_raw/compressed"
