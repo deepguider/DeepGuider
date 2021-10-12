@@ -465,7 +465,7 @@ namespace cx
             if (grid_step.x <= 0 || grid_step.y <= 0 || thickness <= 0) return false;
             if (image.empty()) clearCanvas(image);
 
-            cv::Point2d center_grid = cvtValue2Pixel(cv::Point2d(int(m_min_val.x / grid_step.x) * grid_step.x, int(m_min_val.y / grid_step.y) * grid_step.y));
+            cv::Point2d center_grid = cvtValue2Pixel(cv::Point2d(0, 0));
             for (int i = 0;; i++)
             {
                 double y = center_grid.y - grid_step.y * i * m_px_per_val.y;
