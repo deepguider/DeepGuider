@@ -130,7 +130,7 @@ bool GuidanceManager::buildGuides()
 	{
 		if (m_extendedPath[i].is_junction)
 		{
-			printf("[%d] Node id:%zu, Deg: %d \n", i, m_extendedPath[i].cur_node_id, m_extendedPath[i].cur_degree);
+			printf("[%d] Node id:%zu, Deg: %d \n", (int)i, m_extendedPath[i].cur_node_id, m_extendedPath[i].cur_degree);
 		}
 	}
 	return true;
@@ -407,7 +407,7 @@ bool GuidanceManager::update(TopometricPose pose)
 	//check remain distance
 	ID curnid = pose.node_id;
 
-	printf("m_guide_idx: %d, m_extendedPath.size(): %d\n", m_guide_idx, m_extendedPath.size());
+	printf("m_guide_idx: %d, m_extendedPath.size(): %d\n", m_guide_idx, (int)(m_extendedPath.size()));
 	//finishing condition
 	if (curnid == m_extendedPath.back().cur_node_id || 
 	(m_guide_idx == m_extendedPath.size()-1 && m_rmdistance < m_arrived_threshold))
@@ -639,7 +639,7 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 	{
 		m_gstatus = GuideStatus::GUIDE_ARRIVED;
 		m_arrival = true;
-		printf("[setGuideStatus]finishing m_gstatus: %d\n");
+		printf("[setGuideStatus]finishing m_gstatus: %d\n", m_gstatus);
 		return true;
 	}
 
@@ -815,6 +815,7 @@ bool GuidanceManager::setSimpleGuide()
 	guide.msg = getStringGuidance(guide, m_mvstatus);
 
 	m_curguidance = guide;
+	return true;
 
 }
 

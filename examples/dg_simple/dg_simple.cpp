@@ -513,9 +513,9 @@ int DeepGuider::run()
 
     cv::Mat video_image;
     cv::Mat gui_image;
-    int wait_msec = 100;
+    int wait_msec = 200;
     int itr = 0;
-    double start_time = 200;
+    double start_time = 0;
     data_loader.setStartSkipTime(start_time);
     while (1)
     {
@@ -1107,8 +1107,8 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
     cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(255, 0, 0), 4);
 
     // show distance message
-    msg_offset = center_pos + cv::Point(-90, 50);
-    std::string distance = cv::format("NEXT=%.1lfm", guide.distance_to_remain);
+    msg_offset = center_pos + cv::Point(-110, 50);
+    std::string distance = cv::format("Remain=%.1lfm", guide.distance_to_remain);
     cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(0, 255, 255), 14);
     cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(255, 0, 0), 4);
 
