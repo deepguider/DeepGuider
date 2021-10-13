@@ -283,21 +283,21 @@ GuidanceManager::Motion GuidanceManager::getMotion(int ntype, int etype, int deg
 
 	if (ntype == Node::NODE_JUNCTION)
 	{
-		if (degree >= -45 && degree <= 45)	//"FORWARD"
+		if (degree >= -30 && degree <= 30)	//"FORWARD"
 		{
 			if (etype == Edge::EDGE_CROSSWALK)
 				motion = GuidanceManager::Motion::CROSS_FORWARD;
 			else
 				motion = GuidanceManager::Motion::GO_FORWARD;
 		}
-		else if (degree > 45 && degree <= 135)	//"LEFT"
+		else if (degree > 30 && degree <= 150)	//"LEFT"
 		{
 			if (etype == Edge::EDGE_CROSSWALK)
 				motion = GuidanceManager::Motion::CROSS_LEFT;
 			else
 				motion = GuidanceManager::Motion::TURN_LEFT;
 		}
-		else if (degree < -45 && degree >= -135)	//"RIGHT"
+		else if (degree < -30 && degree >= -150)	//"RIGHT"
 		{
 			if (etype == Edge::EDGE_CROSSWALK)
 				motion = GuidanceManager::Motion::CROSS_RIGHT;
@@ -309,22 +309,22 @@ GuidanceManager::Motion GuidanceManager::getMotion(int ntype, int etype, int deg
 	}
 	else if (ntype == Node::NODE_DOOR)
 	{
-		if (degree >= -45 && degree <= 45)	//"FORWARD"
+		if (degree >= -30 && degree <= 30)	//"FORWARD"
 		{
 			motion = GuidanceManager::Motion::ENTER_FORWARD;
 		}
-		else if (degree > 45 && degree <= 135)	//"LEFT"
+		else if (degree > 30&& degree <= 150)	//"LEFT"
 		{
 			motion = GuidanceManager::Motion::ENTER_LEFT;
 		}
-		else if (degree < -45 && degree >= -135)	//"RIGHT"
+		else if (degree < -30 && degree >= -150)	//"RIGHT"
 		{
 			motion = GuidanceManager::Motion::ENTER_RIGHT;
 		}
 	}
 	else
 	{
-		if (degree > 135 || degree < -135) //"BACK"
+		if (degree > 150 || degree < -150) //"BACK"
 		{
 			motion = GuidanceManager::Motion::TURN_BACK;
 		}
