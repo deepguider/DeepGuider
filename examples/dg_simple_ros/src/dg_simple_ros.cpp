@@ -195,6 +195,7 @@ int DeepGuiderROS::run()
     if (m_enable_logo) logo_thread = new std::thread(threadfunc_logo, this);
     if (m_enable_intersection) intersection_thread = new std::thread(threadfunc_intersection, this);
     if (m_enable_roadtheta) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
+    if (m_enable_exploration) exploration_thread = new std::thread(threadfunc_exploration, this);    
 
     // run main loop
     ros::Rate loop(1 / m_wait_sec);
@@ -235,6 +236,9 @@ bool DeepGuiderROS::runOnce(double timestamp)
     
     // draw GUI display
     cv::Mat gui_image;
+    dg::Pose2 px = m_painter.cvtValue2Pixel(getPose());
+    if (m_localizer.isPoseStabilized()) m_viewport.centerizeViewportTo(px);
+
     m_viewport.getViewportImage(gui_image);
     drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
 

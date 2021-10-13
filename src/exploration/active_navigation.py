@@ -518,7 +518,7 @@ class ActiveNavigationModule():
                 else:
                     self.calcOptimalViewpointGuidance(curr_img_orig, target_poi) # (im_path, target_poi)
                     guidance = self.ov_guidance
-                    print("Optimal Guidance [theta1, d, theta2]: [%.2f degree, %.2fm, %.2f degree]" % (guidance[0], guidance[1], guidance[2]))
+                    # print("Optimal Guidance [theta1, d, theta2]: [%.2f degree, %.2fm, %.2f degree]" % (guidance[0], guidance[1], guidance[2]))
                     return [guidance], 'OptimalViewpoint'
 
             if self.isRecoveryGuidanceEnabled():

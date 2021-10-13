@@ -60,7 +60,7 @@ int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_s
     COEX2.grid_unit_pos = cv::Point(-230, -16);
     COEX2.map_file = "data/COEX/TopoMap_COEX.csv";
     COEX2.video_resize = 0.2;
-    COEX2.video_offset = cv::Point(220, 700);
+    COEX2.video_offset = cv::Point(220, 740);
     COEX2.result_resize = 0.4;
 
     MapGUIProp Bucheon;
@@ -182,7 +182,8 @@ int runModule()
     };
     const int coex_idx = 5;
     const std::string site = (data_sel < coex_idx) ? "ETRI" : "COEX";
-    std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.avi";
+    std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
+    if (data_sel == 8) video_file = data_head[data_sel][0] + "_images.avi";
     if (enable_gps && !use_novatel) gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
     if (enable_gps && use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
     if (enable_imu) imu_file = data_head[data_sel][0] + "_imu_data.csv";

@@ -12,12 +12,12 @@ enable_imu: 0
 enable_mapserver: 0
 
 ### Main Options
-site_index: 0            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, ...
+site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, ...
 site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX"]
 server_ip_index: 0          # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
 topic_name_index: 0         # 0: ETRI CART, 1: KETI ROBOT
-topic_names_set: ["ETRI_CART", "KETI_ROBOT"]
+topic_names_set: ["ETRI_CART", "KETI_ROBOT", "ETRI_CART_VER1"]
 
 dg_srcdir: "/home/dgtest/deepguider/src"  # path of deepguider/src folder (required for python embedding)
 enable_tts: 1
@@ -33,27 +33,27 @@ recording_header_name: "dg_ros_"
 ### Topic Names Set
 ETRI_CART:
   topic_cam: "/uvc_camera/image_raw/compressed"
-  topic_gps: "/asen_gps/fix"
-  topic_dgps: "/gps/fix"
-  topic_imu: "/imu/data"
-  topic_rgbd_image: "/camera/color/image_raw/compressed"
-  topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
+  topic_gps: "/ascen_gps/fix"
+  #topic_dgps: "/gps/fix"
+  #topic_imu: "/imu/data"
+  #topic_rgbd_image: "/camera/color/image_raw/compressed"
+  #topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
 
 ETRI_CART_VER1:
   topic_cam: "/uvc_image_raw/compressed"
-  topic_gps: "/asen_fix"
-  topic_dgps: "/novatel_fix"
-  topic_imu: "/imu/data"
-  topic_rgbd_image: "/camera/color/image_raw/compressed"
-  topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
+  topic_gps: "/ascen_fix"
+  #topic_dgps: "/novatel_fix"
+  #topic_imu: "/imu/data"
+  #topic_rgbd_image: "/camera/color/image_raw/compressed"
+  #topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
 
 KETI_ROBOT:
   topic_cam: "/usb_cam_1/image_raw/compressed"
   topic_gps: "/fix"
-  topic_dgps: ""
-  topic_imu: "/gx5/imu/data"
-  topic_rgbd_image: "/rs_front_camera1/color/image_raw/compressed"
-  topic_rgbd_depth: "/rs_front_camera1/aligned_depth_to_color/image_raw/compressed"
+  #topic_dgps: ""
+  #topic_imu: "/gx5/imu/data"
+  #topic_rgbd_image: "/rs_front_camera1/color/image_raw/compressed"
+  #topic_rgbd_depth: "/rs_front_camera1/aligned_depth_to_color/image_raw/compressed"
 
 ## Pre-defined Place Settings
 TEST_ETRI:

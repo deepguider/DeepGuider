@@ -239,6 +239,16 @@ namespace dg
             return true;
         }
 
+        virtual void setPose(const dg::Pose2& pose)
+        {
+            cv::AutoLock lock(m_mutex);
+            m_state_vec = 0;
+            m_state_vec.at<double>(0) = pose.x;
+            m_state_vec.at<double>(1) = pose.y;
+            m_state_vec.at<double>(2) = pose.theta;
+            m_state_cov = cv::Mat::eye(5, 5, m_state_vec.type());
+        }
+
         virtual Pose2 getPose(Timestamp* timestamp = nullptr) const
         {
             cv::AutoLock lock(m_mutex);
