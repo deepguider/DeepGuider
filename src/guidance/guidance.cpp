@@ -237,7 +237,7 @@ bool GuidanceManager::setInitialGuide()
 	guide.msg = getStringGuidance(guide, m_mvstatus);
 
 	//make announcement
-	guide.announce = checkAnnounce();
+	guide.announce = true;
 	
 	m_curguidance = guide;
 
@@ -407,6 +407,7 @@ bool GuidanceManager::update(TopometricPose pose)
 	//check remain distance
 	ID curnid = pose.node_id;
 
+	printf("m_guide_idx: %d, m_extendedPath.size(): %d\n", m_guide_idx, m_extendedPath.size());
 	//finishing condition
 	if (curnid == m_extendedPath.back().cur_node_id || 
 	(m_guide_idx == m_extendedPath.size()-1 && m_rmdistance < m_arrived_threshold))
@@ -428,9 +429,11 @@ bool GuidanceManager::update(TopometricPose pose)
 	}
 
 	//initial
-	printf("m_guide_idx: %d\n", m_guide_idx);
 	if (m_guide_idx == -1)
+	{
 		setInitialGuide();
+		return true;
+	}
 	
 	//check announce
 	Node* curnode = getMap()->getNode(pose.node_id);

@@ -218,7 +218,7 @@ namespace dg
         double m_rmdistance = 0.0;
         int m_cur_head_degree = 0;
         TopometricPose  m_curpose;
-        double m_confidence;
+        double m_confidence = 0.0;
         MovingStatus  m_mvstatus = MovingStatus::ON_EDGE;
         GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
         Guidance m_curguidance;
