@@ -1610,8 +1610,10 @@ void DeepGuider::threadfunc_tts(DeepGuider* guider)
 
 void DeepGuider::putTTS(const char* msg)
 {
+    bool discard = false;
     m_tts_mutex.lock();
-    m_tts_msg.push_back(msg);
+    if (!m_tts_msg.empty() && m_tts_msg.back() == std::string(msg)) discard = true;
+    if (!discard) m_tts_msg.push_back(msg);
     m_tts_mutex.unlock();
 }
 

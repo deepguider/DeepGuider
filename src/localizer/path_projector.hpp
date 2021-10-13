@@ -36,7 +36,7 @@ protected:
     double m_min_alignscore_gap = 20;           // Unit: [m]
     double m_length_align_weight = 0.5;
     double m_error_tolerance = 0.01;            // Unit: [m]
-    bool m_enable_debugging_display = true;
+    bool m_enable_debugging_display = false;
 
     double m_lr_mismatch_cost = 50;             // Unit: [m]
     bool m_enable_lr_reject = false;
