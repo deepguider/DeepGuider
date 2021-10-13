@@ -317,8 +317,8 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize map manager
     m_map_manager.setReference(m_map_ref_point);
-    if (m_enable_mapserver && !m_map_manager.initialize(m_server_ip)) return false;
-    if (m_enable_mapserver) printf("\tMapManager initialized!\n");
+    if (!m_map_manager.initialize(m_server_ip)) return false;
+    printf("\tMapManager initialized!\n");
 
     // initialize VPS
     std::string py_module_path = m_srcdir + "/vps";
@@ -1372,10 +1372,13 @@ bool DeepGuider::procVps()
     double sv_confidence;
     if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence))
     {
-        m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
+        printf("eeeeeeeeeeeeeeeeeeeeeeeee\n");   
+        //m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
+        printf("fffffffffffffffffffffff\n");           
         m_vps.print();
 
         cv::Mat sv_image = m_vps.getViewImage().clone();
+        printf("ggggggggggggggggggggggg\n");   
         if(!sv_image.empty())
         {
             m_vps.draw(sv_image);

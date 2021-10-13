@@ -282,7 +282,7 @@ public:
 	 * @param timeout The timeout value of curl (default: 10)
 	 * @return True if successful (false if failed)
 	 */
-	static bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 10);
+	static bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 10, std::string site_name="etri");
 
 protected:
 	static std::string m_ip;
