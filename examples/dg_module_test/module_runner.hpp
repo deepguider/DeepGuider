@@ -336,6 +336,10 @@ public:
                 dg::Pose2 pose = localizer->getPose();
                 if (robot_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, robot_traj_radius, gui_robot_color);
 
+                // shift viewport to keep robot visible in viewport
+                dg::Pose2 px = gui_painter->cvtValue2Pixel(pose);
+                if(localizer->isPoseStabilized()) m_viewport.centerizeViewportTo(px);
+
                 // get viewport image
                 m_viewport.getViewportImage(out_image);
 
@@ -436,8 +440,13 @@ public:
         }
         else if (evt == cv::EVENT_RBUTTONDOWN)
         {
-            cv::Point2d p = gui_painter->cvtPixel2Value(cv::Point(x, y));
-            printf("x = %lf, y = %lf\n", p.x, p.y);
+            cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            cv::Point2d val = gui_painter->cvtPixel2Value(px);
+            dg::Pose2 pose = getPose();
+            pose.x = val.x;
+            pose.y = val.y;
+            m_localizer->setPose(pose);
+            printf("setPose: x = %lf, y = %lf\n", val.x, val.y);
         }
         else if (evt == cv::EVENT_RBUTTONUP)
         {

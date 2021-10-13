@@ -163,8 +163,17 @@ namespace dg
 
         virtual bool setShared(SharedInterface* shared)
         {
+            cv::AutoLock lock(m_mutex);
             if (m_ekf) m_ekf->setShared(shared);
             return BaseLocalizer::setShared(shared);
+        }
+
+        virtual void setPose(const Pose2 pose)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (m_ekf) m_ekf->setPose(pose);
+            initInternalVariables();
+            m_pose = pose;
         }
 
         virtual bool setParamMotionNoise(double sigma_linear_velocity, double sigma_angular_velocity_deg, double cov_lin_ang = 0)
@@ -343,6 +352,12 @@ namespace dg
         virtual double getPoseConfidence(Timestamp* timestamp = nullptr) const
         {
             return m_ekf->getPoseConfidence(timestamp);
+        }
+
+        virtual bool isPoseStabilized()
+        {
+            if (m_pose_history.data_count() > 10) return true;
+            else return false;
         }
 
         virtual const cv::Mat getState() const
