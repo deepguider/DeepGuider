@@ -3,6 +3,7 @@
 #include <sensor_msgs/NavSatStatus.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <sensor_msgs/Imu.h>
+#include "std_msgs/String.h"
 #include <cv_bridge/cv_bridge.h>
 #include <thread>
 #include "dg_simple_ros/ocr_info.h"
@@ -33,6 +34,7 @@ protected:
     std::string m_topic_imu;
     std::string m_topic_rgbd_image;
     std::string m_topic_rgbd_depth;
+    std::string m_topic_robot_status;
 
     // Topic subscribers (sub modules)
     ros::Subscriber sub_ocr;
@@ -45,6 +47,7 @@ protected:
     ros::Subscriber sub_gps_asen;
     ros::Subscriber sub_gps_novatel;
     ros::Subscriber sub_imu_xsense;
+    ros::Subscriber sub_robot_status;
 
     // Subscriber callbacks (sensor data)    
     void callbackImage(const sensor_msgs::Image::ConstPtr& msg);
@@ -54,6 +57,7 @@ protected:
     void callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix);
     void callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix);
     void callbackIMU(const sensor_msgs::Imu::ConstPtr& msg);
+    void callbackRobotStatus(const std_msgs::String::ConstPtr& msg);
 
     // Topic publishers
     ros::Publisher pub_guide;
@@ -161,6 +165,7 @@ bool DeepGuiderROS::initialize(std::string config_file)
 
     // Initialize module subscribers
     sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
+    if(!m_topic_robot_status.empty()) sub_robot_status = nh_dg.subscribe("/keti_robot/status", 1, &DeepGuiderROS::callbackRobotStatus, this);
 
     // Initialize sensor subscribers
     if(!m_topic_cam.empty()) sub_image_webcam = nh_dg.subscribe(m_topic_cam, 1, &DeepGuiderROS::callbackImageCompressed, this);
@@ -439,6 +444,31 @@ void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
     }
 }
 
+void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
+{
+    const char* str = msg->data.c_str();
+    if (!strcmp(str, "ready"))
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::READY);
+    }
+    else if (!strcmp(str, "run_manual"))   
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::RUN_MANUAL);
+    } 
+    else if (!strcmp(str, "run_auto"))   
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::RUN_AUTO);
+    } 
+    else if (!strcmp(str, "arrived_node"))   
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_NODE);
+    } 
+    else if (!strcmp(str, "arrived_goal"))   
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_GOAL);
+    } 
+}
+
 void DeepGuiderROS::publishGuidance()
 {    
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
@@ -490,14 +520,14 @@ void DeepGuiderROS::publishSubGoal()
     ID nid = cur_guide.heading_node_id;
     Map* map = getMapLocked();
     Node* hNode = map->getNode(nid);
-    printf("ID: %zd\n",nid); 
+    //printf("ID: %zd\n",nid); 
 
     geometry_msgs::PoseStamped rosps;
     if (hNode!=nullptr)
     {
         Pose2 metric = Pose2(hNode->x, hNode->y); 
         dg::Point2UTM node_utm = cvtLatLon2UTM(toLatLon(metric));
-        printf("node_utm.x: %f, node_utm.y: %f\n", node_utm.x, node_utm.y); 
+        //printf("node_utm.x: %f, node_utm.y: %f\n", node_utm.x, node_utm.y); 
 
         geometry_msgs::PoseStamped rosps;
         rosps.pose.position.x = node_utm.x;

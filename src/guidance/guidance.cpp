@@ -337,7 +337,75 @@ GuidanceManager::Motion GuidanceManager::getMotion(int ntype, int etype, int deg
 	return motion;
 }
 
+bool GuidanceManager::update(TopometricPose pose)
+{
+    int guide_interval = 10; //m
+	int gidx = getGuideIdxFromPose(pose);
+	if (gidx != m_guide_idx)//if new node appears
+	{
+		m_past_guides.push_back(m_curguidance); //save past guidances
+		m_guide_idx = gidx;
+	}
+	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
+	
+	//check remain distance
+	Node* curnode = getMap()->getNode(pose.node_id);
+	ID cureid = curnode->edge_ids[pose.edge_idx];
+	Edge* curedge = getMap()->getEdge(cureid);
+	double passsed_dist = pose.dist;
+	double edge_dist = curEP.remain_distance_to_next_junction;        
+	double remain_dist = edge_dist - passsed_dist;
+	m_rmdistance = remain_dist;
+	int announce_dist = (int) remain_dist / guide_interval * guide_interval;
+	printf("announce_dist: %d\n",announce_dist);	
+	bool announce = false;
+	//near junction
+	printf("remain_dist: %.2f, %.2f, %.2f\n", remain_dist, m_uncertain_dist, passsed_dist);
+	if (remain_dist <= m_uncertain_dist || passsed_dist <= m_uncertain_dist)
+	{
+		printf("edge_dist: %f, %f\n", edge_dist, 2*m_uncertain_dist);
+		if(edge_dist <= 2*m_uncertain_dist)
+		{
+			printf("m_last_announce_dist: %d, %d, %d\n", m_last_announce_dist, announce_dist, announce);
+			if((m_last_announce_dist != announce_dist) && !announce)
+			{
+				announce = true;
+				setSimpleGuide();
+				m_last_announce_dist = announce_dist;
+			}
+			else
+				announce = false;
+		}
+		else
+			announce = false;
+	}	
+	//on junction
+	else if (passsed_dist < m_approachingThreshold || remain_dist < m_approachingThreshold)
+	{
+		printf("Too close to junction!\n");
+		m_last_announce_dist = -1;
+		announce = false;
+	}
+	//normal case
+	else
+	{		
+		printf("announce_dist: %d, m_last_announce_dist: %d,\n", announce_dist, m_last_announce_dist);
+		if(announce_dist != m_last_announce_dist)
+		{
+			announce = true;
+			setSimpleGuide();
+			printf("update announce_dist\n");
+			m_last_announce_dist = announce_dist;
+		}
+		else
+			announce = false;
+	}
+	m_curguidance.announce = announce;
 
+	
+    return true;
+}
+/*
 bool GuidanceManager::update(TopometricPose pose, double conf)
 {
 	//validate parameters
@@ -356,6 +424,7 @@ bool GuidanceManager::update(TopometricPose pose, double conf)
 	setEmptyGuide();
 	return false;
 }
+*/
 
 
 /**applyPose updates pose related variables.
@@ -430,7 +499,7 @@ bool GuidanceManager::applyPose(TopometricPose  pose)
 	*/
 
 	//Check edge following status
-	if (pastdist < 1.0)
+	if (pastdist < m_approachingThreshold)
 		m_mvstatus = MovingStatus::ON_NODE;
 	else if (m_rmdistance < m_approachingThreshold)
 	{		
@@ -624,6 +693,34 @@ GuidanceManager::ExtendedPathElement GuidanceManager::getCurExtendedPath(int idx
 	return m_extendedPath[idx];
 }
 
+bool GuidanceManager::setSimpleGuide()
+{
+	Guidance guide;
+	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
+	ExtendedPathElement nextEP = getCurExtendedPath(m_guide_idx + 1);
+	printf("Turn: %d\n", nextEP.cur_degree);
+	if (!isForward(nextEP.cur_degree))//if TURN exists on next node,
+	{
+		int turnDeg = nextEP.cur_degree;	//if APPROACHING_NODE, turn next degree
+		guide.actions.push_back(
+			setActionTurn(nextEP.cur_node_id, nextEP.cur_edge_id, turnDeg));
+	}
+	else
+		guide.actions.push_back(setActionGo(nextEP.next_node_id, nextEP.cur_edge_id, 0));
+
+	//update heading_node
+	guide.heading_node_id = curEP.next_node_id;
+
+	//make string msg
+	guide.distance_to_remain = m_rmdistance;
+
+	//make guidance string
+	guide.msg = getStringGuidance(guide, m_mvstatus);
+
+	m_curguidance = guide;
+
+}
+
 
 bool GuidanceManager::setNormalGuide()
 {
@@ -670,7 +767,15 @@ bool GuidanceManager::setNormalGuide()
 	}
 	case MovingStatus::ON_EDGE://maintain current guide, until next Node
 	{	//only forward action is displayed on edge status
-		guide.actions.push_back(setActionGo(curEP.next_node_id, curEP.cur_edge_id, 0));
+
+		if (!isForward(nextEP.cur_degree))//if TURN exists on next node,
+		{
+			int turnDeg = nextEP.cur_degree;	//if APPROACHING_NODE, turn next degree
+			guide.actions.push_back(
+				setActionTurn(nextEP.cur_node_id, nextEP.cur_edge_id, turnDeg));
+		}
+		else
+			guide.actions.push_back(setActionGo(nextEP.next_node_id, nextEP.cur_edge_id, 0));
 		break;
 	}
 	case MovingStatus::APPROACHING_NODE://After 000m, (TURN) - GO, prepare next Node action
@@ -712,6 +817,25 @@ bool GuidanceManager::setNormalGuide()
 
 	//make guidance string
 	guide.msg = getStringGuidance(guide, m_mvstatus);
+
+
+	//make announcement
+	int cur_announce_dist = m_rmdistance;
+	if (cur_announce_dist>10)
+		cur_announce_dist = cur_announce_dist/10;
+	if (m_mvstatus != MovingStatus::ON_EDGE || m_past_announce == cur_announce_dist)
+	{
+		guide.announce = 0;
+		printf("guide.announce = 0\n");
+	}
+	else
+	{
+		guide.announce = 1;
+		m_past_announce = cur_announce_dist;
+		printf("guide.announce = 1\n");
+		printf("%d\n", (int) m_rmdistance);
+        std::string dist = std::to_string((int) m_rmdistance);
+	}
 
 	m_curguidance = guide;
 
