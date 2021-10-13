@@ -1482,9 +1482,15 @@ bool DeepGuider::procExploration()
             return true;
         }
         if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
-
-        std::string msg1 = cv::format("Turn %d degree.", (int)(actions[0].theta1 + 0.5));
-        putTTS((const char*)msg1.c_str());
+        std::string msg;
+        if (actions[0].theta1 >= 0){
+            msg = cv::format("Turn right %d degree.", (int)(actions[0].theta1 + 0.5));
+        }
+        else{
+            msg = cv::format("Turn left %d degree.", (int)(actions[0].theta1 + 0.5));
+        }
+        putTTS((const char*)msg.c_str());
+        
         if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
         std::this_thread::sleep_for(std::chrono::seconds(10));
         if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
@@ -1495,8 +1501,14 @@ bool DeepGuider::procExploration()
         std::this_thread::sleep_for(std::chrono::seconds(10));
         if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
 
-        std::string msg3 = cv::format("Turn %d degree.", (int)(actions[0].theta2 + 0.5));
-        putTTS((const char*)msg3.c_str());
+        if (actions[0].theta2 >= 0){
+            msg = cv::format("Turn right %d degree.", (int)(actions[0].theta2 + 0.5));
+        }
+        else{
+            msg = cv::format("Turn left %d degree.", (int)(actions[0].theta2 + 0.5));
+        }
+        putTTS((const char*)msg.c_str());
+
         if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
         std::this_thread::sleep_for(std::chrono::seconds(10));
         if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
