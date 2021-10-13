@@ -601,7 +601,7 @@ class vps:
         return self.region
 
     def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.9, timestamp=0.0, ipaddr=None):
-        ## Init.
+        ## Init.           
         self.gps_lat = float(gps_lat)
         self.gps_lon = float(gps_lon)
         self.gps_accuracy = min(max(gps_accuracy,0.0),1.0)
@@ -625,8 +625,8 @@ class vps:
             recalls = self.test(whole_test_set, epoch, write_tboard=False)
         elif opt.dataset.lower() == 'deepguider':
             from netvlad import etri_dbloader as dataset
-            ## Get DB images from streetview image server
-            ret = self.getStreetView(self.dataset_struct_dir)
+            ## Get DB images from streetview image server            
+            ret = self.getStreetView(self.dataset_struct_dir)               
             if ret < 0:
                 print("Local DBs will be used : ",self.dataset_struct_dir)
 
@@ -649,7 +649,7 @@ class vps:
         else:
             raise Exception('Unknown dataset')
 
-        ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]
+        ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]        
         return self.getIDConf()
 
     def getIDConf(self):

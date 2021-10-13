@@ -48,7 +48,6 @@ namespace dg
             double pose_confidence = 1;
             LatLon ll = m_shared->toLatLon(pose);
             if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str())) return false;
-
             Map* map = m_shared->getMap();
             if (map == nullptr) return false;
             if (m_result.empty()) return false;
@@ -57,8 +56,10 @@ namespace dg
             StreetView* sv = map->getView(m_sv_id);
             if (sv == nullptr) return false;
             streetview_xy = *sv;
+            
             relative = computeRelative(image, m_sv_id, m_sv_image);
             streetview_confidence = m_result[0].confidence;
+           
             return true;
         }
 
@@ -70,7 +71,7 @@ namespace dg
         dg::Polar2 computeRelative(const cv::Mat image, ID sv_id, cv::Mat& sv_image)
         {
             dg::Polar2 relative = dg::Polar2(-1, CV_PI);
-            if (MapManager::getStreetViewImage(sv_id, sv_image, "f") && !sv_image.empty())
+            if (MapManager::getStreetViewImage(sv_id, sv_image, "f", 10, "coex") && !sv_image.empty())
             {
                 // TODO: compute relative pose of matched streetview image w.r.t. camera image
             }

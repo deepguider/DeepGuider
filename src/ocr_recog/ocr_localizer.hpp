@@ -59,27 +59,29 @@ namespace dg
         {
             cv::AutoLock lock(m_mutex);
             if (m_shared == nullptr) return false;
-			Pose2 pose = m_shared->getPose();
+			// Pose2 pose = m_shared->getPose(); //For coex demo, remark belows begin
 
             if (!OCRRecognizer::apply(image, image_time)) return false;
 			if (m_result.empty()) return false;
 
-            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-			Map* map = m_shared->getMap();
-			if (map == nullptr) return false;
-			for (int k = 0; k < m_result.size(); k++)
-            {
-                std::wstring poi_name = converter.from_bytes(m_result[k].label.c_str());
-                std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
-                if (!pois.empty())
-                {
-                    POI* poi = pois[0];
-                    poi_xys.push_back(*poi);
-                    Polar2 relative = computeRelative(m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
-                    relatives.push_back(relative);
-                    poi_confidences.push_back(m_result[k].confidence);
-                }
-            }
+			// For coex demo, remark belows begin
+            // std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			// Map* map = m_shared->getMap();
+			// if (map == nullptr) return false;
+			// for (int k = 0; k < m_result.size(); k++)
+            // {
+            //     std::wstring poi_name = converter.from_bytes(m_result[k].label.c_str());
+            //     std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
+            //     if (!pois.empty())
+            //     {
+            //         POI* poi = pois[0];
+            //         poi_xys.push_back(*poi);
+            //         Polar2 relative = computeRelative(m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
+            //         relatives.push_back(relative);
+            //         poi_confidences.push_back(m_result[k].confidence);
+            //     }
+            // }
+			// For coex demo, remark belows end			
             return true;
         }
 

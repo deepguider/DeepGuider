@@ -6,8 +6,8 @@ using namespace rapidjson;
 namespace dg
 {
 
-//std::string MapManager::m_ip = "localhost";
-std::string MapManager::m_ip = "129.254.81.204";
+std::string MapManager::m_ip = "localhost";
+//std::string MapManager::m_ip = "129.254.81.204";
 bool MapManager::m_portErr = false;
 
 
@@ -778,7 +778,7 @@ bool MapManager::parseStreetView(const char* json, std::vector<StreetView>& sv_v
 	return true;
 }
 
-bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic, int timeout)
+bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic, int timeout, std::string site_name)
 {
 	if (!(cubic == "f" || cubic == "b" || cubic == "l" || cubic == "r" || cubic == "u" || cubic == "d"))
 		cubic = "";
@@ -787,7 +787,8 @@ bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cub
 
 	if (m_portErr == true)
 	{
-		const std::string url_middle = ":10001/";
+		const std::string url_middle = (site_name == "etri") ? ":10001/" : ((site_name == "coex") ? ":10000" : ":10002");
+
 		sv_image = downloadStreetViewImage(sv_id, cubic, timeout, url_middle);
 		m_portErr = false;
 	}

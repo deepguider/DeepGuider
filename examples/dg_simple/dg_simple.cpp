@@ -36,7 +36,7 @@ protected:
     bool m_enable_mapserver = true;
 
     int m_exploration_state_count = 0;
-    const int m_exploration_state_count_max = 1;    
+    const int m_exploration_state_count_max = 20;    
 
     std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
     std::string m_srcdir = "./../src";      // path of deepguider/src (required for python embedding)
@@ -317,8 +317,8 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize map manager
     m_map_manager.setReference(m_map_ref_point);
-    if (m_enable_mapserver && !m_map_manager.initialize(m_server_ip)) return false;
-    if (m_enable_mapserver) printf("\tMapManager initialized!\n");
+    if (!m_map_manager.initialize(m_server_ip)) return false;
+    printf("\tMapManager initialized!\n");
 
     // initialize VPS
     std::string py_module_path = m_srcdir + "/vps";
@@ -384,7 +384,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("track_near_radius", 20);
     m_localizer.setParamValue("enable_path_projection", true);
     m_localizer.setParamValue("enable_map_projection", false);
-    m_localizer.setParamValue("enable_backtracking_ekf", true);
+    m_localizer.setParamValue("enable_backtracking_ekf", false); // default : true, for demo : false
     m_localizer.setParamValue("enable_gps_smoothing)", true);
     m_localizer.setParamValue("enable_debugging_display", false);
     m_localizer.setParamValue("lr_mismatch_cost", 50);
@@ -651,6 +651,11 @@ int DeepGuider::run()
             int key = cv::waitKey(wait_msec);
             if (key == cx::KEY_SPACE) key = cv::waitKey(0);
             if (key == cx::KEY_ESC) break;
+            if (key == '1') m_viewport.setZoom(1);
+            if (key == '2') m_viewport.setZoom(2);
+            if (key == '3') m_viewport.setZoom(3);
+            if (key == '4') m_viewport.setZoom(4);
+            if (key == '0') m_exploration_state_count = 0;  // terminate active view
             if (key == 83) itr += 30;   // Right Key
 
             // update iteration
@@ -781,6 +786,9 @@ bool DeepGuider::setDeepGuiderDestination(dg::Point2F dest)
 
 bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
 {
+    // stop other works
+    m_exploration_state_count = 0;
+
     if (m_enable_tts) putTTS("Regenerate path!");
     m_exploration_state_count = 0;
     if (m_enable_mapserver)
@@ -796,6 +804,8 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
             printf("[MapManager] fail to find path to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
             return false;
         }
+        dg::Pose2 pose = m_localizer.getPose();
+        m_localizer.setPose(pose);
         setPath(path);
         printf("[MapManager] New path generated to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
     }
@@ -807,6 +817,8 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
         dg::Pose2 pose = m_localizer.getPose();
         m_localizer.setPose(pose);
         setPath(path);
+        dg::LatLon gps_dest = toLatLon(dest);
+        printf("[OfflineMap] New path generated to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
     }
 
     // guidance: init map and path for guidance
@@ -985,7 +997,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     m_painter.drawPoint(image, pose_metric, 10*2, cx::COLOR_YELLOW, view_offset, view_zoom);
     m_painter.drawPoint(image, pose_metric, 8*2, cx::COLOR_BLUE, view_offset, view_zoom);
     cv::Point2d px = (m_painter.cvtValue2Pixel(pose_metric) - view_offset) * view_zoom;
-    cv::line(image, px, px + 10 * view_zoom * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_YELLOW, (int)(2*view_zoom+0.5));
+    cv::line(image, px, px + 10*2 * view_zoom * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_YELLOW, (int)(2*2*view_zoom+0.5));
 
     // draw status message (localization)
     cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
@@ -1095,8 +1107,8 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
     cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(255, 0, 0), 4);
 
     // show distance message
-    msg_offset = center_pos + cv::Point(0, 30);
-    std::string distance = cv::format("D=%.1lfm", guide.distance_to_remain);
+    msg_offset = center_pos + cv::Point(-90, 50);
+    std::string distance = cv::format("NEXT=%.1lfm", guide.distance_to_remain);
     cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(0, 255, 255), 14);
     cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(255, 0, 0), 4);
 
@@ -1172,6 +1184,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         if (cur_status == dg::GuidanceManager::GuideStatus::GUIDE_ARRIVED && cur_guide.announce)
         {
             printf("Arrived to destination!\n");
+            m_dest_defined = false;
             if (m_enable_tts) putTTS("Arrived to destination!");
             m_exploration_state_count = m_exploration_state_count_max;  //Enter exploration mode until state_count becomes 0 from count_max
         }
@@ -1293,10 +1306,12 @@ bool DeepGuider::procOcr()
     std::vector<double> poi_confidences;
     if (m_ocr.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
     {
-        for (int k = 0; k < (int)poi_xys.size(); k++)
-        {
-            m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
-        }
+        // For coex demo, remark belows begin
+        // for (int k = 0; k < (int)poi_xys.size(); k++)
+        // {
+        //     m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
+        // }
+        // For coex demo, remark belows end        
         m_ocr.print();
 
         m_ocr.draw(cam_image);
@@ -1328,7 +1343,7 @@ bool DeepGuider::procRoadTheta()
     double theta, confidence;
     if (m_roadtheta.apply(cam_image, capture_time, theta, confidence))
     {
-        m_localizer.applyRoadTheta(theta, capture_time, confidence);
+        // m_localizer.applyRoadTheta(theta, capture_time, confidence);
         m_roadtheta.print();
 
         m_roadtheta.draw(cam_image);
@@ -1362,7 +1377,7 @@ bool DeepGuider::procVps()
     double sv_confidence;
     if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence))
     {
-        m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
+        //m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
 
         cv::Mat sv_image = m_vps.getViewImage().clone();
@@ -1461,17 +1476,45 @@ bool DeepGuider::procExploration()
         m_exploration_mutex.lock();
         m_exploration_image = cam_image;
         m_exploration_mutex.unlock();
-        
-        if ( (actions[0].d == 0.0) && (actions[0].theta1 == 0.0) && (actions[0].theta2 == 0.0) )
+
+        double z = (actions[0].theta1 * actions[0].theta1) + (actions[0].d * actions[0].d) + (actions[0].theta2 * actions[0].theta2);
+        if ( z < 0.0001 )
         {
             putTTS("Arrived at destination point");
             m_exploration_state_count = 0;
             return true;
         }
-        std::string msg = cv::format("Move %3.2f meters in %3.2f degree direction, and turn %3.2f degree.", actions[0].d, actions[0].theta1, actions[0].theta2);
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
+        std::string msg;
+        if (actions[0].theta1 >= 0){
+            msg = cv::format("Turn right %d degree.", (int)(actions[0].theta1 + 0.5));
+        }
+        else{
+            msg = cv::format("Turn left %d degree.", (int)(actions[0].theta1 + 0.5));
+        }
+        putTTS((const char*)msg.c_str());
+        
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
+
+        std::string msg2 = cv::format("Move %.1f meters.", actions[0].d);
+        putTTS((const char*)msg2.c_str());
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
+
+        if (actions[0].theta2 >= 0){
+            msg = cv::format("Turn right %d degree.", (int)(actions[0].theta2 + 0.5));
+        }
+        else{
+            msg = cv::format("Turn left %d degree.", (int)(actions[0].theta2 + 0.5));
+        }
         putTTS((const char*)msg.c_str());
 
-        //std::this_thread::sleep_for(std::chrono::seconds(20));
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
 
         // int wait_msec = 5000;
         // int key = cv::waitKey(wait_msec);
@@ -1574,6 +1617,10 @@ void DeepGuider::threadfunc_exploration(DeepGuider* guider)
     while (guider->m_enable_exploration)
     {
         guider->procExploration();
+        if (guider->m_exploration_state_count <= 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
     guider->is_exploration_running = false;
     printf("\texploration thread ends\n");
@@ -1595,8 +1642,10 @@ void DeepGuider::threadfunc_tts(DeepGuider* guider)
 
 void DeepGuider::putTTS(const char* msg)
 {
+    bool discard = false;
     m_tts_mutex.lock();
-    m_tts_msg.push_back(msg);
+    if (!m_tts_msg.empty() && m_tts_msg.back() == std::string(msg)) discard = true;
+    if (!discard) m_tts_msg.push_back(msg);
     m_tts_mutex.unlock();
 }
 
@@ -1610,6 +1659,7 @@ void DeepGuider::procTTS()
     for(int i=0; i<(int)tts_msg.size(); i++)
     {
         tts(tts_msg[i]);
+        if (!m_enable_tts) break;
     }
 }
 
@@ -1624,6 +1674,8 @@ void DeepGuider::terminateThreadFunctions()
     m_enable_logo = false;
     m_enable_intersection = false;
     m_enable_roadtheta = false;
+    m_enable_exploration = false;
+    m_exploration_state_count = 0;
     m_enable_tts = false;
 
     // wait child thread to terminate

@@ -344,7 +344,7 @@ namespace dg
 
         virtual Pose2 getPose(Timestamp* timestamp = nullptr) const
         {
-            cv::AutoLock lock(m_mutex);
+            //cv::AutoLock lock(m_mutex);
             if (timestamp) *timestamp = m_timestamp;
             return m_pose;
         }
