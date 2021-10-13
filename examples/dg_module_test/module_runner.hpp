@@ -45,7 +45,7 @@ public:
             if (m_roadtheta_localizer) VVS_CHECK_TRUE(m_roadtheta_localizer->initialize(this));
             if (m_lr_localizer) VVS_CHECK_TRUE(m_lr_localizer->initialize_without_python(this));
         }
-        else
+        else if(module_sel != DG_RoadTheta)
         {
             // initialize python environment
             dg::init_python_environment("python3", "", false);
@@ -53,8 +53,11 @@ public:
             if (m_vps_localizer) VVS_CHECK_TRUE(m_vps_localizer->initialize(this));
             if (m_ocr_localizer) VVS_CHECK_TRUE(m_ocr_localizer->initialize(this));
             if (m_intersection_localizer) VVS_CHECK_TRUE(m_intersection_localizer->initialize(this));
-            if (m_roadtheta_localizer) VVS_CHECK_TRUE(m_roadtheta_localizer->initialize(this));
             if (m_lr_localizer) VVS_CHECK_TRUE(m_lr_localizer->initialize(this));
+        }
+        else
+        {
+            if (m_roadtheta_localizer) VVS_CHECK_TRUE(m_roadtheta_localizer->initialize(this));
         }
 
         // Prepare the video for recording

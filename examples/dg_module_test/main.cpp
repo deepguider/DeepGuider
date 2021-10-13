@@ -155,15 +155,15 @@ int runModule()
     bool enable_gps = true;
     bool use_novatel = false;
     bool enable_imu = false;
-    bool use_saved_testset = true;
+    bool use_saved_testset = false;
 
     int module_sel = -1;
     //module_sel = DG_Intersection;
     //module_sel = DG_VPS;
-    module_sel = DG_LR;
+    //module_sel = DG_LR;
     //module_sel = DG_OCR;
     //module_sel = DG_POI;
-    //module_sel = DG_RoadTheta;
+    module_sel = DG_RoadTheta;
 
     int data_sel = 8;
     double start_time = 0;     // time skip (seconds)
