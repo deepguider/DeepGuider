@@ -178,6 +178,7 @@ namespace dg
             double past_distance_from_prev_junction = 0;
             ID next_guide_node_id = 0;
             ID next_guide_edge_id = 0;
+            int junction_degree = 0;
         };
 
     public:
@@ -225,14 +226,15 @@ namespace dg
         time_t oop_start = 0, oop_end = 0;
         int m_finalTurn = 0;
         int m_finalEdgeId = 0;
-        double m_approachingThreshold = 1.0;
+        double m_approachingThreshold = 20.0;
+        double m_arrived_threshold = 1.0;
         bool m_arrival = false;
         bool m_juctionguide = true;
         RobotStatus m_robot_status;
         int m_past_announce = 0;
         int m_last_announce_dist = -1;
         ID m_past_ref_node = 0;
-        double m_uncertain_dist = 2;
+        double m_uncertain_dist = 2.0;
 
         std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
         std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
@@ -300,6 +302,7 @@ namespace dg
         bool setArrivalGuide();
         bool setEmptyGuide();
         bool setSimpleGuide();
+        bool checkAnnounce();
         //	bool setTunBackGuide();
         bool applyPose(TopometricPose pose);
 
