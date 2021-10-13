@@ -1463,10 +1463,11 @@ bool DeepGuider::procExploration()
         std::string msg = cv::format("Move %3.2f meters in %3.2f degree direction, and turn %3.2f degree.", actions[0].d, actions[0].theta1, actions[0].theta2);
         putTTS((const char*)msg.c_str());
 
-        int wait_msec = 5000;
-        int key = cv::waitKey(wait_msec);
-        if (key == cx::KEY_ESC) m_exploration_state_count = 0;
-    
+        sleep(10);
+        // int wait_msec = 5000;
+        // int key = cv::waitKey(wait_msec);
+        // if (key == cx::KEY_ESC) m_exploration_state_count = 0;
+
         return true;        
 	}
 	else
