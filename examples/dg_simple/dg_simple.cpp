@@ -1372,13 +1372,10 @@ bool DeepGuider::procVps()
     double sv_confidence;
     if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence))
     {
-        printf("eeeeeeeeeeeeeeeeeeeeeeeee\n");   
         //m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
-        printf("fffffffffffffffffffffff\n");           
         m_vps.print();
 
         cv::Mat sv_image = m_vps.getViewImage().clone();
-        printf("ggggggggggggggggggggggg\n");   
         if(!sv_image.empty())
         {
             m_vps.draw(sv_image);

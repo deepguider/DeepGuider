@@ -18,7 +18,7 @@ public:
     /** Get a poiter to shared map data */
     virtual Map* getMap()
     {
-        // cv::AutoLock lock(m_mutex_map);
+        //cv::AutoLock lock(m_mutex_map);
         return m_map;
     }
 
