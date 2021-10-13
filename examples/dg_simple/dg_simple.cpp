@@ -803,6 +803,8 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
         Path path;
         bool ok = m_map && m_map->getPath(start, dest, path);
         if (!ok) return false;
+        dg::Pose2 pose = m_localizer.getPose();
+        m_localizer.setPose(pose);
         setPath(path);
     }
 
@@ -1040,10 +1042,10 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
-        if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) dir_msg = "[Guide] GO_FORWARD";
-        if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD) dir_msg = "[Guide] CROSS_FORWARD";
-        if (cmd == dg::GuidanceManager::Motion::ENTER_FORWARD) dir_msg = "[Guide] ENTER_FORWARD";
-        if (cmd == dg::GuidanceManager::Motion::EXIT_FORWARD) dir_msg = "[Guide] EXIT_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) dir_msg = "GO_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD) dir_msg = "CROSS_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::ENTER_FORWARD) dir_msg = "ENTER_FORWARD";
+        if (cmd == dg::GuidanceManager::Motion::EXIT_FORWARD) dir_msg = "EXIT_FORWARD";
     }
     else if (cmd == dg::GuidanceManager::Motion::TURN_LEFT || cmd == dg::GuidanceManager::Motion::CROSS_LEFT || cmd == dg::GuidanceManager::Motion::ENTER_LEFT || cmd == dg::GuidanceManager::Motion::EXIT_LEFT)
     {
@@ -1053,10 +1055,10 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
-        if (cmd == dg::GuidanceManager::Motion::TURN_LEFT) dir_msg = "[Guide] TURN_LEFT";
-        if (cmd == dg::GuidanceManager::Motion::CROSS_LEFT) dir_msg = "[Guide] CROSS_LEFT";
-        if (cmd == dg::GuidanceManager::Motion::ENTER_LEFT) dir_msg = "[Guide] ENTER_LEFT";
-        if (cmd == dg::GuidanceManager::Motion::EXIT_LEFT) dir_msg = "[Guide] EXIT_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::TURN_LEFT) dir_msg = "TURN_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::CROSS_LEFT) dir_msg = "CROSS_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::ENTER_LEFT) dir_msg = "ENTER_LEFT";
+        if (cmd == dg::GuidanceManager::Motion::EXIT_LEFT) dir_msg = "EXIT_LEFT";
     }
     else if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT || cmd == dg::GuidanceManager::Motion::CROSS_RIGHT || cmd == dg::GuidanceManager::Motion::ENTER_RIGHT || cmd == dg::GuidanceManager::Motion::EXIT_RIGHT)
     {
@@ -1066,10 +1068,10 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
-        if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT) dir_msg = "[Guide] TURN_RIGHT";
-        if (cmd == dg::GuidanceManager::Motion::CROSS_RIGHT) dir_msg = "[Guide] CROSS_RIGHT";
-        if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) dir_msg = "[Guide] ENTER_RIGHT";
-        if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) dir_msg = "[Guide] EXIT_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT) dir_msg = "TURN_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::CROSS_RIGHT) dir_msg = "CROSS_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) dir_msg = "ENTER_RIGHT";
+        if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) dir_msg = "EXIT_RIGHT";
     }
     else if (cmd == dg::GuidanceManager::Motion::TURN_BACK)
     {
@@ -1079,7 +1081,7 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         int y1 = center_pos.y - icon.rows / 2;
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
-        dir_msg = "[Guide] TURN_BACK";
+        dir_msg = "TURN_BACK";
     }
     else
     {
@@ -1088,11 +1090,11 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
 
     // show direction message
     cv::Point msg_offset = rect.tl() + cv::Point(10, 40);
-    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(0, 255, 255), 14);
-    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(255, 0, 0), 4);
+    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(0, 255, 255), 12);
+    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(255, 0, 0), 4);
 
     // show distance message
-    msg_offset = center_pos;;// +cv::Point(50, 10);
+    msg_offset = center_pos + cv::Point(0, 30);
     std::string distance = cv::format("D=%.1lfm", guide.distance_to_remain);
     cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(0, 255, 255), 14);
     cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(255, 0, 0), 4);
