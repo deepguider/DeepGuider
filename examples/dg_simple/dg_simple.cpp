@@ -421,10 +421,15 @@ bool DeepGuider::initialize(std::string config_file)
     m_map_image_original = m_map_image.clone();
 
     // load icon images
+    double icon_scale = 3.0;
     m_icon_forward = cv::imread("data/forward.png");
     m_icon_turn_left = cv::imread("data/turn_left.png");
     m_icon_turn_right = cv::imread("data/turn_right.png");
     m_icon_turn_back = cv::imread("data/turn_back.png");
+    cv::resize(m_icon_forward, m_icon_forward, cv::Size(), icon_scale, icon_scale);
+    cv::resize(m_icon_turn_left, m_icon_turn_left, cv::Size(), icon_scale, icon_scale);
+    cv::resize(m_icon_turn_right, m_icon_turn_right, cv::Size(), icon_scale, icon_scale);
+    cv::resize(m_icon_turn_back, m_icon_turn_back, cv::Size(), icon_scale, icon_scale);
     cv::threshold(m_icon_forward, m_mask_forward, 250, 1, cv::THRESH_BINARY_INV);
     cv::threshold(m_icon_turn_left, m_mask_turn_left, 250, 1, cv::THRESH_BINARY_INV);
     cv::threshold(m_icon_turn_right, m_mask_turn_right, 250, 1, cv::THRESH_BINARY_INV);
@@ -629,6 +634,8 @@ int DeepGuider::run()
             procGuidance(data_time);
 
             // draw GUI display
+            dg::Pose2 px = m_painter.cvtValue2Pixel(pose_m);
+            if (m_localizer.isPoseStabilized()) m_viewport.centerizeViewportTo(px);
             m_viewport.getViewportImage(gui_image);
             drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
 
@@ -739,6 +746,13 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
     }
     else if (evt == cv::EVENT_RBUTTONDOWN)
     {
+        cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+        cv::Point2d val = m_painter.cvtPixel2Value(px);
+        dg::Pose2 pose = getPose();
+        pose.x = val.x;
+        pose.y = val.y;
+        m_localizer.setPose(pose);
+        printf("[Localizer] set user pose: x = %lf, y = %lf\n", val.x, val.y);
     }
     else if (evt == cv::EVENT_RBUTTONUP)
     {
@@ -1077,10 +1091,10 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
     cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
 
     // show distance message
-    msg_offset = center_pos + cv::Point(50, 10);
-    std::string distance = cv::format("D=%.2lfm", guide.distance_to_remain);
-    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
-    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+    msg_offset = center_pos;;// +cv::Point(50, 10);
+    std::string distance = cv::format("D=%.1lfm", guide.distance_to_remain);
+    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(0, 255, 255), 14);
+    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(255, 0, 0), 4);
 
     // show guidance message
     msg_offset = rect.tl() + cv::Point(0, rect.height + 25);
@@ -1442,7 +1456,10 @@ bool DeepGuider::procExploration()
         
         std::string msg = cv::format("Move %3.2f meters in %3.2f degree direction, and turn %3.2f degree.", actions[0].d, actions[0].theta1, actions[0].theta2);
         putTTS((const char*)msg.c_str());
-        sleep(10);
+
+        int wait_msec = 5000;
+        int key = cv::waitKey(wait_msec);
+        if (key == cx::KEY_ESC) m_exploration_state_count = 0;
     
         return true;        
 	}
