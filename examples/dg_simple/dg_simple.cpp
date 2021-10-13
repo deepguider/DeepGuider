@@ -1087,9 +1087,9 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
     }    
 
     // show direction message
-    cv::Point msg_offset = rect.tl() + cv::Point(10, 30);
-    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
-    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+    cv::Point msg_offset = rect.tl() + cv::Point(10, 40);
+    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(0, 255, 255), 14);
+    cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(255, 0, 0), 4);
 
     // show distance message
     msg_offset = center_pos;;// +cv::Point(50, 10);
@@ -1180,6 +1180,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         }
 
         // check lost
+        /*
         if (m_enable_exploration)
         {
             m_guider.makeLostValue(m_guider.m_prevconf, pose_confidence);
@@ -1195,6 +1196,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
                 }
             }
         }
+        */
     }
     m_guidance_status = cur_status;
 }
@@ -1464,7 +1466,8 @@ bool DeepGuider::procExploration()
         std::string msg = cv::format("Move %3.2f meters in %3.2f degree direction, and turn %3.2f degree.", actions[0].d, actions[0].theta1, actions[0].theta2);
         putTTS((const char*)msg.c_str());
 
-        sleep(10);
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+
         // int wait_msec = 5000;
         // int key = cv::waitKey(wait_msec);
         // if (key == cx::KEY_ESC) m_exploration_state_count = 0;
