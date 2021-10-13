@@ -1470,8 +1470,13 @@ bool DeepGuider::procExploration()
             m_exploration_state_count = 0;
             return true;
         }
-        std::string msg = cv::format("Move %3.2f meters in %3.2f degree direction, and turn %3.2f degree.", actions[0].d, actions[0].theta1, actions[0].theta2);
-        putTTS((const char*)msg.c_str());
+		// std::string msg = cv::format("Move %3.2f meters in %3.2f degree direction, and turn %3.2f degree.", actions[0].d, actions[0].theta1, actions[0].theta2);
+        std::string msg1 = cv::format("Turn %d degree.", actions[0].theta1);
+        std::string msg2 = cv::format("Move %.1f meters.", actions[0].d);
+        std::string msg3 = cv::format("Turn %d degree.", actions[0].theta2);
+        putTTS((const char*)msg1.c_str());
+        putTTS((const char*)msg2.c_str());
+        putTTS((const char*)msg3.c_str());
 
         // std::this_thread::sleep_for(std::chrono::seconds(10));
 
