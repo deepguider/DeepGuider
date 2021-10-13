@@ -145,6 +145,15 @@ public:
         m_virtual_zoom_max = z_max;
     }
 
+    void setZoom(int virtual_zoom)
+    {
+        cv::AutoLock lock(m_mutex);
+
+        m_zoom = m_virtual_zoom = virtual_zoom;
+        if (m_zoom < (double)m_viewport.width / m_image_rect.width) m_zoom = (double)m_viewport.width / m_image_rect.width;
+        if (m_zoom < (double)m_viewport.height / m_image_rect.height) m_zoom = (double)m_viewport.height / m_image_rect.height;
+    }
+
     void centerizeViewportTo(cv::Point2d px, double center_margin_ratio = 0.15)
     {
         cv::AutoLock lock(m_mutex);

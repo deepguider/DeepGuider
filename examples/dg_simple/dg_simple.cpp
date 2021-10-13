@@ -651,6 +651,10 @@ int DeepGuider::run()
             int key = cv::waitKey(wait_msec);
             if (key == cx::KEY_SPACE) key = cv::waitKey(0);
             if (key == cx::KEY_ESC) break;
+            if (key == '1') m_viewport.setZoom(1);
+            if (key == '2') m_viewport.setZoom(2);
+            if (key == '3') m_viewport.setZoom(3);
+            if (key == '4') m_viewport.setZoom(4);
             if (key == 83) itr += 30;   // Right Key
 
             // update iteration

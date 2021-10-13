@@ -304,7 +304,7 @@ public:
         }
         double theta = atan2(best_map_pose.y - pose_past.y, best_map_pose.x - pose_past.x);
         best_map_pose.theta = cx::trimRad(theta);
-*/
+        */
         return best_map_pose;
     }
 
