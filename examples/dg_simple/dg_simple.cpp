@@ -35,8 +35,8 @@ protected:
     bool m_enable_imu = true;
     bool m_enable_mapserver = true;
 
-    int m_exploration_state_count = 20;
-    const int m_exploration_state_count_max = 1;    
+    int m_exploration_state_count = 0;
+    const int m_exploration_state_count_max = 20;    
 
     std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
     std::string m_srcdir = "./../src";      // path of deepguider/src (required for python embedding)
@@ -786,6 +786,9 @@ bool DeepGuider::setDeepGuiderDestination(dg::Point2F dest)
 
 bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
 {
+    // stop other works
+    m_exploration_state_count = 0;
+
     if (m_enable_tts) putTTS("Regenerate path!");
     if (m_enable_mapserver)
     {
@@ -800,6 +803,8 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
             printf("[MapManager] fail to find path to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
             return false;
         }
+        dg::Pose2 pose = m_localizer.getPose();
+        m_localizer.setPose(pose);
         setPath(path);
         printf("[MapManager] New path generated to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
     }
@@ -811,6 +816,8 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
         dg::Pose2 pose = m_localizer.getPose();
         m_localizer.setPose(pose);
         setPath(path);
+        dg::LatLon gps_dest = toLatLon(dest);
+        printf("[OfflineMap] New path generated to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
     }
 
     // guidance: init map and path for guidance
@@ -1471,18 +1478,25 @@ bool DeepGuider::procExploration()
             m_exploration_state_count = 0;
             return true;
         }
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
 
         std::string msg1 = cv::format("Turn %d degree.", (int)(actions[0].theta1 + 0.5));
         putTTS((const char*)msg1.c_str());
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
         std::this_thread::sleep_for(std::chrono::seconds(10));
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
 
         std::string msg2 = cv::format("Move %.1f meters.", actions[0].d);
         putTTS((const char*)msg2.c_str());
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
         std::this_thread::sleep_for(std::chrono::seconds(10));
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
 
         std::string msg3 = cv::format("Turn %d degree.", (int)(actions[0].theta2 + 0.5));
         putTTS((const char*)msg3.c_str());
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
         std::this_thread::sleep_for(std::chrono::seconds(10));
+        if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
 
         // int wait_msec = 5000;
         // int key = cv::waitKey(wait_msec);
@@ -1627,6 +1641,7 @@ void DeepGuider::procTTS()
     for(int i=0; i<(int)tts_msg.size(); i++)
     {
         tts(tts_msg[i]);
+        if (!m_enable_tts) break;
     }
 }
 
@@ -1641,6 +1656,8 @@ void DeepGuider::terminateThreadFunctions()
     m_enable_logo = false;
     m_enable_intersection = false;
     m_enable_roadtheta = false;
+    m_enable_exploration = false;
+    m_exploration_state_count = 0;
     m_enable_tts = false;
 
     // wait child thread to terminate
