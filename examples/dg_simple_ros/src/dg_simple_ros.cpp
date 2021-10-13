@@ -247,6 +247,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     if (key == '2') m_viewport.setZoom(2);
     if (key == '3') m_viewport.setZoom(3);
     if (key == '4') m_viewport.setZoom(4);
+    if (key == '0') m_exploration_state_count = 0;  // terminate active view
     if (key == cx::KEY_ESC) return false;
 
     return true;

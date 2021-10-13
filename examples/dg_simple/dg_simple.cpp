@@ -35,7 +35,7 @@ protected:
     bool m_enable_imu = true;
     bool m_enable_mapserver = true;
 
-    int m_exploration_state_count = 0;
+    int m_exploration_state_count = 20;
     const int m_exploration_state_count_max = 1;    
 
     std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
@@ -655,6 +655,7 @@ int DeepGuider::run()
             if (key == '2') m_viewport.setZoom(2);
             if (key == '3') m_viewport.setZoom(3);
             if (key == '4') m_viewport.setZoom(4);
+            if (key == '0') m_exploration_state_count = 0;  // terminate active view
             if (key == 83) itr += 30;   // Right Key
 
             // update iteration
@@ -1425,7 +1426,6 @@ bool DeepGuider::procExploration()
     if ( m_exploration_state_count <= 0)
     {
         m_exploration_state_count = 0;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
         return false;
     }    
     m_exploration_state_count--;
@@ -1463,22 +1463,26 @@ bool DeepGuider::procExploration()
         m_exploration_mutex.lock();
         m_exploration_image = cam_image;
         m_exploration_mutex.unlock();
-        
-        if ( (actions[0].d == 0.0) && (actions[0].theta1 == 0.0) && (actions[0].theta2 == 0.0) )
+
+        double z = (actions[0].theta1 * actions[0].theta1) + (actions[0].d * actions[0].d) + (actions[0].theta2 * actions[0].theta2);
+        if ( z < 0.0001 )
         {
             putTTS("Arrived at destination point");
             m_exploration_state_count = 0;
             return true;
         }
-		// std::string msg = cv::format("Move %3.2f meters in %3.2f degree direction, and turn %3.2f degree.", actions[0].d, actions[0].theta1, actions[0].theta2);
-        std::string msg1 = cv::format("Turn %d degree.", actions[0].theta1);
-        std::string msg2 = cv::format("Move %.1f meters.", actions[0].d);
-        std::string msg3 = cv::format("Turn %d degree.", actions[0].theta2);
-        putTTS((const char*)msg1.c_str());
-        putTTS((const char*)msg2.c_str());
-        putTTS((const char*)msg3.c_str());
 
-        // std::this_thread::sleep_for(std::chrono::seconds(10));
+        std::string msg1 = cv::format("Turn %d degree.", (int)(actions[0].theta1 + 0.5));
+        putTTS((const char*)msg1.c_str());
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+
+        std::string msg2 = cv::format("Move %.1f meters.", actions[0].d);
+        putTTS((const char*)msg2.c_str());
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+
+        std::string msg3 = cv::format("Turn %d degree.", (int)(actions[0].theta2 + 0.5));
+        putTTS((const char*)msg3.c_str());
+        std::this_thread::sleep_for(std::chrono::seconds(10));
 
         // int wait_msec = 5000;
         // int key = cv::waitKey(wait_msec);
@@ -1581,6 +1585,10 @@ void DeepGuider::threadfunc_exploration(DeepGuider* guider)
     while (guider->m_enable_exploration)
     {
         guider->procExploration();
+        if (guider->m_exploration_state_count <= 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
     guider->is_exploration_running = false;
     printf("\texploration thread ends\n");
