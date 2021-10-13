@@ -350,7 +350,8 @@ bool DeepGuider::initialize(std::string config_file)
     if (m_enable_roadtheta) printf("\tRoadTheta initialized in %.3lf seconds!\n", m_roadtheta.procTime());
 
     //initialize exploation 
-    if (m_enable_exploration && !m_active_nav.initialize()) return false;
+    py_module_path = m_srcdir + "/exploration";
+    if (m_enable_exploration && !m_active_nav.initialize("active_navigation", py_module_path.c_str())) return false;
     if (m_enable_exploration) printf("\tExploation initialized!\n");
 
     // initialize default map
