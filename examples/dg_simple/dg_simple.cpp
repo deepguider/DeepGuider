@@ -1454,6 +1454,12 @@ bool DeepGuider::procExploration()
         m_exploration_image = cam_image;
         m_exploration_mutex.unlock();
         
+        if ( (actions[0].d == 0.0) && (actions[0].theta1 == 0.0) && (actions[0].theta2 == 0.0) )
+        {
+            putTTS("Arrived at destination point");
+            m_exploration_state_count = 0;
+            return true;
+        }
         std::string msg = cv::format("Move %3.2f meters in %3.2f degree direction, and turn %3.2f degree.", actions[0].d, actions[0].theta1, actions[0].theta2);
         putTTS((const char*)msg.c_str());
 
