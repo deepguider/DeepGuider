@@ -36,7 +36,7 @@ protected:
     bool m_enable_mapserver = true;
 
     int m_exploration_state_count = 0;
-    const int m_exploration_state_count_max = 10;    
+    const int m_exploration_state_count_max = 1;    
 
     std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
     std::string m_srcdir = "./../src";      // path of deepguider/src (required for python embedding)
@@ -1421,6 +1421,7 @@ bool DeepGuider::procExploration()
     if ( m_exploration_state_count <= 0)
     {
         m_exploration_state_count = 0;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         return false;
     }    
     m_exploration_state_count--;
@@ -1468,7 +1469,7 @@ bool DeepGuider::procExploration()
         std::string msg = cv::format("Move %3.2f meters in %3.2f degree direction, and turn %3.2f degree.", actions[0].d, actions[0].theta1, actions[0].theta2);
         putTTS((const char*)msg.c_str());
 
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        // std::this_thread::sleep_for(std::chrono::seconds(10));
 
         // int wait_msec = 5000;
         // int key = cv::waitKey(wait_msec);
