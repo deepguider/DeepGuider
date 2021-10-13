@@ -496,7 +496,7 @@ int DeepGuider::run()
 
     cv::Mat video_image;
     cv::Mat gui_image;
-    int wait_msec = 10;
+    int wait_msec = 100;
     int itr = 0;
     double start_time = 200;
     data_loader.setStartSkipTime(start_time);
@@ -1079,7 +1079,8 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         return;
     }
     m_guider_mutex.lock();
-    m_guider.update(pose_topo, pose_confidence);
+    //m_guider.update(pose_topo, pose_confidence);
+    m_guider.update(pose_topo);
     cur_status = m_guider.getGuidanceStatus();
     cur_guide = m_guider.getGuidance();
     if (node != nullptr)
@@ -1095,7 +1096,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     if (m_enable_tts && cur_guide.announce && !cur_guide.actions.empty())
     {
         dg::GuidanceManager::Motion cmd = cur_guide.actions[0].cmd;
-        if (cmd != m_guidance_cmd)
+        //if (cmd != m_guidance_cmd)
         {
             std::string tts_msg;
             if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) tts_msg = "Go forward";

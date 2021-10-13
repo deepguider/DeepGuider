@@ -187,6 +187,7 @@ namespace dg
 
         bool initiateNewGuidance();
 
+        bool update(TopometricPose pose);
         bool update(TopometricPose pose, double confidence);
         bool applyPoseGPS(LatLon gps);
 
@@ -224,10 +225,14 @@ namespace dg
         time_t oop_start = 0, oop_end = 0;
         int m_finalTurn = 0;
         int m_finalEdgeId = 0;
-        double m_approachingThreshold = 10.0;
+        double m_approachingThreshold = 1.0;
         bool m_arrival = false;
         bool m_juctionguide = true;
         RobotStatus m_robot_status;
+        int m_past_announce = 0;
+        int m_last_announce_dist = -1;
+        ID m_past_ref_node = 0;
+        double m_uncertain_dist = 2;
 
         std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
         std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
@@ -261,7 +266,7 @@ namespace dg
 
         bool isForward(int degree)
         {
-            return (degree >= -45 && degree <= 45) ? true : false;
+            return (degree >= -30 && degree <= 30) ? true : false;
         };
 
         bool isForward(Motion motion)
@@ -294,6 +299,7 @@ namespace dg
         bool setNormalGuide();
         bool setArrivalGuide();
         bool setEmptyGuide();
+        bool setSimpleGuide();
         //	bool setTunBackGuide();
         bool applyPose(TopometricPose pose);
 
