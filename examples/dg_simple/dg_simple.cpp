@@ -384,7 +384,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("track_near_radius", 20);
     m_localizer.setParamValue("enable_path_projection", true);
     m_localizer.setParamValue("enable_map_projection", false);
-    m_localizer.setParamValue("enable_backtracking_ekf", true);
+    m_localizer.setParamValue("enable_backtracking_ekf", false); // default : true, for demo : false
     m_localizer.setParamValue("enable_gps_smoothing)", true);
     m_localizer.setParamValue("enable_debugging_display", false);
     m_localizer.setParamValue("lr_mismatch_cost", 50);
@@ -1182,6 +1182,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         if (cur_status == dg::GuidanceManager::GuideStatus::GUIDE_ARRIVED && cur_guide.announce)
         {
             printf("Arrived to destination!\n");
+            m_dest_defined = false;
             if (m_enable_tts) putTTS("Arrived to destination!");
             m_exploration_state_count = m_exploration_state_count_max;  //Enter exploration mode until state_count becomes 0 from count_max
         }
@@ -1303,10 +1304,12 @@ bool DeepGuider::procOcr()
     std::vector<double> poi_confidences;
     if (m_ocr.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
     {
-        for (int k = 0; k < (int)poi_xys.size(); k++)
-        {
-            m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
-        }
+        // For coex demo, remark belows begin
+        // for (int k = 0; k < (int)poi_xys.size(); k++)
+        // {
+        //     m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
+        // }
+        // For coex demo, remark belows end        
         m_ocr.print();
 
         m_ocr.draw(cam_image);
@@ -1338,7 +1341,7 @@ bool DeepGuider::procRoadTheta()
     double theta, confidence;
     if (m_roadtheta.apply(cam_image, capture_time, theta, confidence))
     {
-        m_localizer.applyRoadTheta(theta, capture_time, confidence);
+        // m_localizer.applyRoadTheta(theta, capture_time, confidence);
         m_roadtheta.print();
 
         m_roadtheta.draw(cam_image);
