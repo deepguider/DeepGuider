@@ -1098,8 +1098,8 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
     cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(255, 0, 0), 4);
 
     // show distance message
-    msg_offset = center_pos + cv::Point(0, 30);
-    std::string distance = cv::format("D=%.1lfm", guide.distance_to_remain);
+    msg_offset = center_pos + cv::Point(-10, 30);
+    std::string distance = cv::format("NEXT=%.1lfm", guide.distance_to_remain);
     cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(0, 255, 255), 14);
     cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(255, 0, 0), 4);
 
