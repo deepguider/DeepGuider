@@ -1438,7 +1438,6 @@ bool DeepGuider::procLRPose()
 bool DeepGuider::procExploration()
 {
     // printf("################m_exploration_state_count = %d\n", m_exploration_state_count);
-    std::this_thread::sleep_for(std::chrono::seconds(1));    
     if ( m_exploration_state_count <= 0)
     {
         m_exploration_state_count = 0;
@@ -1504,7 +1503,6 @@ bool DeepGuider::procExploration()
         // std::this_thread::sleep_for(std::chrono::seconds(5));
         // if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
 
-
         if (actions[0].d > 0){
             msg2 = cv::format("Move %.2f meters.", (actions[0].d + 0.5));
             putTTS((const char*)msg2.c_str());            
@@ -1534,10 +1532,6 @@ bool DeepGuider::procExploration()
         std::this_thread::sleep_for(std::chrono::seconds(5));
 
         if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
-
-        // int wait_msec = 5000;
-        // int key = cv::waitKey(wait_msec);
-        // if (key == cx::KEY_ESC) m_exploration_state_count = 0;
 
         return true;        
 	}
