@@ -1521,11 +1521,12 @@ bool DeepGuider::procExploration()
 
         if (actions[0].theta2 > 0){
             msg3 = cv::format("Turn right %d degree.", (int)(actions[0].theta2 + 0.5));
+            putTTS((const char*)msg3.c_str());            
         }
         else if (actions[0].theta2 < 0){
             msg3 = cv::format("Turn left %d degree.", (int)(-1*actions[0].theta2 + 0.5));
+            putTTS((const char*)msg3.c_str());            
         }
-        putTTS((const char*)msg3.c_str());
 
         if (!m_enable_exploration || m_exploration_state_count <= 0) return false;
         
