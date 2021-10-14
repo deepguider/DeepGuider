@@ -410,7 +410,9 @@ bool GuidanceManager::update(TopometricPose pose)
 	printf("m_guide_idx: %d, m_extendedPath.size(): %d\n", m_guide_idx, (int)(m_extendedPath.size()));
 	//finishing condition
 	if (curnid == m_extendedPath.back().cur_node_id || 
-	(m_guide_idx == m_extendedPath.size()-1 && m_rmdistance < m_arrived_threshold))
+	// (m_guide_idx == m_extendedPath.size()-1 && m_rmdistance < m_arrived_threshold))
+	(m_guide_idx == m_extendedPath.size() && m_rmdistance < m_arrived_threshold))
+
 	{
 		m_gstatus = GuideStatus::GUIDE_ARRIVED;
 		m_arrival = true;
