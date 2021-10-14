@@ -57,12 +57,15 @@ namespace dg
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
         {
-            cv::AutoLock lock(m_mutex);
+            // printf("OCR111111111111111111111111111\n");
+			cv::AutoLock lock(m_mutex);
             if (m_shared == nullptr) return false;
 			// Pose2 pose = m_shared->getPose(); //For coex demo, remark belows begin
-
+// printf("OCR222222222222222222222222\n");
             if (!OCRRecognizer::apply(image, image_time)) return false;
+			// printf("OCR33333333333333333333333333\n");
 			if (m_result.empty()) return false;
+
 
 			// For coex demo, remark belows begin
             // std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;

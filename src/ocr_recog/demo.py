@@ -96,15 +96,15 @@ def detect_ocr(config, image, timestamp, save_img):
         for image_tensors, coordinate_list in demo_loader:
             batch_size = image_tensors.size(0)
             # print(image_tensors.shape)
-
+            # print("P333333333333333333333333333333333333333333333333333333333333333333333333333")
             image = image_tensors.to(device)
             # For max length prediction
             length_for_pred = torch.IntTensor([config.batch_max_length] * batch_size).to(device)
             text_for_pred = torch.LongTensor(batch_size, config.batch_max_length + 1).fill_(0).to(device)
 
-
+            # print("P444444444444444444444444444444444444444444444444444444444444444444444444444")
             preds = model(image, text_for_pred, is_train=False)
-
+            # print("P555555555555555555555555555555555555555555555555555555555555555555555555555")
             # select max probabilty (greedy decoding) then decode index to character
             _, preds_index = preds.max(2)
             preds_str = converter.decode(preds_index, length_for_pred)

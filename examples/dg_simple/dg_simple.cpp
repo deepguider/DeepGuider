@@ -1437,7 +1437,8 @@ bool DeepGuider::procLRPose()
 
 bool DeepGuider::procExploration()
 {
-    printf("################m_exploration_state_count = %d\n", m_exploration_state_count);    
+    // printf("################m_exploration_state_count = %d\n", m_exploration_state_count);
+    std::this_thread::sleep_for(std::chrono::seconds(1));    
     if ( m_exploration_state_count <= 0)
     {
         m_exploration_state_count = 0;
