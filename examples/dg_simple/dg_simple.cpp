@@ -1172,7 +1172,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
             else if (cmd == dg::GuidanceManager::Motion::ENTER_RIGHT) tts_msg = "Enter right";
             else if (cmd == dg::GuidanceManager::Motion::EXIT_RIGHT) tts_msg = "Exit right";
             else if (cmd == dg::GuidanceManager::Motion::TURN_BACK) tts_msg = "Turn back";
-            if (cur_guide.distance_to_remain > 20)
+            if (cur_guide.distance_to_remain > 25)
                 tts_msg = "Go forward";
 
             if(!tts_msg.empty()) putTTS(tts_msg.c_str());
