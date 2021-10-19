@@ -145,7 +145,7 @@ public:
         m_virtual_zoom_max = z_max;
     }
 
-    void setZoom(int virtual_zoom)
+    void setZoom(double virtual_zoom)
     {
         cv::AutoLock lock(m_mutex);
 
