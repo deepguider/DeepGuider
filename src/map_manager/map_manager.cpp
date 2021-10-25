@@ -787,7 +787,7 @@ bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cub
 
 	if (m_portErr == true)
 	{
-		const std::string url_middle = (site_name == "etri") ? ":10001/" : ((site_name == "coex") ? ":10000" : ":10002");
+		const std::string url_middle = (site_name == "etri") ? ":10000/" : ((site_name == "coex") ? ":10001" : ":10002");
 
 		sv_image = downloadStreetViewImage(sv_id, cubic, timeout, url_middle);
 		m_portErr = false;

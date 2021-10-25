@@ -31,13 +31,12 @@ namespace dg
         bool apply(const cv::Mat image, const dg::Timestamp image_time, double& theta , double& confidence)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_shared == nullptr) return false;
-            // Pose2 pose = m_shared->getPose();
-
             if (!RoadTheta::apply(image, image_time)) return false;
 
+            if (m_shared == nullptr) return false;
+            Pose2 pose = m_shared->getPose();
             double theta_relative = m_result.theta;
-            // if (!getAbsoluteOrientation(theta_relative, pose, theta)) return false;
+            if (!getAbsoluteOrientation(theta_relative, pose, theta)) return false;
             confidence = m_result.confidence;
             return true;
         }

@@ -148,12 +148,7 @@ public:
     void setZoom(double virtual_zoom)
     {
         cv::AutoLock lock(m_mutex);
-
-       updateViewport(m_viewport.x, m_viewport.y, virtual_zoom);
-
-        //m_zoom = m_virtual_zoom = virtual_zoom;
-        //if (m_zoom < (double)m_viewport.width / m_image_rect.width) m_zoom = (double)m_viewport.width / m_image_rect.width;
-        //if (m_zoom < (double)m_viewport.height / m_image_rect.height) m_zoom = (double)m_viewport.height / m_image_rect.height;
+        updateViewport(m_viewport.x, m_viewport.y, virtual_zoom);
     }
 
     void centerizeViewportTo(cv::Point2d px, double center_margin_ratio = 0.15)

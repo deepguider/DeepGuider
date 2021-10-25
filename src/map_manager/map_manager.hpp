@@ -279,10 +279,10 @@ public:
 	 * @param sv_id The given StreetView ID of this StreetView image
 	 * @param sv_image A reference to downloaded StreetView image
 	 * @param cubic The face of an image cube - 360: "", front: "f", back: "b", left: "l", right: "r", up: "u", down: "d" (default: "")
-	 * @param timeout The timeout value of curl (default: 10)
+	 * @param timeout The timeout value of curl (Unit: [sec])
 	 * @return True if successful (false if failed)
 	 */
-	static bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 10, std::string site_name="etri");
+	static bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 5, std::string site_name="etri");
 
 protected:
 	static std::string m_ip;

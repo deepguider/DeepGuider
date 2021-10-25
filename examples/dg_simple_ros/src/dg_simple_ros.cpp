@@ -525,23 +525,24 @@ void DeepGuiderROS::publishSubGoal()
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
     ID nid = cur_guide.heading_node_id;
     Map* map = getMapLocked();
-    Node* hNode = map->getNode(nid);
-    //printf("ID: %zd\n",nid); 
+    Node* hNode = (map) ? map->getNode(nid) : nullptr;
+    if(hNode == nullptr)
+    {
+        releaseMapLock();
+        return;
+    }
+    Pose2 metric = Pose2(hNode->x, hNode->y);
+    releaseMapLock();
+
+    dg::Point2UTM node_utm = cvtLatLon2UTM(toLatLon(metric));
+    //printf("node_utm.x: %f, node_utm.y: %f\n", node_utm.x, node_utm.y); 
 
     geometry_msgs::PoseStamped rosps;
-    if (hNode!=nullptr)
-    {
-        Pose2 metric = Pose2(hNode->x, hNode->y); 
-        dg::Point2UTM node_utm = cvtLatLon2UTM(toLatLon(metric));
-        //printf("node_utm.x: %f, node_utm.y: %f\n", node_utm.x, node_utm.y); 
-
-        geometry_msgs::PoseStamped rosps;
-        rosps.pose.position.x = node_utm.x;
-        rosps.pose.position.y = node_utm.y;
-        rosps.pose.position.z = nid;
-       
-        pub_subgoal.publish(rosps);  
-    }   
+    rosps.pose.position.x = node_utm.x;
+    rosps.pose.position.y = node_utm.y;
+    rosps.pose.position.z = nid;
+    
+    pub_subgoal.publish(rosps);  
 }
 
 void DeepGuiderROS::publishPath()

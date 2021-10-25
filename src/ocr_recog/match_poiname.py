@@ -65,7 +65,7 @@ def get_neighbors(train, test_row, num_neighbors): #3. KNN 으로 가장 유사�
 
 def pred_filtering(pred):
 	if len(pred) < 2:
-		return pred
+		return pred, 0
 
 	#print(pred)
 	fix_spell = spell_checker.check(pred) #1. 한글 오탈자 보정

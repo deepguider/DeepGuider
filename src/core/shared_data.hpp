@@ -18,7 +18,6 @@ public:
     /** Get a poiter to shared map data */
     virtual Map* getMap()
     {
-        //cv::AutoLock lock(m_mutex_map);
         return m_map;
     }
 
@@ -32,7 +31,6 @@ public:
     /** Get a poiter to shared path data */
     virtual Path* getPath() 
     { 
-        cv::AutoLock lock(m_mutex_path);
         return m_path;
     }
 
@@ -64,7 +62,7 @@ public:
     /** Get gps position of a metric position by using shared converter */
     virtual LatLon toLatLon(const Point2& metric)
     {
-        // cv::AutoLock lock(m_mutex_map);
+        cv::AutoLock lock(m_mutex_map);
         if (m_map == nullptr) return LatLon();
         return m_map->toLatLon(metric);
     }

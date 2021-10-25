@@ -1308,12 +1308,10 @@ bool DeepGuider::procOcr()
     std::vector<double> poi_confidences;
     if (m_ocr.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
     {
-        // For coex demo, remark belows begin
-        // for (int k = 0; k < (int)poi_xys.size(); k++)
-        // {
-        //     m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
-        // }
-        // For coex demo, remark belows end        
+        for (int k = 0; k < (int)poi_xys.size(); k++)
+        {
+            m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
+        }
         m_ocr.print();
 
         m_ocr.draw(cam_image);
@@ -1345,7 +1343,7 @@ bool DeepGuider::procRoadTheta()
     double theta, confidence;
     if (m_roadtheta.apply(cam_image, capture_time, theta, confidence))
     {
-        // m_localizer.applyRoadTheta(theta, capture_time, confidence);
+        m_localizer.applyRoadTheta(theta, capture_time, confidence);
         m_roadtheta.print();
 
         m_roadtheta.draw(cam_image);
@@ -1379,7 +1377,7 @@ bool DeepGuider::procVps()
     double sv_confidence;
     if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence))
     {
-        //m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
+        m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
 
         cv::Mat sv_image = m_vps.getViewImage().clone();
