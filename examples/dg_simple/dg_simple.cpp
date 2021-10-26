@@ -1705,9 +1705,6 @@ void DeepGuider::terminateThreadFunctions()
     m_exploration_state_count = 0;
     m_enable_tts = false;
 
-    // sleep for a while
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-
     // wait child thread to terminate
     if (roadtheta_thread && is_roadtheta_running) roadtheta_thread->join();
     if (lrpose_thread && is_lrpose_running) lrpose_thread->join();
