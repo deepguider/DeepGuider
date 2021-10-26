@@ -65,6 +65,7 @@ TEST_ETRI:
   map_image_rotation: 0.95
   map_view_offset: [1289, 371]
   map_view_size: [1800, 1012]
+  image_server_port: "10000"
   gps_input_path: "data/ETRI/191115_151140_ascen_fix.csv"
   video_input_path: "data/ETRI/191115_151140_images.avi"
   
@@ -77,6 +78,7 @@ TEST_COEX:
   map_image_rotation: 1.0
   map_view_offset: [1010, 300]
   map_view_size: [1920, 1080]
+  image_server_port: "10001"
   gps_input_path: "data/COEX/211005_130940_ascen_fix.csv"
   video_input_path: "data/COEX/211005_130940_images.avi"   
 
@@ -87,6 +89,7 @@ ETRI:
   map_ref_point_pixel: [347, 297]
   map_pixel_per_meter: 1.039
   map_image_rotation: 1.0
+  image_server_port: "10000"
   gps_input_path: "data/191115_ETRI_asen_fix.csv"
   video_input_path: "data/191115_ETRI.avi"
 
@@ -97,6 +100,7 @@ COEX:
   map_ref_point_pixel: [1090, 1018]
   map_pixel_per_meter: 1.055
   map_image_rotation: 1.2
+  image_server_port: "10001"
   gps_input_path: "data/200925_153949_AndroSensor.csv"
   video_input_path: ""
 
@@ -108,5 +112,6 @@ Bucheon:
   map_pixel_per_meter: 1.056
   map_image_rotation: 0
   map_view_offset: [652, 227]
+  image_server_port: "10002"
   gps_input_path: "data/Sensor_record_20210513_Bucheon_AndroSensor.csv"
   video_input_path: ""

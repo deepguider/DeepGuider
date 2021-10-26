@@ -72,7 +72,7 @@ namespace dg
         dg::Polar2 computeRelative(const cv::Mat image, ID sv_id, cv::Mat& sv_image)
         {
             dg::Polar2 relative = dg::Polar2(-1, CV_PI);
-            if (MapManager::getStreetViewImage(sv_id, sv_image, "f", 10, "coex") && !sv_image.empty())
+            if (MapManager::getStreetViewImage(sv_id, sv_image, "f") && !sv_image.empty())
             {
                 // TODO: compute relative pose of matched streetview image w.r.t. camera image
             }

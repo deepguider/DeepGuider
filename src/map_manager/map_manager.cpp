@@ -6,14 +6,15 @@ using namespace rapidjson;
 namespace dg
 {
 
-std::string MapManager::m_ip = "localhost";
-//std::string MapManager::m_ip = "129.254.81.204";
+std::string MapManager::m_ip = "localhost";				// etri: 129.254.81.204
+std::string MapManager::m_image_server_port = "10000";	// etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
 bool MapManager::m_portErr = false;
 
 
-bool MapManager::initialize(const std::string ip)
+bool MapManager::initialize(const std::string ip, const std::string port)
 {
 	m_ip = ip;
+	m_image_server_port = port;
 	return true;
 }
 
@@ -778,21 +779,13 @@ bool MapManager::parseStreetView(const char* json, std::vector<StreetView>& sv_v
 	return true;
 }
 
-bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic, int timeout, std::string site_name)
+bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic, int timeout)
 {
 	if (!(cubic == "f" || cubic == "b" || cubic == "l" || cubic == "r" || cubic == "u" || cubic == "d"))
 		cubic = "";
 
-	sv_image = downloadStreetViewImage(sv_id, cubic, timeout);
-
-	if (m_portErr == true)
-	{
-		const std::string url_middle = (site_name == "etri") ? ":10000/" : ((site_name == "coex") ? ":10001" : ":10002");
-
-		sv_image = downloadStreetViewImage(sv_id, cubic, timeout, url_middle);
-		m_portErr = false;
-	}
-
+	const std::string url_middle = ":" + m_image_server_port + "/";
+	sv_image = downloadStreetViewImage(sv_id, cubic, timeout, url_middle);
 	if (sv_image.empty())	return false;
 
 	return true;

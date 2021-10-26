@@ -39,6 +39,7 @@ protected:
     const int m_exploration_state_count_max = 20;    
 
     std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
+    std::string m_image_server_port = "10000";  // etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
     std::string m_srcdir = "./../src";      // path of deepguider/src (required for python embedding)
     bool m_enable_tts = false;
     bool m_threaded_run_python = true;
@@ -255,6 +256,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "server_ip_list", server_ip_list, n_read);
     CX_LOAD_PARAM_COUNT(fn, "server_ip_index", server_ip_index, n_read);
     if (server_ip_index >= 0 && server_ip_index < server_ip_list.size()) m_server_ip = server_ip_list[server_ip_index];
+    CX_LOAD_PARAM_COUNT(fn, "image_server_port", m_image_server_port, n_read);
 
     int site_index = -1;
     std::string site_tagname;
@@ -317,7 +319,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize map manager
     m_map_manager.setReference(m_map_ref_point);
-    if (!m_map_manager.initialize(m_server_ip)) return false;
+    if (!m_map_manager.initialize(m_server_ip, m_image_server_port)) return false;
     printf("\tMapManager initialized!\n");
 
     // initialize VPS

@@ -24,9 +24,10 @@ public:
 	/**
 	 * Initialize to use this class
 	 * @param ip The given server IP address
+	 * @param port The given image server port number
 	 * @return True if successful (false if failed)
 	 */
-	bool initialize(const std::string ip);
+	bool initialize(const std::string ip, const std::string port = "10000");
 
 	/**
 	 * Change the current server IP address
@@ -40,6 +41,19 @@ public:
 	 * @return The string of server IP address
 	 */
 	std::string getIP();
+
+	/**
+	 * Change the current image server port number
+	 * @param port The given image server port number to set
+	 * @return True if successful (false if failed)
+	 */
+	bool setImageServerPort(std::string port) { m_image_server_port = port; }
+
+	/**
+	 * Get the current image server port number
+	 * @return The string of image server port number
+	 */
+	std::string getImageServerPort() { return m_image_server_port; }
 
 	/**
 	 * Get a map within a radius from a given latitude and longitude point
@@ -282,13 +296,9 @@ public:
 	 * @param timeout The timeout value of curl (Unit: [sec])
 	 * @return True if successful (false if failed)
 	 */
-	static bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 5, std::string site_name="etri");
+	static bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 5);
 
 protected:
-	static std::string m_ip;
-	static bool m_portErr;
-	std::string m_json;
-
 	/**
 	 * Request the topological map within a certain radius based on latitude and longitude to server and receive response
 	 * @param lat The given latitude of this topological map (Unit: [deg])
@@ -477,6 +487,12 @@ protected:
 		if (json.empty() || json == "[]\n" || m_json == "{\"type\": \"FeatureCollection\", \"features\": []}\n") return true;
 		return false;
 	}
+
+	static std::string m_ip;
+	static std::string m_image_server_port;
+	static bool m_portErr;
+	std::string m_json;
+
 };
 
 } // End of 'dg'
