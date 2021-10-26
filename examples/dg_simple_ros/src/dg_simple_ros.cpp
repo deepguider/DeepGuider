@@ -211,9 +211,16 @@ int DeepGuiderROS::run()
     printf("End deepguider system...\n");
     terminateThreadFunctions();
     printf("\tthread terminated\n");
-    if(m_video_recording) m_video_gui.release();
-    if(m_data_logging) m_video_cam.release();
-    printf("\tclose recording\n");
+    if(m_video_recording)
+    {
+        m_video_gui.release();    
+        printf("\tclose recording\n");
+    }
+    if(m_data_logging)
+    {
+        m_video_cam.release();
+        printf("\tclose data loging\n");
+    }
     cv::destroyWindow(m_winname);
     printf("\tgui window destroyed\n");
     nh_dg.shutdown();

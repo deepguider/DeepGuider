@@ -135,7 +135,7 @@ protected:
     cv::Point m_view_offset = cv::Point(0, 0);
     cv::Size m_view_size = cv::Size(1800, 1012);
     int m_video_win_height = 288;   // pixels
-    int m_video_win_margin = 20;    // pixels
+    int m_video_win_margin = 10;    // pixels
     int m_video_win_gap = 10;       // pixels
 
     // TTS
@@ -672,9 +672,16 @@ int DeepGuider::run()
     printf("End deepguider system...\n");
     terminateThreadFunctions();
     printf("\tthread terminated\n");
-    if(m_video_recording) m_video_gui.release();
-    if(m_data_logging) m_video_cam.release();
-    printf("\tclose recording\n");
+    if(m_video_recording)
+    {
+        m_video_gui.release();    
+        printf("\tclose recording\n");
+    }
+    if(m_data_logging)
+    {
+        m_video_cam.release();
+        printf("\tclose data loging\n");
+    }    
     cv::destroyWindow(m_winname);
     printf("\tgui window destroyed\n");
     printf("all done!\n");    
@@ -850,7 +857,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::Point video_offset(m_video_win_margin, image.rows - m_video_win_margin - m_video_win_height);
     double video_resize_scale = (double)m_video_win_height / m_cam_image.rows;
     m_cam_mutex.lock();
-    cv::resize(m_cam_image, video_image, cv::Size(), video_resize_scale * 0.8, video_resize_scale);
+    cv::resize(m_cam_image, video_image, cv::Size(), video_resize_scale * 0.76, video_resize_scale);
     m_cam_mutex.unlock();
     cv::Rect win_rect = cv::Rect(video_offset, video_image.size()) & image_rc;
     video_image.copyTo(image(win_rect));
@@ -863,7 +870,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_intersection_mutex.lock();
         if(!m_intersection_image.empty())
         {
-            cv::resize(m_intersection_image, result_image, cv::Size(win_rect.height, win_rect.height));
+            cv::resize(m_intersection_image, result_image, cv::Size(win_rect.height * 0.9, win_rect.height));
         }
         m_intersection_mutex.unlock();
 
@@ -881,9 +888,27 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_lrpose_mutex.lock();
         if (!m_lrpose_image.empty())
         {
-            cv::resize(m_lrpose_image, result_image, cv::Size(win_rect.height, win_rect.height));
+            cv::resize(m_lrpose_image, result_image, cv::Size(win_rect.height * 0.9, win_rect.height));
         }
         m_lrpose_mutex.unlock();
+
+        if (!result_image.empty())
+        {
+            win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
+            if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
+        }
+    }
+
+    // draw roadtheta result
+    if (m_enable_roadtheta)
+    {
+        cv::Mat result_image;
+        m_roadtheta_mutex.lock();
+        if (!m_roadtheta_image.empty())
+        {
+            cv::resize(m_roadtheta_image, result_image, cv::Size(win_rect.height, win_rect.height));
+        }
+        m_roadtheta_mutex.unlock();
 
         if (!result_image.empty())
         {
@@ -922,7 +947,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         if(!m_logo_image.empty())
         {
             double fy = (double)win_rect.height / m_logo_image.rows;
-            cv::resize(m_logo_image, result_image, cv::Size(), fy * 0.8, fy);
+            cv::resize(m_logo_image, result_image, cv::Size(), fy * 0.7, fy);
         }
         m_logo_mutex.unlock();
 
@@ -941,28 +966,9 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         if (!m_ocr_image.empty())
         {
             double fy = (double)win_rect.height / m_ocr_image.rows;
-            cv::resize(m_ocr_image, result_image, cv::Size(), fy * 0.8, fy);
+            cv::resize(m_ocr_image, result_image, cv::Size(), fy * 0.7, fy);
         }
         m_ocr_mutex.unlock();
-
-        if (!result_image.empty())
-        {
-            win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
-            if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
-        }
-    }
-
-    // draw roadtheta result
-    if (m_enable_roadtheta)
-    {
-        cv::Mat result_image;
-        m_roadtheta_mutex.lock();
-        if (!m_roadtheta_image.empty())
-        {
-            double fy = (double)win_rect.height / m_roadtheta_image.rows;
-            cv::resize(m_roadtheta_image, result_image, cv::Size(), fy * 0.8, fy);
-        }
-        m_roadtheta_mutex.unlock();
 
         if (!result_image.empty())
         {
@@ -1648,6 +1654,7 @@ void DeepGuider::threadfunc_tts(DeepGuider* guider)
     while (guider->m_enable_tts)
     {
         guider->procTTS();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     guider->is_tts_running = false;
     printf("\ttts thread ends\n");
@@ -1656,24 +1663,31 @@ void DeepGuider::threadfunc_tts(DeepGuider* guider)
 void DeepGuider::putTTS(const char* msg)
 {
     bool discard = false;
+    int max_tts_message_cnt = 3;
+    std::string msgstr = msg;
     m_tts_mutex.lock();
-    if (!m_tts_msg.empty() && m_tts_msg.back() == std::string(msg)) discard = true;
+    if (!m_tts_msg.empty() && m_tts_msg.back() == msgstr) discard = true;
     if (!discard) m_tts_msg.push_back(msg);
+    if(m_tts_msg.size() > max_tts_message_cnt)
+    {
+        int n_erase = m_tts_msg.size() - max_tts_message_cnt;
+        m_tts_msg.erase(m_tts_msg.begin(), m_tts_msg.begin() + n_erase);
+    }
     m_tts_mutex.unlock();
 }
 
 void DeepGuider::procTTS()
 {
+    std::string tts_msg;
     m_tts_mutex.lock();
-    std::vector<std::string> tts_msg = m_tts_msg;
-    m_tts_msg.clear();
+    if(!m_tts_msg.empty())
+    {
+        tts_msg = m_tts_msg[0];
+        m_tts_msg.erase(m_tts_msg.begin());
+    }
     m_tts_mutex.unlock();
 
-    for(int i=0; i<(int)tts_msg.size(); i++)
-    {
-        tts(tts_msg[i]);
-        if (!m_enable_tts) break;
-    }
+    if(m_enable_tts && !tts_msg.empty()) tts(tts_msg);
 }
 
 void DeepGuider::terminateThreadFunctions()
@@ -1691,13 +1705,16 @@ void DeepGuider::terminateThreadFunctions()
     m_exploration_state_count = 0;
     m_enable_tts = false;
 
+    // sleep for a while
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     // wait child thread to terminate
-    if (vps_thread && is_vps_running) vps_thread->join();
+    if (roadtheta_thread && is_roadtheta_running) roadtheta_thread->join();
     if (lrpose_thread && is_lrpose_running) lrpose_thread->join();
+    if (intersection_thread && is_intersection_running) intersection_thread->join();
+    if (vps_thread && is_vps_running) vps_thread->join();
     if (ocr_thread && is_ocr_running) ocr_thread->join();
     if (logo_thread && is_logo_running) logo_thread->join();
-    if (intersection_thread && is_intersection_running) intersection_thread->join();
-    if (roadtheta_thread && is_roadtheta_running) roadtheta_thread->join();
     if (exploration_thread && is_exploration_running) exploration_thread->join();
     if (tts_thread && is_tts_running) tts_thread->join();
 
