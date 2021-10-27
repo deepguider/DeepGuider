@@ -45,15 +45,13 @@ namespace dg
         bool getAbsoluteOrientation(double theta_relative, const dg::Pose2& pose, double& theta_absolute)
         {
             // path-based orientation if path defined
-            Path* path = m_shared->getPathLocked();
-            if (path && !path->empty())
+            Path path = m_shared->getPath();
+            if (!path.empty())
             {
-                Pose2 path_pose = dg::Map::getNearestPathPose(*path, pose);
+                Pose2 path_pose = dg::Map::getNearestPathPose(path, pose);
                 theta_absolute = cx::trimRad(path_pose.theta + theta_relative);
-                m_shared->releasePathLock();
                 return true;
             }
-            m_shared->releasePathLock();
 
             // map-based orientation if no path
             Map* map = m_shared->getMap();

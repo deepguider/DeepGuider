@@ -485,7 +485,7 @@ public:
     /**
      * The copy constructor
      */
-    Map(const Map& map) { map.copyTo(this); }
+    Map(const Map& map) { map.copyTo(*this); }
 
     /**
      * Read a map from the given file
@@ -1699,10 +1699,10 @@ public:
 
     /**
      * Copy this to the other map (time complexity: O(|N||E|))
-     * @param dest A pointer to the other map
+     * @param dest A target map
      * @return True if successful (false if failed)
      */
-    bool copyTo(Map* dest) const;
+    bool copyTo(Map& dest) const;
 
     /**
      * Overriding the assignment operator
@@ -1711,7 +1711,7 @@ public:
      */
     Map& operator=(const Map& rhs)
     {
-        rhs.copyTo(this);
+        rhs.copyTo(*this);
         m_router_valid = false;
         m_map_rect_valid = false;
         return *this;

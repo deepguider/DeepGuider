@@ -199,7 +199,6 @@ namespace dg
     protected:
         SharedInterface* m_shared = nullptr;
         Map* getMap() { if (m_shared) return m_shared->getMap(); return nullptr; }
-        Path* getPath() { if (m_shared) return m_shared->getPath(); return nullptr; }
 
         bool validatePath(const Path& path, const Map& map);
         int getDegree(Point2 p1, Point2 p2, Point2 p3);

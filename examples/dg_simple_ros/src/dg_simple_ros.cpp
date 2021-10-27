@@ -531,15 +531,9 @@ void DeepGuiderROS::publishSubGoal()
 {
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
     ID nid = cur_guide.heading_node_id;
-    Map* map = getMapLocked();
-    Node* hNode = (map) ? map->getNode(nid) : nullptr;
-    if(hNode == nullptr)
-    {
-        releaseMapLock();
-        return;
-    }
+    Node* hNode = m_map.getNode(nid);
+    if(hNode == nullptr) return;
     Pose2 metric = Pose2(hNode->x, hNode->y);
-    releaseMapLock();
 
     dg::Point2UTM node_utm = cvtLatLon2UTM(toLatLon(metric));
     //printf("node_utm.x: %f, node_utm.y: %f\n", node_utm.x, node_utm.y); 
@@ -554,25 +548,19 @@ void DeepGuiderROS::publishSubGoal()
 
 void DeepGuiderROS::publishPath()
 {    
-    Path* path = getPathLocked();
-    if(path == nullptr || path->empty())
-    {
-        releasePathLock();
-        return;
-    }
+    dg::Path path = getPath();
 
     // make path points messages
     nav_msgs::Path rospath;
     geometry_msgs::PoseStamped rosps;
     dg::Point2UTM pose_utm;
-    for (int i = 0; i < path->pts.size(); i++) 
+    for (int i = 0; i < path.pts.size(); i++) 
     {
-        pose_utm = cvtLatLon2UTM(toLatLon(path->pts[i]));
+        pose_utm = cvtLatLon2UTM(toLatLon(path.pts[i]));
         rosps.pose.position.x = pose_utm.x;
         rosps.pose.position.y = pose_utm.y;
         rospath.poses.push_back(rosps);
     }
-    releasePathLock();
 
     // printf("start_lat: %f, start_lon: %f, dest_lat: %f, dest_lon: %f", path.start_pos.lat, path.start_pos.lon, path.dest_pos.lat, path.dest_pos.lon);
 

@@ -152,11 +152,13 @@ namespace dg
 
         bool initialize(SharedInterface* shared, std::string baselocalizer_name = "")
         {
+            cv::AutoLock lock(m_mutex);
             if (baselocalizer_name == "EKFLocalizer") m_ekf = cv::makePtr<dg::EKFLocalizer>();
             else if (baselocalizer_name == "EKFLocalizerZeroGyro") m_ekf = cv::makePtr<dg::EKFLocalizerZeroGyro>();
             else if (baselocalizer_name == "EKFLocalizerHyperTan") m_ekf = cv::makePtr<dg::EKFLocalizerHyperTan>();
             else if (baselocalizer_name == "EKFLocalizerSinTrack") m_ekf = cv::makePtr<dg::EKFLocalizerSinTrack>();
-            setShared(shared);
+            if (m_ekf) m_ekf->setShared(shared);
+            BaseLocalizer::setShared(shared);
             initInternalVariables();
             return (m_shared != nullptr && !m_ekf.empty());
         }
@@ -178,54 +180,63 @@ namespace dg
 
         virtual bool setParamMotionNoise(double sigma_linear_velocity, double sigma_angular_velocity_deg, double cov_lin_ang = 0)
         {
+            cv::AutoLock lock(m_mutex);
             if (m_ekf) return m_ekf->setParamMotionNoise(sigma_linear_velocity, sigma_angular_velocity_deg, cov_lin_ang);
             return false;
         }
 
         virtual bool setParamGPSNoise(double sigma_normal, double sigma_deadzone = -1)
         {
+            cv::AutoLock lock(m_mutex);
             if (m_ekf) return m_ekf->setParamGPSNoise(sigma_normal, sigma_deadzone);
             return false;
         }
 
         virtual bool setParamGPSOffset(double lin_offset, double ang_offset_deg = 0)
         {
+            cv::AutoLock lock(m_mutex);
             if (m_ekf) return m_ekf->setParamGPSOffset(lin_offset, ang_offset_deg);
             return false;
         }
 
         virtual bool setParamIMUCompassNoise(double sigma_theta_deg, double offset = 0)
         {
+            cv::AutoLock lock(m_mutex);
             if (m_ekf) return m_ekf->setParamIMUCompassNoise(sigma_theta_deg, offset);
             return false;
         }
 
         virtual bool setParamRoadThetaNoise(double sigma_theta_deg, double offset = 0)
         {
+            cv::AutoLock lock(m_mutex);
             if (m_ekf) return m_ekf->setParamRoadThetaNoise(sigma_theta_deg, offset);
             return false;
         }
 
         virtual bool setParamCameraOffset(double lin_offset, double ang_offset_deg = 0)
         {
+            cv::AutoLock lock(m_mutex);
             if (m_ekf) return m_ekf->setParamCameraOffset(lin_offset, ang_offset_deg);
             return false;
         }
 
         virtual bool setParamPOINoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
         {
+            cv::AutoLock lock(m_mutex);
             if (m_ekf) return m_ekf->setParamPOINoise(sigma_rel_dist, sigma_rel_theta_deg, sigma_position);
             return false;
         }
 
         virtual bool setParamVPSNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
         {
+            cv::AutoLock lock(m_mutex);
             if (m_ekf) return m_ekf->setParamVPSNoise(sigma_rel_dist, sigma_rel_theta_deg, sigma_position);
             return false;
         }
 
         virtual bool setParamIntersectClsNoise(double sigma_position)
         {
+            cv::AutoLock lock(m_mutex);
             if (m_ekf) return m_ekf->setParamIntersectClsNoise(sigma_position);
             return false;
         }
@@ -344,18 +355,20 @@ namespace dg
 
         virtual Pose2 getPose(Timestamp* timestamp = nullptr) const
         {
-            //cv::AutoLock lock(m_mutex);
+            cv::AutoLock lock(m_mutex);
             if (timestamp) *timestamp = m_timestamp;
             return m_pose;
         }
 
         virtual double getPoseConfidence(Timestamp* timestamp = nullptr) const
         {
+            cv::AutoLock lock(m_mutex);
             return m_ekf->getPoseConfidence(timestamp);
         }
 
         virtual bool isPoseStabilized()
         {
+            cv::AutoLock lock(m_mutex);
             if (m_pose_history.data_count() > 10) return true;
             else return false;
         }
@@ -374,6 +387,7 @@ namespace dg
 
         void printInternalState()
         {
+            cv::AutoLock lock(m_mutex);
             printf("Observation history\n");
             for (int i = 0; i < m_observation_history.data_count(); i++)
             {
@@ -423,10 +437,9 @@ namespace dg
             Map* map = m_shared->getMapLocked();
             if (map)
             {
-                Path* path = m_shared->getPathLocked();
-                if (path && m_enable_path_projection) m_pose = getPathPose(map, path, pose, m_pose_history, m_projected_pose_history, out_of_path);
+                Path path = m_shared->getPath();
+                if (!path.empty() && m_enable_path_projection) m_pose = getPathPose(map, &path, pose, m_pose_history, m_projected_pose_history, out_of_path);
                 else if (m_enable_map_projection) m_pose = getMapPose(map, pose, m_pose_history, m_projected_pose_history);
-                m_shared->releasePathLock();
             }
             m_shared->releaseMapLock();
             if (out_of_path) m_shared->procOutOfPath(m_pose);

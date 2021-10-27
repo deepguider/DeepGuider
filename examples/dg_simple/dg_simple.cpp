@@ -420,7 +420,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_painter.setParamValue("crosswalk_color", { 0, 150, 50 });
     m_painter.setParamValue("mixedroad_color", { 200, 100, 100 });
     m_painter.setParamValue("edge_thickness", 2);
-    VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, m_map));
+    VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, &m_map));
     m_map_image_original = m_map_image.clone();
 
     // load icon images
@@ -488,7 +488,7 @@ bool DeepGuider::initializeDefaultMap()
     map.reserveMemory();
     VVS_CHECK_TRUE(m_map_manager.getMapAll(m_map_ref_point.lat, m_map_ref_point.lon, radius, map));
     setMap(map);
-    printf("\tDefault map is downloaded: nodes=%d, edges=%d, pois=%d, views=%d\n", m_map->countNodes(), m_map->countEdges(), m_map->countPOIs(), m_map->countViews());
+    printf("\tDefault map is downloaded: nodes=%d, edges=%d, pois=%d, views=%d\n", m_map.countNodes(), m_map.countEdges(), m_map.countPOIs(), m_map.countViews());
 
     return true;
 }
@@ -799,15 +799,12 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
     m_exploration_state_count = 0;
 
     if (m_enable_tts) putTTS("Regenerate path!");
-    m_exploration_state_count = 0;
     if (m_enable_mapserver)
     {
         Path path;
         dg::LatLon gps_start = toLatLon(start);
         dg::LatLon gps_dest = toLatLon(dest);
-        setMapLock();
-        bool ok = m_map_manager.getPath_mapExpansion(gps_start.lat, gps_start.lon, start.floor, gps_dest.lat, gps_dest.lon, dest.floor, path, *m_map);
-        releaseMapLock();
+        bool ok = m_map_manager.getPath(gps_start.lat, gps_start.lon, start.floor, gps_dest.lat, gps_dest.lon, dest.floor, path);
         if (!ok)
         {
             printf("[MapManager] fail to find path to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
@@ -821,7 +818,7 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
     else
     {
         Path path;
-        bool ok = m_map && m_map->getPath(start, dest, path);
+        bool ok = m_map.getPath(start, dest, path);
         if (!ok) return false;
         dg::Pose2 pose = m_localizer.getPose();
         m_localizer.setPose(pose);
@@ -845,12 +842,11 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::Rect image_rc(0, 0, image.cols, image.rows);
 
     // draw path
-    setPathLock();
-    if (m_path && !m_path->empty())
+    dg::Path path = getPath();
+    if (!path.empty())
     {
-        m_painter.drawPath(image, m_map, m_path, view_offset, view_zoom);
+        m_painter.drawPath(image, &m_map, &path, view_offset, view_zoom);
     }
-    releasePathLock();
 
     // draw cam image on the GUI map
     cv::Mat video_image;
@@ -934,7 +930,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         {
             win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
             if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
-            dg::StreetView* sv = m_map->getView(sv_id);
+            dg::StreetView* sv = m_map.getView(sv_id);
             if (sv)m_painter.drawPoint(image, *sv, 6, cv::Vec3b(255, 255, 0), view_offset, view_zoom);
         }
     }
@@ -1139,7 +1135,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     dg::GuidanceManager::GuideStatus cur_status;
     dg::GuidanceManager::Guidance cur_guide;
     m_map_mutex.lock();
-    dg::Node* node = m_map->getNode(pose_topo.node_id);
+    dg::Node* node = m_map.getNode(pose_topo.node_id);
     m_map_mutex.unlock();
     if(node==nullptr)
     {
@@ -1316,10 +1312,12 @@ bool DeepGuider::procOcr()
     std::vector<double> poi_confidences;
     if (m_ocr.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
     {
+        printf("[proc-ocr] 1 = %d\n", (int)poi_xys.size());
         for (int k = 0; k < (int)poi_xys.size(); k++)
         {
             m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
         }
+        printf("[proc-ocr] 2\n");
         m_ocr.print();
 
         m_ocr.draw(cam_image);

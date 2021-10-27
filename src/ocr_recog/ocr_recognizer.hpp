@@ -91,7 +91,6 @@ namespace dg
 
             PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
-
             bool ret = _apply(image, ts);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
@@ -138,6 +137,7 @@ namespace dg
                 }
 
                 // list of list: [[xmin:float, ymin:float, xmax:float, ymax:float]:list, label:str, confidence:float], timestamp
+                cv::AutoLock lock(m_mutex);
                 m_result.clear();
                 PyObject* pList0 = PyTuple_GetItem(pRet, 0);
                 if (pList0 != NULL)
@@ -190,17 +190,20 @@ namespace dg
 
         void get(std::vector<OCRResult>& result) const
         {
+            cv::AutoLock lock(m_mutex);
             result = m_result;
         }
 
         void get(std::vector<OCRResult>& result, Timestamp& ts) const
         {
+            cv::AutoLock lock(m_mutex);
             result = m_result;
             ts = m_timestamp;
         }
 
         void set(const std::vector<OCRResult>& result, Timestamp ts, double proc_time)
         {
+            cv::AutoLock lock(m_mutex);
             m_result = result;
             m_timestamp = ts;
             m_processing_time = proc_time;
@@ -218,6 +221,7 @@ namespace dg
 
         void draw(cv::Mat& image, int font_sz = 28, double xscale = 1, double yscale = 1, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 1) const
         {
+            cv::AutoLock lock(m_mutex);
             for (size_t i = 0; i < m_result.size(); i++)
             {
                 // bbox
@@ -251,6 +255,7 @@ namespace dg
 
         void print() const
         {
+            cv::AutoLock lock(m_mutex);
             printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
             for (int k = 0; k < m_result.size(); k++)
             {
@@ -260,6 +265,7 @@ namespace dg
 
         void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
+            cv::AutoLock lock(m_mutex);
             for (int k = 0; k < m_result.size(); k++)
             {
                 std::string log = cv::format("%.3lf,%d,%s,%s,%.2lf,%d,%d,%d,%d,%.3lf", m_timestamp, cam_fnumber, name(), m_result[k].label.c_str(), m_result[k].confidence, m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax, m_processing_time);
@@ -269,6 +275,7 @@ namespace dg
 
         void read(const std::vector<std::string>& stream)
         {
+            cv::AutoLock lock(m_mutex);
             m_result.clear();
             for (int k = 0; k < (int)stream.size(); k++)
             {
@@ -303,6 +310,7 @@ namespace dg
 
 
     protected:
+        mutable cv::Mutex m_mutex;
         std::vector<OCRResult> m_result;
         Timestamp m_timestamp = -1;
         double m_processing_time = -1;

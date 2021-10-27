@@ -19,18 +19,18 @@ bool GuidanceManager::buildGuides()
 {
 	// check map and path
 	Map* map = getMap();
-	Path* path = getPath();
 	if (map == nullptr || map->isEmpty())
 	{
 		printf("[Error] GuidanceManager::buildGuides - Empty Map\n");
 		return false;
 	}
-	if (path == nullptr || path->empty())
+	Path path = (m_shared) ? m_shared->getPath() : Path();
+	if (path.empty())
 	{
 		printf("[Error] GuidanceManager::buildGuides - Empty path\n");
 		return false;
 	}
-	if (!validatePath(*path, *map))
+	if (!validatePath(path, *map))
 	{
 		printf("[Error] GuidanceManager::buildGuides - Path is not in the map!\n");
 		return false;
@@ -40,12 +40,12 @@ bool GuidanceManager::buildGuides()
 	m_extendedPath.clear();
 
 	// build new guidance path (exclude first and last path element: temporal start and destination node)
-	for (int i = 1; i < (int)path->pts.size() - 1; i++)
+	for (int i = 1; i < (int)path.pts.size() - 1; i++)
 	{
-		ID curnid = path->pts[i].node_id;
-		ID cureid = path->pts[i].edge_id;
-		ID nextnid = path->pts[i + 1].node_id;
-		ID nexteid = path->pts[i + 1].edge_id;
+		ID curnid = path.pts[i].node_id;
+		ID cureid = path.pts[i].edge_id;
+		ID nextnid = path.pts[i + 1].node_id;
+		ID nexteid = path.pts[i + 1].edge_id;
 		Node* curNode = getMap()->getNode(curnid);
 		if (curNode == nullptr)
 		{
@@ -56,9 +56,9 @@ bool GuidanceManager::buildGuides()
 		int angle = 0;
 		if (i > 0)
 		{
-			angle = getDegree(path->pts[i - 1], path->pts[i], path->pts[i + 1]);
+			angle = getDegree(path.pts[i - 1], path.pts[i], path.pts[i + 1]);
 		}
-		ExtendedPathElement tmppath(curnid, cureid, nextnid, nexteid, angle, path->pts[i].x, path->pts[i].y);
+		ExtendedPathElement tmppath(curnid, cureid, nextnid, nexteid, angle, path.pts[i].x, path.pts[i].y);
 
 		if (curNode && (curNode->type == Node::NODE_JUNCTION || curNode->type == Node::NODE_DOOR))
 		{

@@ -55,10 +55,9 @@ namespace dg
             // apply classification result only at the end of intersection
             if (state_prev == INTERSECTION && m_state == NONE_INTERSECTION)
             {
-                Path* path = m_shared->getPathLocked();
-                if (path && !path->empty()) xy_valid = findNearestPathJunction(*path, pose, xy);
+                Path path = m_shared->getPath();
+                if (!path.empty()) xy_valid = findNearestPathJunction(path, pose, xy);
                 else xy_valid = findNearestMapJunction(pose, xy);
-                m_shared->releasePathLock();
                 xy_confidence = m_result.confidence;
             }
             return true;
@@ -83,10 +82,9 @@ namespace dg
             // apply classification result only at the end of intersection
             if (state_prev == INTERSECTION && m_state == NONE_INTERSECTION)
             {
-                Path* path = m_shared->getPathLocked();
-                if (path && !path->empty()) xy_valid = findNearestPathJunction(*path, pose, xy);
+                Path path = m_shared->getPath();
+                if (!path.empty()) xy_valid = findNearestPathJunction(path, pose, xy);
                 else xy_valid = findNearestMapJunction(pose, xy);
-                m_shared->releasePathLock();
                 xy_confidence = cls_conf;
             }
             return true;

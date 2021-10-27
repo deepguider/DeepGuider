@@ -193,20 +193,18 @@ bool Map::save(const char* filename, bool save_as_latlon) const
     return true;
 }
 
-bool Map::copyTo(Map* dest) const
+bool Map::copyTo(Map& dest) const
 {
-    if (dest == nullptr) return false;
-
-    dest->removeAll();
-    dest->setReference(getReference());
+    dest.removeAll();
+    dest.setReference(getReference());
     for (auto node = nodes.begin(); node != nodes.end(); node++)
-        dest->addNode(*node);
+        dest.addNode(*node);
     for (auto edge = edges.begin(); edge != edges.end(); edge++)
-        dest->addEdge(*edge);
+        dest.addEdge(*edge);
     for (auto poi = pois.begin(); poi != pois.end(); poi++)
-        dest->addPOI(*poi);
+        dest.addPOI(*poi);
     for (auto view = views.begin(); view != views.end(); view++)
-        dest->addView(*view);
+        dest.addView(*view);
     return true;
 }
 
