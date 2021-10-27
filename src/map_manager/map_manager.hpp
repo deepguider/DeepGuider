@@ -462,10 +462,10 @@ protected:
 	/**
 	 * Request an image to server and download it
 	 * @param url A web address to request to the server
-	 * @param timeout The timeout value of curl (default: 10)
+	 * @param timeout The timeout value of curl (default: 5)
 	 * @return The downloaded image
 	 */
-	static cv::Mat queryImage2server(std::string url, int timeout = 10);
+	static cv::Mat queryImage2server(std::string url, int timeout = 5);
 
 	/**
 	 * Callback function for request to server

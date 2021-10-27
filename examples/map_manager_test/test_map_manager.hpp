@@ -7,10 +7,9 @@
 #include <cstdint>
 
 int testSimpleMapManager()
-{
-	/* commented by jylee
+{	
 	dg::MapManager manager;
-	manager.initialize();
+	manager.initialize("localhost");
 	bool ok;
 
 	// Change the server IP address
@@ -18,7 +17,8 @@ int testSimpleMapManager()
 	std::string ip = manager.getIP();
 	manager.setIP("localhost");
 	ip = manager.getIP();
-		
+	manager.setIP("129.254.81.1");
+	/* commented by jylee	
 	// Get the path & map
 	dg::Path path;
 	ok = manager.getPath(36.381873, 127.36803, 0, 36.384063, 127.374733, 0, path);
@@ -84,11 +84,12 @@ int testSimpleMapManager()
 		VVS_CHECK_EQUL(sv_vec.size(), 630);
 	sv_vec = manager.getStreetView(32364501511);
 	VVS_CHECK_EQUL(sv_vec[0].heading, 270.360000);
+	*/	// end of 'commented by jylee'
 
 	// Get the StreetView image
 	cv::Mat sv_image;
 	ok = manager.getStreetViewImage(14255003037, sv_image, "");	// f, b, l, r, u, d
-	*/	// end of 'commented by jylee'
+	
 
     return 0;
 }

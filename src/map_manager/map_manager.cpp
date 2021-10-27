@@ -271,6 +271,7 @@ bool MapManager::query2server(std::string url)
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5);
 
 		// Perform the request, res will get the return code.
 		res = curl_easy_perform(curl);
@@ -822,6 +823,7 @@ cv::Mat MapManager::queryImage2server(std::string url, int timeout)
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeImage_callback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &stream);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5);
 
 		// Perform the request, res will get the return code.
 		res = curl_easy_perform(curl);
