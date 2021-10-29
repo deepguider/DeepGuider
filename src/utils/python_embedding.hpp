@@ -1,9 +1,10 @@
 #ifndef __DG_PYTHON_EMBEDDING__
 #define __DG_PYTHON_EMBEDDING__
 
+#include "dg_core.hpp"
+#include <chrono>
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #define PY_SSIZE_T_CLEAN
-#include "dg_core.hpp"
 #include <Python.h>
 #include "numpy/arrayobject.h"
 

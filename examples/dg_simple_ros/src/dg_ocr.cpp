@@ -144,7 +144,7 @@ bool DGRosRecognizer::initialize(std::string config_file)
 
     // initialize recognizer
     std::string module_path = m_srcdir + "/ocr_recog";
-    if (!m_recognizer.initialize("ocr_recognizer", module_path.c_str())) return false;
+    if (!m_recognizer.initialize(module_path.c_str(), "ocr_recognizer", "OCRRecognizer")) return false;
     printf("\t%s initialized in %.3lf seconds!\n", m_recognizer.name(), m_recognizer.procTime());
 
     // reset interval variables
@@ -218,8 +218,7 @@ bool DGRosRecognizer::runOnce(double timestamp)
     if (!cam_image.empty() && m_recognizer.apply(cam_image, capture_time))
     {
         m_recognizer.print();
-        std::vector<OCRResult> ocrs;
-        m_recognizer.get(ocrs);
+        std::vector<OCRResult> ocrs = m_recognizer.get();
         if(!ocrs.empty())
         {
             dg_simple_ros::ocr_info msg;
