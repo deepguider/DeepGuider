@@ -27,65 +27,6 @@ namespace dg
     {
     public:
         /**
-        * Initialize the module
-        * @return true if successful (false if failed)
-        */
-        bool initialize(const char* module_name = "lrpose_recognizer", const char* module_path = "./../src/lrpose_recog", const char* class_name = "lrpose_recognizer", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
-        {
-            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-
-            PyGILState_STATE state;
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            bool ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
-
-            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-            m_processing_time = t2 - t1;
-
-            return ret;
-        }
-
-        /**
-        * Reset variables and clear the memory
-        */
-        void clear()
-        {
-            PyGILState_STATE state;
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            _clear();
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
-
-            m_timestamp = -1;
-            m_processing_time = -1;
-        }
-
-        /**
-        * Run once the module for a given input (support thread run)
-        * @return true if successful (false if failed)
-        */
-        bool apply(cv::Mat image, dg::Timestamp ts)
-        {
-            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-
-            PyGILState_STATE state;
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            bool ret = _apply(image, ts);
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
-
-            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-            m_processing_time = t2 - t1;
-            m_timestamp = ts;
-
-            return true;
-        }
-
-        /**
         * Run once the module for a given input
         * @return true if successful (false if failed)
         */
@@ -119,6 +60,7 @@ namespace dg
                     return false;
                 }
 
+                cv::AutoLock lock(m_mutex);
                 // lrposenition class & confidence
                 pValue = PyTuple_GetItem(pRet, 0);
                 m_result.cls = PyLong_AsLong(pValue);
@@ -131,9 +73,6 @@ namespace dg
                 return false;
             }
 
-            // Update Timestamp
-            m_timestamp = ts;
-
             // Clean up
             if(pRet) Py_DECREF(pRet);
             if(pArgs) Py_DECREF(pArgs);            
@@ -141,36 +80,30 @@ namespace dg
             return true;
         }
 
-        void get(LRPoseResult& lrpose) const
+        LRPoseResult get() const
         {
-            lrpose = m_result;
+            cv::AutoLock lock(m_mutex);
+            return m_result;
         }
 
-        void get(LRPoseResult& lrpose, Timestamp& ts) const
+        LRPoseResult get(Timestamp& ts) const
         {
-            lrpose = m_result;
+            cv::AutoLock lock(m_mutex);
             ts = m_timestamp;
+            return m_result;
         }
 
-        void set(const LRPoseResult& lrpose, Timestamp ts, double proc_time)
+        void set(const LRPoseResult& lrpose, Timestamp ts, double proc_time = -1)
         {
+            cv::AutoLock lock(m_mutex);
             m_result = lrpose;
             m_timestamp = ts;
             m_processing_time = proc_time;
         }
 
-        dg::Timestamp timestamp() const
-        {
-            return m_timestamp;
-        }
-
-        double procTime() const
-        {
-            return m_processing_time;
-        }
-
         void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
         {
+            cv::AutoLock lock(m_mutex);
             if (m_result.cls == 0)
             {
                 cv::Rect roi(image.cols * 2 / 3, 0, image.cols - image.cols * 2 / 3, image.rows);
@@ -190,19 +123,21 @@ namespace dg
 
         void print() const
         {
-            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
+            cv::AutoLock lock(m_mutex);
+            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), m_processing_time, m_timestamp);
             printf("\tlrpose: %d (%.2lf)\n", m_result.cls, m_result.confidence);
-
         }
 
         void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
+            cv::AutoLock lock(m_mutex);
             std::string log = cv::format("%.3lf,%d,%s,%d,%.2lf,%.3lf", m_timestamp, cam_fnumber, name(), m_result.cls, m_result.confidence, m_processing_time);
             stream << log << std::endl;
         }
 
         void read(const std::vector<std::string>& stream)
         {
+            cv::AutoLock lock(m_mutex);
             for (int k = 0; k < (int)stream.size(); k++)
             {
                 std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
@@ -230,8 +165,6 @@ namespace dg
 
     protected:
         LRPoseResult m_result;
-        Timestamp m_timestamp = -1;
-        double m_processing_time = -1;
     };
 
 } // End of 'dg'

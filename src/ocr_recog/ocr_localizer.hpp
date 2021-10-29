@@ -31,21 +31,23 @@ namespace dg
     public:
         bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/ocr_recog")
         {
-            cv::AutoLock lock(m_mutex);
+			if (!OCRRecognizer::initialize(py_module_path.c_str(), "ocr_recognizer", "OCRRecognizer")) return false;
+
+			cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;
-            if (!OCRRecognizer::initialize("ocr_recognizer", py_module_path.c_str())) return false;
             return (m_shared != nullptr);
         }
 
 		bool initialize_without_python(SharedInterface* shared)
 		{
-			cv::AutoLock lock(m_mutex);
+			cv::AutoLock lock(m_localizer_mutex);
 			m_shared = shared;
 			return (m_shared != nullptr);
 		}
 
 		void setParam(double f, double cx, double cy, double cam_vy, double cam_h, double poi_h = 3.8, double search_radius = 100)
 		{
+			cv::AutoLock lock(m_localizer_mutex);
 			m_focal_length = f;
 			m_cx = cx;
 			m_cy = cy;
@@ -57,27 +59,29 @@ namespace dg
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
         {
-			cv::AutoLock lock(m_mutex);
-            if (!OCRRecognizer::apply(image, image_time)) return false;
-			if(m_result.empty()) return false;
+			if (!OCRRecognizer::apply(image, image_time)) return false;
+
+			cv::AutoLock lock(m_localizer_mutex);
+			std::vector<OCRResult> ocrs = get();
+			if (ocrs.empty()) return false;
 
             if (m_shared == nullptr) return false;
 			Pose2 pose = m_shared->getPose();
 			Map* map = m_shared->getMap();
-			if (map == nullptr) return false;
+			if (map == nullptr || map->isEmpty()) return false;
 
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-			for (int k = 0; k < m_result.size(); k++)
+			for (int k = 0; k < ocrs.size(); k++)
             {
-                std::wstring poi_name = converter.from_bytes(m_result[k].label.c_str());
+                std::wstring poi_name = converter.from_bytes(ocrs[k].label.c_str());
                 std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
                 if (!pois.empty())
                 {
                     POI* poi = pois[0];
                     poi_xys.push_back(*poi);
-                    Polar2 relative = computeRelative(m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
+                    Polar2 relative = computeRelative(ocrs[k].xmin, ocrs[k].ymin, ocrs[k].xmax, ocrs[k].ymax);
                     relatives.push_back(relative);
-                    poi_confidences.push_back(m_result[k].confidence);
+                    poi_confidences.push_back(ocrs[k].confidence);
                 }
             }
             return true;
@@ -85,11 +89,11 @@ namespace dg
 
 		bool applyPreprocessed(std::string recog_name, double xmin, double ymin, double xmax, double ymax, double conf, const dg::Timestamp data_time, dg::Point2& poi_xy, dg::Polar2& relative, double& poi_confidence)
 		{
-			cv::AutoLock lock(m_mutex);
+			cv::AutoLock lock(m_localizer_mutex);
 			if (m_shared == nullptr) return false;
 			Pose2 pose = m_shared->getPose();
 
-			m_result.clear();
+			std::vector<OCRResult> ocrs;
 			OCRResult ocr;
 			ocr.label = recog_name;
 			ocr.xmin = (int)(xmin + 0.5);
@@ -97,12 +101,12 @@ namespace dg
 			ocr.xmax = (int)(xmax + 0.5);
 			ocr.ymax = (int)(ymax + 0.5);
 			ocr.confidence = conf;
-			m_result.push_back(ocr);
-			m_timestamp = data_time;
+			ocrs.push_back(ocr);
+			set(ocrs, data_time);
 
 			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 			Map* map = m_shared->getMap();
-			if (map == nullptr) return false;
+			if (map == nullptr || map->isEmpty()) return false;
 			std::wstring poi_name = converter.from_bytes(recog_name.c_str());
 			std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
 			if (pois.empty()) return false;
@@ -114,22 +118,26 @@ namespace dg
 
 		bool getLocClue(const Pose2& pose, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
 		{
-			cv::AutoLock lock(m_mutex);
+			cv::AutoLock lock(m_localizer_mutex);
+			std::vector<OCRResult> ocrs = get();
+			if (ocrs.empty()) return false;
+
 			if (m_shared == nullptr) return false;
-			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 			Map* map = m_shared->getMap();
-			assert(map != nullptr);
-			for (int k = 0; k < m_result.size(); k++)
+			if (map == nullptr || map->isEmpty()) return false;
+
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			for (int k = 0; k < ocrs.size(); k++)
 			{
-				std::wstring poi_name = converter.from_bytes(m_result[k].label.c_str());
+				std::wstring poi_name = converter.from_bytes(ocrs[k].label.c_str());
 				std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
 				if (!pois.empty())
 				{
 					POI* poi = pois[0];
 					poi_xys.push_back(*poi);
-					Polar2 relative = computeRelative(m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
+					Polar2 relative = computeRelative(ocrs[k].xmin, ocrs[k].ymin, ocrs[k].xmax, ocrs[k].ymax);
 					relatives.push_back(relative);
-					poi_confidences.push_back(m_result[k].confidence);
+					poi_confidences.push_back(ocrs[k].confidence);
 				}
 			}
 			return true;
@@ -193,7 +201,7 @@ namespace dg
 		}
 
         SharedInterface* m_shared = nullptr;
-        mutable cv::Mutex m_mutex;
+		cv::Mutex m_localizer_mutex;
     };
 
 } // End of 'dg'

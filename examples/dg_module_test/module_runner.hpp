@@ -347,9 +347,8 @@ public:
                 m_viewport.getViewportImage(out_image);
 
                 // Draw path
-                dg::Path* path = getPathLocked();
-                gui_painter->drawPath(out_image, getMap(), path, m_viewport.offset(), m_viewport.zoom());
-                releasePathLock();
+                dg::Path path = getPath();
+                gui_painter->drawPath(out_image, getMap(), &path, m_viewport.offset(), m_viewport.zoom());
 
                 // Draw robot position
                 if (gui_robot_radius > 0)
@@ -433,7 +432,7 @@ public:
             cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
             cv::Point2d p_dest = gui_painter->cvtPixel2Value(px);
             dg::Path path;
-            bool ok = m_map && m_map->getPath(p_start, p_dest, path);
+            bool ok = m_map.getPath(p_start, p_dest, path);
             if (ok)
             {
                 setPath(path);
@@ -483,9 +482,10 @@ public:
     {
         if (!m_dest_defined) return false;
         dg::Path path;
-        bool ok = m_map && m_map->getPath(curr_pose, m_dest_xy, path);
+        bool ok = m_map.getPath(curr_pose, m_dest_xy, path);
         if (!ok) return false;
-        return setPath(path);
+        setPath(path);
+        return true;
     }
 
     bool         m_dest_defined = false;

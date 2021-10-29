@@ -105,7 +105,9 @@
     <ClInclude Include="..\..\src\core\map.hpp" />
     <ClInclude Include="..\..\src\core\path.hpp" />
     <ClInclude Include="..\..\src\core\shared_data.hpp" />
+    <ClInclude Include="..\..\src\exploration\exploration.hpp" />
     <ClInclude Include="..\..\src\guidance\guidance.hpp" />
+    <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp" />
     <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\data_loader.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
@@ -115,9 +117,12 @@
     <ClInclude Include="..\..\src\localizer\localizer_interface.hpp" />
     <ClInclude Include="..\..\src\localizer\path_projector.hpp" />
     <ClInclude Include="..\..\src\logo_recog\logo_localizer.hpp" />
+    <ClInclude Include="..\..\src\logo_recog\logo_recognizer.hpp" />
     <ClInclude Include="..\..\src\lrpose_recog\lrpose_localizer.hpp" />
+    <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp" />
     <ClInclude Include="..\..\src\map_manager\map_manager.hpp" />
     <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp" />
+    <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp" />
     <ClInclude Include="..\..\src\roadtheta\roadtheta.hpp" />
     <ClInclude Include="..\..\src\roadtheta\roadtheta_localizer.hpp" />
     <ClInclude Include="..\..\src\utils\map_painter.hpp" />
@@ -126,7 +131,16 @@
     <ClInclude Include="..\..\src\utils\utm_converter.hpp" />
     <ClInclude Include="..\..\src\utils\viewport.hpp" />
     <ClInclude Include="..\..\src\utils\vvs.h" />
+    <ClInclude Include="..\..\src\vps\vps.hpp" />
     <ClInclude Include="..\..\src\vps\vps_localizer.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\exploration\active_navigation.py" />
+    <None Include="..\..\src\intersection_cls\intersection_cls.py" />
+    <None Include="..\..\src\logo_recog\logo_recognizer.py" />
+    <None Include="..\..\src\lrpose_recog\lrpose_recognizer.py" />
+    <None Include="..\..\src\ocr_recog\ocr_recognizer.py" />
+    <None Include="..\..\src\vps\vps.py" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

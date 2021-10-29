@@ -324,7 +324,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize VPS
     std::string py_module_path = m_srcdir + "/vps";
-    if (m_enable_vps && !m_vps.initialize(this, m_server_ip, py_module_path)) return false;
+    if (m_enable_vps && !m_vps.initialize(this, py_module_path, m_server_ip)) return false;
     if (m_enable_vps) printf("\tVPS initialized in %.3lf seconds!\n", m_vps.procTime());
 
     // initialize LRPose
@@ -353,7 +353,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     //initialize exploation 
     py_module_path = m_srcdir + "/exploration";
-    if (m_enable_exploration && !m_active_nav.initialize("active_navigation", py_module_path.c_str())) return false;
+    if (m_enable_exploration && !m_active_nav.initialize(py_module_path)) return false;
     if (m_enable_exploration) printf("\tExploation initialized!\n");
 
     // initialize default map
@@ -866,7 +866,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_intersection_mutex.lock();
         if(!m_intersection_image.empty())
         {
-            cv::resize(m_intersection_image, result_image, cv::Size(win_rect.height * 0.9, win_rect.height));
+            cv::resize(m_intersection_image, result_image, cv::Size((int)(win_rect.height * 0.9), win_rect.height));
         }
         m_intersection_mutex.unlock();
 
@@ -884,7 +884,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_lrpose_mutex.lock();
         if (!m_lrpose_image.empty())
         {
-            cv::resize(m_lrpose_image, result_image, cv::Size(win_rect.height * 0.9, win_rect.height));
+            cv::resize(m_lrpose_image, result_image, cv::Size((int)(win_rect.height * 0.9), win_rect.height));
         }
         m_lrpose_mutex.unlock();
 
@@ -1668,7 +1668,7 @@ void DeepGuider::putTTS(const char* msg)
     if (!discard) m_tts_msg.push_back(msg);
     if(m_tts_msg.size() > max_tts_message_cnt)
     {
-        int n_erase = m_tts_msg.size() - max_tts_message_cnt;
+        int n_erase = (int)m_tts_msg.size() - max_tts_message_cnt;
         m_tts_msg.erase(m_tts_msg.begin(), m_tts_msg.begin() + n_erase);
     }
     m_tts_mutex.unlock();

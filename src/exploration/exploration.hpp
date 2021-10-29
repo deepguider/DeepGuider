@@ -26,38 +26,11 @@ class ActiveNavigation : public PythonModuleWrapper
         * Initialize the module
         * @return true if successful (false if failed)
         */
-        bool initialize(const char* module_name = "active_navigation", const char* module_path = "./../src/exploration", const char* class_name = "ActiveNavigationModule", const char* func_name_init = "initialize", const char* func_name_apply = "getExplorationGuidance")
+        bool initialize(std::string module_path = "./../src/exploration", const char* module_name = "active_navigation", const char* class_name = "ActiveNavigationModule", const char* func_name_init = "initialize", const char* func_name_apply = "getExplorationGuidance")
         {
-            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-
-            PyGILState_STATE state;
-            bool ret;
-
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
-            
-            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-            m_processing_time = t2 - t1;
-
-            return ret;
+            return PythonModuleWrapper::initialize(module_path.c_str(), module_name, class_name, func_name_init, func_name_apply);
         }
 
-        /**
-        * Reset variables and clear the memory
-        */
-        void clear()
-        {
-            PyGILState_STATE state;
-
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            _clear();
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
-        }
 
         /**
         * Run once the module for a given input (support thread run)
@@ -151,6 +124,7 @@ class ActiveNavigation : public PythonModuleWrapper
                     return false;
                 }
 
+                cv::AutoLock lock(m_mutex);
                 // list of list
                 m_actions.clear();
                 
@@ -195,9 +169,6 @@ class ActiveNavigation : public PythonModuleWrapper
                 return false;
             }
 
-            // Update Timestamp
-            m_timestamp = t;
-
             // Clean up
             if(pRet) Py_DECREF(pRet);
             if(pArgs) Py_DECREF(pArgs);            
@@ -207,29 +178,22 @@ class ActiveNavigation : public PythonModuleWrapper
 
         void get(std::vector<ExplorationGuidance>& actions, GuidanceManager::GuideStatus& status)
         {
+            cv::AutoLock lock(m_mutex);
             actions = m_actions;
             status = m_status;
         }
 
         void get(std::vector<ExplorationGuidance>& actions,GuidanceManager::GuideStatus& status, Timestamp& t)
         {
+            cv::AutoLock lock(m_mutex);
             actions = m_actions;
             status = m_status;
             t = m_timestamp;
         }
 
-        dg::Timestamp timestamp() const
-        {
-            return m_timestamp;
-        }
-
-        double procTime() const
-        {
-            return m_processing_time;
-        }
-
       	void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
         {
+            cv::AutoLock lock(m_mutex);
             cv::Point2d pt1(image.cols / 2 - 190 * drawing_scale, 50 * drawing_scale);
             cv::Point2d pt2(image.cols / 2 - 190 * drawing_scale, 100 * drawing_scale);            
             for (size_t k = 0; k < m_actions.size(); k++)
@@ -247,7 +211,8 @@ class ActiveNavigation : public PythonModuleWrapper
 
         void print() const
         {
-            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
+            cv::AutoLock lock(m_mutex);
+            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), m_processing_time, m_timestamp);
 			printf("\t action [%lf, %lf, %lf]\n", m_actions[0].theta1, m_actions[0].d, m_actions[0].theta2);
         }
 
@@ -260,8 +225,6 @@ class ActiveNavigation : public PythonModuleWrapper
     protected:
         std::vector<ExplorationGuidance> m_actions;
         GuidanceManager::GuideStatus m_status;
-        Timestamp m_timestamp = -1;
-        double m_processing_time = -1;
     };
 
 } // End of 'dg'

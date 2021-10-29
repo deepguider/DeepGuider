@@ -25,32 +25,33 @@ namespace dg
 
         bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/intersection_cls")
         {
-            cv::AutoLock lock(m_mutex);
+            if (!IntersectionClassifier::initialize(py_module_path.c_str(), "intersection_cls", "IntersectionClassifier")) return false;
+
+            cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;
-            if (!IntersectionClassifier::initialize("intersection_cls", py_module_path.c_str())) return false;
             return (m_shared != nullptr);
         }
 
         bool initialize_without_python(SharedInterface* shared)
         {
-            cv::AutoLock lock(m_mutex);
+            cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;
             return (m_shared != nullptr);
         }
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& xy, double& xy_confidence, bool& xy_valid)
         {
-            cv::AutoLock lock(m_mutex);
+            if (!IntersectionClassifier::apply(image, image_time)) return false;
+
+            cv::AutoLock lock(m_localizer_mutex);
             if (m_shared == nullptr) return false;
             Pose2 pose = m_shared->getPose();
             xy_valid = false;
 
-            if (!IntersectionClassifier::apply(image, image_time)) return false;
-
             // apply state filtering
-            int observed_cls = m_result.cls;
+            IntersectionResult intersect = get();
             int state_prev = m_state;
-            m_state = simpleStateFiltering(observed_cls);
+            m_state = simpleStateFiltering(intersect.cls);
 
             // apply classification result only at the end of intersection
             if (state_prev == INTERSECTION && m_state == NONE_INTERSECTION)
@@ -65,14 +66,15 @@ namespace dg
 
         bool applyPreprocessed(double cls, double cls_conf, const dg::Timestamp data_time, dg::Point2& xy, double& xy_confidence, bool& xy_valid)
         {
-            cv::AutoLock lock(m_mutex);
+            cv::AutoLock lock(m_localizer_mutex);
             if (m_shared == nullptr) return false;
             Pose2 pose = m_shared->getPose();
             xy_valid = false;
 
-            m_result.cls = (int)(cls + 0.5);
-            m_result.confidence = cls_conf;
-            m_timestamp = data_time;
+            IntersectionResult intersect;            
+            intersect.cls = (int)(cls + 0.5);
+            intersect.confidence = cls_conf;
+            set(intersect, data_time);
 
             // apply state filtering
             int observed_cls = (int)(cls + 0.5);
@@ -89,7 +91,6 @@ namespace dg
             }
             return true;
         }
-
 
     protected:
         int simpleStateFiltering(int observation)
@@ -146,7 +147,7 @@ namespace dg
         int m_state = NONE_INTERSECTION;
 
         SharedInterface* m_shared = nullptr;
-        mutable cv::Mutex m_mutex;
+        cv::Mutex m_localizer_mutex;
     };
 
 } // End of 'dg'

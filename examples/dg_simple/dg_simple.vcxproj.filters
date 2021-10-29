@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Recognizer Modules">
+      <UniqueIdentifier>{fb367d49-91dd-499e-8892-23ece7347e6c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp">
@@ -45,9 +48,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\core\path.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\utils\python_embedding.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\utils\vvs.h">
@@ -86,21 +86,6 @@
     <ClInclude Include="..\..\src\localizer\path_projector.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\vps\vps_localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\roadtheta\roadtheta.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\roadtheta\roadtheta_localizer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\localizer\data_loader.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -110,11 +95,67 @@
     <ClInclude Include="..\..\src\utils\viewport.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\exploration\exploration.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\logo_recog\logo_localizer.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\lrpose_recog\lrpose_localizer.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>Recognizer Modules</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\utils\python_embedding.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\roadtheta\roadtheta.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\roadtheta\roadtheta_localizer.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vps\vps_localizer.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\logo_recog\logo_recognizer.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vps\vps.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\exploration\active_navigation.py">
+      <Filter>Recognizer Modules</Filter>
+    </None>
+    <None Include="..\..\src\intersection_cls\intersection_cls.py">
+      <Filter>Recognizer Modules</Filter>
+    </None>
+    <None Include="..\..\src\logo_recog\logo_recognizer.py">
+      <Filter>Recognizer Modules</Filter>
+    </None>
+    <None Include="..\..\src\lrpose_recog\lrpose_recognizer.py">
+      <Filter>Recognizer Modules</Filter>
+    </None>
+    <None Include="..\..\src\ocr_recog\ocr_recognizer.py">
+      <Filter>Recognizer Modules</Filter>
+    </None>
+    <None Include="..\..\src\vps\vps.py">
+      <Filter>Recognizer Modules</Filter>
+    </None>
   </ItemGroup>
 </Project>

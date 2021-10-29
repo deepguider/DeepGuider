@@ -106,6 +106,7 @@ namespace dg
 
     void RoadTheta::draw(cv::Mat& image) const
     {
+        cv::AutoLock lock(m_mutex);
         double image_scale = m_param.reference_image_width * m_param.image_scale_modifier / image.cols;
         int scaled_w = (int)(image.cols * image_scale + 0.5);
         int scaled_h = (int)(image.rows * image_scale + 0.5);

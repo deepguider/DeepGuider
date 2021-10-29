@@ -27,41 +27,43 @@ namespace dg
 
         bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/lrpose_recog")
         {
-            cv::AutoLock lock(m_mutex);
+            if (!LRPoseRecognizer::initialize(py_module_path.c_str(), "lrpose_recognizer", "lrpose_recognizer")) return false;
+
+            cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;
-            if (!LRPoseRecognizer::initialize("lrpose_recognizer", py_module_path.c_str())) return false;
             return (m_shared != nullptr);
         }
 
         bool initialize_without_python(SharedInterface* shared)
         {
-            cv::AutoLock lock(m_mutex);
+            cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;
             return (m_shared != nullptr);
         }
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, int& lr_cls, double& lr_confidence)
         {
-            cv::AutoLock lock(m_mutex);
             if (!LRPoseRecognizer::apply(image, image_time)) return false;
 
+            cv::AutoLock lock(m_localizer_mutex);
             // apply state filtering
-            int observed_cls = m_result.cls;  // m_result from python
-            m_state = simpleStateFiltering(observed_cls);
+            LRPoseResult lrpose = get();
+            m_state = simpleStateFiltering(lrpose.cls);
 
 			lr_cls = m_state;  // filtered cls
-            lr_confidence = m_result.confidence;
+            lr_confidence = lrpose.confidence;
             return true;
         }
 
         bool applyPreprocessed(double observed_cls, double observed_conf, const dg::Timestamp data_time, int& lr_cls, double& lr_confidence)
         {
-            cv::AutoLock lock(m_mutex);
+            cv::AutoLock lock(m_localizer_mutex);
 
             // Update internal state for draw(). m_result needs to be set by manual when csv dataloader is enabled rather than python.
-            m_result.cls = (int)(observed_cls + 0.5);
-            m_result.confidence = observed_conf;
-            m_timestamp = data_time;
+            LRPoseResult lrpose;
+            lrpose.cls = (int)(observed_cls + 0.5);
+            lrpose.confidence = observed_conf;
+            set(lrpose, data_time);
 
             // apply state filtering
             m_state = simpleStateFiltering((int)(observed_cls + 0.5));
@@ -96,7 +98,7 @@ namespace dg
         int m_state = UNKNOWN_SIDE_OF_ROAD;
 
         SharedInterface* m_shared = nullptr;
-        mutable cv::Mutex m_mutex;
+        cv::Mutex m_localizer_mutex;
     };
 
 } // End of 'dg'

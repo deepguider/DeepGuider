@@ -16,23 +16,18 @@ namespace dg
     public:
         bool initialize(SharedInterface* shared)
         {
-            cv::AutoLock lock(m_mutex);
-            m_shared = shared;
             if (!RoadTheta::initialize()) return false;
-            return (m_shared != nullptr);
-        }
 
-        void setParam(cv::Size image_sz, double f, double cx, double cy, double cam_vy)
-        {
-            m_param.hfov = cx::cvtRad2Deg(atan(image_sz.width / (2 * f)) * 2);
-            m_param.camera_vanishing_y = cam_vy / image_sz.height;
+            cv::AutoLock lock(m_localizer_mutex);
+            m_shared = shared;
+            return (m_shared != nullptr);
         }
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, double& theta , double& confidence)
         {
-            cv::AutoLock lock(m_mutex);
             if (!RoadTheta::apply(image, image_time)) return false;
 
+            cv::AutoLock lock(m_localizer_mutex);
             if (m_shared == nullptr) return false;
             Pose2 pose = m_shared->getPose();
             double theta_relative = m_result.theta;
@@ -62,7 +57,7 @@ namespace dg
         }
 
         SharedInterface* m_shared = nullptr;
-        mutable cv::Mutex m_mutex;
+        cv::Mutex m_localizer_mutex;
     };
 
 } // End of 'dg'
