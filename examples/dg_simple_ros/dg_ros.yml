@@ -21,7 +21,7 @@ topic_names_set: ["ETRI_CART", "KETI_ROBOT", "ETRI_CART_VER1"]
 
 dg_srcdir: "/home/dgtest/deepguider/src"  # path of deepguider/src folder (required for python embedding)
 enable_tts: 1
-threaded_run_python: 1
+threaded_run_modules: 1
 use_high_precision_gps: 0   # 0: asen gps, 1: Novatel gps
 
 ### Other Configurations

@@ -42,7 +42,7 @@ protected:
     std::string m_image_server_port = "10000";  // etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
     std::string m_srcdir = "./../src";      // path of deepguider/src (required for python embedding)
     bool m_enable_tts = false;
-    bool m_threaded_run_python = true;
+    bool m_threaded_run_modules = true;
     bool m_use_high_precision_gps = false;  // use high-precision gps (novatel)
 
     bool m_data_logging = false;
@@ -267,7 +267,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
 
     CX_LOAD_PARAM_COUNT(fn, "dg_srcdir", m_srcdir, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_tts", m_enable_tts, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "threaded_run_python", m_threaded_run_python, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "threaded_run_modules", m_threaded_run_modules, n_read);
     CX_LOAD_PARAM_COUNT(fn, "use_high_precision_gps", m_use_high_precision_gps, n_read);
 
     // Read Other Options
@@ -314,8 +314,8 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize python
     bool enable_python = m_enable_vps || m_enable_lrpose || m_enable_ocr || m_enable_logo || m_enable_intersection || m_enable_exploration;
-    if (enable_python && !init_python_environment("python3", "", m_threaded_run_python)) return false;
-    if(enable_python) printf("\tPython environment initialized!\n");
+    if (enable_python && !init_python_environment("python3", "", m_threaded_run_modules)) return false;
+    if (enable_python) printf("\tPython environment initialized!\n");
 
     // initialize map manager
     m_map_manager.setReference(m_map_ref_point);
@@ -386,7 +386,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("track_near_radius", 20);
     m_localizer.setParamValue("enable_path_projection", true);
     m_localizer.setParamValue("enable_map_projection", false);
-    m_localizer.setParamValue("enable_backtracking_ekf", false); // default : true, for demo : false
+    m_localizer.setParamValue("enable_backtracking_ekf", true); // default : true, for demo : false
     m_localizer.setParamValue("enable_gps_smoothing)", true);
     m_localizer.setParamValue("enable_debugging_display", false);
     m_localizer.setParamValue("lr_mismatch_cost", 50);
@@ -394,7 +394,6 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("lr_reject_cost", 20);             // 20
     m_localizer.setParamValue("enable_discontinuity_cost", true);
     m_localizer.setParamValue("discontinuity_weight", 0.5);      // 0.5
-
     printf("\tLocalizer initialized!\n");
 
     // initialize guidance
@@ -513,6 +512,18 @@ int DeepGuider::run()
     }
     printf("Run deepguider system...\n");
 
+    // start module threads
+    if(m_threaded_run_modules)
+    {
+        if (m_enable_vps) vps_thread = new std::thread(threadfunc_vps, this);
+        if (m_enable_lrpose) lrpose_thread = new std::thread(threadfunc_lrpose, this);
+        if (m_enable_ocr) ocr_thread = new std::thread(threadfunc_ocr, this);    
+        if (m_enable_logo) logo_thread = new std::thread(threadfunc_logo, this);
+        if (m_enable_intersection) intersection_thread = new std::thread(threadfunc_intersection, this);
+        if (m_enable_roadtheta) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
+        if (m_enable_exploration) exploration_thread = new std::thread(threadfunc_exploration, this);    
+    }
+
     cv::Mat video_image;
     cv::Mat gui_image;
     int wait_msec = 200;
@@ -625,13 +636,16 @@ int DeepGuider::run()
             m_cam_mutex.unlock();
 
             // process vision modules
-            if (m_enable_ocr && ocr_file.empty()) procOcr();
-            if (m_enable_vps && vps_file.empty()) procVps();
-            if (m_enable_lrpose && lr_file.empty()) procLRPose();
-            if (m_enable_logo) procLogo();
-            if (m_enable_intersection && intersection_file.empty()) procIntersectionClassifier();
-            if (m_enable_roadtheta && roadtheta_file.empty()) procRoadTheta();
-            if (m_enable_exploration && exploration_file.empty()) procExploration();            
+            if(!m_threaded_run_modules)
+            {
+                if (m_enable_ocr && ocr_file.empty()) procOcr();
+                if (m_enable_vps && vps_file.empty()) procVps();
+                if (m_enable_lrpose && lr_file.empty()) procLRPose();
+                if (m_enable_logo) procLogo();
+                if (m_enable_intersection && intersection_file.empty()) procIntersectionClassifier();
+                if (m_enable_roadtheta && roadtheta_file.empty()) procRoadTheta();
+                if (m_enable_exploration && exploration_file.empty()) procExploration();         
+            }
 
             // process Guidance
             procGuidance(data_time);
@@ -670,8 +684,11 @@ int DeepGuider::run()
 
     // end system
     printf("End deepguider system...\n");
-    terminateThreadFunctions();
-    printf("\tthread terminated\n");
+    if(m_threaded_run_modules)
+    {
+        terminateThreadFunctions();
+        printf("\tthread terminated\n");
+    }
     if(m_video_recording)
     {
         m_video_gui.release();    
@@ -1319,11 +1336,15 @@ bool DeepGuider::procOcr()
         }
         printf("[proc-ocr] 2\n");
         m_ocr.print();
+        printf("[proc-ocr] 3\n");
 
         m_ocr.draw(cam_image);
+        printf("[proc-ocr] 4\n");
         m_ocr_mutex.lock();
+        printf("[proc-ocr] 5\n");
         m_ocr_image = cam_image;
         m_ocr_mutex.unlock();
+        printf("[proc-ocr] 6-end\n");
         return true;
     }
     else

@@ -126,13 +126,13 @@ bool GuidanceManager::buildGuides()
 
 	m_guide_idx = 0;
 
-	for (size_t i = 0; i < m_extendedPath.size(); i++)
-	{
-		if (m_extendedPath[i].is_junction)
-		{
-			printf("[%d] Node id:%zu, Deg: %d \n", (int)i, m_extendedPath[i].cur_node_id, m_extendedPath[i].cur_degree);
-		}
-	}
+	//for (size_t i = 0; i < m_extendedPath.size(); i++)
+	//{
+	//	if (m_extendedPath[i].is_junction)
+	//	{
+	//		printf("[%d] Node id:%zu, Deg: %d \n", (int)i, m_extendedPath[i].cur_node_id, m_extendedPath[i].cur_degree);
+	//	}
+	//}
 	return true;
 }
 
@@ -397,7 +397,7 @@ bool GuidanceManager::update(TopometricPose pose)
     int guide_interval = 10; //m
 	double arrived_threshold = 1.0;
 	int gidx = getGuideIdxFromPose(pose);
-	printf("pose.node_id: %zd, gidx: %d\n", pose.node_id, gidx);
+	//printf("pose.node_id: %zd, gidx: %d\n", pose.node_id, gidx);
 	if (gidx != m_guide_idx)//if new node appears
 	{
 		m_past_guides.push_back(m_curguidance); //save past guidances
@@ -407,7 +407,7 @@ bool GuidanceManager::update(TopometricPose pose)
 	//check remain distance
 	ID curnid = pose.node_id;
 
-	printf("m_guide_idx: %d, m_extendedPath.size(): %d\n", m_guide_idx, (int)(m_extendedPath.size()));
+	//printf("m_guide_idx: %d, m_extendedPath.size(): %d\n", m_guide_idx, (int)(m_extendedPath.size()));
 	//finishing condition
 	if (curnid == m_extendedPath.back().cur_node_id || 
 	// (m_guide_idx == m_extendedPath.size()-1 && m_rmdistance < m_arrived_threshold))
@@ -447,16 +447,16 @@ bool GuidanceManager::update(TopometricPose pose)
 	double remain_dist = junction_dist - passsed_dist; // + curedge->length;
 	m_rmdistance = remain_dist;
 	int announce_dist = (int) remain_dist / guide_interval * guide_interval;
-	printf("announce_dist: %d\n",announce_dist);	
+	//printf("announce_dist: %d\n",announce_dist);	
 	bool announce = false;
 	//near junction
-	printf("remain_dist: %.2f, uncertain: %.2f, passed: %.2f\n", remain_dist, m_uncertain_dist, passsed_dist);
+	//printf("remain_dist: %.2f, uncertain: %.2f, passed: %.2f\n", remain_dist, m_uncertain_dist, passsed_dist);
 	if (remain_dist <= m_uncertain_dist)// || passsed_dist <= m_uncertain_dist)
 	{
-		printf("junction_dist: %f, 2*uncertain: %f\n", junction_dist, 2*m_uncertain_dist);
+	//	printf("junction_dist: %f, 2*uncertain: %f\n", junction_dist, 2*m_uncertain_dist);
 		if(junction_dist <= 2*m_uncertain_dist)
 		{
-			printf("m_last_announce_dist: %d, %d, %d\n", m_last_announce_dist, announce_dist, announce);
+	//		printf("m_last_announce_dist: %d, %d, %d\n", m_last_announce_dist, announce_dist, announce);
 			if((m_last_announce_dist != announce_dist) && !announce)
 			{
 				announce = true;
@@ -478,7 +478,7 @@ bool GuidanceManager::update(TopometricPose pose)
 	//on junction
 	else if (remain_dist < arrived_threshold) // || passsed_dist < arrived_threshold
 	{
-		printf("Too close to junction!\n");
+	//	printf("Too close to junction!\n");
 		m_last_announce_dist = -1;
 		announce = false;
 		setEmptyGuide();
@@ -486,12 +486,12 @@ bool GuidanceManager::update(TopometricPose pose)
 	//normal case
 	else
 	{		
-		printf("announce_dist: %d, m_last_announce_dist: %d,\n", announce_dist, m_last_announce_dist);
+	//	printf("announce_dist: %d, m_last_announce_dist: %d,\n", announce_dist, m_last_announce_dist);
 		if(announce_dist != m_last_announce_dist)
 		{
 			announce = true;
 			setSimpleGuide();
-			printf("update announce_dist\n");
+	//		printf("update announce_dist\n");
 			m_last_announce_dist = announce_dist;
 		}
 		else
@@ -641,7 +641,7 @@ bool GuidanceManager::setGuideStatus(TopometricPose pose, double conf)
 	{
 		m_gstatus = GuideStatus::GUIDE_ARRIVED;
 		m_arrival = true;
-		printf("[setGuideStatus]finishing m_gstatus: %d\n", m_gstatus);
+//		printf("[setGuideStatus]finishing m_gstatus: %d\n", (int)m_gstatus);
 		return true;
 	}
 
