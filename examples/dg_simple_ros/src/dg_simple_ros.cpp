@@ -98,7 +98,7 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
     m_srcdir = "/home/dgtest/deepguider/src";      // system path of deepguider/src (required for python embedding)
     m_enable_tts = true;
-    m_threaded_run_python = true;
+    m_threaded_run_modules = true;
     m_use_high_precision_gps = false;
 
     m_data_logging = false;
