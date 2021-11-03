@@ -16,26 +16,20 @@ namespace dg
     public:
         bool initialize(SharedInterface* shared)
         {
-            cv::AutoLock lock(m_mutex);
-            m_shared = shared;
             if (!RoadTheta::initialize()) return false;
-            return (m_shared != nullptr);
-        }
 
-        void setParam(cv::Size image_sz, double f, double cx, double cy, double cam_vy)
-        {
-            m_param.hfov = cx::cvtRad2Deg(atan(image_sz.width / (2 * f)) * 2);
-            m_param.camera_vanishing_y = cam_vy / image_sz.height;
+            cv::AutoLock lock(m_localizer_mutex);
+            m_shared = shared;
+            return (m_shared != nullptr);
         }
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, double& theta , double& confidence)
         {
-            cv::AutoLock lock(m_mutex);
-            if (m_shared == nullptr) return false;
-            Pose2 pose = m_shared->getPose();
-
             if (!RoadTheta::apply(image, image_time)) return false;
 
+            cv::AutoLock lock(m_localizer_mutex);
+            if (m_shared == nullptr) return false;
+            Pose2 pose = m_shared->getPose();
             double theta_relative = m_result.theta;
             if (!getAbsoluteOrientation(theta_relative, pose, theta)) return false;
             confidence = m_result.confidence;
@@ -46,15 +40,13 @@ namespace dg
         bool getAbsoluteOrientation(double theta_relative, const dg::Pose2& pose, double& theta_absolute)
         {
             // path-based orientation if path defined
-            Path* path = m_shared->getPathLocked();
-            if (path && !path->empty())
+            Path path = m_shared->getPath();
+            if (!path.empty())
             {
-                Pose2 path_pose = dg::Map::getNearestPathPose(*path, pose);
+                Pose2 path_pose = dg::Map::getNearestPathPose(path, pose);
                 theta_absolute = cx::trimRad(path_pose.theta + theta_relative);
-                m_shared->releasePathLock();
                 return true;
             }
-            m_shared->releasePathLock();
 
             // map-based orientation if no path
             Map* map = m_shared->getMap();
@@ -65,7 +57,7 @@ namespace dg
         }
 
         SharedInterface* m_shared = nullptr;
-        mutable cv::Mutex m_mutex;
+        cv::Mutex m_localizer_mutex;
     };
 
 } // End of 'dg'

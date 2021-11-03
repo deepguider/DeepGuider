@@ -50,9 +50,10 @@ public:
     {
         if (!m_dest_defined) return false;
         dg::Path path;
-        bool ok = m_map && m_map->getPath(curr_pose, m_dest_xy, path);
+        bool ok = m_map.getPath(curr_pose, m_dest_xy, path);
         if (!ok) return false;
-        return setPath(path);
+        setPath(path);
+        return true;
     }
 
     int runLocalizer(cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader)
@@ -239,8 +240,8 @@ public:
 
                 // Draw path
                 cv::Mat path_image = out_image;
-                dg::Path* path = getPathLocked();
-                if (path && !path->empty())
+                dg::Path path = getPath();
+                if (!path.empty())
                 {
                     path_image = out_image.clone();
 
@@ -250,17 +251,15 @@ public:
                     const cv::Vec3b ncolor = cv::Vec3b(0, 255, 255);
                     int nradius = 3;
                     int ethickness = 1;
-                    for (int idx = 1; idx < (int)path->pts.size(); idx++)
+                    for (int idx = 1; idx < (int)path.pts.size(); idx++)
                     {
-                        painter->drawEdge(path_image, path->pts[idx - 1], path->pts[idx], nradius, ecolor, ethickness);
+                        painter->drawEdge(path_image, path.pts[idx - 1], path.pts[idx], nradius, ecolor, ethickness);
                     }
-                    for (int idx = 1; idx < (int)path->pts.size() - 1; idx++)
+                    for (int idx = 1; idx < (int)path.pts.size() - 1; idx++)
                     {
-                        painter->drawNode(path_image, dg::Point2ID(0, path->pts[idx]), nradius, 0, ncolor);
+                        painter->drawNode(path_image, dg::Point2ID(0, path.pts[idx]), nradius, 0, ncolor);
                     }
                 }
-                releasePathLock();
-
                 // Record the current visualization on the AVI file
                 if (out_video.isConfigured() && rec_video_resize > 0)
                 {
@@ -298,9 +297,7 @@ public:
             dg::Pose2 p_start = getPose();
             cv::Point2d p_dest = gui_painter->cvtPixel2Value(cv::Point(x, y));
             dg::Path path;
-            setMapLock();
-            bool ok = m_map && m_map->getPath(p_start, p_dest, path);
-            releaseMapLock();
+            bool ok = m_map.getPath(p_start, p_dest, path);
             if (ok)
             {
                 setPath(path);

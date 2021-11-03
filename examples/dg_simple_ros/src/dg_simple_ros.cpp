@@ -3,6 +3,7 @@
 #include <sensor_msgs/NavSatStatus.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <sensor_msgs/Imu.h>
+#include "std_msgs/String.h"
 #include <cv_bridge/cv_bridge.h>
 #include <thread>
 #include "dg_simple_ros/ocr_info.h"
@@ -33,6 +34,7 @@ protected:
     std::string m_topic_imu;
     std::string m_topic_rgbd_image;
     std::string m_topic_rgbd_depth;
+    std::string m_topic_robot_status;
 
     // Topic subscribers (sub modules)
     ros::Subscriber sub_ocr;
@@ -45,6 +47,7 @@ protected:
     ros::Subscriber sub_gps_asen;
     ros::Subscriber sub_gps_novatel;
     ros::Subscriber sub_imu_xsense;
+    ros::Subscriber sub_robot_status;
 
     // Subscriber callbacks (sensor data)    
     void callbackImage(const sensor_msgs::Image::ConstPtr& msg);
@@ -54,6 +57,7 @@ protected:
     void callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix);
     void callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix);
     void callbackIMU(const sensor_msgs::Imu::ConstPtr& msg);
+    void callbackRobotStatus(const std_msgs::String::ConstPtr& msg);
 
     // Topic publishers
     ros::Publisher pub_guide;
@@ -94,7 +98,7 @@ DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
     m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
     m_srcdir = "/home/dgtest/deepguider/src";      // system path of deepguider/src (required for python embedding)
     m_enable_tts = true;
-    m_threaded_run_python = true;
+    m_threaded_run_modules = true;
     m_use_high_precision_gps = false;
 
     m_data_logging = false;
@@ -161,6 +165,7 @@ bool DeepGuiderROS::initialize(std::string config_file)
 
     // Initialize module subscribers
     sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
+    if(!m_topic_robot_status.empty()) sub_robot_status = nh_dg.subscribe("/keti_robot/status", 1, &DeepGuiderROS::callbackRobotStatus, this);
 
     // Initialize sensor subscribers
     if(!m_topic_cam.empty()) sub_image_webcam = nh_dg.subscribe(m_topic_cam, 1, &DeepGuiderROS::callbackImageCompressed, this);
@@ -190,6 +195,7 @@ int DeepGuiderROS::run()
     if (m_enable_logo) logo_thread = new std::thread(threadfunc_logo, this);
     if (m_enable_intersection) intersection_thread = new std::thread(threadfunc_intersection, this);
     if (m_enable_roadtheta) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
+    if (m_enable_exploration) exploration_thread = new std::thread(threadfunc_exploration, this);    
 
     // run main loop
     ros::Rate loop(1 / m_wait_sec);
@@ -205,9 +211,16 @@ int DeepGuiderROS::run()
     printf("End deepguider system...\n");
     terminateThreadFunctions();
     printf("\tthread terminated\n");
-    if(m_video_recording) m_video_gui.release();
-    if(m_data_logging) m_video_cam.release();
-    printf("\tclose recording\n");
+    if(m_video_recording)
+    {
+        m_video_gui.release();    
+        printf("\tclose recording\n");
+    }
+    if(m_data_logging)
+    {
+        m_video_cam.release();
+        printf("\tclose data loging\n");
+    }
     cv::destroyWindow(m_winname);
     printf("\tgui window destroyed\n");
     nh_dg.shutdown();
@@ -230,6 +243,9 @@ bool DeepGuiderROS::runOnce(double timestamp)
     
     // draw GUI display
     cv::Mat gui_image;
+    dg::Pose2 px = m_painter.cvtValue2Pixel(getPose());
+    if (m_localizer.isPoseStabilized()) m_viewport.centerizeViewportTo(px);
+
     m_viewport.getViewportImage(gui_image);
     drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
 
@@ -239,6 +255,12 @@ bool DeepGuiderROS::runOnce(double timestamp)
     cv::imshow(m_winname, gui_image);
     int key = cv::waitKey(1);
     if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+    if (key == '1') m_viewport.setZoom(0.5);
+    if (key == '2') m_viewport.setZoom(1);
+    if (key == '3') m_viewport.setZoom(2);
+    if (key == '4') m_viewport.setZoom(3);
+    if (key == '5') m_viewport.setZoom(4);    
+    if (key == '0') m_exploration_state_count = 0;  // terminate active view
     if (key == cx::KEY_ESC) return false;
 
     return true;
@@ -435,6 +457,31 @@ void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
     }
 }
 
+void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
+{
+    const char* str = msg->data.c_str();
+    if (!strcmp(str, "ready"))
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::READY);
+    }
+    else if (!strcmp(str, "run_manual"))   
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::RUN_MANUAL);
+    } 
+    else if (!strcmp(str, "run_auto"))   
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::RUN_AUTO);
+    } 
+    else if (!strcmp(str, "arrived_node"))   
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_NODE);
+    } 
+    else if (!strcmp(str, "arrived_goal"))   
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_GOAL);
+    } 
+}
+
 void DeepGuiderROS::publishGuidance()
 {    
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
@@ -484,47 +531,36 @@ void DeepGuiderROS::publishSubGoal()
 {
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
     ID nid = cur_guide.heading_node_id;
-    Map* map = getMapLocked();
-    Node* hNode = map->getNode(nid);
-    printf("ID: %zd\n",nid); 
+    Node* hNode = m_map.getNode(nid);
+    if(hNode == nullptr) return;
+    Pose2 metric = Pose2(hNode->x, hNode->y);
+
+    dg::Point2UTM node_utm = cvtLatLon2UTM(toLatLon(metric));
+    //printf("node_utm.x: %f, node_utm.y: %f\n", node_utm.x, node_utm.y); 
 
     geometry_msgs::PoseStamped rosps;
-    if (hNode!=nullptr)
-    {
-        Pose2 metric = Pose2(hNode->x, hNode->y); 
-        dg::Point2UTM node_utm = cvtLatLon2UTM(toLatLon(metric));
-        printf("node_utm.x: %f, node_utm.y: %f\n", node_utm.x, node_utm.y); 
-
-        geometry_msgs::PoseStamped rosps;
-        rosps.pose.position.x = node_utm.x;
-        rosps.pose.position.y = node_utm.y;
-        rosps.pose.position.z = nid;
-       
-        pub_subgoal.publish(rosps);  
-    }   
+    rosps.pose.position.x = node_utm.x;
+    rosps.pose.position.y = node_utm.y;
+    rosps.pose.position.z = nid;
+    
+    pub_subgoal.publish(rosps);  
 }
 
 void DeepGuiderROS::publishPath()
 {    
-    Path* path = getPathLocked();
-    if(path == nullptr || path->empty())
-    {
-        releasePathLock();
-        return;
-    }
+    dg::Path path = getPath();
 
     // make path points messages
     nav_msgs::Path rospath;
     geometry_msgs::PoseStamped rosps;
     dg::Point2UTM pose_utm;
-    for (int i = 0; i < path->pts.size(); i++) 
+    for (int i = 0; i < path.pts.size(); i++) 
     {
-        pose_utm = cvtLatLon2UTM(toLatLon(path->pts[i]));
+        pose_utm = cvtLatLon2UTM(toLatLon(path.pts[i]));
         rosps.pose.position.x = pose_utm.x;
         rosps.pose.position.y = pose_utm.y;
         rospath.poses.push_back(rosps);
     }
-    releasePathLock();
 
     // printf("start_lat: %f, start_lon: %f, dest_lat: %f, dest_lon: %f", path.start_pos.lat, path.start_pos.lon, path.dest_pos.lat, path.dest_pos.lon);
 

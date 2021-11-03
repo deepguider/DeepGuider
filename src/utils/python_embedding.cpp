@@ -6,7 +6,7 @@ namespace dg
 
 PyThreadState* global_python_thread_state = nullptr;
 
-bool PythonModuleWrapper::_initialize(const char* module_name, const char* module_path, const char* class_name, const char* func_name_init /*= "initialize"*/, const char* func_name_apply /*= "apply"*/)
+bool PythonModuleWrapper::_initialize(const char* module_path, const char* module_name, const char* class_name, const char* func_name_init /*= "initialize"*/, const char* func_name_apply /*= "apply"*/)
 {
     // Add module path to system path
     std::string script = std::string("import sys\nsys.path.append(\"") + module_path + "\")";

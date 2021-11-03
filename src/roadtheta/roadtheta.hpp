@@ -3,6 +3,7 @@
 
 #include "dg_core.hpp"
 #include "utils/utility.hpp"
+#include "utils/opencx.hpp"
 #include <fstream>
 #include <chrono>
 
@@ -137,6 +138,7 @@ namespace dg
         */
         bool initialize()
         {
+            cv::AutoLock lock(m_mutex);
             dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
             // initialization code here
@@ -153,6 +155,7 @@ namespace dg
         */
         void clear()
         {
+            cv::AutoLock lock(m_mutex);
             m_timestamp = -1;
             m_processing_time = -1;
         }
@@ -163,6 +166,7 @@ namespace dg
         */
         bool apply(const cv::Mat& image, dg::Timestamp ts)
         {
+            cv::AutoLock lock(m_mutex);
             dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
             bool ret = _apply(image, ts);
@@ -175,19 +179,22 @@ namespace dg
             return ret;
         }
 
-        void get(RoadThetaResult& result)
+        RoadThetaResult get()
         {
-            result = m_result;
+            cv::AutoLock lock(m_mutex);
+            return m_result;
         }
 
-        void get(RoadThetaResult& result, Timestamp& ts)
+        RoadThetaResult get(Timestamp& ts)
         {
-            result = m_result;
+            cv::AutoLock lock(m_mutex);
             ts = m_timestamp;
+            return m_result;
         }
 
-        void set(const RoadThetaResult& result, Timestamp ts, double proc_time)
+        void set(const RoadThetaResult& result, Timestamp ts, double proc_time = -1)
         {
+            cv::AutoLock lock(m_mutex);
             m_result = result;
             m_timestamp = ts;
             m_processing_time = proc_time;
@@ -195,11 +202,13 @@ namespace dg
 
         dg::Timestamp timestamp() const
         {
+            cv::AutoLock lock(m_mutex);
             return m_timestamp;
         }
 
         double procTime() const
         {
+            cv::AutoLock lock(m_mutex);
             return m_processing_time;
         }
 
@@ -207,19 +216,22 @@ namespace dg
 
         void print() const
         {
-            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
+            cv::AutoLock lock(m_mutex);
+            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), m_processing_time, m_timestamp);
             double theta_deg = m_result.theta * 180 / CV_PI;
             printf("\ttheta = %.1lf, confidence = %.2lf, vx = %.1lf, vy = %.1lf, score = %.1lf\n", theta_deg, m_result.confidence, m_result.vx, m_result.vy, m_result.score);
         }
 
         void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
+            cv::AutoLock lock(m_mutex);
             std::string log = cv::format("%.3lf,%d,%s,%lf,%.2lf,%.1lf,%.1lf,%.1lf,%.3lf", m_timestamp, cam_fnumber, name(), m_result.theta, m_result.confidence, m_result.vx, m_result.vy, m_result.score, m_processing_time);
             stream << log << std::endl;
         }
 
         void read(const std::vector<std::string>& stream)
         {
+            cv::AutoLock lock(m_mutex);
             for (int k = 0; k < (int)stream.size(); k++)
             {
                 std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
@@ -250,20 +262,29 @@ namespace dg
 
         RoadThetaParam param() const
         {
+            cv::AutoLock lock(m_mutex);
             return m_param;
         }
 
         void set_param(RoadThetaParam param)
         {
+            cv::AutoLock lock(m_mutex);
             m_param = param;
         }
 
+        void setParam(cv::Size image_sz, double f, double cx, double cy, double cam_vy)
+        {
+            cv::AutoLock lock(m_mutex);
+            m_param.hfov = cx::cvtRad2Deg(atan(image_sz.width / (2 * f)) * 2);
+            m_param.camera_vanishing_y = cam_vy / image_sz.height;
+        }
 
     protected:
         RoadThetaParam m_param;
         RoadThetaResult m_result;
         Timestamp m_timestamp = -1;
         double m_processing_time = -1;
+        mutable cv::Mutex m_mutex;
 
         // detection result on scaled image
         int m_scaled_w;

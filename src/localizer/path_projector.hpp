@@ -36,7 +36,7 @@ protected:
     double m_min_alignscore_gap = 20;           // Unit: [m]
     double m_length_align_weight = 0.5;
     double m_error_tolerance = 0.01;            // Unit: [m]
-    bool m_enable_debugging_display = true;
+    bool m_enable_debugging_display = false;
 
     double m_lr_mismatch_cost = 50;             // Unit: [m]
     bool m_enable_lr_reject = false;
@@ -296,6 +296,15 @@ public:
         }
         best_map_pose.theta = cx::trimRad((best_map_pose.theta + projected_pose_history[projected_pose_history.data_count() - 1].theta) / 2);
 
+		/*
+        dg::Pose2 pose_past = mappose_prev;
+        if (projected_pose_history.data_count() >= 4)
+        {
+            pose_past = projected_pose_history[projected_pose_history.data_count() - 4];
+        }
+        double theta = atan2(best_map_pose.y - pose_past.y, best_map_pose.x - pose_past.x);
+        best_map_pose.theta = cx::trimRad(theta);
+        */
         return best_map_pose;
     }
 

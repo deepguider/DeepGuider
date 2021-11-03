@@ -24,43 +24,6 @@ namespace dg
     class VPS : public PythonModuleWrapper
     {
     public:
-        /**
-        * Initialize the module
-        * @return true if successful (false if failed)
-        */
-        bool initialize(const char* module_name = "vps", const char* module_path = "./../src/vps", const char* class_name = "vps", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
-        {
-            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-
-            PyGILState_STATE state;
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            bool ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
-
-            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-            m_processing_time = t2 - t1;
-
-            return ret;
-        }
-
-        /**
-        * Reset variables and clear the memory
-        */
-        void clear()
-        {
-            PyGILState_STATE state;
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            _clear();
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
-
-            m_result.clear();
-            m_timestamp = -1;
-            m_processing_time = -1;
-        }
 
         /**
         * Run once the module for a given input (support threading run)
@@ -80,6 +43,7 @@ namespace dg
 
             dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
             m_processing_time = t2 - t1;
+            m_timestamp = ts;
 
             return ret;
         }
@@ -164,6 +128,7 @@ namespace dg
                 }
 
                 // Save the result
+                cv::AutoLock lock(m_mutex);
                 m_result.clear();
                 for (size_t i = 0; i < ids.size(); i++)
                 {
@@ -179,9 +144,6 @@ namespace dg
                 return false;
             }
 
-            // Update Timestamp
-            m_timestamp = ts;
-
             // Clean up
             if(pRet) Py_DECREF(pRet);
             if(pArgs) Py_DECREF(pArgs);
@@ -189,36 +151,30 @@ namespace dg
             return true;
         }
 
-        void get(std::vector<VPSResult>& result) const
+        std::vector<VPSResult> get() const
         {
-            result = m_result;
+            cv::AutoLock lock(m_mutex);
+            return m_result;
         }
 
-        void get(std::vector<VPSResult>& result, Timestamp& ts) const
+        std::vector<VPSResult> get(Timestamp& ts) const
         {
-            result = m_result;
+            cv::AutoLock lock(m_mutex);
             ts = m_timestamp;
+            return m_result;
         }
 
-        void set(const std::vector<VPSResult>& result, Timestamp ts, double proc_time)
+        void set(const std::vector<VPSResult>& result, Timestamp ts, double proc_time = -1)
         {
+            cv::AutoLock lock(m_mutex);
             m_result = result;
             m_timestamp = ts;
             m_processing_time = proc_time;
         }
 
-        double procTime() const
-        {
-            return m_processing_time;
-        }
-
-        dg::Timestamp timestamp() const
-        {
-            return m_timestamp;
-        }
-
         void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
         {
+            cv::AutoLock lock(m_mutex);
             if (m_result.empty()) return;
 
             cv::Point2d msg_offset = cv::Point2d(10 * drawing_scale, 30 * drawing_scale);
@@ -234,7 +190,8 @@ namespace dg
 
         void print() const
         {
-            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
+            cv::AutoLock lock(m_mutex);
+            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), m_processing_time, m_timestamp);
             for (int k = 0; k < m_result.size(); k++)
             {
                 printf("\ttop%d: id=%zu, confidence=%.2lf\n", k, m_result[k].id, m_result[k].confidence);
@@ -243,6 +200,7 @@ namespace dg
 
         void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
+            cv::AutoLock lock(m_mutex);
             for (int k = 0; k < m_result.size(); k++)
             {
                 std::string log = cv::format("%.3lf,%d,%s,%d,%zu,%.2lf,%.3lf", m_timestamp, cam_fnumber, name(), k, m_result[k].id, m_result[k].confidence, m_processing_time);
@@ -252,6 +210,7 @@ namespace dg
 
         void read(const std::vector<std::string>& stream)
         {
+            cv::AutoLock lock(m_mutex);
             m_result.clear();
             m_result.resize(stream.size());
             for (int k = 0; k < (int)stream.size(); k++)
@@ -285,8 +244,6 @@ namespace dg
 
     protected:
         std::vector<VPSResult> m_result;
-        Timestamp m_timestamp = -1;
-        double m_processing_time = -1;
     };
 
 } // End of 'dg'

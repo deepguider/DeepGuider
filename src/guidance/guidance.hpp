@@ -41,6 +41,17 @@ namespace dg
             TYPE_NUM			//The number of GuideStatus
         };
 
+        enum class RobotStatus
+        {
+            READY = 0,
+            RUN_MANUAL,
+            RUN_AUTO,
+            ARRIVED_NODE,
+            ARRIVED_GOAL,
+
+            TYPE_NUM
+        };
+
         /** Moving status based on localization info*/
         enum class MovingStatus
         {
@@ -167,6 +178,7 @@ namespace dg
             double past_distance_from_prev_junction = 0;
             ID next_guide_node_id = 0;
             ID next_guide_edge_id = 0;
+            int junction_degree = 0;
         };
 
     public:
@@ -176,16 +188,17 @@ namespace dg
 
         bool initiateNewGuidance();
 
+        bool update(TopometricPose pose);
         bool update(TopometricPose pose, double confidence);
         bool applyPoseGPS(LatLon gps);
 
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
         Guidance getGuidance() const { return m_curguidance; };
+        void setRobotStatus(RobotStatus status) { m_robot_status = status; };
 
     protected:
         SharedInterface* m_shared = nullptr;
         Map* getMap() { if (m_shared) return m_shared->getMap(); return nullptr; }
-        Path* getPath() { if (m_shared) return m_shared->getPath(); return nullptr; }
 
         bool validatePath(const Path& path, const Map& map);
         int getDegree(Point2 p1, Point2 p2, Point2 p3);
@@ -204,7 +217,7 @@ namespace dg
         double m_rmdistance = 0.0;
         int m_cur_head_degree = 0;
         TopometricPose  m_curpose;
-        double m_confidence;
+        double m_confidence = 0.0;
         MovingStatus  m_mvstatus = MovingStatus::ON_EDGE;
         GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
         Guidance m_curguidance;
@@ -212,9 +225,15 @@ namespace dg
         time_t oop_start = 0, oop_end = 0;
         int m_finalTurn = 0;
         int m_finalEdgeId = 0;
-        double m_approachingThreshold = 10.0;
+        double m_approachingThreshold = 20.0;
+        double m_arrived_threshold = 1.0;
         bool m_arrival = false;
         bool m_juctionguide = true;
+        RobotStatus m_robot_status;
+        int m_past_announce = 0;
+        int m_last_announce_dist = -1;
+        ID m_past_ref_node = 0;
+        double m_uncertain_dist = 2.0;
 
         std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
         std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
@@ -248,7 +267,7 @@ namespace dg
 
         bool isForward(int degree)
         {
-            return (degree >= -45 && degree <= 45) ? true : false;
+            return (degree >= -30 && degree <= 30) ? true : false;
         };
 
         bool isForward(Motion motion)
@@ -281,6 +300,8 @@ namespace dg
         bool setNormalGuide();
         bool setArrivalGuide();
         bool setEmptyGuide();
+        bool setSimpleGuide();
+        bool checkAnnounce();
         //	bool setTunBackGuide();
         bool applyPose(TopometricPose pose);
 

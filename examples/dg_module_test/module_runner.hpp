@@ -45,7 +45,7 @@ public:
             if (m_roadtheta_localizer) VVS_CHECK_TRUE(m_roadtheta_localizer->initialize(this));
             if (m_lr_localizer) VVS_CHECK_TRUE(m_lr_localizer->initialize_without_python(this));
         }
-        else
+        else if(module_sel != DG_RoadTheta)
         {
             // initialize python environment
             dg::init_python_environment("python3", "", false);
@@ -53,8 +53,11 @@ public:
             if (m_vps_localizer) VVS_CHECK_TRUE(m_vps_localizer->initialize(this));
             if (m_ocr_localizer) VVS_CHECK_TRUE(m_ocr_localizer->initialize(this));
             if (m_intersection_localizer) VVS_CHECK_TRUE(m_intersection_localizer->initialize(this));
-            if (m_roadtheta_localizer) VVS_CHECK_TRUE(m_roadtheta_localizer->initialize(this));
             if (m_lr_localizer) VVS_CHECK_TRUE(m_lr_localizer->initialize(this));
+        }
+        else
+        {
+            if (m_roadtheta_localizer) VVS_CHECK_TRUE(m_roadtheta_localizer->initialize(this));
         }
 
         // Prepare the video for recording
@@ -105,6 +108,7 @@ public:
                     bool success = localizer->applyGPS(gps_xy, data_time, 1);
                     if (!success) fprintf(stderr, "applyGPS() was failed.\n");
                     if (show_gui && gui_gps_radius > 0) gui_painter->drawPoint(bg_image, gps_xy, gui_gps_radius, gui_gps_color);
+                    if(module_sel < 0) update_gui = true;
                 }
                 else if (module_sel == DG_Intersection && type == dg::DATA_IntersectCls)
                 {
@@ -331,26 +335,40 @@ public:
             // Visualize and show the current state as an image
             if (show_gui && update_gui)
             {
+                // draw robot trajectory
                 dg::Pose2 pose = localizer->getPose();
                 if (robot_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, robot_traj_radius, gui_robot_color);
+
+                // shift viewport to keep robot visible in viewport
+                dg::Pose2 px = gui_painter->cvtValue2Pixel(pose);
+                if(localizer->isPoseStabilized()) m_viewport.centerizeViewportTo(px);
 
                 // get viewport image
                 m_viewport.getViewportImage(out_image);
 
                 // Draw path
-                dg::Path* path = getPathLocked();
-                gui_painter->drawPath(out_image, getMap(), path, m_viewport.offset(), m_viewport.zoom());
-                releasePathLock();
+                dg::Path path = getPath();
+                gui_painter->drawPath(out_image, getMap(), &path, m_viewport.offset(), m_viewport.zoom());
 
-                // draw robot position
+                // Draw robot position
                 if (gui_robot_radius > 0)
                 {
-                    gui_painter->drawPoint(out_image, pose, gui_robot_radius, gui_robot_color, m_viewport.offset(), m_viewport.zoom());                                         // Robot body
-                    gui_painter->drawPoint(out_image, pose, gui_robot_radius, cv::Vec3b(255, 255, 255) - gui_robot_color, m_viewport.offset(), m_viewport.zoom(), (int)(2*m_viewport.zoom() + 0.5));           // Robot outline
+                    double scaled_radius = (m_viewport.zoom() >= 2) ? gui_robot_radius * 2 / m_viewport.zoom() : gui_robot_radius;
+                    int scaled_thickness = (m_viewport.zoom() >= 4) ? 1 : 2;
+                    gui_painter->drawPoint(out_image, pose, scaled_radius, gui_robot_color, m_viewport.offset(), m_viewport.zoom());                                         // Robot body
+                    gui_painter->drawPoint(out_image, pose, scaled_radius, cv::Vec3b(255, 255, 255) - gui_robot_color, m_viewport.offset(), m_viewport.zoom(), scaled_thickness);           // Robot outline
                     cv::Point2d pose_px = (gui_painter->cvtValue2Pixel(pose) - cv::Point2d(m_viewport.offset())) * m_viewport.zoom();
-                    cv::Point2d head_px(gui_robot_radius* m_viewport.zoom() * cos(pose.theta), -gui_robot_radius * m_viewport.zoom() * sin(pose.theta));
-                    cv::line(out_image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, (int)(2 * m_viewport.zoom())); // Robot heading
+                    cv::Point2d head_px(scaled_radius* m_viewport.zoom() * cos(pose.theta), -scaled_radius * m_viewport.zoom() * sin(pose.theta));
+                    cv::line(out_image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, (int)(scaled_thickness * m_viewport.zoom())); // Robot heading
                 }
+
+                // Draw debugging info (localizer)
+                std::vector<dg::Point2> eval_path = localizer->getEvalPath();
+                for (auto it = eval_path.begin(); it != eval_path.end(); it++)
+                    gui_painter->drawPoint(out_image, *it, 1, cx::COLOR_BLUE, m_viewport.offset(), m_viewport.zoom());
+                std::vector<dg::Point2> eval_pose_history = localizer->getEvalPoseHistory();
+                for (auto it = eval_pose_history.begin(); it != eval_pose_history.end(); it++)
+                    gui_painter->drawPoint(out_image, *it, 1, cx::COLOR_BLACK, m_viewport.offset(), m_viewport.zoom());
 
                 // Draw the image given from the camera
                 cv::Rect video_rect;
@@ -414,7 +432,7 @@ public:
             cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
             cv::Point2d p_dest = gui_painter->cvtPixel2Value(px);
             dg::Path path;
-            bool ok = m_map && m_map->getPath(p_start, p_dest, path);
+            bool ok = m_map.getPath(p_start, p_dest, path);
             if (ok)
             {
                 setPath(path);
@@ -424,8 +442,13 @@ public:
         }
         else if (evt == cv::EVENT_RBUTTONDOWN)
         {
-            cv::Point2d p = gui_painter->cvtPixel2Value(cv::Point(x, y));
-            printf("x = %lf, y = %lf\n", p.x, p.y);
+            cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            cv::Point2d val = gui_painter->cvtPixel2Value(px);
+            dg::Pose2 pose = getPose();
+            pose.x = val.x;
+            pose.y = val.y;
+            m_localizer->setPose(pose);
+            printf("setPose: x = %lf, y = %lf\n", val.x, val.y);
         }
         else if (evt == cv::EVENT_RBUTTONUP)
         {
@@ -459,9 +482,10 @@ public:
     {
         if (!m_dest_defined) return false;
         dg::Path path;
-        bool ok = m_map && m_map->getPath(curr_pose, m_dest_xy, path);
+        bool ok = m_map.getPath(curr_pose, m_dest_xy, path);
         if (!ok) return false;
-        return setPath(path);
+        setPath(path);
+        return true;
     }
 
     bool         m_dest_defined = false;

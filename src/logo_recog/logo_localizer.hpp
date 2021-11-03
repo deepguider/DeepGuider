@@ -31,21 +31,23 @@ namespace dg
     public:
         bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/logo_recog")
         {
-            cv::AutoLock lock(m_mutex);
-            m_shared = shared;
-            if (!LogoRecognizer::initialize("logo_recognizer", py_module_path.c_str())) return false;
+			if (!LogoRecognizer::initialize(py_module_path.c_str(), "logo_recognizer", "LogoRecognizer")) return false;
+
+			cv::AutoLock lock(m_localizer_mutex);
+			m_shared = shared;
             return (m_shared != nullptr);
         }
 
 		bool initialize_without_python(SharedInterface* shared)
 		{
-			cv::AutoLock lock(m_mutex);
+			cv::AutoLock lock(m_localizer_mutex);
 			m_shared = shared;
 			return (m_shared != nullptr);
 		}
 
 		void setParam(double f, double cx, double cy, double cam_vy, double cam_h, double poi_h = 3.8, double search_radius = 100)
 		{
+			cv::AutoLock lock(m_localizer_mutex);
 			m_focal_length = f;
 			m_cx = cx;
 			m_cy = cy;
@@ -57,27 +59,29 @@ namespace dg
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
         {
-            cv::AutoLock lock(m_mutex);
-            if (m_shared == nullptr) return false;
-			Pose2 pose = m_shared->getPose();
+			if (!LogoRecognizer::apply(image, image_time)) return false;
 
-            if (!LogoRecognizer::apply(image, image_time)) return false;
-			if (m_result.empty()) return false;
+			cv::AutoLock lock(m_localizer_mutex);
+			std::vector<LogoResult> logos = get();
+			if (logos.empty()) return false;
+
+			if (m_shared == nullptr) return false;
+			Pose2 pose = m_shared->getPose();
+			Map* map = m_shared->getMap();
+			if (map == nullptr || map->isEmpty()) return false;
 
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-			Map* map = m_shared->getMap();
-			assert(map != nullptr);
-			for (int k = 0; k < m_result.size(); k++)
+			for (int k = 0; k < logos.size(); k++)
             {
-                std::wstring poi_name = converter.from_bytes(m_result[k].label.c_str());
+                std::wstring poi_name = converter.from_bytes(logos[k].label.c_str());
                 std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
                 if (!pois.empty())
                 {
                     POI* poi = pois[0];
                     poi_xys.push_back(*poi);
-                    Polar2 relative = computeRelative(m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
+                    Polar2 relative = computeRelative(logos[k].xmin, logos[k].ymin, logos[k].xmax, logos[k].ymax);
                     relatives.push_back(relative);
-                    poi_confidences.push_back(m_result[k].confidence);
+                    poi_confidences.push_back(logos[k].confidence);
                 }
             }
             return true;
@@ -85,22 +89,26 @@ namespace dg
 
 		bool getLocClue(const Pose2& pose, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
 		{
-			cv::AutoLock lock(m_mutex);
+			cv::AutoLock lock(m_localizer_mutex);
+			std::vector<LogoResult> logos = get();
+			if (logos.empty()) return false;
+
 			if (m_shared == nullptr) return false;
-			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 			Map* map = m_shared->getMap();
 			assert(map != nullptr);
-			for (int k = 0; k < m_result.size(); k++)
+
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			for (int k = 0; k < logos.size(); k++)
 			{
-				std::wstring poi_name = converter.from_bytes(m_result[k].label.c_str());
+				std::wstring poi_name = converter.from_bytes(logos[k].label.c_str());
 				std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
 				if (!pois.empty())
 				{
 					POI* poi = pois[0];
 					poi_xys.push_back(*poi);
-					Polar2 relative = computeRelative(m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
+					Polar2 relative = computeRelative(logos[k].xmin, logos[k].ymin, logos[k].xmax, logos[k].ymax);
 					relatives.push_back(relative);
-					poi_confidences.push_back(m_result[k].confidence);
+					poi_confidences.push_back(logos[k].confidence);
 				}
 			}
 			return true;
@@ -163,7 +171,7 @@ namespace dg
 		}
 
         SharedInterface* m_shared = nullptr;
-        mutable cv::Mutex m_mutex;
+		cv::Mutex m_localizer_mutex;
     };
 
 } // End of 'dg'

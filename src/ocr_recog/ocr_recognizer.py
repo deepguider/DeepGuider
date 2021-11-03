@@ -192,5 +192,8 @@ class OCRRecognizer:
 
     def apply(self, image, timestamp, save_img=False):
         #coordinate : list
-        pred, timestamp = detect_ocr(self, image, timestamp, save_img)
+        print("[ocr-py] 111111111111111111111111111111111111111111111111111111111111111111111111111")
+        save_log = False
+        pred, timestamp = detect_ocr(self, image, timestamp, save_img, save_log)
+        print("[ocr-py] 222222222222222222222222222222222222222222222222222222222222222222222222222")
         return pred, timestamp

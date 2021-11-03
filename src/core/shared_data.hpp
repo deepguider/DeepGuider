@@ -15,80 +15,17 @@ namespace dg
 class SharedData
 {
 public:
-    /** Get a poiter to shared map data */
+    /** Get a pointer to shared map data */
     virtual Map* getMap()
     {
-        cv::AutoLock lock(m_mutex_map);
-        return m_map;
+        return &m_map;
     }
 
-    /** Get a poiter to shared map data with a lock */
+    /** Get a pointer to shared map data with a lock */
     virtual Map* getMapLocked()
     {
-        setMapLock();
-        return m_map;
-    }
-
-    /** Get a poiter to shared path data */
-    virtual Path* getPath() 
-    { 
-        cv::AutoLock lock(m_mutex_path);
-        return m_path;
-    }
-
-    /** Get a poiter to shared path data with a lock */
-    virtual Path* getPathLocked()
-    {
-        setPathLock();
-        return m_path;
-    }
-
-    /** Set shared map data */
-    virtual bool setMap(const Map& map)
-    {
-        cv::AutoLock lock(m_mutex_map);
-        if (m_map.empty()) m_map = new Map();
-        map.copyTo(m_map);
-        return true;
-    }
-
-    /** Set shared path data */
-    virtual bool setPath(const Path& path)
-    {
-        cv::AutoLock lock(m_mutex_path);
-        if (m_path.empty()) m_path = new Path();
-        *m_path = path;
-        return true;
-    }
-
-    /** Get gps position of a metric position by using shared converter */
-    virtual LatLon toLatLon(const Point2& metric)
-    {
-        cv::AutoLock lock(m_mutex_map);
-        if (m_map == nullptr) return LatLon();
-        return m_map->toLatLon(metric);
-    }
-
-    /** Get metric position of a gps position by using shared converter */
-    virtual Point2 toMetric(const LatLon& ll)
-    {
-        cv::AutoLock lock(m_mutex_map);
-        if (m_map == nullptr) return Point2();
-        return m_map->toMetric(ll);
-    }
-
-    /** Get UTM position of a gps position by using shared converter */
-    virtual Point2UTM cvtLatLon2UTM(const LatLon& ll)
-    {
-        cv::AutoLock lock(m_mutex_map);
-        if (m_map == nullptr) return Point2UTM();
-        return m_map->cvtLatLon2UTM(ll);
-    }
-
-    /** Set a lock for shared map data */
-    void setMapLock() 
-    {
         m_mutex_map.lock();
+        return &m_map;
     }
 
     /** Release lock for shared map data */
@@ -96,22 +33,52 @@ public:
     {
         m_mutex_map.unlock();
     }
-    
-    /** Set a lock for shared path data */
-    void setPathLock()
-    { 
-        m_mutex_path.lock();
-    }
-     
-    /** Release lock for shared path data */
-    void releasePathLock() 
+
+    /** Set shared map data */
+    virtual bool setMap(const Map& map)
     {
-        m_mutex_path.unlock(); 
+        cv::AutoLock lock(m_mutex_map);
+        return map.copyTo(m_map);
     }
-    
+
+    /** Get a copy of shared path data */
+    virtual Path getPath() 
+    { 
+        cv::AutoLock lock(m_mutex_path);
+        return m_path;
+    }
+
+    /** Set shared path data */
+    virtual void setPath(const Path& path)
+    {
+        cv::AutoLock lock(m_mutex_path);
+        m_path = path;
+    }
+
+    /** Get gps position of a metric position by using shared converter */
+    virtual LatLon toLatLon(const Point2& metric)
+    {
+        cv::AutoLock lock(m_mutex_map);
+        return m_map.toLatLon(metric);
+    }
+
+    /** Get metric position of a gps position by using shared converter */
+    virtual Point2 toMetric(const LatLon& ll)
+    {
+        cv::AutoLock lock(m_mutex_map);
+        return m_map.toMetric(ll);
+    }
+
+    /** Get UTM position of a gps position by using shared converter */
+    virtual Point2UTM cvtLatLon2UTM(const LatLon& ll)
+    {
+        cv::AutoLock lock(m_mutex_map);
+        return m_map.cvtLatLon2UTM(ll);
+    }
+
 protected:
-    cv::Ptr<Map> m_map;
-    cv::Ptr<Path> m_path;
+    dg::Map m_map;
+    dg::Path m_path;
 
     cv::Mutex m_mutex_map;
     cv::Mutex m_mutex_path;

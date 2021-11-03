@@ -43,12 +43,26 @@ int MapEditor::configure(std::string site)
     COEX.image_rotation = cx::cvtDeg2Rad(1.2);
     COEX.origin_latlon = dg::LatLon(37.506207, 127.05482);
     COEX.origin_px = cv::Point2d(1090, 1018);
-    COEX.map_radius = 1500; // meter
+    COEX.map_radius = 2000; // meter
     COEX.grid_unit_pos = cv::Point(-230, -16);
     COEX.map_file = "data/COEX/TopoMap_COEX.csv";
     COEX.video_resize = 0.4;
     COEX.video_offset = cv::Point(10, 50);
     COEX.result_resize = 0.6;
+
+    MapGUIProp COEX2;
+    COEX2.image_file = "data/COEX/NaverMap_COEX(Satellite).png";
+    COEX2.image_scale = cv::Point2d(2.536, 2.536);
+    COEX2.image_rotation = cx::cvtDeg2Rad(1.0);
+    COEX2.origin_latlon = dg::LatLon(37.506994, 127.056676);
+    COEX2.origin_px = cv::Point2d(1373, 2484);
+    COEX2.map_view_offset = cv::Point(1010, 300);
+    COEX2.map_radius = 2000; // meter
+    COEX2.grid_unit_pos = cv::Point(-230, -16);
+    COEX2.map_file = "data/COEX/TopoMap_COEX.csv";
+    COEX2.video_resize = 0.4;
+    COEX2.video_offset = cv::Point(10, 50);
+    COEX2.result_resize = 0.6;
 
     MapGUIProp Bucheon;
     Bucheon.image_file = "data/NaverMap_Bucheon(Satellite).png";
@@ -56,14 +70,14 @@ int MapEditor::configure(std::string site)
     Bucheon.image_rotation = cx::cvtDeg2Rad(0);
     Bucheon.origin_latlon = dg::LatLon(37.510928, 126.764344);
     Bucheon.origin_px = cv::Point2d(1535, 1157);
-    Bucheon.map_radius = 1500; // meter
+    Bucheon.map_radius = 2000; // meter
     Bucheon.grid_unit_pos = cv::Point(-215, -6);
     Bucheon.map_file = "data/Bucheon/TopoMap_Bucheon.csv";
     Bucheon.video_resize = 0.25;
     Bucheon.video_offset = cv::Point(270, 638);
     Bucheon.result_resize = 0.4;
 
-    MapGUIProp guiprop = (site == "coex") ? COEX : (site == "bucheon") ? Bucheon : ETRI;
+    MapGUIProp guiprop = (site == "coex") ? COEX2 : (site == "bucheon") ? Bucheon : ETRI;
     m_guiprop = guiprop;
     m_site = site;
 

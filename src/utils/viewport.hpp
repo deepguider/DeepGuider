@@ -145,6 +145,48 @@ public:
         m_virtual_zoom_max = z_max;
     }
 
+    void setZoom(double virtual_zoom)
+    {
+        cv::AutoLock lock(m_mutex);
+        updateViewport(m_viewport.x, m_viewport.y, virtual_zoom);
+    }
+
+    void centerizeViewportTo(cv::Point2d px, double center_margin_ratio = 0.15)
+    {
+        cv::AutoLock lock(m_mutex);
+
+        double view_iw = m_viewport.width / m_zoom;
+        double view_ih = m_viewport.height / m_zoom;
+        dg::Point2 vx = px - dg::Point2(m_viewport.x, m_viewport.y);
+
+        double view_sx = m_viewport.x;
+        double view_sy = m_viewport.y;
+        double update_x = view_iw * center_margin_ratio;
+        double update_y = view_ih * center_margin_ratio;
+        bool update_view = false;
+        if (vx.x < view_iw * center_margin_ratio || vx.x > view_iw * (1 - center_margin_ratio))
+        {
+            view_sx = (vx.x < view_iw* center_margin_ratio) ? view_sx - update_x : view_sx + update_x;
+            update_view = true;
+        }
+        if (vx.y < view_ih * center_margin_ratio || vx.y > view_ih * (1 - center_margin_ratio*2))
+        {
+            if(vx.y < view_ih * center_margin_ratio)
+            {
+                view_sy = view_sy - update_y;
+            }
+            else
+            {
+                view_sy = view_sy + update_y * 2;
+            }            
+            update_view = true;
+        }
+        if (update_view)
+        {
+            updateViewport(view_sx, view_sy);
+        }
+    }
+
 protected:
     void updateViewport(double view_sx, double view_sy, double virtual_zoom = -1)
     {

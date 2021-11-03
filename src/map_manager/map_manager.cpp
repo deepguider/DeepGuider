@@ -6,14 +6,15 @@ using namespace rapidjson;
 namespace dg
 {
 
-//std::string MapManager::m_ip = "localhost";
-std::string MapManager::m_ip = "129.254.81.204";
+std::string MapManager::m_ip = "localhost";				// etri: 129.254.81.204
+std::string MapManager::m_image_server_port = "10000";	// etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
 bool MapManager::m_portErr = false;
 
 
-bool MapManager::initialize(const std::string ip)
+bool MapManager::initialize(const std::string ip, const std::string port)
 {
 	m_ip = ip;
+	m_image_server_port = port;
 	return true;
 }
 
@@ -270,6 +271,7 @@ bool MapManager::query2server(std::string url)
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5);
 
 		// Perform the request, res will get the return code.
 		res = curl_easy_perform(curl);
@@ -783,15 +785,8 @@ bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cub
 	if (!(cubic == "f" || cubic == "b" || cubic == "l" || cubic == "r" || cubic == "u" || cubic == "d"))
 		cubic = "";
 
-	sv_image = downloadStreetViewImage(sv_id, cubic, timeout);
-
-	if (m_portErr == true)
-	{
-		const std::string url_middle = ":10001/";
-		sv_image = downloadStreetViewImage(sv_id, cubic, timeout, url_middle);
-		m_portErr = false;
-	}
-
+	const std::string url_middle = ":" + m_image_server_port + "/";
+	sv_image = downloadStreetViewImage(sv_id, cubic, timeout, url_middle);
 	if (sv_image.empty())	return false;
 
 	return true;
@@ -828,6 +823,7 @@ cv::Mat MapManager::queryImage2server(std::string url, int timeout)
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeImage_callback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &stream);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5);
 
 		// Perform the request, res will get the return code.
 		res = curl_easy_perform(curl);

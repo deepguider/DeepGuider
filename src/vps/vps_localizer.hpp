@@ -15,18 +15,19 @@ namespace dg
     class VPSLocalizer : public VPS
     {
     public:
-        bool initialize(SharedInterface* shared, std::string server_ipaddr = "129.254.81.204", std::string py_module_path = "./../src/vps")
+        bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/vps", std::string server_ipaddr = "129.254.81.204")
         {
-            cv::AutoLock lock(m_mutex);
+            if (!VPS::initialize(py_module_path.c_str(), "vps", "vps")) return false;
+
+            cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;
             m_server_ipaddr = server_ipaddr;
-            if (!VPS::initialize("vps", py_module_path.c_str())) return false;
             return (m_shared != nullptr);
         }
 
         bool initialize_without_python(SharedInterface* shared, std::string server_ipaddr = "129.254.81.204")
         {
-            cv::AutoLock lock(m_mutex);
+            cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;
             m_server_ipaddr = server_ipaddr;
             return (m_shared != nullptr);
@@ -34,37 +35,46 @@ namespace dg
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence)
         {
-            cv::AutoLock lock(m_mutex);
+            int N = 1;  // top-1
             if (m_shared == nullptr) return false;
+            Pose2 pose = m_shared->getPose();
+            LatLon ll = m_shared->toLatLon(pose);
+            // double pose_confidence = m_shared->getPoseConfidence(); // 0: vps search radius = 230m ~ 1: search radius = 30m
+            double pose_confidence = 1; // 0(vps search radius = 230m) ~ 1(search radius = 30m)
+            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str())) return false;
 
-            // reset interval variables
+            std::vector<VPSResult> vpss = get();
+
+            cv::AutoLock lock(m_localizer_mutex);
             m_sv_id = 0;
             m_sv_image = cv::Mat();
+            if (vpss.empty()) return false;
 
-            // apply recognizer
-            int N = 1;  // top-1
-            Pose2 pose = m_shared->getPose();
-            // double pose_confidence = m_shared->getPoseConfidence(); // 0: vps search radius = 230m ~ 1: search radius = 30m
-            double pose_confidence = 1;
-            LatLon ll = m_shared->toLatLon(pose);
-            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str())) return false;
+            m_sv_id = vpss[0].id;
+            if (m_sv_id == 0) return false;  // no valid matching between query and streetveiw due to lack of db images around query.
 
             Map* map = m_shared->getMap();
             if (map == nullptr) return false;
-            if (m_result.empty()) return false;
-            m_sv_id = m_result[0].id;
-            if (m_sv_id == 0) return false;  // no valid matching between query and streetveiw due to lack of db images around query.
             StreetView* sv = map->getView(m_sv_id);
             if (sv == nullptr) return false;
-            streetview_xy = *sv;
+            streetview_xy = *sv;            
             relative = computeRelative(image, m_sv_id, m_sv_image);
-            streetview_confidence = m_result[0].confidence;
+            streetview_confidence = vpss[0].confidence;
+           
             return true;
         }
 
-        dg::ID getViewID() { return m_sv_id; }
+        dg::ID getViewID()
+        {
+            cv::AutoLock lock(m_localizer_mutex);
+            return m_sv_id;
+        }
 
-        cv::Mat getViewImage() { return m_sv_image; }
+        cv::Mat getViewImage()
+        {
+            cv::AutoLock lock(m_localizer_mutex);
+            return m_sv_image;
+        }
 
     protected:
         dg::Polar2 computeRelative(const cv::Mat image, ID sv_id, cv::Mat& sv_image)
@@ -79,10 +89,10 @@ namespace dg
         }
 
         SharedInterface* m_shared = nullptr;
-        mutable cv::Mutex m_mutex;
         std::string m_server_ipaddr;
         dg::ID m_sv_id = 0;
         cv::Mat m_sv_image;
+        cv::Mutex m_localizer_mutex;
     };
 
 } // End of 'dg'

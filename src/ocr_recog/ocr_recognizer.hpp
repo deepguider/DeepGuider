@@ -39,70 +39,6 @@ namespace dg
         }
 
         /**
-        * Initialize the module
-        * @return true if successful (false if failed)
-        */
-        bool initialize(const char* module_name = "ocr_recognizer", const char* module_path = "./../src/ocr_recog", const char* class_name = "OCRRecognizer", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
-        {
-            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-
-            PyGILState_STATE state;
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            bool ret = _initialize(module_name, module_path, class_name, func_name_init, func_name_apply);
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
-
-#ifdef HAVE_OPENCV_FREETYPE
-            m_ft2 = cv::freetype::createFreeType2();
-            m_ft2->loadFontData("font/gulim.ttf", 0);
-#endif
-
-            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-            m_processing_time = t2 - t1;
-
-            return ret;
-        }
-
-        /**
-        * Reset variables and clear the memory
-        */
-        void clear()
-        {
-            PyGILState_STATE state;
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            _clear();
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
-
-            m_result.clear();
-            m_timestamp = -1;
-            m_processing_time = -1;
-        }
-
-        /**
-        * Run once the module for a given input (support thread run)
-        * @return true if successful (false if failed)
-        */
-        bool apply(cv::Mat image, dg::Timestamp ts)
-        {
-            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-
-            PyGILState_STATE state;
-            if (isThreadingEnabled()) state = PyGILState_Ensure();
-
-            bool ret = _apply(image, ts);
-
-            if (isThreadingEnabled()) PyGILState_Release(state);
-
-            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-            m_processing_time = t2 - t1;
-
-            return ret;
-        }
-
-        /**
         * Run once the module for a given input
         * @return true if successful (false if failed)
         */
@@ -137,6 +73,7 @@ namespace dg
                 }
 
                 // list of list: [[xmin:float, ymin:float, xmax:float, ymax:float]:list, label:str, confidence:float], timestamp
+                cv::AutoLock lock(m_mutex);
                 m_result.clear();
                 PyObject* pList0 = PyTuple_GetItem(pRet, 0);
                 if (pList0 != NULL)
@@ -177,9 +114,6 @@ namespace dg
                 return false;
             }
 
-            // Update Timestamp
-            m_timestamp = ts;
-
             // Clean up
             if(pRet) Py_DECREF(pRet);
             if(pArgs) Py_DECREF(pArgs);            
@@ -187,36 +121,30 @@ namespace dg
             return true;
         }
 
-        void get(std::vector<OCRResult>& result) const
+        std::vector<OCRResult> get() const
         {
-            result = m_result;
+            cv::AutoLock lock(m_mutex);
+            return m_result;
         }
 
-        void get(std::vector<OCRResult>& result, Timestamp& ts) const
+        std::vector<OCRResult> get(Timestamp& ts) const
         {
-            result = m_result;
+            cv::AutoLock lock(m_mutex);
             ts = m_timestamp;
+            return m_result;
         }
 
-        void set(const std::vector<OCRResult>& result, Timestamp ts, double proc_time)
+        void set(const std::vector<OCRResult>& result, Timestamp ts, double proc_time = -1)
         {
+            cv::AutoLock lock(m_mutex);
             m_result = result;
             m_timestamp = ts;
             m_processing_time = proc_time;
         }
 
-        dg::Timestamp timestamp() const
-        {
-            return m_timestamp;
-        }
-
-        double procTime() const
-        {
-            return m_processing_time;
-        }
-
         void draw(cv::Mat& image, int font_sz = 28, double xscale = 1, double yscale = 1, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 1) const
         {
+            cv::AutoLock lock(m_mutex);
             for (size_t i = 0; i < m_result.size(); i++)
             {
                 // bbox
@@ -250,7 +178,8 @@ namespace dg
 
         void print() const
         {
-            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), procTime(), m_timestamp);
+            cv::AutoLock lock(m_mutex);
+            printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), m_processing_time, m_timestamp);
             for (int k = 0; k < m_result.size(); k++)
             {
                 printf("\t%s, %.2lf, x1=%d, y1=%d, x2=%d, y2=%d\n", m_result[k].label.c_str(), m_result[k].confidence, m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
@@ -259,6 +188,7 @@ namespace dg
 
         void write(std::ofstream& stream, int cam_fnumber = -1) const
         {
+            cv::AutoLock lock(m_mutex);
             for (int k = 0; k < m_result.size(); k++)
             {
                 std::string log = cv::format("%.3lf,%d,%s,%s,%.2lf,%d,%d,%d,%d,%.3lf", m_timestamp, cam_fnumber, name(), m_result[k].label.c_str(), m_result[k].confidence, m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax, m_processing_time);
@@ -268,6 +198,7 @@ namespace dg
 
         void read(const std::vector<std::string>& stream)
         {
+            cv::AutoLock lock(m_mutex);
             m_result.clear();
             for (int k = 0; k < (int)stream.size(); k++)
             {
@@ -300,11 +231,8 @@ namespace dg
             return "ocr";
         }
 
-
     protected:
         std::vector<OCRResult> m_result;
-        Timestamp m_timestamp = -1;
-        double m_processing_time = -1;
 #ifdef HAVE_OPENCV_FREETYPE
         cv::Ptr<cv::freetype::FreeType2> m_ft2;
 #endif
