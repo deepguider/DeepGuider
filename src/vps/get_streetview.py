@@ -19,10 +19,12 @@ PORT_POI = 21502
 PORT_IMAGE_DATA_ETRI = 10000
 PORT_IMAGE_DATA_COEX = 10001
 PORT_IMAGE_DATA_BUCHEON = 10002
+PORT_IMAGE_DATA_ETRI_INDOOR = 10003
 
 class ImgServer:
-    def __init__(self,ipaddr="localhost"): # 127.0.0.1
+    def __init__(self, ipaddr="localhost", image_server_port=PORT_IMAGE_DATA_ETRI): # 127.0.0.1        
         self.IP=ipaddr
+        self.image_server_port = image_server_port        
         self.ROUTING_SERVER_URL = 'http://{}:{}/'.format(self.IP, PORT_ROUTING)
         self.STREETVIEW_SERVER_URL = 'http://{}:{}/'.format(self.IP, PORT_STREETVIEW)
         self.POI_SERVER_URL = 'http://{}:{}/'.format(self.IP, PORT_POI)
@@ -119,7 +121,6 @@ class ImgServer:
 
     def ParseLatLon(self, verbose=0):
         res = self.json_outputs
-        ports = 10000
         numImgs = np.size(res['features'])
         ids = []
         lats = []
@@ -133,20 +134,12 @@ class ImgServer:
             lons.append(imglon)
         return ids, lats, lons
 
-    def SaveImages(self, outdir='./', cubic='f', verbose=0, PythonOnly=False, region="ETRI"):
+    def SaveImages(self, outdir='./', cubic='f', verbose=0, PythonOnly=False):
         res = self.json_outputs
-        if region.lower() == "etri":
-            ports = PORT_IMAGE_DATA_ETRI
-        elif region.lower() == "coex":
-            ports = PORT_IMAGE_DATA_COEX
-        elif region.lower() == "bucheon":
-            ports = PORT_IMAGE_DATA_BUCHEON
-        else:
-            ports = PORT_IMAGE_DATA_ETRI
         numImgs = np.size(res['features'])
         for i in range(numImgs):
             imgid = res['features'][i]['properties']['id']
-            request_cmd = 'http://{}:{}/{}/{}'.format(self.IP,ports,imgid, cubic) # cubic = 'f' means forward
+            request_cmd = 'http://{}:{}/{}/{}'.format(self.IP, self.image_server_port, imgid, cubic) # cubic = 'f' means forward
             fname = os.path.join(outdir,'{}.jpg'.format(imgid))
             try:
                 if PythonOnly: # Code runs in "Python only" Environment
@@ -184,8 +177,8 @@ def makedir(fdir):
     if not os.path.exists(fdir):
         os.makedirs(fdir)
 
-def GetStreetView(gps_lat, gps_long,roi_radius=100,ipaddr='localhost',server_type="streetview",
-        req_type="wgs",outdir='./'):
+def GetStreetView(gps_lat, gps_long,roi_radius=100,ipaddr='localhost', image_server_port=PORT_IMAGE_DATA_ETRI, server_type="streetview",
+        req_type="wgs", outdir='./'):
     ## Input
     # gps_lat/long : latitude and longitude of gps
     # roi_radius : radius value to download the image around the current coordinate
@@ -195,7 +188,7 @@ def GetStreetView(gps_lat, gps_long,roi_radius=100,ipaddr='localhost',server_typ
     # req_type : "wgs" which is coordinate
 
     ## Initialize image server
-    isv = ImgServer(ipaddr)
+    isv = ImgServer(ipaddr, image_server_port)
     isv.SetServerType(server_type)
     
     ## Set position you want to view and request type
@@ -218,8 +211,8 @@ def GetStreetView(gps_lat, gps_long,roi_radius=100,ipaddr='localhost',server_typ
             print('Image server is not available.')
             return -1
 
-def GetStreetView_fromID(svid=15292002727, roi_radius=1,ipaddr='localhost',server_type="streetview",
-        req_type="node",outdir='./', saveimage=False):
+def GetStreetView_fromID(svid=15292002727, roi_radius=1,ipaddr='localhost', image_server_port=PORT_IMAGE_DATA_ETRI, server_type="streetview",
+        req_type="node", outdir='./', saveimage=False):
     ## Input
     # gps_lat/long : latitude and longitude of gps
     # roi_radius : radius value to download the image around the current coordinate
@@ -229,7 +222,7 @@ def GetStreetView_fromID(svid=15292002727, roi_radius=1,ipaddr='localhost',serve
     # req_type : "wgs" which is coordinate
 
     ## Initialize image server
-    isv = ImgServer(ipaddr)
+    isv = ImgServer(ipaddr, image_server_port)
     isv.SetServerType(server_type)
     
     ## Set position you want to view and request type
@@ -277,5 +270,5 @@ if __name__ == '__main__':
     for i in range(5):
         print(str(i) + '-th request')
         GetStreetView(gps_lat, gps_long, roi_radius, 
-                ipaddr=server_ip, server_type="streetview",
-                req_type="wgs",outdir=outdir)
+                ipaddr=server_ip, image_server_port=PORT_IMAGE_DATA_ETRI, server_type="streetview",
+                req_type="wgs", outdir=outdir)

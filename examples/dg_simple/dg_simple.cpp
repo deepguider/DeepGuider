@@ -324,7 +324,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize VPS
     std::string py_module_path = m_srcdir + "/vps";
-    if (m_enable_vps && !m_vps.initialize(this, py_module_path, m_server_ip)) return false;
+    if (m_enable_vps && !m_vps.initialize(this, py_module_path, m_server_ip, m_image_server_port)) return false;
     if (m_enable_vps) printf("\tVPS initialized in %.3lf seconds!\n", m_vps.procTime());
 
     // initialize LRPose

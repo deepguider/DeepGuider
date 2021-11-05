@@ -27,7 +27,7 @@ public:
         */
     bool initialize()
     {
-        return _initialize("python_test", ".", "PythonTest");
+        return _initialize("./../examples/python_test", "python_test", "PythonTest");
     }
 
     /**

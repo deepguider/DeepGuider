@@ -124,6 +124,7 @@ class vps:
         # self.parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
 
         self.parser.add_argument('--ipaddr', type=str, default='127.0.0.1', help='ip address of streetview server')
+        self.parser.add_argument('--port', type=str, default='10000', help='port of streetview server, 10000:ETRI, 10001:COEX, 10002:Bucheon, 10003:ETRI Indoor')
         ######(end) Following defaults are combination of 9run_vps_ccsmm.sh
 
         return 1 # It has to return positive value to C++
@@ -134,6 +135,7 @@ class vps:
         opt = self.parser.parse_args()
         self.verbose = opt.verbose
         self.ipaddr = opt.ipaddr
+        self.port = opt.port
         self.PythonOnly = True # This is parameter should become False when vps is used in embedded module by C++ to avoid segmentation fault.
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
@@ -600,7 +602,7 @@ class vps:
     def get_region(self):  # region information for image server used in isv.SaveImages
         return self.region
 
-    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.9, timestamp=0.0, ipaddr=None):
+    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.9, timestamp=0.0, ipaddr=None, port=None):
         ## Init.           
         self.gps_lat = float(gps_lat)
         self.gps_lon = float(gps_lon)
@@ -608,6 +610,8 @@ class vps:
         self.timestamp = float(timestamp)
         if ipaddr != None:
             self.ipaddr = ipaddr
+        if port != None:
+            self.port = port
         self.K = int(K);
         self.init_vps_IDandConf(self.K)
         opt = self.parser.parse_args()
@@ -662,11 +666,10 @@ class vps:
         #self.roi_radius = int(10 + 200*(1-gps_accuracy)) # meters, faster for debugging 
         return 0
 
-    def getStreetView(self,outdir='./'):
-        ipaddr = self.ipaddr #'localhost'
+    def getStreetView(self, outdir='./'):
         server_type = "streetview"
         req_type = "wgs"
-        isv = ImgServer(ipaddr)
+        isv = ImgServer(self.ipaddr, self.port)
         isv.SetServerType(server_type)
         isv.SetParamsWGS(self.gps_lat,self.gps_lon,self.roi_radius) # 37,27,100
         isv.SetReqDict(req_type)
@@ -683,7 +686,9 @@ class vps:
             #for f in files:
             #    os.remove(f) # may cause seg.fault in C+Python environment
             os.system("rm -rf " + os.path.join(outdir,'*.jpg')) # You have to pay attention to code 'rm -rf' command
-            ret = isv.SaveImages(outdir=outdir, verbose=0, PythonOnly=self.PythonOnly, region=self.region)
+            ret = isv.SaveImages(outdir=outdir, cubic='f', verbose=0, PythonOnly=self.PythonOnly)  # original
+            #ret = isv.SaveImages(outdir=outdir, cubic='', verbose=0, PythonOnly=self.PythonOnly)  # for indoor, debugging
+            #  http://127.0.0.1:10003/1621319730779869
             if ret == -1:
                 #raise Exception('Image server is not available.')
                 print('Image server is not available.')
