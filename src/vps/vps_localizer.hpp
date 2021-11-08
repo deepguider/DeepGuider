@@ -15,21 +15,23 @@ namespace dg
     class VPSLocalizer : public VPS
     {
     public:
-        bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/vps", std::string server_ipaddr = "129.254.81.204")
+        bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/vps", std::string server_ipaddr = "129.254.81.204", std::string server_port="10000")
         {
             if (!VPS::initialize(py_module_path.c_str(), "vps", "vps")) return false;
 
             cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;
             m_server_ipaddr = server_ipaddr;
+            m_server_port = server_port;
             return (m_shared != nullptr);
         }
 
-        bool initialize_without_python(SharedInterface* shared, std::string server_ipaddr = "129.254.81.204")
+        bool initialize_without_python(SharedInterface* shared, std::string server_ipaddr = "129.254.81.204", std::string server_port="10000")
         {
             cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;
             m_server_ipaddr = server_ipaddr;
+            m_server_port = server_port;
             return (m_shared != nullptr);
         }
 
@@ -41,7 +43,8 @@ namespace dg
             LatLon ll = m_shared->toLatLon(pose);
             // double pose_confidence = m_shared->getPoseConfidence(); // 0: vps search radius = 230m ~ 1: search radius = 30m
             double pose_confidence = 1; // 0(vps search radius = 230m) ~ 1(search radius = 30m)
-            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str())) return false;
+            //double pose_confidence = 0.65; // 0(vps search radius = 230m) ~ 0.65(=100 m) ~ 1(search radius = 30m) : download_radius = int(30 + 200*(1-gps_accuracy))
+            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str(), m_server_port.c_str())) return false;
 
             std::vector<VPSResult> vpss = get();
 
@@ -90,6 +93,7 @@ namespace dg
 
         SharedInterface* m_shared = nullptr;
         std::string m_server_ipaddr;
+        std::string m_server_port;
         dg::ID m_sv_id = 0;
         cv::Mat m_sv_image;
         cv::Mutex m_localizer_mutex;

@@ -30,11 +30,11 @@ class PythonTest:
 
     def test_imgserver(self):
         ## Test for Img Server Begin
-        import get_streetview
+        import streetview
         outdir='./download_jpg'
-        get_streetview.makedir(outdir)
+        streetview.makedir(outdir)
         try:
-            get_streetview.GetStreetView(gps_lat=36.3851418, gps_long=127.3768362,
+            streetview.GetStreetView(gps_lat=36.3851418, gps_long=127.3768362,
                 roi_radius=100, ipaddr='localhost', server_type="streetview",
                 req_type="wgs",outdir=outdir)
         except:

@@ -13,8 +13,9 @@ from ipdb import set_trace as bp
 from dmsg import dmsg
 
 class ImgServer:
-    def __init__(self,ipaddr="localhost"): # 127.0.0.1
+    def __init__(self, ipaddr="localhost", port=10000): # 127.0.0.1
         self.IP=ipaddr
+        self.image_server_port = port
         self.ROUTING_SERVER_URL = 'http://{}:21500/'.format(self.IP)
         self.STREETVIEW_SERVER_URL = 'http://{}:21501/'.format(self.IP)
         self.POI_SERVER_URL = 'http://{}:21502/'.format(self.IP)
@@ -107,11 +108,10 @@ class ImgServer:
         import requests
         import os
         res = self.json_outputs
-        ports = 10000
         numImgs = np.size(res['features'])
         for i in range(numImgs):
             imgid = res['features'][i]['properties']['id']
-            request_cmd = 'http://{}:{}/{}/{}'.format(self.IP,ports,imgid,'f') #'f' means forward
+            request_cmd = 'http://{}:{}/{}/{}'.format(self.IP, self.image_server_port, imgid,'f') #'f' means forward
             fname = os.path.join(outdir,'{}.jpg'.format(imgid))
             try:
                 if PythonOnly: # Code runs in "Python only" Environment
