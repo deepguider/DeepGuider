@@ -14,7 +14,7 @@ from PIL import ImageFont,Image,ImageDraw
 from ipdb import set_trace as bp
 
 #pred_filtering() by ETRI
-from match_poiname import pred_filtering
+#from match_poiname import pred_filtering
 
 def saveResult(img, boxes, pred_list, dirname, res_imagefileName):
     img = np.array(img)
@@ -56,11 +56,9 @@ def saveResult(img, boxes, pred_list, dirname, res_imagefileName):
 #per image
 def detect_ocr(config, image, timestamp, save_img, save_log):
     
-    print("[ocr-py] 1")
     if save_img:
         basename = os.path.basename(image)
     detection_list, img, boxes = Detection_txt(config,image,config.net)
-    print("[ocr-py] 2")
 
     # print(detection_list)
     t = time.time()
@@ -69,14 +67,11 @@ def detect_ocr(config, image, timestamp, save_img, save_log):
     #print("config device", device)
     model = config.model
     converter = config.converter
-    print("[ocr-py] 3")
 
     # 32 * 100
     AlignCollate_demo = AlignCollate(imgH=config.imgH, imgW=config.imgW, keep_ratio_with_pad=config.PAD)
     # demo_data = RawDataset(root=image, opt=config)  # use RawDataset
     demo_data = RawDataset_wPosition(root=detection_list, opt=config)  # use RawDataset
-    print("[ocr-py] 4")
-
 
     demo_loader = torch.utils.data.DataLoader(
         demo_data, batch_size=config.batch_size,
@@ -85,11 +80,9 @@ def detect_ocr(config, image, timestamp, save_img, save_log):
         collate_fn=AlignCollate_demo, pin_memory=True)
 
     #(< PIL.Image.Image image mode=L size=398x120 at 0x7F376DAF30B8 >, './demo_image/demo_12.png')
-    print("[ocr-py] 5")
 
     # predict
     model.eval()
-    print("[ocr-py] 6")
     with torch.no_grad():
         if save_log: log = open(f'{config.logfilepath}', 'a')
         dashed_line = '-' * 80
@@ -97,31 +90,23 @@ def detect_ocr(config, image, timestamp, save_img, save_log):
         if save_img: print(f'{dashed_line}\n{head}\n{dashed_line}')
         if save_log: log.write(f'{dashed_line}\n{head}\n{dashed_line}\n')
 
-        print("[ocr-py] 6a")
         pred_list = []
         new_boxes = []
         for image_tensors, coordinate_list in demo_loader:
-            print("[ocr-py] 6a - 1")
             batch_size = image_tensors.size(0)
             # print(image_tensors.shape)
-            # print("P333333333333333333333333333333333333333333333333333333333333333333333333333")
             image = image_tensors.to(device)
             # For max length prediction
             length_for_pred = torch.IntTensor([config.batch_max_length] * batch_size).to(device)
             text_for_pred = torch.LongTensor(batch_size, config.batch_max_length + 1).fill_(0).to(device)
-            print("[ocr-py] 6a - 2")
 
-            # print("P444444444444444444444444444444444444444444444444444444444444444444444444444")
             preds = model(image, text_for_pred, is_train=False)
-            # print("P555555555555555555555555555555555555555555555555555555555555555555555555555")
             # select max probabilty (greedy decoding) then decode index to character
             _, preds_index = preds.max(2)
             preds_str = converter.decode(preds_index, length_for_pred)
-            print("[ocr-py] 6a - 3")
 
             preds_prob = F.softmax(preds, dim=2)
             preds_max_prob, _ = preds_prob.max(dim=2)
-            print("[ocr-py] 6a - 4")
 
             for coordinate, pred, pred_max_prob in zip(coordinate_list, preds_str, preds_max_prob):
 
@@ -131,8 +116,8 @@ def detect_ocr(config, image, timestamp, save_img, save_log):
 
 
 #pred_filtering() by ETRI
-                thre_filter = 0.6
-                fitered_pred, dist_conf = pred_filtering(pred)
+#                thre_filter = 0.6
+#                fitered_pred, dist_conf = pred_filtering(pred)
 
 
                 if pred_EOS == 0: 
@@ -144,9 +129,9 @@ def detect_ocr(config, image, timestamp, save_img, save_log):
 
 
 #pred_filtering() by ETRI
-                if dist_conf >= thre_filter:
-                    pred = fitered_pred
-                    confidence_score = dist_conf
+#                if dist_conf >= thre_filter:
+#                    pred = fitered_pred
+#                    confidence_score = dist_conf
 
 
                 #print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
@@ -154,20 +139,15 @@ def detect_ocr(config, image, timestamp, save_img, save_log):
                 pred_list.append([coordinate, pred, confidence_score])
                 #print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
                 if save_log: log.write(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}\n')
-            print("[ocr-py] 6a - 5 - end")
 
-        print("[ocr-py] 6b - end")
         if save_log: log.close()
-    print("[ocr-py] 7")
     recog_time = time.time() - t
     config.recog_time = config.recog_time+recog_time
 
     # print("\nrun time (recognition) : {:.2f} , {:.2f} s".format(recog_time,config.recog_time))
-    print("[ocr-py] 9")
 
     if save_img:
         pred_list = saveResult(img, boxes, pred_list, 
                                config.result_folder, basename)
         
-    print("[ocr-py] 10 - end")
     return  pred_list, timestamp

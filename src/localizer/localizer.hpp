@@ -327,6 +327,8 @@ namespace dg
 
         virtual bool applyIntersectCls(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
+            return true;
+            
             cv::AutoLock lock(m_mutex);
             if (m_pose_history.empty()) return false;
             if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())

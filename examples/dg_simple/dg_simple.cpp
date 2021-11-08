@@ -1329,22 +1329,16 @@ bool DeepGuider::procOcr()
     std::vector<double> poi_confidences;
     if (m_ocr.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
     {
-        printf("[proc-ocr] 1 = %d\n", (int)poi_xys.size());
         for (int k = 0; k < (int)poi_xys.size(); k++)
         {
             m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
         }
-        printf("[proc-ocr] 2\n");
         m_ocr.print();
-        printf("[proc-ocr] 3\n");
 
         m_ocr.draw(cam_image);
-        printf("[proc-ocr] 4\n");
         m_ocr_mutex.lock();
-        printf("[proc-ocr] 5\n");
         m_ocr_image = cam_image;
         m_ocr_mutex.unlock();
-        printf("[proc-ocr] 6-end\n");
         return true;
     }
     else

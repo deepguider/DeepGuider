@@ -59,22 +59,16 @@ namespace dg
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
         {
-			printf("[localizer-ocr] 1\n");
 			if (!OCRRecognizer::apply(image, image_time)) return false;
-			printf("[localizer-ocr] 2\n");
 
 			cv::AutoLock lock(m_localizer_mutex);
-			printf("[localizer-ocr] 3\n");
 			std::vector<OCRResult> ocrs = get();
-			printf("[localizer-ocr] 4\n");
 			if (ocrs.empty()) return false;
-			printf("[localizer-ocr] 5\n");
 
             if (m_shared == nullptr) return false;
 			Pose2 pose = m_shared->getPose();
 			Map* map = m_shared->getMap();
 			if (map == nullptr || map->isEmpty()) return false;
-			printf("[localizer-ocr] 6\n");
 
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 			for (int k = 0; k < ocrs.size(); k++)
@@ -90,7 +84,6 @@ namespace dg
                     poi_confidences.push_back(ocrs[k].confidence);
                 }
             }
-			printf("[localizer-ocr] 7-end\n");
             return true;
         }
 
