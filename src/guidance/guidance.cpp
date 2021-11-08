@@ -15,6 +15,49 @@ bool GuidanceManager::initiateNewGuidance()
 	return buildGuides();
 }
 
+bool GuidanceManager::initiateNewGuidance(Point2F gps_start, Point2F gps_dest)
+{
+	if (buildGuides())
+	{
+		//add start path		
+		ExtendedPathElement start_element(0, 0, m_extendedPath[0].cur_node_id, m_extendedPath[0].cur_edge_id,
+			0, gps_start.x, gps_start.y);
+
+		double start_dist = norm(m_extendedPath[0] - gps_start);
+		if (m_extendedPath[0].is_junction)
+		{
+			start_element.remain_distance_to_next_junction = start_dist;
+			start_element.next_guide_node_id = m_extendedPath[0].cur_node_id;
+			start_element.next_guide_edge_id = m_extendedPath[0].cur_edge_id;
+		}
+		else
+		{
+			start_element.remain_distance_to_next_junction = start_dist + m_extendedPath[0].remain_distance_to_next_junction;
+			start_element.next_guide_node_id = m_extendedPath[0].next_guide_node_id;
+			start_element.next_guide_edge_id = m_extendedPath[0].next_guide_edge_id;
+		}
+		m_extendedPath.insert(m_extendedPath.begin(), start_element);
+
+		//add dest path		
+		int sz = m_extendedPath.size();
+		double dest_dist = norm(m_extendedPath.back() - gps_dest);
+		for (int i = sz-1; i >= 0; i--)
+		{
+			m_extendedPath[i].remain_distance_to_next_junction = dest_dist + m_extendedPath[i].remain_distance_to_next_junction;
+			if (m_extendedPath[i].is_junction)
+				break;
+		}
+		ExtendedPathElement dest_element(0, 0, 0, 0, 0, gps_dest.x, gps_dest.y);
+		m_extendedPath.push_back(dest_element);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+
 bool GuidanceManager::buildGuides()
 {
 	// check map and path

@@ -187,6 +187,7 @@ namespace dg
         bool initialize(dg::SharedInterface* shared);
 
         bool initiateNewGuidance();
+        bool initiateNewGuidance(Point2F gps_start, Point2F gps_des);
 
         bool update(TopometricPose pose);
         bool update(TopometricPose pose, double confidence);
