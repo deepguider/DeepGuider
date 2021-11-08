@@ -432,29 +432,7 @@ void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
     double proc_time = msg->processingtime;
     int cam_fnumber = timestamp2Framenumber(capture_time);
 
-    if (!ocrs.empty() && cam_fnumber>=0)
-    {
-        m_ocr.set(ocrs, capture_time, proc_time);
-
-        if (m_data_logging)
-        {
-            m_log_mutex.lock();
-            m_ocr.write(m_log, cam_fnumber);
-            m_log_mutex.unlock();
-        }
-        m_ocr.print();
-
-        std::vector<dg::Point2> poi_xys;
-        std::vector<dg::Polar2> relatives;
-        std::vector<double> poi_confidences;
-        if (m_ocr.getLocClue(getPose(), poi_xys, relatives, poi_confidences))
-        {
-            for (int k = 0; k < (int)poi_xys.size(); k++)
-            {
-                m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
-            }
-        }
-    }
+    procOcr(ocrs, capture_time);
 }
 
 void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)

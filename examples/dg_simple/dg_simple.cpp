@@ -95,7 +95,7 @@ protected:
     bool procIntersectionClassifier();
     bool procExploration();
     bool procLogo();
-    bool procOcr();
+    bool procOcr(const std::vector<OCRResult>& ocrs = std::vector<OCRResult>(), const dg::Timestamp ocrs_ts = 0);
     bool procVps();
     bool procLRPose();
     bool procRoadTheta();
@@ -1312,8 +1312,26 @@ bool DeepGuider::procLogo()
     return false;
 }
 
-bool DeepGuider::procOcr()
+bool DeepGuider::procOcr(const std::vector<OCRResult>& ocrs, const dg::Timestamp ocrs_ts)
 {
+    if(!ocrs.empty())
+    {
+        m_ocr.set(ocrs, ocrs_ts);
+        
+        std::vector<dg::Point2> poi_xys;
+        std::vector<dg::Polar2> relatives;
+        std::vector<double> poi_confidences;
+        if (m_ocr.getLocClue(getPose(), poi_xys, relatives, poi_confidences))
+        {
+            for (int k = 0; k < (int)poi_xys.size(); k++)
+            {
+                m_localizer.applyPOI(poi_xys[k], relatives[k], ocrs_ts, poi_confidences[k]);
+            }
+            m_ocr.print();
+        }
+        return true;
+    }
+
     m_cam_mutex.lock();
     dg::Timestamp capture_time = m_cam_capture_time;
     if (m_cam_image.empty() || capture_time <= m_ocr.timestamp())
