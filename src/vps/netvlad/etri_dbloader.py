@@ -156,9 +156,17 @@ def input_transform_q():  # Input shape is 640*480
                                std=[0.229, 0.224, 0.225]),
     ])
 
-def input_transform_db():  # Input shape changes, 1024*1024 for streetview, 2592*2048 for indoor streetview
+def input_transform_db():  # Input shape changes, 1024*1024 for streetview,
     return transforms.Compose([
         transforms.CenterCrop((768,1024)), ## H, W, Crop car bonnet (hood)
+        transforms.Resize((240,320)),  # H, W 
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                               std=[0.229, 0.224, 0.225]),
+    ])
+
+def input_transform_db_indoor():  # Input shape changes, 2592*2048 for indoor streetview
+    return transforms.Compose([
         transforms.Resize((240,320)),  # H, W 
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -181,7 +189,14 @@ def get_dg_test_set_using_matfile(dbDir='dbImg',qDir='qImg'):
     return DG_DatasetFromStruct(dbMat_fname, dbFlist_dict, input_transform=input_transform_db()),\
             DG_DatasetFromStruct(qMat_fname, qFlist_dict, input_transform=input_transform_q())
 
-                        
+def get_dg_indoor_test_set(dbDir='dbImg',qDir='qImg'):
+    datasetDir = root_dir
+    db_dir = os.path.join(datasetDir, dbDir)
+    queries_dir = os.path.join(datasetDir, qDir)
+    dbFlist_dict, qFlist_dict = GetFlistDict(db_dir,queries_dir)
+    return DG_DatasetFromStruct(None, dbFlist_dict, input_transform=input_transform_db_indoor()),\
+            DG_DatasetFromStruct(None, qFlist_dict, input_transform=input_transform_q())
+
 def get_dg_test_set(dbDir='dbImg',qDir='qImg'):
     datasetDir = root_dir
     db_dir = os.path.join(datasetDir, dbDir)

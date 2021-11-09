@@ -107,8 +107,6 @@ class vps:
 
         self.parser.add_argument('--dbFeat_fname', type=str, default='data_vps/prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
         self.parser.add_argument('--qFeat_fname', type=str, default='data_vps/prebuilt_qFeat.mat', help='dbFeat file calculated in advance')
-        #self.parser.add_argument('--save_dbfeat', default=True, action='store_true', help='Save dbFeat')
-        #self.parser.add_argument('--load_dbfeat', default=True, action='store_true', help='Use save dbFeat feature which is calucated in adavnce') #default
         self.parser.add_argument('--verbose', default=False, action='store_true', help='Print internal messages') #fixed, dg's issue #41
         
         # When you get 'ERROR: Unexpected segmentation fault encountered in worker'
@@ -122,7 +120,6 @@ class vps:
 
         return 1 # It has to return positive value to C++
 
-
     def initialize(self):
         self.init_param()
         opt = self.parser.parse_args()
@@ -131,8 +128,10 @@ class vps:
         self.port = opt.port
         self.set_cubic_str('f')  ## Default is 'f'
         self.PythonOnly = True # This is parameter should become False when vps is used in embedded module by C++ to avoid segmentation fault.
-        #self.load_dbfeat = opt.load_dbfeat
-        #self.save_dbfeat = opt.save_dbfeat
+
+        self.num_workers = opt.threads
+        self.cacheBatchSize = opt.cacheBatchSize
+
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
                 'margin', 'seed', 'patience']
@@ -304,12 +303,19 @@ class vps:
             self.makedir(self.dataset_queries_dir)
             return 1 # Non-zero means success return 
     
+    def set_threads(self, num_workers=0):
+        if num_workers > 0 :
+            self.num_workers = num_workers
+
+    def set_cacheBatchSize(self, cacheBatchSize=1):
+        if cacheBatchSize > 1:
+            self.cacheBatchSize = cacheBatchSize 
 
     def test_sub(self,eval_set,epoch=0):
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
         test_data_loader = DataLoader(dataset=eval_set, 
-                    num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                    num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
                     pin_memory=cuda)
                     # num_workers = 0 means that the data will be loaded in the main process. (default: 0)
         self.model.eval()
@@ -384,11 +390,11 @@ class vps:
         qFeat = qFeat.astype('float32') #[nqImg,32768]
 
         test_db_data_loader = DataLoader(dataset=eval_set_db, 
-                num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
                 pin_memory=cuda)
 
         test_q_data_loader = DataLoader(dataset=eval_set_q, 
-                num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
                 pin_memory=cuda)
 
         if self.verbose:
@@ -477,7 +483,7 @@ class vps:
         cuda = not opt.nocuda
 
         test_data_loader = DataLoader(dataset=eval_set, 
-                    num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                    num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
                     pin_memory=cuda)
     
         self.model.eval()
@@ -533,7 +539,7 @@ class vps:
 
         print('predicted ID:\n', pred_idx)
         test_data_loader = DataLoader(dataset=eval_set, 
-                    num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
+                    num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
                     pin_memory=cuda)
 
         qImage = test_data_loader.dataset.dbStruct.qImage
@@ -600,6 +606,10 @@ class vps:
 
     def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr=None, port=None, load_dbfeat=0.0, save_dbfeat=0.0):
         ## Init.
+        if ipaddr != None:
+            self.ipaddr = ipaddr
+        if port != None:
+            self.port = port
 
         self.load_dbfeat = False
         self.save_dbfeat = False
@@ -612,10 +622,6 @@ class vps:
         self.gps_lon = float(gps_lon)
         self.gps_accuracy = min(max(gps_accuracy,0.0),1.0)
         self.timestamp = float(timestamp)
-        if ipaddr != None:
-            self.ipaddr = ipaddr
-        if port != None:
-            self.port = port
         self.K = int(K);
         self.init_vps_IDandConf(self.K)
         opt = self.parser.parse_args()
@@ -651,7 +657,11 @@ class vps:
                 if (h < 480) or (w < 640) or (c != 3): # invalid query image
                     return self.getIDConf()
                 cv.imwrite(fname,image)
-            whole_db_set,whole_q_set = dataset.get_dg_test_set()
+            if self.port == "10003":  # input image resolution : 2592*2048
+                whole_db_set,whole_q_set = dataset.get_dg_indoor_test_set()
+            else:  # input image resolution : 1024*1024
+                whole_db_set,whole_q_set = dataset.get_dg_test_set()
+
             if self.verbose:
                 print('===> With Query captured near the ETRI Campus')
                 print('===> Evaluating on test set')
@@ -682,9 +692,9 @@ class vps:
             cubic_str =''  # '' means panoramic image
         if self.port == "10003":  ## 10000:ETRI, 10001:COEX, 10002:Bucheon, 10003:ETRI Indoor
             ## for indoor : '0', '1', '2', ''(panoramic)
-            if cubic_str == 'f': cubic_str = '2'
-            if cubic_str == 'l': cubic_str = '0'
-            if cubic_str == 'r': cubic_str = '1'
+            if cubic_str == 'f': cubic_str = '1'  # frontal
+            if cubic_str == 'l': cubic_str = '0'  # more left
+            if cubic_str == 'r': cubic_str = '2'  # left
         self.cubic_str = cubic_str
         return self.cubic_str
 
@@ -700,7 +710,7 @@ class vps:
         isv.SetReqDict(req_type)
         ret = isv.QuerytoServer(json_save=True, outdir=outdir, PythonOnly=self.PythonOnly)
         if ret == -1:
-            print('Image server({}) for VPS is not available.'.format(ipaddr))
+            print('[vps] Image server({}) is not available. Local DB is used.'.format(self.ipaddr))
             return -1
         numImgs = isv.GetNumImgs()
         if numImgs >0: 
@@ -713,7 +723,7 @@ class vps:
                 ret = isv.SaveImages(outdir=outdir, cubic=self.set_cubic_str('l'), verbose=0, PythonOnly=self.PythonOnly)  # original
                 ret = isv.SaveImages(outdir=outdir, cubic=self.set_cubic_str('r'), verbose=0, PythonOnly=self.PythonOnly)  # original
             if ret == -1:
-                print('Image server is not available.')
+                print('[vps] Image server({}) is not available. Local DB is used.'.format(self.ipaddr))
                 return -1
         else:
             os.system("rm -rf " + os.path.join(outdir,'*.jpg')) # You have to pay attention to code 'rm -rf' command
@@ -789,9 +799,14 @@ if __name__ == "__main__":
     from netvlad import etri_dbloader
     from PIL import Image
     from visdom import Visdom
-    streetview_server_ipaddr = "localhost"
-    streetview_server_port = "10003"  ## 10000:ETRI, 10001:COEX, 10002:Bucheon, 10003:ETRI Indoor
-    gps_lat, gps_lon = 36.380018, 127.368114
+    #streetview_server_ipaddr = "localhost"
+    streetview_server_ipaddr = "extract.feature.local.db"
+    ## 10000:ETRI, 10001:COEX, 10002:Bucheon, 10003:Indoor
+    streetview_server_port = "10003";gps_lat, gps_lon = 36.380018, 127.368114
+    #streetview_server_port = "10000"; gps_lat, gps_lon = 36.3845257,127.3768796
+    #
+    load_dbfeat = 0
+    save_dbfeat = 1
     visdom_server = True
     try:
         #viz = Visdom()
@@ -804,6 +819,9 @@ if __name__ == "__main__":
     qFlist = etri_dbloader.Generate_Flist("data_vps/netvlad_etri_datasets/qImg/999_newquery",".jpg")
     mod_vps = vps()
     mod_vps.initialize()
+    if True:  # Fast feature extract at offline
+        mod_vps.set_threads(64)
+        mod_vps.set_cacheBatchSize(128)
     #qimage = np.uint8(256*np.random.rand(1024,1024,3))
     #(image=None, K=3, gps_lat=None, gps_lon=None, gps_accuracy=None, timestamp=None):
     for fname in qFlist:
@@ -818,7 +836,8 @@ if __name__ == "__main__":
             continue
         qimg = cv.resize(qimg,(640,480))
         vps_IDandConf = mod_vps.apply(qimg, K=3, gps_lat=gps_lat, gps_lon=gps_lon, gps_accuracy=0.0,
-                timestamp=1.0, ipaddr=streetview_server_ipaddr, port=streetview_server_port) # k=3 for knn
+                timestamp=1.0, ipaddr=streetview_server_ipaddr, port=streetview_server_port,
+                load_dbfeat=load_dbfeat, save_dbfeat=save_dbfeat) # k=3 for knn
         print('vps_IDandConf',vps_IDandConf)
         if visdom_server and False: # Do not display(False)
             ## Display Result
