@@ -28,6 +28,11 @@ video_recording: 0
 video_recording_fps: 15
 recording_header_name: "dg_simple_"
 
+### VPS Specific Options
+vps_load_dbfeat: 0
+vps_save_dbfeat: 0
+vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
+
 ## Pre-defined Place Settings
 TEST_ETRI:
   map_image_path: "data/ETRI/NaverMap_ETRI(Satellite).png"

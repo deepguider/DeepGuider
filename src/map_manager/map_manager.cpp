@@ -785,6 +785,12 @@ bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cub
 	if (!(cubic == "f" || cubic == "b" || cubic == "l" || cubic == "r" || cubic == "u" || cubic == "d"))
 		cubic = "";
 
+	if ( m_image_server_port == "10003" ){  // 10003 for ETRI indoor
+		if (cubic == "l") cubic = "0";  // More left
+		if (cubic == "r") cubic = "2";  // Left
+		if (cubic == "f") cubic = "1";  // Frontal
+	}
+
 	const std::string url_middle = ":" + m_image_server_port + "/";
 	sv_image = downloadStreetViewImage(sv_id, cubic, timeout, url_middle);
 	if (sv_image.empty())	return false;

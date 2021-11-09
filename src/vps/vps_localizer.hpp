@@ -35,16 +35,17 @@ namespace dg
             return (m_shared != nullptr);
         }
 
-        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence)
+        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence, double manual_gps_accuracy, const int load_dbfeat, const int save_dbfeat)
         {
             int N = 1;  // top-1
             if (m_shared == nullptr) return false;
             Pose2 pose = m_shared->getPose();
             LatLon ll = m_shared->toLatLon(pose);
             // double pose_confidence = m_shared->getPoseConfidence(); // 0: vps search radius = 200m ~ 1: search radius = 10m
-            double pose_confidence = 1; // 0(vps search radius = 200m) ~ 1(search radius = 10m)
-            //double pose_confidence = 0.79; // download_radius = int(10 + 190*(1-gps_accuracy))
-            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str(), m_server_port.c_str())) return false;
+            double pose_confidence = manual_gps_accuracy; // 0(vps search radius = 200m) ~ 1(search radius = 10m)
+
+			/** In streetview image server, download_radius = int(10 + 190*(1-manual_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters **/
+            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str(), m_server_port.c_str(), load_dbfeat, save_dbfeat)) return false;
 
             std::vector<VPSResult> vpss = get();
 
