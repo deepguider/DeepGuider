@@ -147,12 +147,26 @@ def LoadMatFiles(dbMat_fname,qMat_fname):
             posDistSqThr, nonTrivPosDistSqThr)
 
 
-def input_transform():
+def input_transform_q():  # Input shape is 640*480
     return transforms.Compose([
+        transforms.Resize((240,320)),  # H,W
+        transforms.CenterCrop((240,320)),  # H,W
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                std=[0.229, 0.224, 0.225]),
     ])
+
+def input_transform_db():  # Input shape changes, 1024*1024 for streetview, 2592*2048 for indoor streetview
+    return transforms.Compose([
+        transforms.CenterCrop((768,1024)), ## H, W, Crop car bonnet (hood)
+        transforms.Resize((240,320)),  # H, W 
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                               std=[0.229, 0.224, 0.225]),
+    ])
+
+#input_transform = input_transform_db()
+
 
 def get_dg_test_set_using_matfile(dbDir='dbImg',qDir='qImg'):
     ## Usage : whole_db_set,whole_q_set = dataset.get_dg_test_set_using_matfile()
@@ -164,10 +178,8 @@ def get_dg_test_set_using_matfile(dbDir='dbImg',qDir='qImg'):
     qMat_fname = join(root_dir,'etri_query.mat')
     SaveMatFiles(db_dir,queries_dir,dbMat_fname,qMat_fname) #Run this when db changes
     dbFlist_dict, qFlist_dict = GetFlistDict(db_dir,queries_dir)
-    return DG_DatasetFromStruct(dbMat_fname, dbFlist_dict, input_transform=input_transform()),\
-            DG_DatasetFromStruct(qMat_fname, qFlist_dict, input_transform=input_transform())
-#    return WholeDatasetFromStruct_forDG(dbMat_fname,qMat_fname,
-#                             input_transform=input_transform())
+    return DG_DatasetFromStruct(dbMat_fname, dbFlist_dict, input_transform=input_transform_db()),\
+            DG_DatasetFromStruct(qMat_fname, qFlist_dict, input_transform=input_transform_q())
 
                         
 def get_dg_test_set(dbDir='dbImg',qDir='qImg'):
@@ -175,8 +187,8 @@ def get_dg_test_set(dbDir='dbImg',qDir='qImg'):
     db_dir = os.path.join(datasetDir, dbDir)
     queries_dir = os.path.join(datasetDir, qDir)
     dbFlist_dict, qFlist_dict = GetFlistDict(db_dir,queries_dir)
-    return DG_DatasetFromStruct(None, dbFlist_dict, input_transform=input_transform()),\
-            DG_DatasetFromStruct(None, qFlist_dict, input_transform=input_transform())
+    return DG_DatasetFromStruct(None, dbFlist_dict, input_transform=input_transform_db()),\
+            DG_DatasetFromStruct(None, qFlist_dict, input_transform=input_transform_q())
 
 dbStruct = namedtuple('dbStruct', ['whichSet', 'dataset', 
     'dbImage', 'utmDb', 'qImage', 'utmQ', 'numDb', 'numQ',
@@ -208,7 +220,9 @@ class DG_DatasetFromStruct(data.Dataset):
     def __getitem__(self, index):
         try:
             img = Image.open(self.images[index])
-            img = img.resize((640,480)) #ccsmm, as a  2-tuple:(width,height)
+            #img = img.resize((640,480)) #ccsmm, as a  2-tuple:(width,height)
+
+            ## For gray image
             # print(index,np.array(img).shape) #(480,640,3)
             #if np.array(img).shape[-1] is not 3: #bug fix for bad image file, ccsmm, to make 3 channel
             #    img1=np.array(img)
@@ -236,63 +250,6 @@ class DG_DatasetFromStruct(data.Dataset):
                     radius=self.ImgStruct.posDistThr)
 
         return self.positives
-
-
-
-
-class WholeDatasetFromStruct_forDG(data.Dataset):
-    def __init__(self, dbMat_fname,qMat_fname, input_transform=None, onlyDB=False):
-        super().__init__()
-
-        self.input_transform = input_transform
-
-#        self.dbStruct = parse_dbStruct(structFile)
-        self.dbStruct = LoadMatFiles(dbMat_fname,qMat_fname)
-
-        self.dbimages = [dbIm.strip() for dbIm in self.dbStruct.dbImage]
-        self.qimages  = [qIm.strip() for qIm in self.dbStruct.qImage]
-
-
-        self.whichSet = self.dbStruct.whichSet
-        self.dataset = self.dbStruct.dataset
-
-        self.positives = None
-        self.distances = None
-
-    def __getitem__(self, index):
-        try:
-            img = Image.open(self.images[index])
-            img = img.resize((640,480)) #ccsmm, as a  2-tuple:(width,height)
-            # print(index,np.array(img).shape) #(480,640,3)
-            #if np.array(img).shape[-1] is not 3: #bug fix for bad image file, ccsmm, to make 3 channel
-            #    img1=np.array(img)
-            #    img1[:,:,1]=img1[:,:,0]
-            #    img1[:,:,2]=img1[:,:,0]
-            #    img = Image.fromarray(img1)
-        except:
-            #print("Broken image : ", self.images[index])
-            return torch.zeros(1), index  # for broken image, set the size of torch to 1 in order to check in for loop.
-
-        if self.input_transform:
-            img = self.input_transform(img)
-
-        return img, index
-
-    def __len__(self):
-        return len(self.images)
-
-    def getPositives(self):
-        # positives for evaluation are those within trivial threshold range
-        #fit NN to find them, search by radius
-        if  self.positives is None:
-            knn = NearestNeighbors(n_jobs=-1)
-            knn.fit(self.dbStruct.utmDb)
-
-            self.distances, self.positives = knn.radius_neighbors(self.dbStruct.utmQ,
-                    radius=self.dbStruct.posDistThr)
-
-        return self.positives
-
 
         
 def collate_fn(batch):
@@ -335,4 +292,3 @@ if __name__ == "__main__":
 
     SaveMatFiles(db_dir,queries_dir,dbMat_fname,qMat_fname)
     dbStruct=LoadMatFiles(dbMat_fname,qMat_fname)
-    bp()

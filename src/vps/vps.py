@@ -99,23 +99,16 @@ class vps:
                 choices=['test', 'test250k', 'train', 'val'])
         self.parser.add_argument('--fromscratch', action='store_true', help='Train from scratch rather than using pretrained models')
 
-
         ######(begin) Following defaults are combination of 9run_vps_ccsmm.sh
         self.parser.add_argument('--nGPU', type=int, default=1, help='number of GPU to use.')
         self.parser.add_argument('--resume', type=str, default='data_vps/netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint', help='Path to load checkpoint from, for resuming training or testing.')
-        #self.parser.add_argument('--dataset', type=str, default='pittsburgh', help='Dataset to use', choices=['pittsburgh','deepguider'])
         self.parser.add_argument('--dataset', type=str, default='deepguider', help='Dataset to use', choices=['pittsburgh','deepguider'])
-        #self.parser.add_argument('--cacheBatchSize', type=int, default=4, help='Batch size for caching and testing')
         self.parser.add_argument('--cacheBatchSize', type=int, default=1, help='Batch size for caching and testing')
 
         self.parser.add_argument('--dbFeat_fname', type=str, default='data_vps/prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
-        #self.parser.add_argument('--dbFeat_fname', type=str, default='prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
         self.parser.add_argument('--qFeat_fname', type=str, default='data_vps/prebuilt_qFeat.mat', help='dbFeat file calculated in advance')
-        #self.parser.add_argument('--save_dbFeat', default=False, action='store_true', help='Save dbFeat')
-        self.parser.add_argument('--save_dbFeat', default=True, action='store_true', help='Save dbFeat')
-        #self.parser.add_argument('--save_qFeat', default=False, action='store_true', help='Save qFeat')
-        #self.parser.add_argument('--use_saved_dbFeat', default=False, action='store_true', help='Use save dbFeat feature which is calucated in adavnce') #default
-
+        self.parser.add_argument('--save_dbFeat', default=False, action='store_true', help='Save dbFeat')
+        self.parser.add_argument('--load_dbFeat', default=True, action='store_true', help='Use save dbFeat feature which is calucated in adavnce') #default
         self.parser.add_argument('--verbose', default=False, action='store_true', help='Print internal messages') #fixed, dg's issue #41
         
         # When you get 'ERROR: Unexpected segmentation fault encountered in worker'
@@ -136,7 +129,10 @@ class vps:
         self.verbose = opt.verbose
         self.ipaddr = opt.ipaddr
         self.port = opt.port
+        self.set_cubic_str()  ## Default is 'f'
         self.PythonOnly = True # This is parameter should become False when vps is used in embedded module by C++ to avoid segmentation fault.
+        self.load_dbFeat = opt.load_dbFeat
+        self.save_dbFeat = opt.save_dbFeat
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
                 'margin', 'seed', 'patience']
@@ -371,17 +367,17 @@ class vps:
             if len(eval_set_q.images) < 1:
                 return -1
 
-        if opt.save_dbFeat:
-            # extracted for db, now split in own sets
-            dbFeat = self.test_sub(eval_set_db,epoch=epoch)
-            dbFeat = dbFeat.astype('float32') #[ndbImg,32768]
-            dbFeat_dict={'Feat':dbFeat}
-            if self.PythonOnly == True:
-                sio.savemat(opt.dbFeat_fname,dbFeat_dict) # savemat may cause segmentation fault randomly when embedded in C++.
-        else:
+        if self.load_dbFeat == True:
             dbFeat = sio.loadmat(opt.dbFeat_fname)
             dbFeat = dbFeat['Feat']
             dbFeat = np.ascontiguousarray(dbFeat)
+        else:  # Calculate DB features everytime
+           # extracted for db, now split in own sets
+            dbFeat = self.test_sub(eval_set_db,epoch=epoch)
+            dbFeat = dbFeat.astype('float32') #[ndbImg,32768]
+            dbFeat_dict={'Feat':dbFeat}
+            if self.save_dbFeat:
+                sio.savemat(opt.dbFeat_fname, dbFeat_dict) # savemat may cause segmentation fault randomly when embedded in C++.
 
         # extracted for query, now split in own sets
         qFeat = self.test_sub(eval_set_q,epoch=epoch)
@@ -509,16 +505,16 @@ class vps:
                     print("Cannot Display")
             del input, image_encoding, vlad_encoding
         del test_data_loader
-    
-        if opt.save_dbFeat:
+
+        if self.load_dbFeat == True:
+            dbFeat = sio.loadmat(opt.dbFeat_fname)
+            dbFeat = dbFeat['dbFeat']
+        else:
             # extracted for db, now split in own sets
             dbFeat = dbqFeat[:eval_set.dbStruct.numDb].astype('float32') #[10000,32768]
             dbFeat_dict={'dbFeat':dbFeat}
-            sio.savemat(opt.dbFeat_fname,dbFeat_dict)
-        else:
-            dbFeat = sio.loadmat(opt.dbFeat_fname)
-            dbFeat = dbFeat['dbFeat']
-
+            if self.save_dbFeat:
+                sio.savemat(opt.dbFeat_fname,dbFeat_dict)
 
         # extracted for query, now split in own sets
         qFeat = dbqFeat[eval_set.dbStruct.numDb:].astype('float32') #[7608,32768]
@@ -602,8 +598,9 @@ class vps:
     def get_region(self):  # region information for image server used in isv.SaveImages
         return self.region
 
-    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.9, timestamp=0.0, ipaddr=None, port=None):
+    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr=None, port=None):
         ## Init.           
+
         self.gps_lat = float(gps_lat)
         self.gps_lon = float(gps_lon)
         self.gps_accuracy = min(max(gps_accuracy,0.0),1.0)
@@ -617,6 +614,8 @@ class vps:
         opt = self.parser.parse_args()
         self.setRadius(self.gps_accuracy)
 
+        ret = -1
+
         if self.verbose:
             print('===> Loading dataset(s)')
         epoch = 1
@@ -629,11 +628,11 @@ class vps:
             recalls = self.test(whole_test_set, epoch, write_tboard=False)
         elif opt.dataset.lower() == 'deepguider':
             from netvlad import etri_dbloader as dataset
-            ## Get DB images from streetview image server            
-            ret = self.getStreetView(self.dataset_struct_dir)               
+            if self.load_dbFeat == False:
+                ## Get DB images from streetview image server            
+                ret = self.getStreetView(self.dataset_struct_dir)               
             if ret < 0:
-                print("Local DBs will be used : ",self.dataset_struct_dir)
-
+                print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
             if image is not None:
                 fname = os.path.join(self.dataset_queries_dir,'newquery.jpg')
                 try:
@@ -661,10 +660,22 @@ class vps:
             print("Broken : vps.py's return value")
         return self.vps_IDandConf
 
-    def setRadius(self,gps_accuracy):
-        self.roi_radius = int(30 + 200*(1-gps_accuracy)) # meters, ori
-        #self.roi_radius = int(10 + 200*(1-gps_accuracy)) # meters, faster for debugging 
+    def setRadius(self, gps_accuracy=0.79):
+        self.roi_radius = int(10 + 190*(1-gps_accuracy))  # 10 meters ~ 200 meters, 0.79 for 50 meters
         return 0
+
+    def set_cubic_str(self, cubic_str='f'):
+        self.cubic_str = cubic_str
+
+    def get_cubic_str(self):
+        return self.cubic_str
+
+    def set_and_get_cubic_str_by_port(self):
+        if self.port == "10003":  ## 10000:ETRI, 10001:COEX, 10002:Bucheon, 10003:ETRI Indoor
+            self.cubic_str = '1'  ## for indoor : '0', '1', '2', ''(panoramic)
+        else:
+            self.cubic_str = 'f'  ## for outdoor : 'f', 'b', 'l', 'r', 'u', 'd', ''(panoramic)
+        return self.cubic_str
 
     def getStreetView(self, outdir='./'):
         server_type = "streetview"
@@ -686,8 +697,9 @@ class vps:
             #for f in files:
             #    os.remove(f) # may cause seg.fault in C+Python environment
             os.system("rm -rf " + os.path.join(outdir,'*.jpg')) # You have to pay attention to code 'rm -rf' command
-            ret = isv.SaveImages(outdir=outdir, cubic='f', verbose=0, PythonOnly=self.PythonOnly)  # original
-            #ret = isv.SaveImages(outdir=outdir, cubic='', verbose=0, PythonOnly=self.PythonOnly)  # for indoor, debugging
+            ret = isv.SaveImages(outdir=outdir, cubic=self.set_and_get_cubic_str_by_port(), verbose=0, PythonOnly=self.PythonOnly)  # original
+            #ret = isv.SaveImages(outdir=outdir, cubic='f', verbose=0, PythonOnly=self.PythonOnly)  # original for outdoor : f, b, l, r, u, d, panoramic
+            #ret = isv.SaveImages(outdir=outdir, cubic='1', verbose=0, PythonOnly=self.PythonOnly)  # for indoor : 0, 1, 2, panoramic
             #  http://127.0.0.1:10003/1621319730779869
             if ret == -1:
                 #raise Exception('Image server is not available.')
@@ -768,14 +780,18 @@ if __name__ == "__main__":
     from PIL import Image
     from visdom import Visdom
     streetview_server_ipaddr = "localhost"
+    streetview_server_port = "10003"  ## 10000:ETRI, 10001:COEX, 10002:Bucheon, 10003:ETRI Indoor
+    gps_lat, gps_lon = 36.380018, 127.368114
     visdom_server = True
     try:
-        viz = Visdom()
+        #viz = Visdom()
+        printf(" ")
     except:
         print("Visual result can be display if you run visdom server before run this")
         visdom_server = False
 
-    qFlist = etri_dbloader.Generate_Flist('/home/ccsmm/Naverlabs/query_etri_cart/images_2019_11_15_12_45_11',".jpg")
+    #qFlist = etri_dbloader.Generate_Flist('/home/ccsmm/Naverlabs/query_etri_cart/images_2019_11_15_12_45_11',".jpg")
+    qFlist = etri_dbloader.Generate_Flist("data_vps/netvlad_etri_datasets/qImg/999_newquery",".jpg")
     mod_vps = vps()
     mod_vps.initialize()
     #qimage = np.uint8(256*np.random.rand(1024,1024,3))
@@ -791,7 +807,8 @@ if __name__ == "__main__":
             print("Broken query image :", fname)
             continue
         qimg = cv.resize(qimg,(640,480))
-        vps_IDandConf = mod_vps.apply(qimg, 3, 36.381438, 127.378867, 0.8, 1.0, streetview_server_ipaddr) # k=5 for knn
+        vps_IDandConf = mod_vps.apply(qimg, K=3, gps_lat=gps_lat, gps_lon=gps_lon, gps_accuracy=1.0,
+                timestamp=1.0, ipaddr=streetview_server_ipaddr, port=streetview_server_port) # k=3 for knn
         print('vps_IDandConf',vps_IDandConf)
         if visdom_server and False: # Do not display(False)
             ## Display Result

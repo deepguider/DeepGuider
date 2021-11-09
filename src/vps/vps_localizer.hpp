@@ -41,9 +41,9 @@ namespace dg
             if (m_shared == nullptr) return false;
             Pose2 pose = m_shared->getPose();
             LatLon ll = m_shared->toLatLon(pose);
-            // double pose_confidence = m_shared->getPoseConfidence(); // 0: vps search radius = 230m ~ 1: search radius = 30m
-            double pose_confidence = 1; // 0(vps search radius = 230m) ~ 1(search radius = 30m)
-            //double pose_confidence = 0.65; // 0(vps search radius = 230m) ~ 0.65(=100 m) ~ 1(search radius = 30m) : download_radius = int(30 + 200*(1-gps_accuracy))
+            // double pose_confidence = m_shared->getPoseConfidence(); // 0: vps search radius = 200m ~ 1: search radius = 10m
+            double pose_confidence = 1; // 0(vps search radius = 200m) ~ 1(search radius = 10m)
+            //double pose_confidence = 0.79; // download_radius = int(10 + 190*(1-gps_accuracy))
             if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str(), m_server_port.c_str())) return false;
 
             std::vector<VPSResult> vpss = get();
