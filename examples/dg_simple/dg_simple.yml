@@ -12,19 +12,19 @@ enable_imu: 0
 enable_mapserver: 0
 
 ### Main Options
-site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, ...
-site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX"]
+site_index: 5            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, ...
+site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR"]
 server_ip_index: 0     # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
 
 dg_srcdir: "./../src"              # path of deepguider/src folder (required for python embedding)
 enable_tts: 1
-threaded_run_modules: 1
+threaded_run_modules: 0
 use_high_precision_gps: 0     # 0: asen gps, 1: Novatel gps
 
 ### Other Configurations
 enable_data_logging: 0
-video_recording: 0
+video_recording: 1
 video_recording_fps: 15
 recording_header_name: "dg_simple_"
 
@@ -46,6 +46,19 @@ TEST_ETRI:
   image_server_port: "10000"
   gps_input_path: "data/ETRI/191115_151140_ascen_fix.csv"
   video_input_path: "data/ETRI/191115_151140_images.avi"
+  
+TEST_ETRI_INDOOR:
+  map_image_path: "data/ETRI/NaverMap_ETRI(Satellite).png"
+  map_data_path: "data/ETRI/TopoMap_ETRI.csv"
+  map_ref_point_latlon: [36.379208, 127.364585]
+  map_ref_point_pixel: [1344, 1371]
+  map_pixel_per_meter: 1.2474
+  map_image_rotation: 0.95
+  map_view_offset: [1289, 371]
+  map_view_size: [1800, 1012]
+  image_server_port: "10003"
+  gps_input_path: "data/ETRI/191115_151140_ascen_fix.csv"
+  video_input_path: "data/ETRI/Indoor/211105_150609_images.avi"
   
 TEST_COEX:
   map_image_path: "data/COEX/NaverMap_COEX(Satellite).png"
