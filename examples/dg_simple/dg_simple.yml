@@ -59,6 +59,8 @@ TEST_ETRI_INDOOR:
   image_server_port: "10003"
   gps_input_path: "data/ETRI/191115_151140_ascen_fix.csv"
   video_input_path: "data/ETRI/Indoor/211105_150609_images.avi"
+  vps_load_dbfeat: 0
+  vps_save_dbfeat: 0
   
 TEST_COEX:
   map_image_path: "data/COEX/NaverMap_COEX(Satellite).png"

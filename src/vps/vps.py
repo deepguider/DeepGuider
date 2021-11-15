@@ -383,6 +383,7 @@ class vps:
 
         if self.load_dbfeat == True:
             if self.load_dbfeat_initialized == False: ## Initial condition is False (off)
+                print('[vps]====> Initializing load_dbfeat.')
                 if self.verbose:
                     print('====> Initializing load_dbfeat.')
                 dbFeat_dict = sio.loadmat(opt.dbFeat_fname)
@@ -396,6 +397,7 @@ class vps:
             dbImage = self.dbImage
         else:  # Calculate DB features everytime
            # extracted for db, now split in own sets
+            print('[vps]====> Extracting dbfeat.')
             if self.verbose:
                 print('====> Extracting dbfeat.')
             dbFeat = self.test_sub(eval_set_db, epoch=epoch)

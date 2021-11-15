@@ -12,7 +12,7 @@ enable_imu: 0
 enable_mapserver: 0
 
 ### Main Options
-site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, ...
+site_index: 5            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, ...
 site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR"]
 server_ip_index: 0          # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
@@ -86,6 +86,8 @@ TEST_ETRI_INDOOR:
   image_server_port: "10003"
   gps_input_path: ""
   video_input_path: ""
+  vps_load_dbfeat: 1
+  vps_save_dbfeat: 0
   
 TEST_COEX:
   map_image_path: "data/COEX/NaverMap_COEX(Satellite).png"
