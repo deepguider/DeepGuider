@@ -30,14 +30,14 @@ namespace dg
         * @param N number of matched images to be returned (top-N)
         * @return true if successful (false if failed)
         */
-        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port)
+        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port, const int load_dbfeat, const int save_dbfeat)
         {
             dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
             PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            bool ret = _apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, ipaddr, port);
+            bool ret = _apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, ipaddr, port, load_dbfeat, save_dbfeat);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
 
@@ -53,11 +53,11 @@ namespace dg
         * @param N number of matched images to be returned (top-N)
         * @return true if successful (false if failed)
         */
-        bool _apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port)
+        bool _apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port, const int load_dbfeat, const int save_dbfeat)
         {
             // Set function arguments
             int arg_idx = 0;
-            PyObject* pArgs = PyTuple_New(8);
+            PyObject* pArgs = PyTuple_New(10);
 
             // Image
             import_array();
@@ -89,6 +89,12 @@ namespace dg
             pValue = PyUnicode_FromString(ipaddr);
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
             pValue = PyUnicode_FromString(port);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+
+			// Use pre-built database features
+            pValue = PyFloat_FromDouble(load_dbfeat);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+            pValue = PyFloat_FromDouble(save_dbfeat);
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // Call the method

@@ -140,7 +140,7 @@ class ImgServer:
         for i in range(numImgs):
             imgid = res['features'][i]['properties']['id']
             request_cmd = 'http://{}:{}/{}/{}'.format(self.IP, self.image_server_port, imgid, cubic) # cubic = 'f' means forward
-            fname = os.path.join(outdir,'{}.jpg'.format(imgid))
+            fname = os.path.join(outdir,'{}_{}.jpg'.format(imgid, cubic))
             try:
                 if PythonOnly: # Code runs in "Python only" Environment
                     r = requests.get(request_cmd,allow_redirects=True)

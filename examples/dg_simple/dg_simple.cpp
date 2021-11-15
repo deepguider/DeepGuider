@@ -64,6 +64,10 @@ protected:
     int m_gui_gps_trj_radius = 2;
     int m_gui_robot_trj_radius = 1;
 
+	double m_vps_load_dbfeat = 0.0;
+	double m_vps_save_dbfeat = 0.0;
+	double m_vps_gps_accuracy = 0.9;  // Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
+
 public:
     DeepGuider() {}
     virtual ~DeepGuider();
@@ -291,6 +295,11 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "map_view_size", m_view_size, n_read);
     CX_LOAD_PARAM_COUNT(fn, "gps_input_path", m_gps_input_path, n_read);
     CX_LOAD_PARAM_COUNT(fn, "video_input_path", m_video_input_path, n_read);
+
+	// Read VPS specific Options
+    CX_LOAD_PARAM_COUNT(fn, "vps_load_dbfeat", m_vps_load_dbfeat, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "vps_save_dbfeat", m_vps_save_dbfeat, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "vps_gps_accuracy", m_vps_gps_accuracy, n_read);
 
     // Read Place Setting
     if (!site_tagname.empty())
@@ -1421,7 +1430,7 @@ bool DeepGuider::procVps()
     dg::Point2 sv_xy;
     dg::Polar2 relative;
     double sv_confidence;
-    if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence))
+    if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
     {
         m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
