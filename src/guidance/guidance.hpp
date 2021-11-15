@@ -52,17 +52,6 @@ namespace dg
             TYPE_NUM
         };
 
-        /** Moving status based on localization info*/
-        enum class MovingStatus
-        {
-            ON_NODE = 0,		//The robot has arrived at the node
-            ON_EDGE,			//The robot is 0~90% of the edge distance
-            APPROACHING_NODE,	//The robot is 90~99% of the edge distance
-            STOP_WAIT,			//not moving
-
-            TYPE_NUM			//The number of MovingStatus 
-        };
-
         /** A motion of robot for guidance*/
         enum class Motion
         {
@@ -113,8 +102,8 @@ namespace dg
                 : cmd(_cmd), node_type(_ntype), edge_type(_etype), degree(_degree), mode(_mode), distance(_distance) {}
             Motion cmd = Motion::GO_FORWARD;	// action command
             double distance = -1; //distance for active exploration (it is only used for optimal viewpoint estimation)
-            int node_type;
-            int edge_type;	//
+            int node_type = 0;
+            int edge_type = 0;	//
             int degree = 0;	// additional action direction of turn cmd -180~180
             MotionMode mode = MotionMode::MOVE_NORMAL;	// addition motion info
         };
@@ -126,14 +115,13 @@ namespace dg
         */
         struct Guidance
         {
-            GuideStatus guide_status;	// current guidance status
-            MovingStatus moving_status;	// current moving status
+            GuideStatus guide_status = GuideStatus::GUIDE_NOPATH;	// current guidance status
             std::vector<Action> actions;// action command
-            ID heading_node_id;	        // heading node
-            double relative_angle;
-            double distance_to_remain;  // distance to heading node (unit: meter)
-            std::string msg;		    // string guidance message
-            bool announce = 1;
+            ID heading_node_id = 0;	        // heading node
+            double relative_angle = 0.0;
+            double distance_to_remain = 0;  // distance to heading node (unit: meter)
+            std::string msg = "";		    // string guidance message
+            bool announce = false;
         };
 
     protected:
@@ -170,7 +158,7 @@ namespace dg
             ID next_edge_id;
 
             /** Rotation angle to next node. [deg] -180~180 */
-            int cur_degree;
+            int cur_degree = 0;
 
             /** junction of guidance */
             bool is_junction = false;
@@ -185,58 +173,36 @@ namespace dg
         GuidanceManager() { }
 
         bool initialize(dg::SharedInterface* shared);
-
         bool initiateNewGuidance();
         bool initiateNewGuidance(Point2F gps_start, Point2F gps_des);
-
+        bool initiateNewGuidance(TopometricPose pose_topo, Point2F gps_des);
         bool update(TopometricPose pose);
-        bool update(TopometricPose pose, double confidence);
-        bool applyPoseGPS(LatLon gps);
-
+        bool update(TopometricPose pose, Pose2 pose_metric);
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
         Guidance getGuidance() const { return m_curguidance; };
-        void setRobotStatus(RobotStatus status) { m_robot_status = status; };
 
     protected:
         SharedInterface* m_shared = nullptr;
         Map* getMap() { if (m_shared) return m_shared->getMap(); return nullptr; }
 
         bool validatePath(const Path& path, const Map& map);
-        int getDegree(Point2 p1, Point2 p2, Point2 p3);
-
-        std::vector <ExtendedPathElement> m_extendedPath;
-        int m_guide_idx = -1;	//starts with -1 because its pointing current guide.
-
         bool buildGuides();
-        ExtendedPathElement getCurExtendedPath(int idx);
-        Action setActionTurn(ID nid_cur, ID eid_cur, int degree);
-        Action setActionGo(ID nid_next, ID eid_cur, int degree = 0);
 
     private:
-        LatLon m_latlon;
-        double m_edge_progress = 0.0;
-        double m_rmdistance = 0.0;
-        int m_cur_head_degree = 0;
-        TopometricPose  m_curpose;
-        double m_confidence = 0.0;
-        MovingStatus  m_mvstatus = MovingStatus::ON_EDGE;
+        std::vector <ExtendedPathElement> m_extendedPath;
         GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
-        Guidance m_curguidance;
         std::vector<Guidance> m_past_guides;
-        time_t oop_start = 0, oop_end = 0;
-        int m_finalTurn = 0;
-        int m_finalEdgeId = 0;
-        double m_approachingThreshold = 20.0;
+        Guidance m_curguidance;
+        int m_guide_idx = -1;	//starts with -1 because its pointing current guide.
+        double m_remain_distance = 0.0;
+        int m_last_announce_dist = -1;
+        int m_guide_interval = 10; //m
+        double m_uncertain_dist = 3.0;
+        double m_start_exploration_dist = 5.0;
         double m_arrived_threshold = 1.0;
         bool m_arrival = false;
-        bool m_juctionguide = true;
-        RobotStatus m_robot_status;
-        int m_past_announce = 0;
-        int m_last_announce_dist = -1;
-        ID m_past_ref_node = 0;
-        double m_uncertain_dist = 2.0;
+        int m_arrival_cnt = 0;
 
-        std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
         std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
             "ESCALATOR", "UNKNOWN" };
         std::string m_edges[7] = { "SIDEWALK", "ROAD", "CROSSWALK", "ELEVATOR",
@@ -248,6 +214,19 @@ namespace dg
         std::string m_modes[4] = { "MOVE_NORMAL", "MOVE_CAUTION", "MOVE_CAUTION_CHILDREN",
             "MOVE_CAUTION_CAR" };
 
+        int getDegree(Point2 p1, Point2 p2, Point2 p3);
+        int getGuideIdxFromPose(TopometricPose pose);
+        ExtendedPathElement getCurExtendedPath(int idx);
+
+        std::string getStringAction(Action action);
+        std::string getStringFwd(Action act, int ntype, ID nid);
+        std::string getStringFwdDist(Action act, int ntype, ID nid, double d);
+        std::string getStringFwdDistAfter(Action act, int ntype, ID nid, double d);
+        std::string getStringTurn(Action act, int ntype);
+        std::string getStringTurnDist(Action act, int ntype, double dist);
+        std::string getStringGuidance(Guidance guidance);
+
+        Motion getMotion(int ntype, int etype, int degree);
         MotionMode getMode(int etype)
         {
             MotionMode mode;
@@ -264,13 +243,20 @@ namespace dg
                 break;
             }
             return mode;
-        }
+        };
 
+        bool setSimpleGuide();
+        bool setArrivalGuide();
+        bool setEmptyGuide();
+        Action setActionTurn(ID nid_cur, ID eid_cur, int degree);
+        Action setActionGo(ID nid_next, ID eid_cur, int degree = 0);
+
+        bool isNodeInPath(ID nodeid);
+        bool isEdgeInPath(ID edgeid);
         bool isForward(int degree)
         {
             return (degree >= -30 && degree <= 30) ? true : false;
         };
-
         bool isForward(Motion motion)
         {
             return ((motion == Motion::GO_FORWARD) ||
@@ -279,42 +265,54 @@ namespace dg
                 (motion == Motion::EXIT_FORWARD))
                 ? true : false;
         };
-
-        bool isNodeInPath(ID nodeid);
-        bool isEdgeInPath(ID edgeid);
-        Motion getMotion(int ntype, int etype, int degree);
-        Guidance getLastGuidance() { return m_past_guides.back(); };
-        std::string getStringAction(Action action);
-        std::string getStringFwd(Action act, int ntype, ID nid);
-        std::string getStringFwdDist(Action act, int ntype, ID nid, double d);
-        std::string getStringFwdDistAfter(Action act, int ntype, ID nid, double d);
-        std::string getStringTurn(Action act, int ntype);
-        std::string getStringTurnDist(Action act, int ntype, double dist);
-        std::string getStringGuidance(Guidance guidance, MovingStatus status);
-        int getGuideIdxFromPose(TopometricPose pose);
-        MovingStatus getMoveStatus() { return m_mvstatus; };
-        LatLon getPoseGPS() { return m_latlon; };
-
-        bool setGuideStatus(TopometricPose pose, double conf);
-        bool setGuidanceWithGuideStatus();
-        bool setInitialGuide();
-        bool setNormalGuide();
-        bool setArrivalGuide();
-        bool setEmptyGuide();
-        bool setSimpleGuide();
-        bool checkAnnounce();
-        //	bool setTunBackGuide();
-        bool applyPose(TopometricPose pose);
-
-        //bool setOOPGuide();
-        //bool regeneratePath(double start_lat, double start_lon, double dest_lat, double dest_lon);
-
+               
     public:
 
         //makeLostValue related variable and method
         double m_prevconf = 1.0;
         double m_lostvalue = 0.0;
         void makeLostValue(double prevconf, double curconf);
+
+
+        /** deprected
+        std::string getStringGuidance(Guidance guidance, MovingStatus status);
+        std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
+        bool m_juctionguide = true;
+        TopometricPose  m_curpose;
+        MovingStatus  m_mvstatus = MovingStatus::ON_EDGE;
+        LatLon m_latlon;
+        int m_cur_head_degree = 0;
+        time_t oop_start = 0, oop_end = 0;
+        int m_finalTurn = 0;
+        int m_finalEdgeId = 0;
+        double m_confidence = 0.0;
+        RobotStatus m_robot_status;
+        void setRobotStatus(RobotStatus status) { m_robot_status = status; };
+        // Moving status based on localization info
+        enum class MovingStatus
+        {
+            ON_NODE = 0,		//The robot has arrived at the node
+            ON_EDGE,			//The robot is 0~90% of the edge distance
+            APPROACHING_NODE,	//The robot is 90~99% of the edge distance
+            STOP_WAIT,			//not moving
+
+            TYPE_NUM			//The number of MovingStatus
+        };
+        MovingStatus getMoveStatus() { return m_mvstatus; };
+        LatLon getPoseGPS() { return m_latlon; };
+        //bool applyPoseGPS(LatLon gps);
+        Guidance getLastGuidance() { return m_past_guides.back(); };
+        bool setNormalGuide();
+        bool applyPose(TopometricPose pose);
+        bool setGuidanceWithGuideStatus();
+        bool setGuideStatus(TopometricPose pose, double conf);void setRobotStatus(RobotStatus status) { m_robot_status = status; };
+
+
+        //bool setOOPGuide();
+        //	bool setTunBackGuide();
+
+        //bool regeneratePath(double start_lat, double start_lon, double dest_lat, double dest_lon);
+        */
     };
 
 
