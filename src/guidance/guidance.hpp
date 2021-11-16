@@ -180,6 +180,7 @@ namespace dg
         bool update(TopometricPose pose, Pose2 pose_metric);
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
         Guidance getGuidance() const { return m_curguidance; };
+        void setRobotStatus(RobotStatus status) { m_robot_status = status; };
 
     protected:
         SharedInterface* m_shared = nullptr;
@@ -193,6 +194,7 @@ namespace dg
         GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
         std::vector<Guidance> m_past_guides;
         Guidance m_curguidance;
+        RobotStatus m_robot_status;
         int m_guide_idx = -1;	//starts with -1 because its pointing current guide.
         double m_remain_distance = 0.0;
         int m_last_announce_dist = -1;
@@ -286,8 +288,6 @@ namespace dg
         int m_finalTurn = 0;
         int m_finalEdgeId = 0;
         double m_confidence = 0.0;
-        RobotStatus m_robot_status;
-        void setRobotStatus(RobotStatus status) { m_robot_status = status; };
         // Moving status based on localization info
         enum class MovingStatus
         {
