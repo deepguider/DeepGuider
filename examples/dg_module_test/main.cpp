@@ -125,7 +125,7 @@ int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_s
 int runModule()
 {
     std::string rec_video_file = "";
-    std::string gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+    std::string gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file;
 
     // Configure localizer
     cv::Ptr<dg::DGLocalizer> localizer = cv::makePtr<dg::DGLocalizer>();
@@ -160,7 +160,7 @@ int runModule()
     int module_sel = -1;
     //module_sel = DG_Intersection;
     //module_sel = DG_VPS;
-    //module_sel = DG_LR;
+    //module_sel = DG_RoadLR;
     //module_sel = DG_OCR;
     //module_sel = DG_POI;
     module_sel = DG_RoadTheta;
@@ -191,11 +191,11 @@ int runModule()
     if (use_saved_testset && module_sel == DG_POI) poi_file = data_head[data_sel][0] + "_poi.csv";
     if (use_saved_testset && module_sel == DG_VPS) vps_file = data_head[data_sel][0] + "_vps.csv";
     if (use_saved_testset && module_sel == DG_Intersection) intersection_file = data_head[data_sel][0] + "_intersect.csv";
-    if (use_saved_testset && module_sel == DG_RoadLR) lr_file = data_head[data_sel][0] + "_roadlr.csv";
+    if (use_saved_testset && module_sel == DG_RoadLR) roadlr_file = data_head[data_sel][0] + "_roadlr.csv";
     if (use_saved_testset && module_sel == DG_RoadTheta) roadtheta_file = data_head[data_sel][0] + "_roadtheta.csv";
 
     dg::DataLoader data_loader;
-    if (!data_loader.load(video_file, gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
+    if (!data_loader.load(video_file, gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
     {
         printf("Failed to load data file\n");
         return -1;

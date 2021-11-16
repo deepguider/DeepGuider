@@ -80,7 +80,7 @@
     <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp">
+    <ClInclude Include="..\..\src\roadlr\roadlr.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp">
@@ -95,7 +95,7 @@
     <ClInclude Include="..\..\src\utils\viewport.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\lrpose_recog\lrpose_localizer.hpp">
+    <ClInclude Include="..\..\src\roadlr\roadlr_localizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
   </ItemGroup>

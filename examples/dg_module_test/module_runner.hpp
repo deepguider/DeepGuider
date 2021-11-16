@@ -1,5 +1,5 @@
-#ifndef __LOCALIZER_RUNNER__
-#define __LOCALIZER_RUNNER__
+#ifndef __MODUlE_RUNNER__
+#define __MODUlE_RUNNER__
 
 #include "dg_localizer.hpp"
 #include "dg_utils.hpp"
@@ -525,4 +525,4 @@ void onMouseEvent(int event, int x, int y, int flags, void* param)
 }
 
 
-#endif // End of '__LOCALIZER_RUNNER__'
+#endif // End of '__MODUlE_RUNNER__'
