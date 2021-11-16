@@ -137,6 +137,7 @@ protected:
     dg::Viewport m_viewport;
     cv::Point m_view_offset = cv::Point(0, 0);
     cv::Size m_view_size = cv::Size(1800, 1012);
+    int m_view_bottom_padding = 0;
     int m_video_win_height = 288;   // pixels
     int m_video_win_margin = 10;    // pixels
     int m_video_win_gap = 10;       // pixels
@@ -291,6 +292,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     m_map_image_rotation = cx::cvtDeg2Rad(map_image_rotation);
     CX_LOAD_PARAM_COUNT(fn, "map_view_offset", m_view_offset, n_read);
     CX_LOAD_PARAM_COUNT(fn, "map_view_size", m_view_size, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "map_view_bottom_padding", m_view_bottom_padding, n_read);
     CX_LOAD_PARAM_COUNT(fn, "gps_input_path", m_gps_input_path, n_read);
     CX_LOAD_PARAM_COUNT(fn, "video_input_path", m_video_input_path, n_read);
 
@@ -410,6 +412,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // prepare GUI map
     m_viewport.initialize(m_map_image, m_view_size, m_view_offset);
+    m_viewport.setBottomPadding(m_view_bottom_padding);
     m_painter.configCanvas(m_map_ref_point_pixel, cv::Point2d(m_map_pixel_per_meter, m_map_pixel_per_meter), m_map_image.size(), 0, 0);
     m_painter.setImageRotation(m_map_image_rotation);
     m_painter.drawGrid(m_map_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, cv::Point(-215, -6));
@@ -443,7 +446,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // create GUI window
     cv::namedWindow(m_winname, cv::WINDOW_NORMAL);
-    cv::resizeWindow(m_winname, m_viewport.size().width, m_viewport.size().height);
+    cv::resizeWindow(m_winname, m_viewport.size().width, m_viewport.size().height + m_view_bottom_padding);
     cv::setMouseCallback(m_winname, onMouseEvent, this);
 
     // init video recording

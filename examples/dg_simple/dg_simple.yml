@@ -56,6 +56,7 @@ TEST_ETRI_INDOOR:
   map_image_rotation: 0.95
   map_view_offset: [1289, 371]
   map_view_size: [1800, 1012]
+  map_view_bottom_padding: 305
   image_server_port: "10003"
   gps_input_path: "data/ETRI/191115_151140_ascen_fix.csv"
   video_input_path: "data/ETRI/Indoor/211105_150609_images.avi"

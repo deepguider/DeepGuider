@@ -13,6 +13,10 @@ protected:
     cv::Rect m_image_rect;
     cv::Rect m_viewport = cv::Rect(0, 0, 1920, 1080);
 
+    int m_bottom_padding = 0;
+    cv::Mat m_pad;
+    cv::Mat m_image_tmp;
+
 public:
     void initialize(cv::Mat image, cv::Size viewport_size = cv::Size(1920, 1080), cv::Point viewport_offset = cv::Point(0, 0), double zoom = 1)
     {
@@ -36,13 +40,29 @@ public:
             m_viewport.height = m_image_rect.height;
             m_viewport.y = 0; 
         }
+
+        if(m_bottom_padding > 0) setBottomPadding(m_bottom_padding);
+    }
+
+    void setBottomPadding(int pad_height)
+    {
+        m_bottom_padding = pad_height;
+        m_pad = cv::Mat::zeros(m_bottom_padding, m_viewport.width, m_image.type());
     }
 
     void getViewportImage(cv::Mat& viewport_image)
     {
         cv::AutoLock lock(m_mutex);
         cv::Rect image_roi(m_viewport.x, m_viewport.y, (int)(m_viewport.width / m_zoom + 0.5), (int)(m_viewport.height / m_zoom + 0.5));
-        cv::resize(m_image(image_roi & m_image_rect), viewport_image, m_viewport.size());
+        if(m_bottom_padding>0)
+        {
+            cv::resize(m_image(image_roi & m_image_rect), m_image_tmp, m_viewport.size());
+            cv::vconcat(m_image_tmp, m_pad, viewport_image);
+        }
+        else
+        {
+            cv::resize(m_image(image_roi & m_image_rect), viewport_image, m_viewport.size());
+        }
     }
 
     cv::Point2d cvtView2Pixel(const cv::Point2d& view_xy)
