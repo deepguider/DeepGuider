@@ -361,8 +361,7 @@ class vps:
     
     def make_search_index(self, dbFeat):
         num_db, pool_size = dbFeat.shape # NumDB,32768
-        #faiss_index = faiss.IndexFlatL2(pool_size) # ori, uses distance as metric
-        self.faiss_index = faiss.IndexFlatIP(pool_size) # fixed, dg's issue #21. It uses similarity(confidence) as metric 
+        self.faiss_index = faiss.IndexFlatL2(pool_size) # fixed, dg's issue #21. It uses similarity(confidence) as metric 
         self.faiss_index.add(dbFeat)
         return self.faiss_index
 
@@ -551,7 +550,7 @@ class vps:
         print('====> Building faiss index')
         #qFeat  : [7608,32768], pool_size = 32768 as dimension of feature
         #dbFeat : [10000,32768]
-        faiss_index = faiss.IndexFlatIP(pool_size) #32768
+        faiss_index = faiss.IndexFlatL2(pool_size) #32768
         faiss_index.add(dbFeat)
     
         print('====> Calculating recall @ N')
@@ -699,10 +698,20 @@ class vps:
         ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]        
         return self.getIDConf()
 
+    def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
+        confidences = []
+        for dist in distances:
+            conf = np.exp(-1*sigma*dist)
+            confidences.append(conf)
+        return confidences
+
     def getIDConf(self):
         if self.checking_return_value() < 0:
             print("Broken : vps.py's return value")
-        return self.vps_IDandConf
+        IDs = self.vps_IDandConf[0]
+        Distances = self.vps_IDandConf[1]
+        Confs = self.convert_distance_to_confidence(Distances)
+        return [IDs, Confs]
 
     def set_radius_by_accuracy(self, gps_accuracy=0.79):
         self.roi_radius = int(10 + 190*(1-gps_accuracy))  # 10 meters ~ 200 meters, 0.79 for 50 meters
@@ -864,7 +873,7 @@ def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
         vps_IDandConf = mod_vps.apply(qimg, K=3, gps_lat=gps_lat, gps_lon=gps_lon, gps_accuracy=0.0,
                 timestamp=1.0, ipaddr=streetview_server_ipaddr, port=streetview_server_port,
                 load_dbfeat=load_dbfeat, save_dbfeat=save_dbfeat) # k=3 for knn
-        print('vps_IDandConf, {} sec. elapsed.',vps_IDandConf, time.time() - st)
+        print('vps_IDandConf : {}\n{} sec. elapsed.'.format(vps_IDandConf, time.time() - st))
 
 def save_prebuild_dbfeat():
     run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=1)
