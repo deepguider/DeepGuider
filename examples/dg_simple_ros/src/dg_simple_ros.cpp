@@ -3,14 +3,17 @@
 #include <sensor_msgs/NavSatStatus.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <sensor_msgs/Imu.h>
-#include "std_msgs/String.h"
+#include <std_msgs/String.h>
+#include <nav_msgs/Path.h>
 #include <cv_bridge/cv_bridge.h>
 #include <thread>
-#include "dg_simple_ros/ocr_info.h"
 #include "dg_simple.cpp"
-#include <dg_simple_ros/guidance.h>
-#include <dg_simple_ros/action.h>
-#include <nav_msgs/Path.h>
+#include "dg_simple_ros/ocr_info.h"
+#include "dg_simple_ros/vps.h"
+#include "dg_simple_ros/guidance.h"
+#include "dg_simple_ros/action.h"
+#include "dg_simple_ros/dg_status.h"
+
 
 class DeepGuiderROS : public DeepGuider
 {
@@ -25,7 +28,6 @@ public:
 protected:
     virtual int readParam(const cv::FileNode& fn);
     int readRosParam(const cv::FileNode& fn);
-    double m_wait_sec = 0.01;
 
     // Topic names
     std::string m_topic_cam;
@@ -34,11 +36,6 @@ protected:
     std::string m_topic_imu;
     std::string m_topic_rgbd_image;
     std::string m_topic_rgbd_depth;
-    std::string m_topic_robot_status;
-
-    // Topic subscribers (sub modules)
-    ros::Subscriber sub_ocr;
-    void callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg);
 
     // Topic subscribers (sensor data)
     ros::Subscriber sub_image_webcam;
@@ -48,8 +45,6 @@ protected:
     ros::Subscriber sub_gps_novatel;
     ros::Subscriber sub_imu_xsense;
     ros::Subscriber sub_robot_status;
-
-    // Subscriber callbacks (sensor data)    
     void callbackImage(const sensor_msgs::Image::ConstPtr& msg);
     void callbackImageCompressed(const sensor_msgs::CompressedImageConstPtr& msg);
     void callbackRealsenseImage(const sensor_msgs::CompressedImageConstPtr& msg);
@@ -59,62 +54,38 @@ protected:
     void callbackIMU(const sensor_msgs::Imu::ConstPtr& msg);
     void callbackRobotStatus(const std_msgs::String::ConstPtr& msg);
 
-    // Topic publishers
+    // Topic publishers (sensor data)
     ros::Publisher pub_guide;
     ros::Publisher pub_path;
     ros::Publisher pub_pose;
     ros::Publisher pub_subgoal;
+    ros::Publisher pub_status;
     void publishGuidance();
     void publishPath();
     void publishDGPose();
     void publishSubGoal();
+    void publishDGStatus(bool system_shutdown = false);
+
+    // Topic subscribers (sub modules)
+    ros::Subscriber sub_ocr;
+    ros::Subscriber sub_ocr_image;
+    void callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg);
+    void callbackOCRImage(const sensor_msgs::Image::ConstPtr& msg);
+    ros::Subscriber sub_vps;
+    void callbackVPS(const dg_simple_ros::vps::ConstPtr& msg);
 
     // A node handler
     ros::NodeHandle& nh_dg;
-
-    // timestamp to framenumber converter (utility function)
-    int t2f_n = 0;
-    double t2f_offset_fn = 0;
-    double t2f_scale = 0;
-    double t2f_offset_ts = 0;
-    dg::Timestamp t2f_ts;
-    int t2f_fn;
-    void updateTimestamp2Framenumber(dg::Timestamp ts, int fn);
-    int timestamp2Framenumber(dg::Timestamp ts);
-};   
+    double m_update_hz;
+};
 
 DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
 {
-    // overwrite configuable parameters of base class
-    m_enable_intersection = false;
-    m_enable_vps = false;
-    m_enable_lrpose = false;
-    m_enable_logo = false;
-    m_enable_ocr = false;
-    m_enable_roadtheta = false;
-    m_enable_exploration = false;
-    m_enable_mapserver = true;
-
-    m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
-    m_srcdir = "/home/dgtest/deepguider/src";      // system path of deepguider/src (required for python embedding)
-    m_enable_tts = true;
+    // set ros-specific defaults
+    m_srcdir = "/home/dgtest/deepguider/src";      // absolute system path of deepguider/src (required for python embedding)
     m_threaded_run_modules = true;
-    m_use_high_precision_gps = false;
-
-    m_data_logging = false;
-    m_video_recording = false;
-    m_video_recording_fps = 15;
     m_recording_header_name = "dg_ros_";
-
-    m_map_image_path = "data/NaverMap_ETRI(Satellite)_191127.png";
-    m_map_data_path = "data/ETRI/TopoMap_ETRI_210803.csv";
-    m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
-    m_map_ref_point_pixel = dg::Point2(347, 297);
-    m_map_pixel_per_meter = 1.039;
-    m_map_image_rotation = cx::cvtDeg2Rad(1.0);
-
-    // ros-specific parameters
-    m_wait_sec = 0.1;
+    m_update_hz = 10;
 }
 
 DeepGuiderROS::~DeepGuiderROS()
@@ -131,6 +102,12 @@ int DeepGuiderROS::readParam(const cv::FileNode& fn)
 int DeepGuiderROS::readRosParam(const cv::FileNode& fn)
 {
     int n_read = 0;
+
+    // force to set threaded run
+    m_threaded_run_modules = true;
+    CX_LOAD_PARAM_COUNT(fn, "ros_update_hz", m_update_hz, n_read);
+
+    // topic names configuration
     CX_LOAD_PARAM_COUNT(fn, "topic_cam", m_topic_cam, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_gps", m_topic_gps, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_dgps", m_topic_dgps, n_read);
@@ -163,10 +140,6 @@ bool DeepGuiderROS::initialize(std::string config_file)
     bool ok = DeepGuider::initialize(config_file);
     if(!ok) return false;
 
-    // Initialize module subscribers
-    sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
-    if(!m_topic_robot_status.empty()) sub_robot_status = nh_dg.subscribe("/keti_robot/status", 1, &DeepGuiderROS::callbackRobotStatus, this);
-
     // Initialize sensor subscribers
     if(!m_topic_cam.empty()) sub_image_webcam = nh_dg.subscribe(m_topic_cam, 1, &DeepGuiderROS::callbackImageCompressed, this);
     if(!m_topic_gps.empty()) sub_gps_asen = nh_dg.subscribe(m_topic_gps, 1, &DeepGuiderROS::callbackGPSAsen, this);
@@ -175,11 +148,18 @@ bool DeepGuiderROS::initialize(std::string config_file)
     if(!m_topic_rgbd_image.empty()) sub_image_realsense_image = nh_dg.subscribe(m_topic_rgbd_image, 1, &DeepGuiderROS::callbackRealsenseImage, this);
     if(!m_topic_rgbd_depth.empty()) sub_image_realsense_depth = nh_dg.subscribe(m_topic_rgbd_depth, 1, &DeepGuiderROS::callbackRealsenseDepth, this);
 
-    // Initialize publishers
+    // Initialize deepguider subscribers
+    sub_robot_status = nh_dg.subscribe("/keti_robot/status", 1, &DeepGuiderROS::callbackRobotStatus, this);
+    sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
+    sub_ocr_image = nh_dg.subscribe("/dg_ocr/image", 1, &DeepGuiderROS::callbackOCRImage, this);
+    sub_vps = nh_dg.subscribe("/dg_vps/output", 1, &DeepGuiderROS::callbackVPS, this);
+
+    // Initialize deepguider publishers
     pub_guide = nh_dg.advertise<dg_simple_ros::guidance>("dg_guide", 1, true);
     pub_path = nh_dg.advertise<nav_msgs::Path>("dg_path", 1, true);
-    pub_pose = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_pose_utm", 1, true);
+    pub_pose = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_", 1, true);
     pub_subgoal = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_goal_utm", 1, true);
+    pub_status = nh_dg.advertise<dg_simple_ros::dg_status>("dg_status", 1, true);
 
     return true;
 }
@@ -188,17 +168,17 @@ int DeepGuiderROS::run()
 {
     printf("Run deepguider system...\n");
 
-    // start recognizer threads
-    if (m_enable_vps) vps_thread = new std::thread(threadfunc_vps, this);
-    if (m_enable_lrpose) lrpose_thread = new std::thread(threadfunc_lrpose, this);
-    if (m_enable_ocr) ocr_thread = new std::thread(threadfunc_ocr, this);    
-    if (m_enable_logo) logo_thread = new std::thread(threadfunc_logo, this);
-    if (m_enable_intersection) intersection_thread = new std::thread(threadfunc_intersection, this);
-    if (m_enable_roadtheta) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
-    if (m_enable_exploration) exploration_thread = new std::thread(threadfunc_exploration, this);    
+    // start internal recognizer threads
+    if (m_enable_intersection==1) intersection_thread = new std::thread(threadfunc_intersection, this);
+    if (m_enable_ocr==1) ocr_thread = new std::thread(threadfunc_ocr, this);
+    if (m_enable_vps==1) vps_thread = new std::thread(threadfunc_vps, this);
+    if (m_enable_lrpose==1) lrpose_thread = new std::thread(threadfunc_lrpose, this);
+    if (m_enable_roadtheta==1) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
+    if (m_enable_exploration==1) exploration_thread = new std::thread(threadfunc_exploration, this);    
+    if (m_enable_logo==1) logo_thread = new std::thread(threadfunc_logo, this);
 
     // run main loop
-    ros::Rate loop(1 / m_wait_sec);
+    ros::Rate loop(m_update_hz);
     while (ros::ok())
     {
         ros::Time timestamp = ros::Time::now();
@@ -207,20 +187,14 @@ int DeepGuiderROS::run()
         loop.sleep();
     }
 
-    // end system
-    printf("End deepguider system...\n");
+    // shutdown system
+    printf("Shutdown deepguider system...\n");
+    publishDGStatus(true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     terminateThreadFunctions();
     printf("\tthread terminated\n");
-    if(m_video_recording)
-    {
-        m_video_gui.release();    
-        printf("\tclose recording\n");
-    }
-    if(m_data_logging)
-    {
-        m_video_cam.release();
-        printf("\tclose data loging\n");
-    }
+    if(m_video_recording) m_video_gui.release();
+    if(m_video_recording) printf("\trecording closed\n");
     cv::destroyWindow(m_winname);
     printf("\tgui window destroyed\n");
     nh_dg.shutdown();
@@ -240,6 +214,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     publishPath();
     publishDGPose();
     publishSubGoal();
+    publishDGStatus();
     
     // draw GUI display
     cv::Mat gui_image;
@@ -416,23 +391,64 @@ void DeepGuiderROS::callbackIMU(const sensor_msgs::Imu::ConstPtr& msg)
 // A callback function for subscribing OCR output
 void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
 {
-    std::vector<OCRResult> ocrs;
-    for(int i = 0; i<(int)msg->ocrs.size(); i++)
-    {
-        OCRResult ocr;
-        ocr.label = msg->ocrs[i].label;
-        ocr.xmin = msg->ocrs[i].xmin;
-        ocr.ymin = msg->ocrs[i].ymin;
-        ocr.xmax = msg->ocrs[i].xmax;
-        ocr.ymax = msg->ocrs[i].ymax;
-        ocr.confidence = msg->ocrs[i].confidence;
-        ocrs.push_back(ocr);
-    }
     dg::Timestamp capture_time = msg->timestamp;
     double proc_time = msg->processingtime;
-    int cam_fnumber = timestamp2Framenumber(capture_time);
+    
+    dg::Point2 poi_xy;
+    dg::Polar2 relative;
+    double poi_confidence;
+    for(int i = 0; i<(int)msg->ocrs.size(); i++)
+    {
+        poi_xy.x = msg->ocrs[i].x;
+        poi_xy.y = msg->ocrs[i].y;
+        relative.lin = msg->ocrs[i].rel_r;
+        relative.ang = msg->ocrs[i].rel_pi;
+        poi_confidence = msg->ocrs[i].confidence;
+        m_localizer.applyPOI(poi_xy, relative, capture_time, poi_confidence);
+    }
+}
 
-    procOcr(ocrs, capture_time);
+// A callback function for subscribing a RGB image
+void DeepGuiderROS::callbackOCRImage(const sensor_msgs::Image::ConstPtr& msg)
+{
+    ROS_INFO_THROTTLE(1.0, "OCR image (timestamp: %f [sec]).", msg->header.stamp.toSec());
+    cv_bridge::CvImagePtr image_ptr;
+    cv::Mat image;
+    try
+    {
+        image_ptr = cv_bridge::toCvCopy(msg);
+        m_ocr_mutex.lock();
+        m_ocr_image = image_ptr->image;
+        m_ocr_mutex.unlock();
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception @ callbackImage(): %s", e.what());
+        return;
+    }
+}
+
+// A callback function for subscribing VPS output
+void DeepGuiderROS::callbackVPS(const dg_simple_ros::vps::ConstPtr& msg)
+{
+    dg::Point2 sv_xy(msg->x, msg->y);
+    dg::Polar2 relative(msg->rel_r, msg->rel_pi);
+    double sv_confidence = msg->confidence;
+    dg::Timestamp capture_time = msg->timestamp;
+    double proc_time = msg->processingtime;
+    m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
+
+    dg::ID sv_id = msg->id;
+    cv::Mat sv_image;
+    if (MapManager::getStreetViewImage(sv_id, sv_image, "f") && !sv_image.empty())
+    {
+        m_vps.set(sv_id, sv_confidence, capture_time, proc_time);
+        m_vps.draw(sv_image, 3.0);
+        m_vps_mutex.lock();
+        m_vps_id = sv_id;
+        m_vps_image = sv_image;
+        m_vps_mutex.unlock();
+    }
 }
 
 void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
@@ -545,50 +561,22 @@ void DeepGuiderROS::publishPath()
     pub_path.publish(rospath);
 }
 
-void DeepGuiderROS::updateTimestamp2Framenumber(dg::Timestamp ts, int fn)
+void DeepGuiderROS::publishDGStatus(bool system_shutdown)
 {
-    if(t2f_n>1)
-    {
-        double scale = (fn - t2f_fn) / (ts - t2f_ts);
-        t2f_scale = t2f_scale * 0.9 + scale * 0.1;
+    dg_simple_ros::dg_status msg;
 
-        double fn_est = (ts - t2f_offset_ts)*t2f_scale + t2f_offset_fn;
-        double est_err = fn - fn_est;
-        t2f_offset_fn = t2f_offset_fn + est_err;
+    dg::Timestamp  cur_time;
+    dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&cur_time);
+    dg::LatLon ll = m_localizer.getPoseGPS();
+    msg.dg_shutdown = system_shutdown;
+    msg.x = cur_pose.x;
+    msg.y = cur_pose.y;
+    msg.lat = ll.lat;
+    msg.lon = ll.lon;
+    msg.confidence = m_localizer.getPoseConfidence();
+    msg.timestamp = cur_time;
 
-        t2f_ts = ts;
-        t2f_fn = fn;
-        t2f_n++;
-        //int fn_est2 = timestamp2Framenumber(ts);
-        //printf("[timestamp=%d] err=%.1lf, fn=%d, fn_est=%d", t2f_n, est_err, fn, fn_est2);
-        return;
-    }
-    if(t2f_n == 1)
-    {
-        t2f_scale = (fn - t2f_fn) / (ts - t2f_ts);
-        t2f_ts = ts;
-        t2f_fn = fn;
-        t2f_n = 2;        
-        return;
-    }
-    if(t2f_n<=0)
-    {
-        t2f_ts = ts;
-        t2f_fn = fn;        
-        t2f_offset_ts = ts;
-        t2f_offset_fn = fn;
-        t2f_scale = 1;
-        t2f_n = 1;
-        return;
-    }
-}
-
-int DeepGuiderROS::timestamp2Framenumber(dg::Timestamp ts)
-{
-    if(t2f_n<=0) return -1;
-
-    int fn = (int)((ts - t2f_offset_ts)*t2f_scale + t2f_offset_fn + 0.5);
-    return fn;
+    pub_status.publish(msg);
 }
 
 // The main function

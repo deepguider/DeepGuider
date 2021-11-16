@@ -212,7 +212,7 @@ namespace dg
             return m_processing_time;
         }
 
-        void draw(cv::Mat& image) const;
+        void draw(cv::Mat& image, double drawing_scale = 1) const;
 
         void print() const
         {

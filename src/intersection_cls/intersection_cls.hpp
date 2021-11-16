@@ -98,7 +98,7 @@ namespace dg
             m_processing_time = proc_time;
         }
 
-        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
+        void draw(cv::Mat& image, double drawing_scale = 1.0, cv::Scalar color = cv::Scalar(0, 255, 0)) const
         {
             cv::AutoLock lock(m_mutex);
             cv::Point2d pt(image.cols / 2 - 180 * drawing_scale, 100 * drawing_scale);

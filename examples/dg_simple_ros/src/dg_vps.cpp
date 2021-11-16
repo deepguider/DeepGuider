@@ -1,10 +1,10 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
-#include "dg_simple_ros/ocr_info.h"
+#include "dg_simple_ros/vps.h"
 #include "dg_simple_ros/dg_status.h"
 #include "core/basic_type.hpp"
-#include "ocr_recog/ocr_localizer.hpp"
+#include "vps/vps_localizer.hpp"
 #include "utils/python_embedding.hpp"
 
 #define LOAD_PARAM_VALUE(fn, name_cfg, name_var) \
@@ -12,11 +12,11 @@
 
 using namespace dg;
 
-class DGNodeOCR : public SharedInterface
+class DGNodeVPS : public SharedInterface
 {
 public:
-    DGNodeOCR(ros::NodeHandle& nh);
-    virtual ~DGNodeOCR();
+    DGNodeVPS(ros::NodeHandle& nh);
+    virtual ~DGNodeVPS();
 
     bool initialize(std::string config_file);
     int run();
@@ -26,12 +26,18 @@ public:
 protected:
     bool loadConfig(std::string config_file);
 
-    dg::OCRLocalizer m_recognizer;
+    dg::VPSLocalizer m_recognizer;
     bool m_enable_module = true;
     std::string m_srcdir = "/home/dgtest/deepguider/src";
+    std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
+    std::string m_image_server_port = "10000";  // etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
     std::string m_map_data_path = "data/ETRI/TopoMap_ETRI.csv";
     dg::LatLon m_map_ref_point = dg::LatLon(36.383837659737, 127.367880828442);
     virtual Pose2 getPose(Timestamp* timestamp = nullptr) const;
+
+	double m_vps_load_dbfeat = 0.0;
+	double m_vps_save_dbfeat = 0.0;
+	double m_vps_gps_accuracy = 0.9;  // Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
 
     cv::Mutex m_cam_mutex;
     cv::Mat m_cam_image;
@@ -50,7 +56,6 @@ protected:
 
     // Topic publishers
     ros::Publisher m_publisher;
-    ros::Publisher m_publisher_image;
 
     // A node handler
     ros::NodeHandle& nh_dg;
@@ -58,15 +63,15 @@ protected:
     bool m_stop_running = false;
 };
 
-DGNodeOCR::DGNodeOCR(ros::NodeHandle& nh) : nh_dg(nh)
+DGNodeVPS::DGNodeVPS(ros::NodeHandle& nh) : nh_dg(nh)
 {
 }
 
-DGNodeOCR::~DGNodeOCR()
+DGNodeVPS::~DGNodeVPS()
 {
 }
 
-bool DGNodeOCR::loadConfig(std::string config_file)
+bool DGNodeVPS::loadConfig(std::string config_file)
 {
     if (config_file.empty())
     {
@@ -79,16 +84,17 @@ bool DGNodeOCR::loadConfig(std::string config_file)
         return false;
     }
 
+    // Read Main Options
     cv::FileNode fn = fs.root();
     int enable_mode = -1;
-    LOAD_PARAM_VALUE(fn, "enable_ocr", enable_mode);
+    LOAD_PARAM_VALUE(fn, "enable_vps", enable_mode);
     if(enable_mode == 2) m_enable_module = true;
     else m_enable_module = false;
     LOAD_PARAM_VALUE(fn, "dg_srcdir", m_srcdir);
     LOAD_PARAM_VALUE(fn, "topic_cam", m_topic_cam);
     LOAD_PARAM_VALUE(fn, "ros_update_hz", m_update_hz);
 
-    // Read Topic Settings
+    // Read Topic Setting
     int topic_name_index = -1;
     std::string topicset_tagname;
     std::vector<cv::String> topic_names_set;
@@ -104,12 +110,24 @@ bool DGNodeOCR::loadConfig(std::string config_file)
         }
     }
 
-    // Read map setting
+    // Read image server settings
+    int server_ip_index = -1;
+    std::vector<cv::String> server_ip_list;
+    LOAD_PARAM_VALUE(fn, "server_ip_list", server_ip_list);
+    LOAD_PARAM_VALUE(fn, "server_ip_index", server_ip_index);
+    if (server_ip_index >= 0 && server_ip_index < server_ip_list.size()) m_server_ip = server_ip_list[server_ip_index];
+    LOAD_PARAM_VALUE(fn, "image_server_port", m_image_server_port);
     LOAD_PARAM_VALUE(fn, "map_data_path", m_map_data_path);
     cv::Vec2d ref_point = cv::Vec2d(m_map_ref_point.lat, m_map_ref_point.lon);
     LOAD_PARAM_VALUE(fn, "map_ref_point_latlon", ref_point);
     m_map_ref_point = dg::LatLon(ref_point[0], ref_point[1]);
 
+	// Read VPS specific Options
+    LOAD_PARAM_VALUE(fn, "vps_load_dbfeat", m_vps_load_dbfeat);
+    LOAD_PARAM_VALUE(fn, "vps_save_dbfeat", m_vps_save_dbfeat);
+    LOAD_PARAM_VALUE(fn, "vps_gps_accuracy", m_vps_gps_accuracy);
+
+    // Read site-specific settings
     int site_index = -1;
     std::string site_tagname;
     std::vector<cv::String> site_names;
@@ -121,6 +139,10 @@ bool DGNodeOCR::loadConfig(std::string config_file)
         cv::FileNode fn_site = fn[site_tagname];
         if (!fn_site.empty())
         {
+            LOAD_PARAM_VALUE(fn_site, "image_server_port", m_image_server_port);
+            LOAD_PARAM_VALUE(fn_site, "vps_load_dbfeat", m_vps_load_dbfeat);
+            LOAD_PARAM_VALUE(fn_site, "vps_save_dbfeat", m_vps_save_dbfeat);
+            LOAD_PARAM_VALUE(fn_site, "vps_gps_accuracy", m_vps_gps_accuracy);
             LOAD_PARAM_VALUE(fn_site, "map_data_path", m_map_data_path);
             cv::Vec2d ref_point = cv::Vec2d(m_map_ref_point.lat, m_map_ref_point.lon);
             LOAD_PARAM_VALUE(fn_site, "map_ref_point_latlon", ref_point);
@@ -131,13 +153,13 @@ bool DGNodeOCR::loadConfig(std::string config_file)
     return true;
 }
 
-void DGNodeOCR::close()
+void DGNodeVPS::close()
 { 
     m_recognizer.clear();
     close_python_environment();
 }
 
-bool DGNodeOCR::initialize(std::string config_file)
+bool DGNodeVPS::initialize(std::string config_file)
 {
     printf("Initialize %s...\n", m_recognizer.name());
 
@@ -162,12 +184,11 @@ bool DGNodeOCR::initialize(std::string config_file)
         printf("\tTopic name for camera input is not specified!\n");
         return false;
     }
-    sub_image_webcam = nh_dg.subscribe(m_topic_cam, 1, &DGNodeOCR::callbackImageCompressed, this);
-    sub_dg_status = nh_dg.subscribe("/dg_simple_ros/dg_status", 1, &DGNodeOCR::callbackDGStatus, this);
+    sub_image_webcam = nh_dg.subscribe(m_topic_cam, 1, &DGNodeVPS::callbackImageCompressed, this);
+    sub_dg_status = nh_dg.subscribe("/dg_simple_ros/dg_status", 1, &DGNodeVPS::callbackDGStatus, this);
 
     // Initialize publishers
-    m_publisher = nh_dg.advertise<dg_simple_ros::ocr_info>("output", 1, true);
-    m_publisher_image = nh_dg.advertise<sensor_msgs::Image>("image", 1, true);
+    m_publisher = nh_dg.advertise<dg_simple_ros::vps>("output", 1, true);
 
     // initialize python
     bool threaded_run = false;
@@ -175,8 +196,8 @@ bool DGNodeOCR::initialize(std::string config_file)
     printf("\tPython environment initialized!\n");
 
     // initialize recognizer
-    std::string module_path = m_srcdir + "/ocr_recog";
-    if (!m_recognizer.initialize(this, module_path)) return false;
+    std::string module_path = m_srcdir + "/vps";
+    if (!m_recognizer.initialize(this, module_path, m_server_ip, m_image_server_port)) return false;
     printf("\t%s initialized in %.3lf seconds!\n", m_recognizer.name(), m_recognizer.procTime());
 
     // initialize offline map
@@ -190,7 +211,7 @@ bool DGNodeOCR::initialize(std::string config_file)
     return true;
 }
 
-int DGNodeOCR::run()
+int DGNodeVPS::run()
 {
     printf("Run %s...\n", m_recognizer.name());
 
@@ -210,7 +231,7 @@ int DGNodeOCR::run()
     return 0;
 }
 
-bool DGNodeOCR::runOnce(double timestamp)
+bool DGNodeVPS::runOnce(double timestamp)
 {
     dg::Timestamp ts_old = m_recognizer.timestamp();
     cv::Mat cam_image;
@@ -223,45 +244,29 @@ bool DGNodeOCR::runOnce(double timestamp)
     }    
     m_cam_mutex.unlock();
 
-    std::vector<dg::Point2> poi_xys;
-    std::vector<dg::Polar2> relatives;
-    std::vector<double> poi_confidences;
-    if (!cam_image.empty() && m_recognizer.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
+    dg::Point2 sv_xy;
+    dg::Polar2 relative;
+    double sv_confidence;
+    if (!cam_image.empty() && m_recognizer.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
     {
-        if(!poi_xys.empty())
-        {
-            dg_simple_ros::ocr_info msg;
-            for(int i=0; i<(int)poi_xys.size(); i++)
-            {
-                dg_simple_ros::ocr ocr;
-                ocr.x = poi_xys[i].x;
-                ocr.y = poi_xys[i].y;
-                ocr.rel_r = relatives[i].lin;
-                ocr.rel_pi = relatives[i].ang;
-                ocr.confidence = poi_confidences[i];
-                msg.ocrs.push_back(ocr);
-            }
-            msg.timestamp = capture_time;
-            msg.processingtime = m_recognizer.procTime();
-            m_publisher.publish(msg);
-        }
+        dg_simple_ros::vps msg;
+        msg.id = m_recognizer.getViewID();
+        msg.x = sv_xy.x;
+        msg.y = sv_xy.y;
+        msg.rel_r = relative.lin;
+        msg.rel_pi = relative.ang;
+        msg.confidence = sv_confidence;
+        msg.processingtime = m_recognizer.procTime();
+        msg.timestamp = capture_time;
+        m_publisher.publish(msg);
 
-        std::vector<OCRResult> ocrs = m_recognizer.get();
-        if(!ocrs.empty())
-        {
-            m_recognizer.draw(cam_image);
-            sensor_msgs::ImagePtr msg_image;
-            msg_image = cv_bridge::CvImage(std_msgs::Header(), "bgr8", cam_image).toImageMsg();
-            msg_image->header.stamp.fromSec(capture_time);
-            m_publisher_image.publish(msg_image);
-        }
         m_recognizer.print();
     }
 
     return true;
 }
 
-void DGNodeOCR::callbackImageCompressed(const sensor_msgs::CompressedImageConstPtr& msg)
+void DGNodeVPS::callbackImageCompressed(const sensor_msgs::CompressedImageConstPtr& msg)
 {
     //ROS_INFO_THROTTLE(1.0, "Compressed RGB(timestamp: %f [sec]).", msg->header.stamp.toSec());
     try
@@ -278,7 +283,7 @@ void DGNodeOCR::callbackImageCompressed(const sensor_msgs::CompressedImageConstP
     }
 }
 
-void DGNodeOCR::callbackDGStatus(const dg_simple_ros::dg_status::ConstPtr& msg)
+void DGNodeVPS::callbackDGStatus(const dg_simple_ros::dg_status::ConstPtr& msg)
 {
     cv::AutoLock lock(m_dg_status_mutex);
     m_stop_running = msg->dg_shutdown;
@@ -287,7 +292,7 @@ void DGNodeOCR::callbackDGStatus(const dg_simple_ros::dg_status::ConstPtr& msg)
     m_dg_latlon_confidence = msg->confidence;
 }
 
-Pose2 DGNodeOCR::getPose(Timestamp* timestamp) const
+Pose2 DGNodeVPS::getPose(Timestamp* timestamp) const
 {
     cv::AutoLock lock(m_dg_status_mutex);
     return m_map.toMetric(m_dg_latlon);
@@ -296,9 +301,9 @@ Pose2 DGNodeOCR::getPose(Timestamp* timestamp) const
 // The main function
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "dg_ocr");
+    ros::init(argc, argv, "dg_vps");
     ros::NodeHandle nh("~");
-    DGNodeOCR dg_node(nh);
+    DGNodeVPS dg_node(nh);
     if (dg_node.initialize("dg_ros.yml"))
     {
         dg_node.run();

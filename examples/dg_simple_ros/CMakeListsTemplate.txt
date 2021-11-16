@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 2.8.12)
 project(dg_simple_ros)
 
 # set Python path
@@ -6,7 +6,7 @@ set(PYTHON_INCLUDE_DIRS "/usr/include/python3.6m")
 set(PYTHON_LIBRARIES "/usr/lib/x86_64-linux-gnu/libpython3.6m.so")
 
 # set DeepGuider path
-set(DGDIR   "/work/deepguider")
+set(DGDIR   "/home/dgtest/deepguider")
 set(BINDIR  "${DGDIR}/bin")
 set(SRCDIR  "${DGDIR}/src")
 set(EXTDIR  "${DGDIR}/EXTERNAL")
@@ -18,6 +18,12 @@ set(FS_LIBRARIES "-lstdc++fs")
 
 add_compile_options(-std=c++17)
 add_compile_options(-pthread)
+add_compile_options(-O3)      # build optimization level 3 (comment out this line when want to build debug mode)
+
+#find_package( PythonInterp 3.6 REQUIRED )
+#find_package( PythonLibs 3.6 REQUIRED )
+find_package( OpenCV 3.2 REQUIRED )
+find_package( CURL REQUIRED )
 
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
@@ -26,19 +32,15 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
-#find_package( PythonInterp 3.6 REQUIRED )
-#find_package( PythonLibs 3.6 REQUIRED )
-find_package( OpenCV 3.2 REQUIRED )
-#find_package( OpenCV REQUIRED )
-find_package( CURL REQUIRED )
-
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
   ocr.msg
   ocr_info.msg
+  vps.msg
   guidance.msg
-  action.msg  
+  action.msg
+  dg_status.msg
 )
 
 ## Generate added messages and services with any dependencies listed here
@@ -71,21 +73,31 @@ target_link_libraries(
   ${FS_LIBRARIES}
 )
 
-# dg_ocr
-add_executable(dg_ocr src/dg_ocr.cpp ${SOURCES})
+# dg_ocr (caution: don't remove roadtheta from sources list)
+file(GLOB SOURCES_OCR ${SRCDIR}/core/*.cpp ${SRCDIR}/ocr_recog/*.cpp ${SRCDIR}/roadtheta/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp)
+add_executable(dg_ocr src/dg_ocr.cpp ${SOURCES_OCR})
 add_dependencies(dg_ocr ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(
   dg_ocr
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
   ${PYTHON_LIBRARIES}
-  ${CURL_LIBRARIES}
-  ${JSONCPP_LIBRARIES}
-  ${FS_LIBRARIES}
 )
 
+# dg_vps
+file(GLOB SOURCES_VPS ${SRCDIR}/core/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp)
+add_executable(dg_vps src/dg_vps.cpp ${SOURCES_VPS})
+add_dependencies(dg_vps ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(
+  dg_vps
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+  ${PYTHON_LIBRARIES}
+  ${CURL_LIBRARIES}
+  ${JSONCPP_LIBRARIES}
+)
 
-install(TARGETS ${PROJECT_NAME} dg_ocr
+install(TARGETS ${PROJECT_NAME} dg_ocr dg_vps
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

@@ -2,41 +2,42 @@
 ---
 ## Activate/deactivate submodules
 enable_intersection: 0
-enable_vps: 0
+enable_ocr: 0    # 0: disable, 1: run as internal module, 2: run as external ros node 
+enable_vps: 0    # 0: disable, 1: run as internal module, 2: run as external ros node
 enable_lrpose: 0
-enable_poi_logo: 0
-enable_poi_ocr: 0
 enable_roadtheta: 0
 enable_exploration: 0
+enable_logo: 0
 enable_imu: 0
-enable_mapserver: 0
+enable_mapserver: 0    # 0: use saved offline map, 1: online mapserver
 
-### Main Options
+## Main Options
 site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, ...
 site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR"]
 server_ip_index: 0          # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
-topic_name_index: 0         # 0: ETRI CART, 1: KETI ROBOT
-topic_names_set: ["ETRI_CART", "KETI_ROBOT", "ETRI_CART_VER1"]
+image_server_port: "10000"  # etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
+topic_name_index: 0         # 0: ETRI CART_VER2, 1: KETI ROBOT
+topic_names_set: ["ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
 
 dg_srcdir: "/home/dgtest/deepguider/src"  # path of deepguider/src folder (required for python embedding)
 enable_tts: 1
 threaded_run_modules: 1
 use_high_precision_gps: 0   # 0: asen gps, 1: Novatel gps
+ros_update_hz: 10
 
-### Other Configurations
-enable_data_logging: 0
+## Other Configurations
 video_recording: 0
 video_recording_fps: 15
 recording_header_name: "dg_ros_"
 
-### VPS Specific Options
+## VPS Specific Options
 vps_load_dbfeat: 0
 vps_save_dbfeat: 0
 vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
 
-### Topic Names Set
-ETRI_CART:
+## Topic Names Set
+ETRI_CART_VER2:
   topic_cam: "/uvc_camera/image_raw/compressed"
   topic_gps: "/ascen_gps/fix"
   #topic_dgps: "/gps/fix"
@@ -60,7 +61,7 @@ KETI_ROBOT:
   #topic_rgbd_image: "/rs_front_camera1/color/image_raw/compressed"
   #topic_rgbd_depth: "/rs_front_camera1/aligned_depth_to_color/image_raw/compressed"
 
-## Pre-defined Place Settings
+## Pre-defined Site Settings
 TEST_ETRI:
   map_image_path: "data/ETRI/NaverMap_ETRI(Satellite).png"
   map_data_path: "data/ETRI/TopoMap_ETRI.csv"

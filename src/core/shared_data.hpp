@@ -97,27 +97,27 @@ public:
      * @param[out] Timestamp of the current pose
      * @return Return current metric pose
      */
-    virtual Pose2 getPose(Timestamp* timestamp = nullptr) const = 0;
+    virtual Pose2 getPose(Timestamp* timestamp = nullptr) const { return Pose2(); }
 
     /**
      * Get current LatLon pose
      * @param[out] Timestamp of the current pose
      * @return Return current LatLon pose
      */
-    virtual LatLon getPoseGPS(Timestamp* timestamp = nullptr) const = 0;
+    virtual LatLon getPoseGPS(Timestamp* timestamp = nullptr) const { return LatLon(); }
 
     /**
      * Get current topometric pose
      * @param[out] Timestamp of the current pose
      * @return Return current topometric pose
      */
-    virtual TopometricPose getPoseTopometric(Timestamp* timestamp = nullptr) const = 0;
+    virtual TopometricPose getPoseTopometric(Timestamp* timestamp = nullptr) const { return TopometricPose(); }
 
     /**
      * Get confidence of current pose
      * @return Return confidence value (0 ~ 1)
      */
-    virtual double getPoseConfidence(Timestamp* timestamp = nullptr) const = 0;
+    virtual double getPoseConfidence(Timestamp* timestamp = nullptr) const { return -1; }
 
     /**
      * Process out-of-path event

@@ -117,6 +117,7 @@ protected:
     mutable cv::Mutex m_mutex;
     Timestamp m_timestamp = -1;
     double m_processing_time = -1;
+    bool m_initialized = false;
 
     PyObject* m_pInstance = nullptr;
     PyObject* m_pFuncApply = nullptr;

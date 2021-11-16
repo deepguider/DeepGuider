@@ -191,7 +191,7 @@ class ActiveNavigation : public PythonModuleWrapper
             t = m_timestamp;
         }
 
-      	void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
+      	void draw(cv::Mat& image, double drawing_scale = 1.0, cv::Scalar color = cv::Scalar(0, 255, 0)) const
         {
             cv::AutoLock lock(m_mutex);
             cv::Point2d pt1(image.cols / 2 - 190 * drawing_scale, 50 * drawing_scale);

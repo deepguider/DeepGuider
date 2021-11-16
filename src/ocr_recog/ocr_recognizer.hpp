@@ -142,7 +142,7 @@ namespace dg
             m_processing_time = proc_time;
         }
 
-        void draw(cv::Mat& image, int font_sz = 28, double xscale = 1, double yscale = 1, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 1) const
+        void draw(cv::Mat& image, double drawing_scale = 1.0, int font_sz = 28, double xscale = 1, double yscale = 1, cv::Scalar color = cv::Scalar(0, 255, 0)) const
         {
             cv::AutoLock lock(m_mutex);
             for (size_t i = 0; i < m_result.size(); i++)

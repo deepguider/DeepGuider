@@ -5,9 +5,8 @@ if [ ! -n "$VIRTUAL_ENV" ];then
 	exit 0
 fi
 
-source /opt/ros/melodic/setup.bash
-catkin_make
 source devel/setup.bash
+catkin_make
 
 ## Start roscore
 pid=`pgrep roscore`
@@ -21,12 +20,11 @@ pid=`pgrep rosbag`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
-gnome-terminal -- rosbag play --pause -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
-echo "Press [Space] to start rosbag play on the gnome terminal"
+# --pause: pause rosbag play until spacebar key pressed
+# -d n: delay rosbag play n seconds
+# -s n: skip first n seconds
+# -r k: replay rosbag k times faster than normal speed
+gnome-terminal -- rosbag play -d 20 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
 
-## Start dg_simple_ros
-pid=`pgrep dg_simple_ros`
-if [ -n "${pid}" ];then  # If process is running.
-    kill -9 ${pid}
-fi
-rosrun dg_simple_ros dg_simple_ros            # run dg_simple_ros
+## Start dg_simple_ros package (working directory: devel/lib/dg_simple_ros/)
+roslaunch dg_simple_ros dg_simple_ros.launch

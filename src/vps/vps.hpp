@@ -180,20 +180,32 @@ namespace dg
             m_processing_time = proc_time;
         }
 
-        void draw(cv::Mat& image, cv::Scalar color = cv::Scalar(0, 255, 0), double drawing_scale = 2) const
+        void set(dg::ID id, double confidence, Timestamp ts, double proc_time = -1)
+        {
+            cv::AutoLock lock(m_mutex);
+            VPSResult vps_result;
+            vps_result.id = id;
+            vps_result.confidence = confidence;
+            m_result.clear();
+            m_result.push_back(vps_result);
+            m_timestamp = ts;
+            m_processing_time = proc_time;
+        }
+
+        void draw(cv::Mat& image, double drawing_scale = 1.0, cv::Scalar color = cv::Scalar(0, 255, 0)) const
         {
             cv::AutoLock lock(m_mutex);
             if (m_result.empty()) return;
 
             cv::Point2d msg_offset = cv::Point2d(10 * drawing_scale, 30 * drawing_scale);
             double font_scale = 0.8 * drawing_scale;
+            std::string str_id = cv::format("ID: %zu", m_result[0].id);
+            cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), (int)(5 * drawing_scale));
+            cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), (int)(2 * drawing_scale));
+            msg_offset.y += (30 * drawing_scale);
             std::string str_confidence = cv::format("Confidence: %.2lf", m_result[0].confidence);
             cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), (int)(5 * drawing_scale));
             cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), (int)(2 * drawing_scale));
-            std::string str_id = cv::format("ID: %zu", m_result[0].id);
-            msg_offset.y += (30 * drawing_scale);
-            cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), (int)(5 * drawing_scale));
-            cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), (int)(2 * drawing_scale));
         }
 
         void print() const

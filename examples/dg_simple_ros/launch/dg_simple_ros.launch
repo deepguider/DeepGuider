@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<launch>
+
+  <!-- dg_simple_ros -->
+  <node pkg="dg_simple_ros" name="dg_simple_ros" type="dg_simple_ros" required="false" cwd="node" output="screen" />
+
+  <!-- dg_ocr -->
+  <node pkg="dg_simple_ros" name="dg_ocr" type="dg_ocr" required="false"  cwd="node" output="screen" />
+
+  <!-- dg_vps -->
+  <node pkg="dg_simple_ros" name="dg_vps" type="dg_vps" required="false"  cwd="node" output="screen" />
+
+</launch>

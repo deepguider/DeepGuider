@@ -5,11 +5,11 @@
 # Common header
 Header header
 
-# ocrs
+# array of ocr result
 ocr[] ocrs
 
-# timestamp
+# timestamp (in seconds)
 float64 timestamp
 
-# processing timestamp (in seconds)
+# processing time (in seconds)
 float64 processingtime

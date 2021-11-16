@@ -104,7 +104,7 @@ namespace dg
     }
 
 
-    void RoadTheta::draw(cv::Mat& image) const
+    void RoadTheta::draw(cv::Mat& image, double drawing_scale) const
     {
         cv::AutoLock lock(m_mutex);
         double image_scale = m_param.reference_image_width * m_param.image_scale_modifier / image.cols;
@@ -114,7 +114,7 @@ namespace dg
         double sx = (double)image.cols / scaled_w;
         double sy = (double)image.rows / scaled_h;
         double scale = (sx + sy) / 2;
-        int line_w = (int)(scale + 0.5) * 4;
+        int line_w = (int)(scale * drawing_scale + 0.5);
 
         // draw lines
         for (size_t i = 0; i < m_lines.size(); i++)
@@ -138,7 +138,7 @@ namespace dg
         }
 
         // draw vanishing point
-        int radius = (int)(m_param.vpoint_radius * m_param.image_scale_modifier * scale + 0.5) * 3;
+        int radius = (int)(m_param.vpoint_radius * m_param.image_scale_modifier * scale * drawing_scale * 0.75 + 0.5);
         cv::circle(image, cv::Point2d(m_scaled_vx * sx, m_scaled_vy * sy), radius, m_param.color_vpoint, cv::FILLED);
     }
 

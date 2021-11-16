@@ -70,6 +70,8 @@ bool PythonModuleWrapper::_initialize(const char* module_path, const char* modul
         return false;
     }
 
+    m_initialized = true;
+
     return true;
 }
 
