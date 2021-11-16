@@ -530,7 +530,7 @@ int DeepGuider::run()
     cv::Mat gui_image;
     int wait_msec = 200;
     int itr = 0;
-    double start_time = 0;
+    double start_time = 200;
     data_loader.setStartSkipTime(start_time);
     while (1)
     {
@@ -834,7 +834,10 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
 
     // guidance: init map and path for guidance
     m_guider_mutex.lock();
-    VVS_CHECK_TRUE(m_guider.initiateNewGuidance());
+    //VVS_CHECK_TRUE(m_guider.initiateNewGuidance());
+    //VVS_CHECK_TRUE(m_guider.initiateNewGuidance(start, dest));
+    dg::TopometricPose pose_topo = getPoseTopometric();
+    VVS_CHECK_TRUE(m_guider.initiateNewGuidance(pose_topo, dest));
     m_guider_mutex.unlock();
     printf("\tGuidance is updated with new map and path!\n");
 
@@ -1148,14 +1151,10 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         return;
     }
     m_guider_mutex.lock();
-    //m_guider.update(pose_topo, pose_confidence);
-    m_guider.update(pose_topo);
+    m_guider.update(pose_topo, pose_metric);
     cur_status = m_guider.getGuidanceStatus();
     cur_guide = m_guider.getGuidance();
-    if (node != nullptr)
-    {
-        m_guider.applyPoseGPS(toLatLon(*node));
-    }
+    
     m_guider_mutex.unlock();
 
     // print guidance message
@@ -1191,6 +1190,14 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
 
     if (cur_status != m_guidance_status)
     {
+        // check near arrival
+        if (cur_status == dg::GuidanceManager::GuideStatus::GUIDE_OPTIMAL_VIEW && cur_guide.announce)
+        {
+            printf("Near arrival!\n");
+            if (m_enable_tts) putTTS("Near arrival!");
+            m_exploration_state_count = m_exploration_state_count_max;  //Enter exploration mode until state_count becomes 0 from count_max
+        }
+
         // check arrival
         if (cur_status == dg::GuidanceManager::GuideStatus::GUIDE_ARRIVED && cur_guide.announce)
         {

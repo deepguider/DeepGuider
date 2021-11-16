@@ -23,6 +23,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 #import h5py
 import faiss
+import time
 
 #from tensorboardX import SummaryWriter
 import numpy as np
@@ -60,6 +61,7 @@ class vps:
         device = 'cuda:{}'.format(which_gpu) if torch.cuda.is_available() else 'cpu'  #cuda:0
         self.device = torch.device(device)
         self.set_region(region)
+        self.load_dbfeat_initialized = False
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -356,7 +358,13 @@ class vps:
         img = img2.permute(0,2,1).view(n,1,w,h) #[n,1,w,h]
         img = img.repeat(1,3,1,1) #[n,3,w,h]
         return img
-
+    
+    def make_search_index(self, dbFeat):
+        num_db, pool_size = dbFeat.shape # NumDB,32768
+        #faiss_index = faiss.IndexFlatL2(pool_size) # ori, uses distance as metric
+        self.faiss_index = faiss.IndexFlatIP(pool_size) # fixed, dg's issue #21. It uses similarity(confidence) as metric 
+        self.faiss_index.add(dbFeat)
+        return self.faiss_index
 
     def test_dg(self,eval_set_db,eval_set_q, epoch=0, write_tboard=False):
         # TODO what if features dont fit in memory? 
@@ -374,37 +382,48 @@ class vps:
                 return -1
 
         if self.load_dbfeat == True:
-            dbFeat = sio.loadmat(opt.dbFeat_fname)
-            dbFeat = dbFeat['Feat']
-            dbFeat = np.ascontiguousarray(dbFeat)
+            if self.load_dbfeat_initialized == False: ## Initial condition is False (off)
+                print('[vps]====> Initializing load_dbfeat.')
+                if self.verbose:
+                    print('====> Initializing load_dbfeat.')
+                dbFeat_dict = sio.loadmat(opt.dbFeat_fname)
+                dbFeat = dbFeat_dict['Feat']
+                self.dbImage = dbFeat_dict['dbImage']
+                dbFeat = np.ascontiguousarray(dbFeat)
+                self.faiss_index = self.make_search_index(dbFeat)
+                self.load_dbfeat_initialized = True  ## Turn on the switch after loading dbfeat.
+            ## Reuse faiss_index made in previous call
+            faiss_index = self.faiss_index
+            dbImage = self.dbImage
         else:  # Calculate DB features everytime
            # extracted for db, now split in own sets
-            dbFeat = self.test_sub(eval_set_db,epoch=epoch)
+            print('[vps]====> Extracting dbfeat.')
+            if self.verbose:
+                print('====> Extracting dbfeat.')
+            dbFeat = self.test_sub(eval_set_db, epoch=epoch)
             dbFeat = dbFeat.astype('float32') #[ndbImg,32768]
-            dbFeat_dict={'Feat':dbFeat}
+            test_db_data_loader = DataLoader(dataset=eval_set_db, 
+                num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
+                pin_memory=cuda)
+            dbImage = test_db_data_loader.dataset.ImgStruct.Image
+            faiss_index = self.make_search_index(dbFeat)
             if self.save_dbfeat:
+                if self.verbose:
+                    print('====> Saving dbfeat into ', opt.dbFeat_fname)
+                dbFeat_dict={'Feat':dbFeat, 'dbImage':dbImage}
                 sio.savemat(opt.dbFeat_fname, dbFeat_dict) # savemat may cause segmentation fault randomly when embedded in C++.
+
+        if self.verbose:
+            print('====> Building faiss index')
 
         # extracted for query, now split in own sets
         qFeat = self.test_sub(eval_set_q,epoch=epoch)
         qFeat = qFeat.astype('float32') #[nqImg,32768]
 
-        test_db_data_loader = DataLoader(dataset=eval_set_db, 
-                num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
-                pin_memory=cuda)
-
         test_q_data_loader = DataLoader(dataset=eval_set_q, 
                 num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
                 pin_memory=cuda)
 
-        if self.verbose:
-            print('====> Building faiss index')
-        num_db, pool_size = dbFeat.shape # NumDB,32768
-  
-        #faiss_index = faiss.IndexFlatL2(pool_size) # ori, uses distance as metric
-        faiss_index = faiss.IndexFlatIP(pool_size) # fixed, dg's issue #21. It uses similarity(confidence) as metric 
-        faiss_index.add(dbFeat)
-        
         if self.verbose:
             print('====> Calculating recall @',self.K)
         
@@ -414,7 +433,6 @@ class vps:
             print('predicted ID:\n', pred_idx)
   
         qImage  = test_q_data_loader.dataset.ImgStruct.Image
-        dbImage = test_db_data_loader.dataset.ImgStruct.Image
   
         self.qImage = qImage
         self.dbImage = dbImage
@@ -440,7 +458,11 @@ class vps:
  
             if self.verbose:
                 dbImage_predicted = dbImage[pred_idx[i,0]] #Use best [0] image for display
-                dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
+                try:
+                    dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
+                except:
+                    dbName_predicted = os.path.basename(dbImage_predicted[i].strip())
+
                 #IDs = ['spherical_2812920067800000','spherical_2812920067800000']
                 lat,lon,deg = self.ID2LL(self.Fname2ID(dbName_predicted))
                 if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
@@ -611,12 +633,15 @@ class vps:
         if port != None:
             self.port = port
 
-        self.load_dbfeat = False
-        self.save_dbfeat = False
         if load_dbfeat > 0:
             self.load_dbfeat = True
+        else:
+            self.load_dbfeat = False
+
         if save_dbfeat > 0:
             self.save_dbfeat = True
+        else:
+            self.save_dbfeat = False
 
         self.gps_lat = float(gps_lat)
         self.gps_lon = float(gps_lon)
@@ -795,35 +820,35 @@ class vps:
         return torch.stack(dbImgs)
 
 
-if __name__ == "__main__":
-    from netvlad import etri_dbloader
+def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
+    from netvlad import etri_dbloader as dataset
     from PIL import Image
-    from visdom import Visdom
     #streetview_server_ipaddr = "localhost"
-    streetview_server_ipaddr = "extract.feature.local.db"
+    streetview_server_ipaddr = "extract.feature.local.db"  # Instead of downloading db, local saved image file is used. For doing it, wrong ip address is used.
     ## 10000:ETRI, 10001:COEX, 10002:Bucheon, 10003:Indoor
     streetview_server_port = "10003";gps_lat, gps_lon = 36.380018, 127.368114
     #streetview_server_port = "10000"; gps_lat, gps_lon = 36.3845257,127.3768796
-    #
-    load_dbfeat = 0
-    save_dbfeat = 1
-    visdom_server = True
-    try:
-        #viz = Visdom()
-        printf(" ")
-    except:
-        print("Visual result can be display if you run visdom server before run this")
-        visdom_server = False
 
-    #qFlist = etri_dbloader.Generate_Flist('/home/ccsmm/Naverlabs/query_etri_cart/images_2019_11_15_12_45_11',".jpg")
-    qFlist = etri_dbloader.Generate_Flist("data_vps/netvlad_etri_datasets/qImg/999_newquery",".jpg")
+    #qFlist = dataset.Generate_Flist('/home/ccsmm/Naverlabs/query_etri_cart/images_2019_11_15_12_45_11',".jpg")
+    qFlist = dataset.Generate_Flist("data_vps/netvlad_etri_datasets/qImg/999_newquery",".jpg")
+    print("Initializing vps module...")
+    st = time.time()
     mod_vps = vps()
     mod_vps.initialize()
-    if True:  # Fast feature extract at offline
-        mod_vps.set_threads(64)
-        mod_vps.set_cacheBatchSize(128)
+    mod_vps.verbose = True
+    print("It took {} sec.".format(time.time()-st))
+
+    if load_dbfeat > 0:
+        print("Run VPS for testing [Loading prebuilt dbfeat into data_vps/prebuilt_dbFeat.mat]")
+
+    if save_dbfeat > 0:
+        db_image_dir = os.path.join(dataset.struct_dir,'StreetView')
+        print("Run VPS for testing [Saving prebuilt dbfeat into data_vps/prebuilt_dbFeat.mat] of {}".format(db_image_dir))
+        if True:  # Fast feature extract at offline
+            mod_vps.set_threads(16)
+            mod_vps.set_cacheBatchSize(256)
+
     #qimage = np.uint8(256*np.random.rand(1024,1024,3))
-    #(image=None, K=3, gps_lat=None, gps_lon=None, gps_accuracy=None, timestamp=None):
     for fname in qFlist:
         qimg = cv.imread(fname)
         try:
@@ -834,21 +859,19 @@ if __name__ == "__main__":
         except:
             print("Broken query image :", fname)
             continue
-        qimg = cv.resize(qimg,(640,480))
+        qimg = cv.resize(qimg, (640,480))
+        st = time.time()
         vps_IDandConf = mod_vps.apply(qimg, K=3, gps_lat=gps_lat, gps_lon=gps_lon, gps_accuracy=0.0,
                 timestamp=1.0, ipaddr=streetview_server_ipaddr, port=streetview_server_port,
                 load_dbfeat=load_dbfeat, save_dbfeat=save_dbfeat) # k=3 for knn
-        print('vps_IDandConf',vps_IDandConf)
-        if visdom_server and False: # Do not display(False)
-            ## Display Result
-            qImgs  = mod_vps.get_qImgs() #  [10,3,480,640] 
-            dbImgs = mod_vps.get_dbImgs() #  [10,3,480,640] 
-            qdbImgs = torch.cat((qImgs,dbImgs),-1) #  [10,3,480,1280] 
-            img_window = viz.images(qdbImgs,nrow=1,win='Query(left)_DB(right)')
+        print('vps_IDandConf, {} sec. elapsed.',vps_IDandConf, time.time() - st)
 
-    ## Debugging
-    #textwindow = viz.text("[VPS] Results")
-    #img_window = viz.images(qImgs,nrow=1,win='Query',opts=dict(title="Query Iamge",caption="Query(ETRI Cart)"))
-    #img_window = viz.images(dbImgs,nrow=1,win='DB',opts=dict(title="DB Iamge",caption="DB(Naver)"))
-    #vps_lat,vps_long,_,_,_ = mod_vps.apply(qimage)
-    #print('Lat,Long =',vps_lat,vps_long)
+def save_prebuild_dbfeat():
+    run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=1)
+
+def load_prebuild_dbfeat():
+    run_prebuilt_dbfeat(load_dbfeat=1, save_dbfeat=0)
+
+if __name__ == "__main__":
+    #save_prebuild_dbfeat()
+    load_prebuild_dbfeat()

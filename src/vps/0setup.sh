@@ -33,8 +33,11 @@ cd ../../../
 # The following command is executed only on Seungmin's PC.
 hostname |grep ccsmm > /dev/null&& cp ~/Naverlabs/query_etri_cart/query_list.txt data_vps/.
 
+## Use local weight with prepare script rather than downloading it from google drive. So following 0setup_test_env.sh has to be disabled
 ## current dir : top/src/vps/
 cd netvlad
-/bin/bash 0setup_test_env.sh
+#/bin/bash 0setup_test_env.sh
+PRETRAINED_DIR=pretrained_checkpoint
+mkdir -p $PRETRAINED_DIR
 
 echo "If you met error(s) during downlaoding .tar.gz(s), plz. re-run $0"

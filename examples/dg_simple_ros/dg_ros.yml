@@ -87,6 +87,8 @@ TEST_ETRI_INDOOR:
   image_server_port: "10003"
   gps_input_path: ""
   video_input_path: ""
+  vps_load_dbfeat: 1
+  vps_save_dbfeat: 0
   
 TEST_COEX:
   map_image_path: "data/COEX/NaverMap_COEX(Satellite).png"
