@@ -4,7 +4,7 @@
 enable_intersection: 0
 enable_ocr: 0    # 0: disable, 1: run as internal module, 2: run as external ros node 
 enable_vps: 0    # 0: disable, 1: run as internal module, 2: run as external ros node
-enable_lrpose: 0
+enable_roadlr: 0
 enable_roadtheta: 0
 enable_exploration: 0
 enable_logo: 0

@@ -172,7 +172,7 @@ int DeepGuiderROS::run()
     if (m_enable_intersection==1) intersection_thread = new std::thread(threadfunc_intersection, this);
     if (m_enable_ocr==1) ocr_thread = new std::thread(threadfunc_ocr, this);
     if (m_enable_vps==1) vps_thread = new std::thread(threadfunc_vps, this);
-    if (m_enable_lrpose==1) lrpose_thread = new std::thread(threadfunc_lrpose, this);
+    if (m_enable_roadlr==1) roadlr_thread = new std::thread(threadfunc_roadlr, this);
     if (m_enable_roadtheta==1) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
     if (m_enable_exploration==1) exploration_thread = new std::thread(threadfunc_exploration, this);    
     if (m_enable_logo==1) logo_thread = new std::thread(threadfunc_logo, this);

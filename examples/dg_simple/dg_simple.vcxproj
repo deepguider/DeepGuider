@@ -118,8 +118,8 @@
     <ClInclude Include="..\..\src\localizer\path_projector.hpp" />
     <ClInclude Include="..\..\src\logo_recog\logo_localizer.hpp" />
     <ClInclude Include="..\..\src\logo_recog\logo_recognizer.hpp" />
-    <ClInclude Include="..\..\src\lrpose_recog\lrpose_localizer.hpp" />
-    <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp" />
+    <ClInclude Include="..\..\src\roadlr\roadlr_localizer.hpp" />
+    <ClInclude Include="..\..\src\roadlr\roadlr.hpp" />
     <ClInclude Include="..\..\src\map_manager\map_manager.hpp" />
     <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp" />
     <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp" />
@@ -138,7 +138,7 @@
     <None Include="..\..\src\exploration\active_navigation.py" />
     <None Include="..\..\src\intersection_cls\intersection_cls.py" />
     <None Include="..\..\src\logo_recog\logo_recognizer.py" />
-    <None Include="..\..\src\lrpose_recog\lrpose_recognizer.py" />
+    <None Include="..\..\src\roadlr\roadlr.py" />
     <None Include="..\..\src\ocr_recog\ocr_recognizer.py" />
     <None Include="..\..\src\vps\vps.py" />
   </ItemGroup>

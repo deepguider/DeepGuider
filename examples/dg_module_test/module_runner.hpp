@@ -6,12 +6,12 @@
 #include "localizer/data_loader.hpp"
 #include "intersection_cls/intersection_localizer.hpp"
 #include "vps/vps_localizer.hpp"
-#include "lrpose_recog/lrpose_localizer.hpp"
+#include "roadlr/roadlr_localizer.hpp"
 #include "ocr_recog/ocr_localizer.hpp"
 #include "roadtheta/roadtheta_localizer.hpp"
 #include "utils/viewport.hpp"
 
-enum { DG_VPS, DG_LR, DG_OCR, DG_POI, DG_RoadTheta, DG_Intersection };
+enum { DG_VPS, DG_RoadLR, DG_OCR, DG_POI, DG_RoadTheta, DG_Intersection };
 
 void onMouseEvent(int event, int x, int y, int flags, void* param);
 
@@ -22,7 +22,7 @@ class ModuleRunner : public dg::SharedInterface
     cv::Ptr<dg::OCRLocalizer> m_ocr_localizer;
     cv::Ptr<dg::VPSLocalizer> m_vps_localizer;
     cv::Ptr<dg::RoadThetaLocalizer> m_roadtheta_localizer;
-    cv::Ptr<dg::LRLocalizer> m_lr_localizer;
+    cv::Ptr<dg::RoadLRLocalizer> m_lr_localizer;
 
 public:
     int run(int module_sel, bool use_saved_testset, cv::Ptr<dg::DGLocalizer> localizer, dg::DataLoader& data_loader)
@@ -36,7 +36,7 @@ public:
         if (module_sel == DG_OCR || module_sel == DG_POI) m_ocr_localizer = cv::makePtr<dg::OCRLocalizer>();
         if (module_sel == DG_Intersection) m_intersection_localizer = cv::makePtr<dg::IntersectionLocalizer>();
         if (module_sel == DG_RoadTheta) m_roadtheta_localizer = cv::makePtr<dg::RoadThetaLocalizer>();
-        if (module_sel == DG_LR) m_lr_localizer = cv::makePtr<dg::LRLocalizer>();
+        if (module_sel == DG_RoadLR) m_lr_localizer = cv::makePtr<dg::RoadLRLocalizer>();
         if (use_saved_testset)
         {
             if (m_vps_localizer) VVS_CHECK_TRUE(m_vps_localizer->initialize_without_python(this));
@@ -187,7 +187,7 @@ public:
                         update_gui = true;
                     }
                 }
-                else if (module_sel == DG_LR && type == dg::DATA_LR)
+                else if (module_sel == DG_RoadLR && type == dg::DATA_RoadLR)
                 {
                     double cls = vdata[1];
                     double cls_conf = vdata[2];
@@ -195,8 +195,8 @@ public:
                     double lr_confidence;
                     if (m_lr_localizer->applyPreprocessed(cls, cls_conf, data_time, lr_cls, lr_confidence))
                     {
-                        bool success = localizer->applyLRPose(lr_cls, data_time, lr_confidence);
-                        if (!success) fprintf(stderr, "applyLRPose() was failed.\n");
+                        bool success = localizer->applyRoadLR(lr_cls, data_time, lr_confidence);
+                        if (!success) fprintf(stderr, "applyRoadLR() was failed.\n");
                     }
                     if (show_gui)
                     {
@@ -286,7 +286,10 @@ public:
                     dg::Point2 streetview_xy;
                     dg::Polar2 relative;
                     double streetview_confidence;
-                    if (m_vps_localizer->apply(video_image, capture_time, streetview_xy, relative, streetview_confidence))
+                    double manual_gps_accuracy = 0.9;
+                    int load_dbfeat = 0;
+                    int save_dbfeat = 0;
+                    if (m_vps_localizer->apply(video_image, capture_time, streetview_xy, relative, streetview_confidence, manual_gps_accuracy, load_dbfeat, save_dbfeat))
                     {
                         bool success = localizer->applyVPS(streetview_xy, relative, data_time, streetview_confidence);
                         if (!success) fprintf(stderr, "applyVPS() was failed.\n");
@@ -300,14 +303,14 @@ public:
                         }
                     }
                 }
-                else if (module_sel == DG_LR)
+                else if (module_sel == DG_RoadLR)
                 {
                     int lr_cls = 1;  // UNKNOWN_SIDE_OF_ROAD
                     double lr_confidence;
                     if (m_lr_localizer->apply(video_image, capture_time, lr_cls, lr_confidence))
                     {
-                        bool success = localizer->applyLRPose(lr_cls, data_time, lr_confidence);
-                        if (!success) fprintf(stderr, "applyLRPose() was failed.\n");
+                        bool success = localizer->applyRoadLR(lr_cls, data_time, lr_confidence);
+                        if (!success) fprintf(stderr, "applyRoadLR() was failed.\n");
                     }
                     if (show_gui)
                     {

@@ -1,8 +1,8 @@
-#ifndef __LRPOSE_RECOGNIZER_LOCALIZER__
-#define __LRPOSE_RECOGNIZER_LOCALIZER__
+#ifndef __ROADLR_LOCALIZER__
+#define __ROADLR_LOCALIZER__
 
 #include "dg_core.hpp"
-#include "lrpose_recog/lrpose_recognizer.hpp"
+#include "roadlr/roadlr.hpp"
 
 using namespace std;
 
@@ -11,7 +11,7 @@ namespace dg
     /**
     * @brief Intersection-based Localizer
     */
-    class LRLocalizer: public LRPoseRecognizer
+    class RoadLRLocalizer: public RoadLRRecognizer
     {
         //configurable parameters
         double m_param_update_inc = 0.1;     // for RIGHT_SIDE_OF_ROAD observation
@@ -25,9 +25,9 @@ namespace dg
     public:
         enum {LEFT_SIDE_OF_ROAD = 0, UNKNOWN_SIDE_OF_ROAD = 1, RIGHT_SIDE_OF_ROAD = 2};
 
-        bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/lrpose_recog")
+        bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/roadlr")
         {
-            if (!LRPoseRecognizer::initialize(py_module_path.c_str(), "lrpose_recognizer", "lrpose_recognizer")) return false;
+            if (!RoadLRRecognizer::initialize(py_module_path.c_str(), "roadlr", "roadlr_recognizer")) return false;
 
             cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;
@@ -43,15 +43,15 @@ namespace dg
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, int& lr_cls, double& lr_confidence)
         {
-            if (!LRPoseRecognizer::apply(image, image_time)) return false;
+            if (!RoadLRRecognizer::apply(image, image_time)) return false;
 
             cv::AutoLock lock(m_localizer_mutex);
             // apply state filtering
-            LRPoseResult lrpose = get();
-            m_state = simpleStateFiltering(lrpose.cls);
+            RoadLRResult roadlr = get();
+            m_state = simpleStateFiltering(roadlr.cls);
 
 			lr_cls = m_state;  // filtered cls
-            lr_confidence = lrpose.confidence;
+            lr_confidence = roadlr.confidence;
             return true;
         }
 
@@ -60,10 +60,10 @@ namespace dg
             cv::AutoLock lock(m_localizer_mutex);
 
             // Update internal state for draw(). m_result needs to be set by manual when csv dataloader is enabled rather than python.
-            LRPoseResult lrpose;
-            lrpose.cls = (int)(observed_cls + 0.5);
-            lrpose.confidence = observed_conf;
-            set(lrpose, data_time);
+            RoadLRResult roadlr;
+            roadlr.cls = (int)(observed_cls + 0.5);
+            roadlr.confidence = observed_conf;
+            set(roadlr, data_time);
 
             // apply state filtering
             m_state = simpleStateFiltering((int)(observed_cls + 0.5));
@@ -103,4 +103,4 @@ namespace dg
 
 } // End of 'dg'
 
-#endif // End of '__LRPOSE_RECOGNIZER_LOCALIZER__'
+#endif // End of '__ROADLR_LOCALIZER__'

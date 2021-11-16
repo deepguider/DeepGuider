@@ -10,7 +10,7 @@
 #include "dg_ocr.hpp"
 #include "dg_intersection.hpp"
 #include "dg_vps.hpp"
-#include "dg_lrpose.hpp"
+#include "dg_roadlr.hpp"
 #include "dg_guidance.hpp"
 #include "dg_exploration.hpp"
 #include "dg_utils.hpp"
@@ -28,7 +28,7 @@ protected:
     int m_enable_intersection = 0;
     int m_enable_ocr = 0;
     int m_enable_vps = 0;
-    int m_enable_lrpose = 0;
+    int m_enable_roadlr = 0;
     int m_enable_roadtheta = 0;
     int m_enable_exploration = 0;
     int m_enable_logo = 0;
@@ -100,20 +100,20 @@ protected:
     bool procLogo();
     bool procOcr();
     bool procVps();
-    bool procLRPose();
+    bool procRoadLR();
     bool procRoadTheta();
 
     // sub modules
+    dg::GuidanceManager m_guider;
     dg::MapManager m_map_manager;
     dg::DGLocalizer m_localizer;
-    dg::VPSLocalizer m_vps;
-    dg::LRLocalizer m_lrpose;
-    dg::LogoLocalizer m_logo;
-    dg::OCRLocalizer m_ocr;
     dg::IntersectionLocalizer m_intersection;
+    dg::OCRLocalizer m_ocr;
+    dg::VPSLocalizer m_vps;
+    dg::RoadLRLocalizer m_roadlr;
     dg::RoadThetaLocalizer m_roadtheta;
-    dg::GuidanceManager m_guider;
     dg::ActiveNavigation m_active_nav;
+    dg::LogoLocalizer m_logo;
 
     // global variables
     dg::Point2F m_dest;
@@ -150,27 +150,27 @@ protected:
     void putTTS(const char* msg);
 
     // Thread routines
-    std::thread* vps_thread = nullptr;
-    std::thread* lrpose_thread = nullptr;
-    std::thread* ocr_thread = nullptr;
-    std::thread* logo_thread = nullptr;
     std::thread* intersection_thread = nullptr;
+    std::thread* ocr_thread = nullptr;
+    std::thread* vps_thread = nullptr;
+    std::thread* roadlr_thread = nullptr;
     std::thread* roadtheta_thread = nullptr;
     std::thread* exploration_thread = nullptr;
-    static void threadfunc_vps(DeepGuider* guider);
-    static void threadfunc_lrpose(DeepGuider* guider);
-    static void threadfunc_ocr(DeepGuider* guider);
-    static void threadfunc_logo(DeepGuider* guider);
+    std::thread* logo_thread = nullptr;
     static void threadfunc_intersection(DeepGuider* guider);
+    static void threadfunc_ocr(DeepGuider* guider);
+    static void threadfunc_vps(DeepGuider* guider);
+    static void threadfunc_roadlr(DeepGuider* guider);
     static void threadfunc_roadtheta(DeepGuider* guider);
     static void threadfunc_exploration(DeepGuider* guider);
-    bool is_vps_running = false;
-    bool is_lrpose_running = false;
-    bool is_ocr_running = false;
-    bool is_logo_running = false;
+    static void threadfunc_logo(DeepGuider* guider);
     bool is_intersection_running = false;
+    bool is_ocr_running = false;
+    bool is_vps_running = false;
+    bool is_roadlr_running = false;
     bool is_roadtheta_running = false;
     bool is_exploration_running = false;
+    bool is_logo_running = false;
     void terminateThreadFunctions();
 
     // shared variables for multi-threading
@@ -182,8 +182,8 @@ protected:
     cv::Mat m_vps_image;            // top-1 matched streetview image
     dg::ID m_vps_id;                // top-1 matched streetview id
 
-    cv::Mutex m_lrpose_mutex;
-    cv::Mat m_lrpose_image;
+    cv::Mutex m_roadlr_mutex;
+    cv::Mat m_roadlr_image;
 
     cv::Mutex m_logo_mutex;
     cv::Mat m_logo_image;
@@ -230,7 +230,7 @@ DeepGuider::~DeepGuider()
     m_intersection.clear();
     m_ocr.clear();
     m_vps.clear();
-    m_lrpose.clear();
+    m_roadlr.clear();
     m_roadtheta.clear();
     m_active_nav.clear();
     m_logo.clear();
@@ -246,7 +246,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "enable_intersection", m_enable_intersection, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_ocr", m_enable_ocr, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_vps", m_enable_vps, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "enable_lrpose", m_enable_lrpose, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_roadlr", m_enable_roadlr, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_roadtheta", m_enable_roadtheta, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_exploration", m_enable_exploration, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_logo", m_enable_logo, n_read);
@@ -313,6 +313,8 @@ int DeepGuider::readParam(const cv::FileNode& fn)
 
 bool DeepGuider::initialize(std::string config_file)
 {
+    dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+
     printf("Initialize deepguider system...\n");
 
     // load config
@@ -320,7 +322,7 @@ bool DeepGuider::initialize(std::string config_file)
     if(ok) printf("\tConfiguration %s loaded!\n", config_file.c_str());
 
     // initialize python
-    bool enable_python = (m_enable_intersection==1) || (m_enable_ocr==1) || (m_enable_vps==1) || (m_enable_lrpose==1) || (m_enable_exploration==1) || (m_enable_logo==1);
+    bool enable_python = (m_enable_intersection==1) || (m_enable_ocr==1) || (m_enable_vps==1) || (m_enable_roadlr==1) || (m_enable_exploration==1) || (m_enable_logo==1);
     if (enable_python && !init_python_environment("python3", "", m_threaded_run_modules)) return false;
     if (enable_python) printf("\tPython environment initialized!\n");
 
@@ -344,10 +346,10 @@ bool DeepGuider::initialize(std::string config_file)
     if (m_enable_vps==1 && !m_vps.initialize(this, py_module_path, m_server_ip, m_image_server_port)) return false;
     if (m_enable_vps==1) printf("\tVPS initialized in %.3lf seconds!\n", m_vps.procTime());
 
-    // initialize LRPose
-    py_module_path = m_srcdir + "/lrpose_recog";
-    if (m_enable_lrpose==1 && !m_lrpose.initialize(this, py_module_path)) return false;
-    if (m_enable_lrpose==1) printf("\tLRPose initialized in %.3lf seconds!\n", m_lrpose.procTime());
+    // initialize RoadLR
+    py_module_path = m_srcdir + "/roadlr";
+    if (m_enable_roadlr==1 && !m_roadlr.initialize(this, py_module_path)) return false;
+    if (m_enable_roadlr==1) printf("\tRoadLR initialized in %.3lf seconds!\n", m_roadlr.procTime());
 
     // initialize RoadTheta
     if (m_enable_roadtheta==1 && !m_roadtheta.initialize(this)) return false;
@@ -461,7 +463,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_cam_capture_time = -1;
     m_vps_image.release();
     m_vps_id = 0;
-    m_lrpose_image.release();
+    m_roadlr_image.release();
     m_logo_image.release();
     m_ocr_image.release();
     m_intersection_image.release();
@@ -477,7 +479,9 @@ bool DeepGuider::initialize(std::string config_file)
         putTTS("System is initialized!");
     } 
 
-    printf("\tInitialization is done!\n\n");
+    dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+
+    printf("\tInitialization is done in %lf seconds!\n\n", t2 - t1);
 
     return true;
 }
@@ -498,16 +502,16 @@ int DeepGuider::run()
 {
     // load test dataset    
     dg::DataLoader data_loader;
-    std::string ahrs_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file, exploration_file;
+    std::string ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file, exploration_file;
     std::string data_header = "data/ETRI/191115_151140";
     //ahrs_file = data_header + "_imu_data.csv";
     //ocr_file = data_header + "_ocr.csv";
     //poi_file = data_header + "_poi.csv";
     //vps_file = data_header + "_vps.csv";
     //intersection_file = data_header + "_intersect.csv";
-    //lr_file = data_header + "_vps_lr.csv";
+    //lr_file = data_header + "_roadlr.csv";
     //roadtheta_file = data_header + "_roadtheta.csv";
-    if (!data_loader.load(m_video_input_path, m_gps_input_path, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
+    if (!data_loader.load(m_video_input_path, m_gps_input_path, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
     {
         printf("DeepGuider::run() - Fail to load test data. Exit program...\n");
         return -1;
@@ -520,7 +524,7 @@ int DeepGuider::run()
         if (m_enable_intersection==1) intersection_thread = new std::thread(threadfunc_intersection, this);
         if (m_enable_ocr==1) ocr_thread = new std::thread(threadfunc_ocr, this);    
         if (m_enable_vps==1) vps_thread = new std::thread(threadfunc_vps, this);
-        if (m_enable_lrpose==1) lrpose_thread = new std::thread(threadfunc_lrpose, this);
+        if (m_enable_roadlr==1) roadlr_thread = new std::thread(threadfunc_roadlr, this);
         if (m_enable_roadtheta==1) roadtheta_thread = new std::thread(threadfunc_roadtheta, this);
         if (m_enable_exploration==1) exploration_thread = new std::thread(threadfunc_exploration, this);    
         if (m_enable_logo==1) logo_thread = new std::thread(threadfunc_logo, this);
@@ -605,16 +609,16 @@ int DeepGuider::run()
                 if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
             }
         }
-        else if (type == dg::DATA_LR)
+        else if (type == dg::DATA_RoadLR)
         {
             double cls = vdata[1];
             double cls_conf = vdata[2];
             int lr_cls;
             double lr_confidence;
-            if (m_lrpose.applyPreprocessed(cls, cls_conf, data_time, lr_cls, lr_confidence))
+            if (m_roadlr.applyPreprocessed(cls, cls_conf, data_time, lr_cls, lr_confidence))
             {
-                bool success = m_localizer.applyLRPose(lr_cls, data_time, lr_confidence);
-                if (!success) fprintf(stderr, "applyLRPose() was failed.\n");
+                bool success = m_localizer.applyRoadLR(lr_cls, data_time, lr_confidence);
+                if (!success) fprintf(stderr, "applyRoadLR() was failed.\n");
             }
         }
         else if (type == dg::DATA_RoadTheta)
@@ -643,7 +647,7 @@ int DeepGuider::run()
                 if (m_enable_intersection==1 && intersection_file.empty()) procIntersectionClassifier();
                 if (m_enable_ocr==1 && ocr_file.empty()) procOcr();
                 if (m_enable_vps==1 && vps_file.empty()) procVps();
-                if (m_enable_lrpose==1 && lr_file.empty()) procLRPose();
+                if (m_enable_roadlr==1 && roadlr_file.empty()) procRoadLR();
                 if (m_enable_roadtheta==1 && roadtheta_file.empty()) procRoadTheta();
                 if (m_enable_exploration==1 && exploration_file.empty()) procExploration();         
                 if (m_enable_logo==1) procLogo();
@@ -885,16 +889,16 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         }
     }
 
-    // draw lrpose result
-    if (m_enable_lrpose)
+    // draw roadlr result
+    if (m_enable_roadlr)
     {
         cv::Mat result_image;
-        m_lrpose_mutex.lock();
-        if (!m_lrpose_image.empty())
+        m_roadlr_mutex.lock();
+        if (!m_roadlr_image.empty())
         {
-            cv::resize(m_lrpose_image, result_image, cv::Size((int)(win_rect.height * 0.9), win_rect.height));
+            cv::resize(m_roadlr_image, result_image, cv::Size((int)(win_rect.height * 0.9), win_rect.height));
         }
-        m_lrpose_mutex.unlock();
+        m_roadlr_mutex.unlock();
 
         if (!result_image.empty())
         {
@@ -1415,11 +1419,11 @@ bool DeepGuider::procVps()
     return false;
 }
 
-bool DeepGuider::procLRPose()
+bool DeepGuider::procRoadLR()
 {
     m_cam_mutex.lock();
     dg::Timestamp capture_time = m_cam_capture_time;
-    if (m_cam_image.empty() || capture_time <= m_lrpose.timestamp())
+    if (m_cam_image.empty() || capture_time <= m_roadlr.timestamp())
     {
         m_cam_mutex.unlock();
         return false;
@@ -1429,20 +1433,20 @@ bool DeepGuider::procLRPose()
 
     int lr_pose;
     double lr_confidence;
-    if (m_lrpose.apply(cam_image, capture_time, lr_pose, lr_confidence))
+    if (m_roadlr.apply(cam_image, capture_time, lr_pose, lr_confidence))
     {
-        m_localizer.applyLRPose(lr_pose, capture_time, lr_confidence);
-        m_lrpose.print();
+        m_localizer.applyRoadLR(lr_pose, capture_time, lr_confidence);
+        m_roadlr.print();
 
-        m_lrpose.draw(cam_image, 2);
-        m_lrpose_mutex.lock();
-        m_lrpose_image = cam_image;
-        m_lrpose_mutex.unlock();
+        m_roadlr.draw(cam_image, 2);
+        m_roadlr_mutex.lock();
+        m_roadlr_image = cam_image;
+        m_roadlr_mutex.unlock();
         return true;
     }
     else
     {
-        m_lrpose.print();
+        m_roadlr.print();
     }
 
     return false;
@@ -1570,17 +1574,17 @@ void DeepGuider::threadfunc_vps(DeepGuider* guider)
     printf("\tvps thread ends\n");
 }
 
-// Thread fnuction for LRPose
-void DeepGuider::threadfunc_lrpose(DeepGuider* guider)
+// Thread fnuction for RoadLR
+void DeepGuider::threadfunc_roadlr(DeepGuider* guider)
 {
-    guider->is_lrpose_running = true;
-    printf("\tlrpose thread starts\n");
-    while (guider->m_enable_lrpose)
+    guider->is_roadlr_running = true;
+    printf("\troadlr thread starts\n");
+    while (guider->m_enable_roadlr)
     {
-        guider->procLRPose();
+        guider->procRoadLR();
     }
-    guider->is_lrpose_running = false;
-    printf("\tlrpose thread ends\n");
+    guider->is_roadlr_running = false;
+    printf("\troadlr thread ends\n");
 }
 
 // Thread fnuction for POI OCR
@@ -1700,13 +1704,13 @@ void DeepGuider::procTTS()
 
 void DeepGuider::terminateThreadFunctions()
 {
-    if (vps_thread == nullptr && lrpose_thread == nullptr && ocr_thread == nullptr && logo_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr && tts_thread == nullptr && exploration_thread == nullptr) return;
+    if (vps_thread == nullptr && roadlr_thread == nullptr && ocr_thread == nullptr && logo_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr && tts_thread == nullptr && exploration_thread == nullptr) return;
 
     // disable all thread running
     m_enable_intersection = 0;
     m_enable_ocr = 0;
     m_enable_vps = 0;
-    m_enable_lrpose = 0;
+    m_enable_roadlr = 0;
     m_enable_roadtheta = 0;
     m_enable_exploration = 0;
     m_enable_logo = 0;
@@ -1717,7 +1721,7 @@ void DeepGuider::terminateThreadFunctions()
     if (intersection_thread && is_intersection_running) intersection_thread->join();
     if (ocr_thread && is_ocr_running) ocr_thread->join();
     if (vps_thread && is_vps_running) vps_thread->join();
-    if (lrpose_thread && is_lrpose_running) lrpose_thread->join();
+    if (roadlr_thread && is_roadlr_running) roadlr_thread->join();
     if (roadtheta_thread && is_roadtheta_running) roadtheta_thread->join();
     if (exploration_thread && is_exploration_running) exploration_thread->join();
     if (logo_thread && is_logo_running) logo_thread->join();
@@ -1727,7 +1731,7 @@ void DeepGuider::terminateThreadFunctions()
     intersection_thread = nullptr;
     ocr_thread = nullptr;
     vps_thread = nullptr;
-    lrpose_thread = nullptr;
+    roadlr_thread = nullptr;
     roadtheta_thread = nullptr;
     exploration_thread = nullptr;
     logo_thread = nullptr;

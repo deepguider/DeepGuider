@@ -11,5 +11,5 @@ elif dataset_region == "COEX":
 else:
     indir = "/home/ccsmm/data1/workdir/DB_Repo2/DeepGuider_system_testset/ETRI"
     input_reference_ext = "*.avi"
-out_postfix = "vps_lr.csv"
+out_postfix = "roadlr.csv"
 which_gpu = 1

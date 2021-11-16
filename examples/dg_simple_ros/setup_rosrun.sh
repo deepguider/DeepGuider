@@ -30,12 +30,13 @@ ln -sf $DGDIR/bin/font $ROSDIR/
 ln -sf $DGDIR/bin/recordings $ROSDIR/
 ln -sf $DGDIR/bin/data $ROSDIR/
 #ln -sf $DGDIR/bin/data_localizer $ROSDIR/
-ln -sf $DGDIR/src/vps/data_vps $ROSDIR/
-ln -sf $DGDIR/src/lrpose_recog/data_lrpose $ROSDIR/
 ln -sf $DGDIR/src/intersection_cls/data_intersection_cls $ROSDIR/
+ln -sf $DGDIR/src/ocr_recog/data_ocr $ROSDIR/
+ln -sf $DGDIR/src/vps/data_vps $ROSDIR/
+ln -sf $DGDIR/src/roadlr/data_roadlr $ROSDIR/
+ln -sf $DGDIR/src/exploration/data_exp $ROSDIR/
 ln -sf $DGDIR/src/logo_recog/logo_data $ROSDIR/
 ln -sf $DGDIR/src/logo_recog/model $ROSDIR/
-ln -sf $DGDIR/src/ocr_recog/data_ocr $ROSDIR/
 #ln -sf $DGDIR/src/poi_recog/data_poi $ROSDIR/
 #ln -sf $DGDIR/src/poi_recog/model_poi $ROSDIR/
 

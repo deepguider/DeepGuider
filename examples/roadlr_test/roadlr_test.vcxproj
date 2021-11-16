@@ -96,11 +96,11 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp" />
+    <ClInclude Include="..\..\src\roadlr\roadlr.hpp" />
     <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\src\lrpose_recog\lrpose_recognizer.py" />
+    <None Include="..\..\src\roadlr\roadlr.py" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

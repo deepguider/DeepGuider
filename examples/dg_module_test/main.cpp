@@ -191,7 +191,7 @@ int runModule()
     if (use_saved_testset && module_sel == DG_POI) poi_file = data_head[data_sel][0] + "_poi.csv";
     if (use_saved_testset && module_sel == DG_VPS) vps_file = data_head[data_sel][0] + "_vps.csv";
     if (use_saved_testset && module_sel == DG_Intersection) intersection_file = data_head[data_sel][0] + "_intersect.csv";
-    if (use_saved_testset && module_sel == DG_LR) lr_file = data_head[data_sel][0] + "_vps_lr.csv";
+    if (use_saved_testset && module_sel == DG_RoadLR) lr_file = data_head[data_sel][0] + "_roadlr.csv";
     if (use_saved_testset && module_sel == DG_RoadTheta) roadtheta_file = data_head[data_sel][0] + "_roadtheta.csv";
 
     dg::DataLoader data_loader;

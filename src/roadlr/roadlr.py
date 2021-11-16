@@ -14,7 +14,7 @@ import time
 
 from vgg_post import VGG_POST
 
-class lrpose_recognizer:  # pose recognition
+class roadlr_recognizer:  # pose recognition
     def __init__(self, which_gpu=0):
         self.device = 'cuda:{}'.format(which_gpu) if torch.cuda.is_available() else 'cpu'  #cuda:0
         self.use_cuda = True if torch.cuda.is_available() else False
@@ -35,7 +35,7 @@ class lrpose_recognizer:  # pose recognition
 
     def initialize(self, resume=True):
         self.resume = resume
-        self.chkp_pth = './data_lrpose/ckpt.pth.best.acc96p'
+        self.chkp_pth = './data_roadlr/ckpt.pth.best.acc96p'
 
         # Custom dataset ( left side, right side, uncertain(such as crosswalk) )
         print('==> Preparing data..')
@@ -201,7 +201,7 @@ class lrpose_recognizer:  # pose recognition
         text = "{0} [{1:.1f}%]".format(classes[pred].upper(), conf[pred])
         img = self.putText(img, text, (int(w/4), 50), color=(0, 255, 0), thickness=2)
 
-        cv2.imshow("Pose_Recog", img)
+        cv2.imshow("RoadLR", img)
         self.draw_graph()
 
         #cv2.waitKey(1)  # replaced by self.keypress()
@@ -228,19 +228,19 @@ class lrpose_recognizer:  # pose recognition
 
 
 if __name__ == '__main__':
-    ## Initialize pose_recog class
-    mod_pose_recog = lrpose_recognizer()
-    mod_pose_recog.initialize()
+    ## Initialize roadlr_recognizer class
+    mod_roadlr = roadlr_recognizer()
+    mod_roadlr.initialize()
 
     ## Prepare test data
-    fnlist = mod_pose_recog.read_testdata('/home/ccsmm/workdir/DB_Repo/ETRI_CartRobot/extracted/200626')
+    fnlist = mod_roadlr.read_testdata('/home/ccsmm/workdir/DB_Repo/ETRI_CartRobot/extracted/200626')
 
     gradcam_en = False
 
     idx_max = len(fnlist)
     idx = 0
 
-    #mod_pose_recog.cv2_print_cmd()
+    #mod_roadlr.cv2_print_cmd()
     fig = plt.figure()
 
     while ( idx < idx_max):
@@ -254,14 +254,14 @@ if __name__ == '__main__':
         ## Do apply()
         start_t = time.time()
         if gradcam_en:  # Enable GradCam function
-            img_jet, pred, conf = mod_pose_recog.apply_gradcam(img)
+            img_jet, pred, conf = mod_roadlr.apply_gradcam(img)
             img = img_jet
         else:  # normal
-            pred, conf = mod_pose_recog.apply(img)
+            pred, conf = mod_roadlr.apply(img)
 
         ## Display
         print('prediction : {} , confidence : {}          \r'.format(pred, conf), end='')
-        mod_pose_recog.cv2_imshow(img)
-        idx, gradcam_en, isBreak = mod_pose_recog.keypress( idx, gradcam_en)  # waitKey()
+        mod_roadlr.cv2_imshow(img)
+        idx, gradcam_en, isBreak = mod_roadlr.keypress( idx, gradcam_en)  # waitKey()
         if isBreak:
             break

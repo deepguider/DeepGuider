@@ -1,4 +1,4 @@
-#include "dg_lrpose.hpp"
+#include "roadlr/roadlr.hpp"
 #include "utils/python_embedding.hpp"
 #include "utils/vvs.h"
 #include "utils/opencx.hpp"
@@ -8,7 +8,7 @@
 using namespace dg;
 using namespace std;
 
-#define RECOGNIZER LRPoseRecognizer
+#define RECOGNIZER RoadLRRecognizer
 
 void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* image_file = "sample.png", int nItr = 5)
 {
@@ -107,7 +107,7 @@ void procfunc(bool recording, int rec_fps, const char* video_path)
 {
     // Initialize Python module
     RECOGNIZER recognizer;
-    if (!recognizer.initialize()) return;
+    if (!recognizer.initialize("./../src/roadlr", "roadlr", "roadlr_recognizer")) return;
     printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
 
     // Run the Python module

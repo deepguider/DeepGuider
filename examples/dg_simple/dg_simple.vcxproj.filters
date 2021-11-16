@@ -104,7 +104,7 @@
     <ClInclude Include="..\..\src\logo_recog\logo_localizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\lrpose_recog\lrpose_localizer.hpp">
+    <ClInclude Include="..\..\src\roadlr\roadlr_localizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\utils\python_embedding.hpp">
@@ -128,7 +128,7 @@
     <ClInclude Include="..\..\src\logo_recog\logo_recognizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp">
+    <ClInclude Include="..\..\src\roadlr\roadlr.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp">
@@ -148,7 +148,7 @@
     <None Include="..\..\src\logo_recog\logo_recognizer.py">
       <Filter>Recognizer Modules</Filter>
     </None>
-    <None Include="..\..\src\lrpose_recog\lrpose_recognizer.py">
+    <None Include="..\..\src\roadlr\roadlr.py">
       <Filter>Recognizer Modules</Filter>
     </None>
     <None Include="..\..\src\ocr_recog\ocr_recognizer.py">

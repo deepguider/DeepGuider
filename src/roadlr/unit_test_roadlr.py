@@ -14,8 +14,8 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
-from lrpose_recognizer import lrpose_recognizer
-import unit_test_lrpose_recog_config as config
+from roadlr import roadlr_recognizer
+import unit_test_roadlr_config as config
 
 import sys;sys.path.insert(0,'/home/ccsmm/workdir/ccsmmutils');import torch_img_utils as tim
 from ipdb import set_trace as bp
@@ -104,7 +104,7 @@ def get_utm_err(lat1, lon1, lat2, lon2):
      err_l2norm = np.linalg.norm(p1-p2) # l2norm = np.sqrt(np.sum((p1-p2)**2))
      return err_l2norm
 
-def do_lrpose_recog(avi, ascen, output_filename,  begin_frame=1000, server_ip="129.254.81.204"):  # file names
+def do_roadlr_recog(avi, ascen, output_filename,  begin_frame=1000, server_ip="129.254.81.204"):  # file names
     print("=====> Start reading {}.".format(avi))
     dataset = dgDataset(avi, ascen)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
@@ -136,7 +136,7 @@ def do_lrpose_recog(avi, ascen, output_filename,  begin_frame=1000, server_ip="1
 
         #cv2.imshow('QImg', qimg)
         #cv2.waitKey(1)
-        pred, confidence = mod_pose_recog.apply(qimg)
+        pred, confidence = mod_roadlr.apply(qimg)
         confidence = confidence/100.0
         if pred == 0:
             v_label = "left"
@@ -171,15 +171,12 @@ if __name__ == "__main__":
     images, ascen_fix, outputs = get_input_file_list(testset_dir, ext=in_ext, out_postfix=out_postfix)
 
     ## Intialize recognizer
-    mod_pose_recog = lrpose_recognizer(gpu_num)
-    mod_pose_recog.initialize()
+    mod_roadlr = roadlr_recognizer(gpu_num)
+    mod_roadlr.initialize()
 
     ## Pick a single date of testset, ex) 191115
     avi_filename = images[date_idx]
     ascen_filename = ascen_fix[date_idx]
     output_filename = outputs[date_idx]
 
-    do_lrpose_recog(avi_filename, ascen_filename, output_filename, begin_skip_frame, server_ip)  # avi and novatel are filenames
-
-    #for i, [avi, ascen] in enumerate(zip(images, ascen_fix)):
-        #do_vps(avi_filename, ascen_filename, output_filename, 2500, server_ip)  # avi and novatel are filenames
+    do_roadlr_recog(avi_filename, ascen_filename, output_filename, begin_skip_frame, server_ip)  # avi and novatel are filenames

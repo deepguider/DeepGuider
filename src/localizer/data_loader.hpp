@@ -27,8 +27,8 @@ enum
     /** Intersection classifier data (time, v, confidence) */
     DATA_IntersectCls = 4,
 
-    /** LRPose data (time, v, confidence) */
-    DATA_LR = 5,
+    /** RoadLR data (time, v, confidence) */
+    DATA_RoadLR = 5,
 
     /** RoadTheta data */
     DATA_RoadTheta = 6,
@@ -45,7 +45,7 @@ enum
 class DataLoader
 {
 public:
-    bool load(const std::string& video_file, const std::string& gps_file, const std::string& ahrs_file = "", const std::string& ocr_file = "", const std::string& poi_file = "", const std::string& vps_file = "", const std::string& intersection_file = "", const std::string& lr_file = "", const std::string& roadtheta_file = "")
+    bool load(const std::string& video_file, const std::string& gps_file, const std::string& ahrs_file = "", const std::string& ocr_file = "", const std::string& poi_file = "", const std::string& vps_file = "", const std::string& intersection_file = "", const std::string& roadlr_file = "", const std::string& roadtheta_file = "")
     {
         clear();
 
@@ -84,10 +84,10 @@ public:
             m_intersection_data = readIntersection(intersection_file);
             if (m_intersection_data.empty()) return false;
         }
-        if (!lr_file.empty())
+        if (!roadlr_file.empty())
         {
-            m_lr_data = readVPS_LR(lr_file);
-            if (m_lr_data.empty()) return false;
+            m_roadlr_data = readRoadLR(roadlr_file);
+            if (m_roadlr_data.empty()) return false;
         }
         if (!roadtheta_file.empty())
         {
@@ -180,12 +180,12 @@ public:
             min_index = &m_intersection_index;
             min_type = DATA_IntersectCls;
         }
-        if (m_lr_index < m_lr_data.size() && m_lr_data[m_lr_index][0] < min_time)
+        if (m_roadlr_index < m_roadlr_data.size() && m_roadlr_data[m_roadlr_index][0] < min_time)
         {
-            min_time = m_lr_data[m_lr_index][0];
-            min_data = &m_lr_data;
-            min_index = &m_lr_index;
-            min_type = DATA_LR;
+            min_time = m_roadlr_data[m_roadlr_index][0];
+            min_data = &m_roadlr_data;
+            min_index = &m_roadlr_index;
+            min_type = DATA_RoadLR;
         }
         if (m_roadtheta_index < m_roadtheta_data.size() && m_roadtheta_data[m_roadtheta_index][0] < min_time)
         {
@@ -265,12 +265,12 @@ public:
             min_index = &m_intersection_index;
             min_type = DATA_IntersectCls;
         }
-        if (m_lr_index < m_lr_data.size() && m_lr_data[m_lr_index][0] <= min_time)
+        if (m_roadlr_index < m_roadlr_data.size() && m_roadlr_data[m_roadlr_index][0] <= min_time)
         {
-            min_time = m_lr_data[m_lr_index][0];
-            min_data = &m_lr_data;
-            min_index = &m_lr_index;
-            min_type = DATA_LR;
+            min_time = m_roadlr_data[m_roadlr_index][0];
+            min_data = &m_roadlr_data;
+            min_index = &m_roadlr_index;
+            min_type = DATA_RoadLR;
         }
         if (m_roadtheta_index < m_roadtheta_data.size() && m_roadtheta_data[m_roadtheta_index][0] <= min_time)
         {
@@ -337,7 +337,7 @@ public:
         m_ahrs_index = 0;
         m_intersection_index = 0;
         m_vps_index = 0;
-        m_lr_index = 0;
+        m_roadlr_index = 0;
         m_ocr_index = 0;
         m_poi_index = 0;
         m_roadtheta_index = 0;
@@ -370,9 +370,9 @@ public:
         {
             while (m_intersection_index < m_intersection_data.size() && m_intersection_data[m_intersection_index][0] < start_time) m_intersection_index++;
         }
-        if (!m_lr_data.empty())
+        if (!m_roadlr_data.empty())
         {
-            while (m_lr_index < m_lr_data.size() && m_lr_data[m_lr_index][0] < start_time) m_lr_index++;
+            while (m_roadlr_index < m_roadlr_data.size() && m_roadlr_data[m_roadlr_index][0] < start_time) m_roadlr_index++;
         }
         if (!m_roadtheta_data.empty())
         {
@@ -388,7 +388,7 @@ public:
 
     bool empty() const
     {
-        return !m_camera_data.isOpened() && m_gps_data.empty() && m_ahrs_data.empty() && m_ocr_sdata.empty() && m_ocr_vdata.empty() && m_poi_data.empty() && m_vps_data.empty() && m_intersection_data.empty() && m_lr_data.empty() && m_roadtheta_data.empty();
+        return !m_camera_data.isOpened() && m_gps_data.empty() && m_ahrs_data.empty() && m_ocr_sdata.empty() && m_ocr_vdata.empty() && m_poi_data.empty() && m_vps_data.empty() && m_intersection_data.empty() && m_roadlr_data.empty() && m_roadtheta_data.empty();
     }
 
 protected:
@@ -402,7 +402,7 @@ protected:
         m_poi_data.clear();
         m_vps_data.clear();
         m_intersection_data.clear();
-        m_lr_data.clear();
+        m_roadlr_data.clear();
         m_roadtheta_data.clear();
 
         m_gps_index = 0;
@@ -411,7 +411,7 @@ protected:
         m_poi_index = 0;
         m_vps_index = 0;
         m_intersection_index = 0;
-        m_lr_index = 0;
+        m_roadlr_index = 0;
         m_roadtheta_index = 0;
         m_video_scale = 1;
         m_video_fps = -1;
@@ -498,7 +498,7 @@ protected:
         return cx::CSVReader::Double2D();
     }
 
-    cx::CSVReader::Double2D readVPS_LR(const std::string& clue_file)
+    cx::CSVReader::Double2D readRoadLR(const std::string& clue_file)
     {
         cx::CSVReader csv;
         if (csv.open(clue_file))
@@ -568,7 +568,7 @@ protected:
     cx::CSVReader::Double2D m_poi_data;
     cx::CSVReader::Double2D m_vps_data;
     cx::CSVReader::Double2D m_intersection_data;
-    cx::CSVReader::Double2D m_lr_data;
+    cx::CSVReader::Double2D m_roadlr_data;
     cx::CSVReader::Double2D m_roadtheta_data;
 
     size_t m_gps_index = 0;
@@ -577,7 +577,7 @@ protected:
     size_t m_poi_index = 0;
     size_t m_vps_index = 0;
     size_t m_intersection_index = 0;
-    size_t m_lr_index = 0;
+    size_t m_roadlr_index = 0;
     size_t m_roadtheta_index = 0;
     double m_first_data_time = -1;
     double m_video_scale = 1;

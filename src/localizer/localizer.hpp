@@ -60,8 +60,8 @@ namespace dg
             /** Intersection classifier data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
             OBS_IntersectCls = 4,
 
-            /** VPS_LR data (v1 = 0: uncertain, v1 = 1: road is left, v1 = 2: road is right) */
-            OBS_LR = 5,
+            /** RoadLR data (v1 = 0: uncertain, v1 = 1: road is left, v1 = 2: road is right) */
+            OBS_RoadLR = 5,
 
             /** RoadTheta data (v1: theta) */
             OBS_RoadTheta = 6
@@ -344,10 +344,10 @@ namespace dg
         }
 
         /**
-         * Apply LRPose result
+         * Apply RoadLR result
          * @param lr_cls The lateral position of camera w.r.t. road (0: LEFT_SIDE_OF_ROAD, 1: uncertain, 2: RIGHT_SIDE_OF_ROAD)
          */
-        virtual bool applyLRPose(int lr_cls, Timestamp time = -1, double confidence = -1)
+        virtual bool applyRoadLR(int lr_cls, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
             if (lr_cls == Edge::LR_NONE || m_pose_history.empty()) return false;
@@ -507,7 +507,7 @@ namespace dg
             {
                 return m_ekf->applyIntersectCls(Point2(obs.v1, obs.v2), obs.timestamp, obs.confidence);
             }
-            else if (obs.type == ObsData::OBS_LR)
+            else if (obs.type == ObsData::OBS_RoadLR)
             {
                 // ignore
             }

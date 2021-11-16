@@ -1,5 +1,5 @@
-#ifndef __LRPOSE_RECOGNIZER__
-#define __LRPOSE_RECOGNIZER__
+#ifndef __ROADLR_RECOGNIZER__
+#define __ROADLR_RECOGNIZER__
 
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
@@ -11,7 +11,7 @@ using namespace std;
 
 namespace dg
 {
-    struct LRPoseResult
+    struct RoadLRResult
     {
         int cls;                  // 0: Left ||road||, 1: unknown, 2: ||road|| Right
         double confidence;  // 0 ~ 1
@@ -21,9 +21,9 @@ namespace dg
     // const string PoseClassName[3] = {"LEFT_SIDE_OF_ROAD", "UNKNOWN_SIDE_OF_ROAD", "RIGHT_SIDE_OF_ROAD"};
 
     /**
-    * @brief C++ Wrapper of Python module - LRPoseRecognizer
+    * @brief C++ Wrapper of Python module - RoadLRRecognizer
     */
-    class LRPoseRecognizer: public PythonModuleWrapper
+    class RoadLRRecognizer: public PythonModuleWrapper
     {
     public:
         /**
@@ -41,7 +41,7 @@ namespace dg
             npy_intp dimensions[3] = { image.rows, image.cols, image.channels() };
             PyObject* pValue = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)&dimensions, NPY_UINT8, image.data);
             if (!pValue) {
-                fprintf(stderr, "LRPoseRecognizer::apply() - Cannot convert argument1\n");
+                fprintf(stderr, "RoadLRRecognizer::apply() - Cannot convert argument1\n");
                 return false;
             }
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
@@ -56,12 +56,11 @@ namespace dg
                 Py_ssize_t n_ret = PyTuple_Size(pRet);
                 if (n_ret != 2)
                 {
-                    fprintf(stderr, "LRPoseRecognizer::apply() - Wrong number of returns\n");
+                    fprintf(stderr, "RoadLRRecognizer::apply() - Wrong number of returns\n");
                     return false;
                 }
 
                 cv::AutoLock lock(m_mutex);
-                // lrposenition class & confidence
                 pValue = PyTuple_GetItem(pRet, 0);
                 m_result.cls = PyLong_AsLong(pValue);
                 pValue = PyTuple_GetItem(pRet, 1);
@@ -69,7 +68,7 @@ namespace dg
             }
             else {
                 PyErr_Print();
-                fprintf(stderr, "LRPoseRecognizer::apply() - Call failed\n");
+                fprintf(stderr, "RoadLRRecognizer::apply() - Call failed\n");
                 return false;
             }
 
@@ -80,23 +79,23 @@ namespace dg
             return true;
         }
 
-        LRPoseResult get() const
+        RoadLRResult get() const
         {
             cv::AutoLock lock(m_mutex);
             return m_result;
         }
 
-        LRPoseResult get(Timestamp& ts) const
+        RoadLRResult get(Timestamp& ts) const
         {
             cv::AutoLock lock(m_mutex);
             ts = m_timestamp;
             return m_result;
         }
 
-        void set(const LRPoseResult& lrpose, Timestamp ts, double proc_time = -1)
+        void set(const RoadLRResult& roadlr, Timestamp ts, double proc_time = -1)
         {
             cv::AutoLock lock(m_mutex);
-            m_result = lrpose;
+            m_result = roadlr;
             m_timestamp = ts;
             m_processing_time = proc_time;
         }
@@ -115,17 +114,18 @@ namespace dg
                 image(roi) = image(roi) / 3;
             }
 
-            cv::Point2d pt(image.cols / 2 - 190 * drawing_scale, 100 * drawing_scale);
-            std::string msg = cv::format("lrpose : %s(%.2lf)", PoseClassName[m_result.cls].c_str(), m_result.confidence);
-            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 255, 0), (int)(6 * drawing_scale));
-            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 0, 0), (int)(2 * drawing_scale));
+            int delta = (m_result.cls == 1) ? 30 : 0;
+            cv::Point2d pt(image.cols / 2 - (200 + delta) * drawing_scale, 100 * drawing_scale);
+            std::string msg = cv::format("RoadLR: %s (%.2lf)", PoseClassName[m_result.cls].c_str(), m_result.confidence);
+            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 255, 255), (int)(10 * drawing_scale));
+            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(255, 0, 0), (int)(4 * drawing_scale));
         }
 
         void print() const
         {
             cv::AutoLock lock(m_mutex);
             printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), m_processing_time, m_timestamp);
-            printf("\tlrpose: %d (%.2lf)\n", m_result.cls, m_result.confidence);
+            printf("\troadlr: %d (%.2lf)\n", m_result.cls, m_result.confidence);
         }
 
         void write(std::ofstream& stream, int cam_fnumber = -1) const
@@ -143,7 +143,7 @@ namespace dg
                 std::vector<std::string> elems = splitStr(stream[k].c_str(), (int)stream[k].length(), ',');
                 if (elems.size() != 6)
                 {
-                    printf("[lrpose] Invalid log data %s\n", stream[k].c_str());
+                    printf("[roadlr] Invalid log data %s\n", stream[k].c_str());
                     return;
                 }
                 std::string module_name = elems[2];
@@ -159,14 +159,14 @@ namespace dg
 
         static const char* name()
         {
-            return "lrpose";
+            return "roadlr";
         }
 
 
     protected:
-        LRPoseResult m_result;
+        RoadLRResult m_result;
     };
 
 } // End of 'dg'
 
-#endif // End of '__LRPOSE_RECOGNIZER__'
+#endif // End of '__ROADLR_RECOGNIZER__'

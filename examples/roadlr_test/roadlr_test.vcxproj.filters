@@ -5,10 +5,10 @@
     <ClCompile Include="..\..\src\utils\python_embedding.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\pose_recog\pose_recognizer.hpp" />
+    <ClInclude Include="..\..\src\roadlr\roadlr.hpp" />
     <ClInclude Include="..\..\src\utils\python_embedding.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\src\pose_recog\pose_recog.py" />
+    <None Include="..\..\src\roadlr\roadlr.py" />
   </ItemGroup>
 </Project>

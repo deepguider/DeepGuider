@@ -4,7 +4,7 @@
 enable_intersection: 0
 enable_ocr: 0
 enable_vps: 0
-enable_lrpose: 0
+enable_roadlr: 0
 enable_roadtheta: 0
 enable_exploration: 0
 enable_logo: 0
