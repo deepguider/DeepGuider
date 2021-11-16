@@ -453,6 +453,7 @@ void DeepGuiderROS::callbackVPS(const dg_simple_ros::vps::ConstPtr& msg)
 
 void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
 {
+    /*
     const char* str = msg->data.c_str();
     if (!strcmp(str, "ready"))
     {
@@ -474,10 +475,12 @@ void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
     {
         m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_GOAL);
     } 
+    */
 }
 
 void DeepGuiderROS::publishGuidance()
-{    
+{  
+    /*  
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
 
     // make action messages
@@ -506,6 +509,7 @@ void DeepGuiderROS::publishGuidance()
     msg_guide.msg = cur_guide.msg;    
     
     pub_guide.publish(msg_guide);
+    */
 }
 
 void DeepGuiderROS::publishDGPose()
