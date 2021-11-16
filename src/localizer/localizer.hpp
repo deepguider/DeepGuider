@@ -413,6 +413,7 @@ namespace dg
             m_projected_pose_history.resize(m_history_size);
             m_gps_state = Point2T(Point2(0, 0), 0);
             m_gps_velocity = Point2(0, 0);
+            m_timestamp = -1;
             return true;
         }
 

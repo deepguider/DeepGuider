@@ -515,13 +515,13 @@ void DeepGuiderROS::publishGuidance()
 void DeepGuiderROS::publishDGPose()
 {
     geometry_msgs::PoseStamped rosps;
-    dg::Timestamp  cur_time;
-    dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&cur_time);
-    rosps.header.stamp.fromSec(cur_time);
+    dg::Timestamp  timestamp;
+    dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&timestamp);
+    if(timestamp<0) return;
+
+    rosps.header.stamp.fromSec(timestamp);
     rosps.pose.position.x = cur_pose.x;
     rosps.pose.position.y = cur_pose.y;    
-    //printf("cur_pose.x: %f, cur_pose.y: %f\n", cur_pose.x, cur_pose.y);
-    //printf("cur_pose.t: %f\n", cur_time);
     pub_pose.publish(rosps);    
 }
 
@@ -569,8 +569,10 @@ void DeepGuiderROS::publishDGStatus(bool system_shutdown)
 {
     dg_simple_ros::dg_status msg;
 
-    dg::Timestamp  cur_time;
-    dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&cur_time);
+    dg::Timestamp  timestamp;
+    dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&timestamp);
+    if(timestamp<0) return;
+
     dg::LatLon ll = m_localizer.getPoseGPS();
     msg.dg_shutdown = system_shutdown;
     msg.x = cur_pose.x;
@@ -578,7 +580,7 @@ void DeepGuiderROS::publishDGStatus(bool system_shutdown)
     msg.lat = ll.lat;
     msg.lon = ll.lon;
     msg.confidence = m_localizer.getPoseConfidence();
-    msg.timestamp = cur_time;
+    msg.timestamp = timestamp;
 
     pub_status.publish(msg);
 }
