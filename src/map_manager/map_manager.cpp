@@ -6,11 +6,6 @@ using namespace rapidjson;
 namespace dg
 {
 
-std::string MapManager::m_ip = "localhost";				// etri: 129.254.81.204
-std::string MapManager::m_image_server_port = "10000";	// etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
-bool MapManager::m_portErr = false;
-
-
 bool MapManager::initialize(const std::string ip, const std::string port)
 {
 	m_ip = ip;
@@ -780,6 +775,33 @@ bool MapManager::parseStreetView(const char* json, std::vector<StreetView>& sv_v
 	return true;
 }
 
+bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string server_ip, std::string server_port, std::string cubic, int timeout)
+{
+	if (!(cubic == "f" || cubic == "b" || cubic == "l" || cubic == "r" || cubic == "u" || cubic == "d"))
+		cubic = "";
+
+	if ( server_port == "10003" ){  // 10003 for ETRI indoor
+		if (cubic == "l") cubic = "0";  // More left
+		if (cubic == "r") cubic = "2";  // Left
+		if (cubic == "f") cubic = "1";  // Frontal
+	}
+
+	const std::string url_middle = ":" + server_port + "/";
+	if (cubic == "")
+	{
+		std::string url = "http://" + server_ip + url_middle + std::to_string(sv_id);
+		sv_image = queryImage2server(url, timeout);
+	}
+	else
+	{
+		std::string url = "http://" + server_ip + url_middle + std::to_string(sv_id) + "/" + cubic;
+		sv_image = queryImage2server(url, timeout);
+	}
+	if (sv_image.empty())	return false;
+
+	return true;
+}
+
 bool MapManager::getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic, int timeout)
 {
 	if (!(cubic == "f" || cubic == "b" || cubic == "l" || cubic == "r" || cubic == "u" || cubic == "d"))
@@ -843,8 +865,11 @@ cv::Mat MapManager::queryImage2server(std::string url, int timeout)
 		{
 			const unsigned char* novalid = reinterpret_cast<const unsigned char*>("No valid");
 			unsigned char part[8] = { stream[0], stream[1], stream[2], stream[3], stream[4], stream[5], stream[6], stream[7] };
-			if (*part == *novalid)
-				m_portErr = true;
+			if (*part == *novalid)	// port error
+			{
+				printf("MapManager::queryImage2server - port error!\n");
+				return cv::Mat();
+			}
 
 			return cv::imdecode(stream, -1);
 		}

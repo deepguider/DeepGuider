@@ -296,7 +296,19 @@ public:
 	 * @param timeout The timeout value of curl (Unit: [sec])
 	 * @return True if successful (false if failed)
 	 */
-	static bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 5);
+	bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string cubic = "", int timeout = 5);
+
+	/**
+	 * Get a StreetView image corresponding to a certain StreetView ID
+	 * @param sv_id The given StreetView ID of this StreetView image
+	 * @param sv_image A reference to downloaded StreetView image
+	 * @param server_ip The given ip address of the image server
+	 * @param server_port The given port number of the image server
+	 * @param cubic The face of an image cube - 360: "", front: "f", back: "b", left: "l", right: "r", up: "u", down: "d" (default: "")
+	 * @param timeout The timeout value of curl (Unit: [sec])
+	 * @return True if successful (false if failed)
+	 */
+	static bool getStreetViewImage(ID sv_id, cv::Mat& sv_image, std::string server_ip, std::string server_port, std::string cubic = "", int timeout = 5);
 
 protected:
 	/**
@@ -457,7 +469,7 @@ protected:
 	 * @param url_middle The web port number to request to the server (default: ":10000/")
 	 * @return The downloaded image
 	 */
-	static cv::Mat downloadStreetViewImage(ID sv_id, const std::string cubic = "", int timeout = 10, const std::string url_middle = ":10000/");
+	cv::Mat downloadStreetViewImage(ID sv_id, const std::string cubic = "", int timeout = 10, const std::string url_middle = ":10000/");
 
 	/**
 	 * Request an image to server and download it
@@ -488,11 +500,9 @@ protected:
 		return false;
 	}
 
-	static std::string m_ip;
-	static std::string m_image_server_port;
-	static bool m_portErr;
+	std::string m_ip = "localhost";				// etri: 129.254.81.204
+	std::string m_image_server_port = "10000";	// etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
 	std::string m_json;
-
 };
 
 } // End of 'dg'
