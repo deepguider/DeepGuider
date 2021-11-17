@@ -324,7 +324,7 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 
 	m_gstatus = GuideStatus::GUIDE_NORMAL;
 	//near junction
-	if (remain_dist <= m_uncertain_dist || passsed_dist <= m_uncertain_dist)
+	if (remain_dist <= m_uncertain_dist)
 	{
 		//if the edge is shorter than 2*m_uncertain_dist
 		if (junction_dist <= 2 * m_uncertain_dist)
