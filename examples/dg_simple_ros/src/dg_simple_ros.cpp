@@ -187,10 +187,12 @@ int DeepGuiderROS::run()
         loop.sleep();
     }
 
+    // broadcast shutdown message
+    publishDGStatus(true);
+    ros::spinOnce();
+
     // shutdown system
     printf("Shutdown deepguider system...\n");
-    publishDGStatus(true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     terminateThreadFunctions();
     printf("\tthread terminated\n");
     if(m_video_recording) m_video_gui.release();
@@ -440,7 +442,7 @@ void DeepGuiderROS::callbackVPS(const dg_simple_ros::vps::ConstPtr& msg)
 
     dg::ID sv_id = msg->id;
     cv::Mat sv_image;
-    if (MapManager::getStreetViewImage(sv_id, sv_image, "f") && !sv_image.empty())
+    if (MapManager::getStreetViewImage(sv_id, sv_image, m_server_ip, m_image_server_port, "f") && !sv_image.empty())
     {
         m_vps.set(sv_id, sv_confidence, capture_time, proc_time);
         m_vps.draw(sv_image, 3.0);
@@ -517,7 +519,7 @@ void DeepGuiderROS::publishDGPose()
     geometry_msgs::PoseStamped rosps;
     dg::Timestamp  timestamp;
     dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&timestamp);
-    if(timestamp<0) return;
+    if (timestamp < 0) return;
 
     rosps.header.stamp.fromSec(timestamp);
     rosps.pose.position.x = cur_pose.x;
@@ -571,7 +573,7 @@ void DeepGuiderROS::publishDGStatus(bool system_shutdown)
 
     dg::Timestamp  timestamp;
     dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&timestamp);
-    if(timestamp<0) return;
+    if (timestamp < 0) return;
 
     dg::LatLon ll = m_localizer.getPoseGPS();
     msg.dg_shutdown = system_shutdown;
