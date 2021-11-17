@@ -58,8 +58,8 @@ namespace dg
             m_intersectcls_noise = cv::Mat::eye(2, 2, CV_64F);
             m_camera_offset = Polar2(0, 0);
 
-            m_threshold_time = 0.01;
-            m_threshold_clue_dist = 0;
+            m_threshold_time = 0.01;    // second
+            m_threshold_clue_dist = 1e-6;
             m_norm_conf_a = 1;
             m_norm_conf_b = 2;
 
@@ -103,6 +103,7 @@ namespace dg
             m_time_last_update = time;
             m_imu_compass_prev_angle = imu_angle;
             m_imu_compass_prev_time = imu_time;
+            m_pose_initialized = true;
             return true;
         }
 
@@ -216,12 +217,26 @@ namespace dg
 
         virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
         {
+            if (relative.lin <= 0)
+            {
+                double sigma_x = m_poi_noise.at<double>(2, 2);
+                double sigma_y = m_poi_noise.at<double>(3, 3);
+                m_observation_noise = (cv::Mat_<double>(2, 2) << sigma_x * sigma_x, 0, 0, sigma_y * sigma_y);
+                return applyPosition(clue_xy, time, confidence);
+            }            
             m_observation_noise = m_poi_noise;
             return applyLocClue(clue_xy, relative, time, confidence);
         }
 
         virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
         {
+            if (relative.lin <= 0)
+            {
+                double sigma_x = m_vps_noise.at<double>(2, 2);
+                double sigma_y = m_vps_noise.at<double>(3, 3);
+                m_observation_noise = (cv::Mat_<double>(2, 2) << sigma_x * sigma_x, 0, 0, sigma_y * sigma_y);
+                return applyPosition(clue_xy, time, confidence);
+            }            
             m_observation_noise = m_vps_noise;
             return applyLocClue(clue_xy, relative, time, confidence);
         }
@@ -247,6 +262,7 @@ namespace dg
             m_state_vec.at<double>(1) = pose.y;
             m_state_vec.at<double>(2) = pose.theta;
             m_state_cov = cv::Mat::eye(5, 5, m_state_vec.type());
+            m_pose_initialized = true;
         }
 
         virtual Pose2 getPose(Timestamp* timestamp = nullptr) const
@@ -398,6 +414,13 @@ namespace dg
         virtual bool applyOrientation(double theta, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
+            if (m_time_last_update < 0)
+            {
+                m_state_vec.at<double>(2) = cx::trimRad(theta);
+                m_time_last_update = time;
+                return true;
+            }
+
             double interval = 0;
             if (m_time_last_update > 0) interval = time - m_time_last_update;
             if (interval > m_threshold_time)
@@ -419,11 +442,26 @@ namespace dg
         virtual bool applyLocClue(const Point2& clue_xy, const Polar2& obs = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
+
+            // check initialization
+            if (!m_pose_initialized || m_time_last_update < 0)
+            {
+                m_state_vec.at<double>(0) = clue_xy.x;
+                m_state_vec.at<double>(1) = clue_xy.y;
+                m_time_last_update = time;
+                m_pose_initialized = true;
+                return true;
+            }
+
+            // check degenerate case
+            double dx = clue_xy.x - m_state_vec.at<double>(0);
+            double dy = clue_xy.x - m_state_vec.at<double>(1);
+            double dr = sqrt(dx * dx + dy * dy);
+
             double interval = 0;
             if (m_time_last_update > 0) interval = time - m_time_last_update;
             if (interval > m_threshold_time) predict(interval);
-            // TODO: Deal with missing observation
-            if (obs.lin >= m_threshold_clue_dist && obs.ang < CV_PI && correct(cv::Vec4d(obs.lin, obs.ang, clue_xy.x, clue_xy.y)))
+            if (dr > 1e-10 && obs.lin > m_threshold_clue_dist && obs.ang < CV_PI && correct(cv::Vec4d(obs.lin, obs.ang, clue_xy.x, clue_xy.y)))
             {
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
                 m_time_last_update = time;
@@ -576,7 +614,7 @@ namespace dg
                     measure.at<double>(2),
                     measure.at<double>(3));
                 jacobian = (cv::Mat_<double>(4, 5) <<
-                    -2 * dx / r, -2 * dy / r, 0, 0, 0,
+                    -dx / r, -dy / r, 0, 0, 0,
                     dy / r / r, -dx / r / r, -1, 0, 0,
                     0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0);

@@ -87,7 +87,6 @@ namespace dg
             if (MapManager::getStreetViewImage(sv_id, sv_image, m_server_ipaddr, m_server_port, "f") && !sv_image.empty())
             {
                 // TODO: compute relative pose of matched streetview image w.r.t. camera image
-                relative = dg::Polar2(0, 0);
             }
 
             return relative;

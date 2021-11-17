@@ -174,7 +174,10 @@ namespace dg
         {
             cv::AutoLock lock(m_mutex);
             if (m_ekf) m_ekf->setPose(pose);
-            initInternalVariables();
+            m_state_history.resize(m_history_size);
+            m_observation_history.resize(m_history_size);
+            m_pose_history.resize(m_history_size);
+            m_projected_pose_history.resize(m_history_size);
             m_pose = pose;
         }
 

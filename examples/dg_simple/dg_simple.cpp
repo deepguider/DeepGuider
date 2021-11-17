@@ -118,8 +118,7 @@ protected:
     // global variables
     dg::Point2F m_dest;
     bool m_dest_defined = false;
-    bool m_pose_initialized = false;
-    bool m_path_initialized = false;
+    bool m_path_generation_pended = false;
 
     // local variables
     std::string m_winname = "DeepGuider";           // title of gui window
@@ -203,7 +202,6 @@ protected:
 
     cv::Mutex m_map_mutex;
     cv::Mutex m_guider_mutex;
-    int m_gps_update_cnt = 0;
 
     // guidance icons
     cv::Mat m_icon_forward;
@@ -214,10 +212,6 @@ protected:
     cv::Mat m_mask_turn_right;
     cv::Mat m_icon_turn_back;
     cv::Mat m_mask_turn_back;
-
-    dg::ID id_invalid = 0;
-    Polar2 rel_pose_defualt = Polar2(-1, CV_PI);     // default relative pose (invalid)
-    double confidence_default = -1.0;
 };
 
 void onMouseEvent(int event, int x, int y, int flags, void* param)
@@ -459,9 +453,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // reset interval variables
     m_dest_defined = false;
-    m_pose_initialized = false;
-    m_path_initialized = false;
-    m_gps_update_cnt = 0;
+    m_path_generation_pended = false;
     m_cam_image.release();
     m_cam_capture_time = -1;
     m_vps_image.release();
@@ -632,6 +624,12 @@ int DeepGuider::run()
             if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
         }
 
+        // process path generation
+        if(m_dest_defined && m_path_generation_pended && m_localizer.isPoseStabilized())
+        {
+            if(updateDeepGuiderPath(getPose(), m_dest)) m_path_generation_pended = false;
+        }
+
         // update
         if (update_gui)
         {
@@ -729,21 +727,7 @@ bool DeepGuider::procOutOfPath(const Point2& curr_pose)
 
 void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
 {    
-    // apply gps to localizer
     VVS_CHECK_TRUE(m_localizer.applyGPS(gps_datum, ts));
-    double pose_confidence = m_localizer.getPoseConfidence();
-
-    // check pose initialization
-    m_gps_update_cnt++;
-    if (!m_pose_initialized && pose_confidence > 0.2 && m_gps_update_cnt > 10)
-    {
-        m_pose_initialized = true;
-        if(m_dest_defined)
-        {
-            setDeepGuiderDestination(m_dest);
-        }
-        printf("[Localizer] initial pose is estimated!\n");
-    }
 }
 
 void DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts)
@@ -791,17 +775,18 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
 
 bool DeepGuider::setDeepGuiderDestination(dg::Point2F dest)
 {
-    if(!m_pose_initialized)
+    if(!m_localizer.isPoseStabilized())
     {
         m_dest = dest;
         m_dest_defined = true;
+        m_path_generation_pended = true;
         return true;
     }
 
     if (!updateDeepGuiderPath(getPose(), dest)) return false;
     m_dest = dest;
     m_dest_defined = true;
-    m_path_initialized = true;
+    m_path_generation_pended = false;
     return true;
 }
 
@@ -1057,7 +1042,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
 
 void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect)
 {
-    if(!m_path_initialized || !m_dest_defined) return;
+    if(!m_dest_defined || m_path_generation_pended) return;
     if(guide.actions.empty()) return;
 
     int guide_cx = rect.x + rect.width / 2;
@@ -1139,7 +1124,7 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
 
 void DeepGuider::procGuidance(dg::Timestamp ts)
 {
-    if(!m_path_initialized || !m_dest_defined) return;
+    if(!m_dest_defined || m_path_generation_pended) return;
 
     // get updated pose & localization confidence
     dg::TopometricPose pose_topo = getPoseTopometric();
@@ -1210,6 +1195,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         {
             printf("Arrived to destination!\n");
             m_dest_defined = false;
+            m_path_generation_pended = false;
             if (m_enable_tts) putTTS("Arrived to destination!");
             m_exploration_state_count = m_exploration_state_count_max;  //Enter exploration mode until state_count becomes 0 from count_max
         }
