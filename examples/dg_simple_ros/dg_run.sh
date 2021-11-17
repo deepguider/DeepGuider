@@ -1,12 +1,13 @@
 #!/bin/bash
+source /opt/ros/melodic/setup.bash  # It is necessary to run catkin_make
 
 if [ ! -n "$VIRTUAL_ENV" ];then
 	echo "You need to run $0 after entering virtualenv"
 	exit 0
 fi
 
+catkin_make  # It's necessary to makedevel directory
 source devel/setup.bash
-catkin_make
 
 ## Start roscore
 pid=`pgrep roscore`
