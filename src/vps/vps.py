@@ -370,16 +370,6 @@ class vps:
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
 
-        if (eval_set_db == None) or (eval_set_q == None):
-            return -1
-        else:
-            if len(eval_set_db.images) < self.K:
-                return -1
-            if len(eval_set_db.images) < 1:
-                return -1
-            if len(eval_set_q.images) < 1:
-                return -1
-
         if self.load_dbfeat == True:
             if self.load_dbfeat_initialized == False: ## Initial condition is False (off)
                 print('[vps]====> Initializing load_dbfeat.')
@@ -395,8 +385,17 @@ class vps:
             faiss_index = self.faiss_index
             dbImage = self.dbImage
         else:  # Calculate DB features everytime
-           # extracted for db, now split in own sets
-            print('[vps]====> Extracting dbfeat.')
+            if (eval_set_db == None) or (eval_set_q == None):
+                return -1
+            else:
+                if len(eval_set_db.images) < self.K:
+                    return -1
+                if len(eval_set_db.images) < 1:
+                    return -1
+                if len(eval_set_q.images) < 1:
+                    return -1
+            ## extracted for db, now split in own sets
+            #print('[vps]====> Extracting dbfeat.')
             if self.verbose:
                 print('====> Extracting dbfeat.')
             dbFeat = self.test_sub(eval_set_db, epoch=epoch)
@@ -625,6 +624,9 @@ class vps:
     def get_region(self):  # region information for image server used in isv.SaveImages
         return self.region
 
+    def flush_db_dir(self):
+        os.system("rm -rf " + os.path.join(self.dataset_struct_dir,'*.jpg')) # You have to pay attention to code 'rm -rf' command
+
     def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr=None, port=None, load_dbfeat=0.0, save_dbfeat=0.0):
         ## Init.
         if ipaddr != None:
@@ -670,17 +672,23 @@ class vps:
             if self.load_dbfeat == False:
                 ## Get DB images from streetview image server            
                 ret = self.getStreetView(self.dataset_struct_dir)               
-            if ret < 0:
-                print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
+                if ret < 0:
+                    print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
+            else:
+                self.flush_db_dir()
+
             if image is not None:
                 fname = os.path.join(self.dataset_queries_dir,'newquery.jpg')
                 try:
                     h, w, c = image.shape
                 except: # invalid query image
+                    self.flush_db_dir()
                     return self.getIDConf()
                 if (h < 480) or (w < 640) or (c != 3): # invalid query image
+                    self.flush_db_dir()
                     return self.getIDConf()
                 cv.imwrite(fname,image)
+
             if self.port == "10003":  # input image resolution : 2592*2048
                 whole_db_set,whole_q_set = dataset.get_dg_indoor_test_set()
             else:  # input image resolution : 1024*1024
@@ -696,6 +704,7 @@ class vps:
             raise Exception('Unknown dataset')
 
         ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]        
+        self.flush_db_dir()
         return self.getIDConf()
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
