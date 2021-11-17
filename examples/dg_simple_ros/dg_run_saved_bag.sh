@@ -24,7 +24,16 @@ fi
 # -d n: delay rosbag play n seconds
 # -s n: skip first n seconds
 # -r k: replay rosbag k times faster than normal speed
-gnome-terminal -- rosbag play -d 20 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
+#gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
+#gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/coex.bag
+#gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/etri.bag
+gnome-terminal -- rosbag play -d 10 -s 0 -r 1 ./recordings/indoor.bag
 
 ## Start dg_simple_ros package (working directory: devel/lib/dg_simple_ros/)
+CWD=`pwd`
+LIBDIR="devel/lib/dg_simple_ros"
+
+cp -rf data* font logo_data model recordings ${LIBDIR}/.
+ln -sf ${CWD}/dg_ros.yml ${LIBDIR}/.
+
 roslaunch dg_simple_ros dg_simple_ros.launch
