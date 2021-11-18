@@ -25,6 +25,8 @@ import torchvision.models as models
 import faiss
 import time
 
+import utm
+
 #from tensorboardX import SummaryWriter
 import numpy as np
 from netvlad import netvlad
@@ -35,10 +37,11 @@ import copy
 
 import cv2 as cv
 
-from get_streetview import ImgServer
-import get_streetview
+from get_streetview import ImgServer, GetStreetView_fromID
 
 from netvlad import etri_dbloader as dataset
+
+from vps_filter import vps_filter
 
 from ipdb import set_trace as bp
 
@@ -290,6 +293,8 @@ class vps:
         self.model = model
         if self.verbose:
             print('===> Building model end(vps.py)')
+
+        self.mVps_filter = vps_filter()
 
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
@@ -720,6 +725,19 @@ class vps:
         IDs = self.vps_IDandConf[0]
         Distances = self.vps_IDandConf[1]
         Confs = self.convert_distance_to_confidence(Distances)
+
+        ## Filter out noisy result with ransac for top-1
+        top1_id = IDs[0]
+        _, lat, lon = GetStreetView_fromID(top1_id, roi_radius=1, ipaddr=self.ipaddr)
+        if lat != -1:  # Image server is ready.
+            # When image server is not available, do not filter out.
+            utm_x, utm_y, r_num, r_str = utm.from_latlon(lat, lon)  # (353618.4250711136, 4027830.874694569, 52, 'S')
+            #utm_x = utm_x - 353618  # offset
+            #utm_y = utm_y - 4027830  # offset
+            if self.mVps_filter.check_valid(utm_x, utm_y) == False:   # Filter out noisy result with ransac of first-order line function
+                # Noisy result is changed to -1.
+                IDs[0] = 0
+                Confs[0] = -1
         return [IDs, Confs]
 
     def set_radius_by_accuracy(self, gps_accuracy=0.79):

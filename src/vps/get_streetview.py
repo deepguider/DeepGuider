@@ -234,7 +234,7 @@ def GetStreetView_fromID(svid=15292002727, roi_radius=1,ipaddr='localhost', imag
     if ret == -1:
         #raise Exception('Image server is not available.')
         print('Image server is not available.')
-        return -1
+        return [-1, -1, -1]
 
     ## Save downloaded image at outdir
     numImgs = isv.GetNumImgs()
