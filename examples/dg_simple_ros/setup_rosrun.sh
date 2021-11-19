@@ -43,7 +43,7 @@ ln -sf $DGDIR/src/logo_recog/model $ROSDIR/
 ## Copy machine-specific files from template to local
 cp $DGDIR/examples/dg_simple_ros/CMakeListsTemplate.txt $DGDIR/examples/dg_simple_ros/CMakeLists.txt
 cp $DGDIR/examples/dg_simple_ros/dg_ros.yml $ROSDIR/
-sed -i "s|/work/deepguider|$DGDIR|g" $DGDIR/examples/dg_simple_ros/CMakeLists.txt
+sed -i "s|/home/dgtest/deepguider|$DGDIR|g" $DGDIR/examples/dg_simple_ros/CMakeLists.txt
 sed -i "s|/home/dgtest/deepguider|$DGDIR|g" $ROSDIR/dg_ros.yml
 
 ## Copy example shell scripts to ROS workspace

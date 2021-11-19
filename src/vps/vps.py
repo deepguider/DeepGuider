@@ -25,6 +25,8 @@ import torchvision.models as models
 import faiss
 import time
 
+import utm
+
 #from tensorboardX import SummaryWriter
 import numpy as np
 from netvlad import netvlad
@@ -35,10 +37,11 @@ import copy
 
 import cv2 as cv
 
-from get_streetview import ImgServer
-import get_streetview
+from get_streetview import ImgServer, GetStreetView_fromID
 
 from netvlad import etri_dbloader as dataset
+
+from vps_filter import vps_filter
 
 from ipdb import set_trace as bp
 
@@ -291,6 +294,8 @@ class vps:
         if self.verbose:
             print('===> Building model end(vps.py)')
 
+        self.mVps_filter = vps_filter()
+
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
             return 0 # Failed
@@ -370,16 +375,6 @@ class vps:
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
 
-        if (eval_set_db == None) or (eval_set_q == None):
-            return -1
-        else:
-            if len(eval_set_db.images) < self.K:
-                return -1
-            if len(eval_set_db.images) < 1:
-                return -1
-            if len(eval_set_q.images) < 1:
-                return -1
-
         if self.load_dbfeat == True:
             if self.load_dbfeat_initialized == False: ## Initial condition is False (off)
                 print('[vps]====> Initializing load_dbfeat.')
@@ -395,8 +390,17 @@ class vps:
             faiss_index = self.faiss_index
             dbImage = self.dbImage
         else:  # Calculate DB features everytime
-           # extracted for db, now split in own sets
-            print('[vps]====> Extracting dbfeat.')
+            if (eval_set_db == None) or (eval_set_q == None):
+                return -1
+            else:
+                if len(eval_set_db.images) < self.K:
+                    return -1
+                if len(eval_set_db.images) < 1:
+                    return -1
+                if len(eval_set_q.images) < 1:
+                    return -1
+            ## extracted for db, now split in own sets
+            #print('[vps]====> Extracting dbfeat.')
             if self.verbose:
                 print('====> Extracting dbfeat.')
             dbFeat = self.test_sub(eval_set_db, epoch=epoch)
@@ -625,6 +629,9 @@ class vps:
     def get_region(self):  # region information for image server used in isv.SaveImages
         return self.region
 
+    def flush_db_dir(self):
+        os.system("rm -rf " + os.path.join(self.dataset_struct_dir,'*.jpg')) # You have to pay attention to code 'rm -rf' command
+
     def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr=None, port=None, load_dbfeat=0.0, save_dbfeat=0.0):
         ## Init.
         if ipaddr != None:
@@ -670,17 +677,23 @@ class vps:
             if self.load_dbfeat == False:
                 ## Get DB images from streetview image server            
                 ret = self.getStreetView(self.dataset_struct_dir)               
-            if ret < 0:
-                print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
+                if ret < 0:
+                    print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
+            else:
+                self.flush_db_dir()
+
             if image is not None:
                 fname = os.path.join(self.dataset_queries_dir,'newquery.jpg')
                 try:
                     h, w, c = image.shape
                 except: # invalid query image
+                    self.flush_db_dir()
                     return self.getIDConf()
                 if (h < 480) or (w < 640) or (c != 3): # invalid query image
+                    self.flush_db_dir()
                     return self.getIDConf()
                 cv.imwrite(fname,image)
+
             if self.port == "10003":  # input image resolution : 2592*2048
                 whole_db_set,whole_q_set = dataset.get_dg_indoor_test_set()
             else:  # input image resolution : 1024*1024
@@ -696,6 +709,7 @@ class vps:
             raise Exception('Unknown dataset')
 
         ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]        
+        self.flush_db_dir()
         return self.getIDConf()
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
@@ -711,11 +725,29 @@ class vps:
         IDs = self.vps_IDandConf[0]
         Distances = self.vps_IDandConf[1]
         Confs = self.convert_distance_to_confidence(Distances)
+
+        ## Filter out noisy result with ransac for top-1 for indoor test
+        if self.port == "10003":  # 10003 means indoor
+            top1_id = IDs[0]
+            _, lat, lon = GetStreetView_fromID(top1_id, roi_radius=1, ipaddr=self.ipaddr)
+            if lat != -1:  # Image server is ready.
+                # When image server is not available, do not filter out.
+                utm_x, utm_y, r_num, r_str = utm.from_latlon(lat, lon)  # (353618.4250711136, 4027830.874694569, 52, 'S')
+                self.mVps_filter.set_utm_distance_threshold(5)  # filter radius 5 meters for indoor
+                #self.mVps_filter.set_utm_distance_threshold(self.get_radius())  # filter radius 50 meters for outdoor
+                if self.mVps_filter.check_valid(utm_x, utm_y) == False:   # Filter out noisy result with ransac of first-order line function
+                    # Noisy result is changed to -1.
+                    IDs[0] = 0
+                    Confs[0] = -1
+
         return [IDs, Confs]
 
     def set_radius_by_accuracy(self, gps_accuracy=0.79):
         self.roi_radius = int(10 + 190*(1-gps_accuracy))  # 10 meters ~ 200 meters, 0.79 for 50 meters
         return 0
+
+    def get_radius(self):
+        return self.roi_radius
 
     def set_radius(self, roi_radius=50):  # meters
         self.roi_radius = roi_radius

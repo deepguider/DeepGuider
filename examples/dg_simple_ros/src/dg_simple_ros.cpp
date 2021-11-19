@@ -187,10 +187,12 @@ int DeepGuiderROS::run()
         loop.sleep();
     }
 
+    // broadcast shutdown message
+    publishDGStatus(true);
+    ros::spinOnce();
+
     // shutdown system
     printf("Shutdown deepguider system...\n");
-    publishDGStatus(true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     terminateThreadFunctions();
     printf("\tthread terminated\n");
     if(m_video_recording) m_video_gui.release();
@@ -215,6 +217,12 @@ bool DeepGuiderROS::runOnce(double timestamp)
     publishDGPose();
     publishSubGoal();
     publishDGStatus();
+
+    // process path generation
+    if(m_dest_defined && m_path_generation_pended && m_localizer.isPoseStabilized())
+    {
+        if(updateDeepGuiderPath(getPose(), m_dest)) m_path_generation_pended = false;        
+    }
     
     // draw GUI display
     cv::Mat gui_image;
@@ -314,20 +322,16 @@ void DeepGuiderROS::callbackRealsenseDepth(const sensor_msgs::CompressedImageCon
 // A callback function for subscribing GPS Asen
 void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
 {
-    //ROS_INFO_THROTTLE(1.0, "GPS Asen is subscribed (timestamp: %f [sec]).", fix->header.stamp.toSec());
+    if (fix->header.stamp == ros::Time(0)) return;
 
     if (fix->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) {
-        ROS_DEBUG_THROTTLE(60, "Asen: No fix.");
+        ROS_INFO_THROTTLE(1.0, "GPS Asen: no fix (timestamp: %f [sec])", fix->header.stamp.toSec());
         return;
     }
-
-    if (fix->header.stamp == ros::Time(0)) {
-        return;
-    }
+    ROS_INFO_THROTTLE(1.0, "GPS Asen: lat=%f, lon=%f (timestamp: %f [sec])", fix->latitude, fix->longitude, fix->header.stamp.toSec());
 
     double lat = fix->latitude;
     double lon = fix->longitude;
-    ROS_INFO_THROTTLE(1.0, "GPS Asen: lat=%f, lon=%f", lat, lon);
 
     // apply & draw gps
     const dg::LatLon gps_datum(lat, lon);
@@ -339,20 +343,16 @@ void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
 // A callback function for subscribing GPS Novatel
 void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix)
 {
-    //ROS_INFO_THROTTLE(1.0, "GPS Novatel is subscribed (timestamp: %f [sec]).", fix->header.stamp.toSec());
+    if (fix->header.stamp == ros::Time(0)) return;
 
     if (fix->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) {
-        ROS_DEBUG_THROTTLE(60, "Novatel: No fix.");
+        ROS_INFO_THROTTLE(1.0, "GPS Novatel: no fix (timestamp: %f [sec])", fix->header.stamp.toSec());
         return;
     }
-
-    if (fix->header.stamp == ros::Time(0)) {
-        return;
-    }
+    ROS_INFO_THROTTLE(1.0, "GPS Novatel: lat=%f, lon=%f (timestamp: %f [sec])", fix->latitude, fix->longitude, fix->header.stamp.toSec());
 
     double lat = fix->latitude;
     double lon = fix->longitude;
-    ROS_INFO_THROTTLE(1.0, "GPS Novatel: lat=%f, lon=%f", lat, lon);
 
     // apply & draw gps
     const dg::LatLon gps_datum(lat, lon);
@@ -440,7 +440,7 @@ void DeepGuiderROS::callbackVPS(const dg_simple_ros::vps::ConstPtr& msg)
 
     dg::ID sv_id = msg->id;
     cv::Mat sv_image;
-    if (MapManager::getStreetViewImage(sv_id, sv_image, "f") && !sv_image.empty())
+    if (MapManager::getStreetViewImage(sv_id, sv_image, m_server_ip, m_image_server_port, "f") && !sv_image.empty())
     {
         m_vps.set(sv_id, sv_confidence, capture_time, proc_time);
         m_vps.draw(sv_image, 3.0);
@@ -512,7 +512,7 @@ void DeepGuiderROS::publishDGPose()
     geometry_msgs::PoseStamped rosps;
     dg::Timestamp  timestamp;
     dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&timestamp);
-    if(timestamp<0) return;
+    if (timestamp < 0) return;
 
     rosps.header.stamp.fromSec(timestamp);
     rosps.pose.position.x = cur_pose.x;
@@ -566,7 +566,7 @@ void DeepGuiderROS::publishDGStatus(bool system_shutdown)
 
     dg::Timestamp  timestamp;
     dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&timestamp);
-    if(timestamp<0) return;
+    if (timestamp < 0) return;
 
     dg::LatLon ll = m_localizer.getPoseGPS();
     msg.dg_shutdown = system_shutdown;
