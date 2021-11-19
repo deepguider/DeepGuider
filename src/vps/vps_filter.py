@@ -27,6 +27,12 @@ class vps_filter:
             self.utm_distance_threshold = 500
             self.utm_differential_threshold = 500
 
+    def set_utm_distance_threshold(self, thre=500):  # Large number, 500 meter, means filter off.
+        self.utm_distance_threshold = thre
+
+    def get_utm_distance_threshold(self, thre=500):  # Large number, 500 meter, means filter off.
+        return self.utm_distance_threshold
+
     def get_samples_toy_example(self, n_samples=10, n_outliers_ratio=0.4):  # For toy example
         if n_samples <= 0:
             n_samples = self.n_samples  # use default n_samples

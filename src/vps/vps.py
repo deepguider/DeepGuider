@@ -726,23 +726,28 @@ class vps:
         Distances = self.vps_IDandConf[1]
         Confs = self.convert_distance_to_confidence(Distances)
 
-        ## Filter out noisy result with ransac for top-1
-        top1_id = IDs[0]
-        _, lat, lon = GetStreetView_fromID(top1_id, roi_radius=1, ipaddr=self.ipaddr)
-        if lat != -1:  # Image server is ready.
-            # When image server is not available, do not filter out.
-            utm_x, utm_y, r_num, r_str = utm.from_latlon(lat, lon)  # (353618.4250711136, 4027830.874694569, 52, 'S')
-            #utm_x = utm_x - 353618  # offset
-            #utm_y = utm_y - 4027830  # offset
-            if self.mVps_filter.check_valid(utm_x, utm_y) == False:   # Filter out noisy result with ransac of first-order line function
-                # Noisy result is changed to -1.
-                IDs[0] = 0
-                Confs[0] = -1
+        ## Filter out noisy result with ransac for top-1 for indoor test
+        if self.port == "10003":  # 10003 means indoor
+            top1_id = IDs[0]
+            _, lat, lon = GetStreetView_fromID(top1_id, roi_radius=1, ipaddr=self.ipaddr)
+            if lat != -1:  # Image server is ready.
+                # When image server is not available, do not filter out.
+                utm_x, utm_y, r_num, r_str = utm.from_latlon(lat, lon)  # (353618.4250711136, 4027830.874694569, 52, 'S')
+                self.mVps_filter.set_utm_distance_threshold(5)  # filter radius 5 meters for indoor
+                #self.mVps_filter.set_utm_distance_threshold(self.get_radius())  # filter radius 50 meters for outdoor
+                if self.mVps_filter.check_valid(utm_x, utm_y) == False:   # Filter out noisy result with ransac of first-order line function
+                    # Noisy result is changed to -1.
+                    IDs[0] = 0
+                    Confs[0] = -1
+
         return [IDs, Confs]
 
     def set_radius_by_accuracy(self, gps_accuracy=0.79):
         self.roi_radius = int(10 + 190*(1-gps_accuracy))  # 10 meters ~ 200 meters, 0.79 for 50 meters
         return 0
+
+    def get_radius(self):
+        return self.roi_radius
 
     def set_radius(self, roi_radius=50):  # meters
         self.roi_radius = roi_radius
