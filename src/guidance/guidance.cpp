@@ -55,6 +55,16 @@ bool GuidanceManager::initiateNewGuidance(TopometricPose pose_topo, Point2F gps_
 			if (m_extendedPath[i].is_junction)
 				break;
 		}
+
+		int junction_id = 0;
+		for (int i = (int)m_extendedPath.size() - 2; i >= 0; i--)
+		{
+			m_extendedPath[i].next_junction_idx = junction_id;
+			if (m_extendedPath[i].is_junction)
+				junction_id = i;
+		}
+
+
 		ExtendedPathElement dest_element(0, 0, 0, 0, 0, gps_dest.x, gps_dest.y);
 		m_extendedPath.push_back(dest_element);
 		return true;
@@ -98,6 +108,15 @@ bool GuidanceManager::initiateNewGuidance(Point2F gps_start, Point2F gps_dest)
 		}
 		ExtendedPathElement dest_element(0, 0, 0, 0, 0, gps_dest.x, gps_dest.y);
 		m_extendedPath.push_back(dest_element);
+
+		int junction_id = 0;
+		for (int i = (int)m_extendedPath.size() - 2; i >= 0; i--)
+		{
+			m_extendedPath[i].next_junction_idx = junction_id;
+			if (m_extendedPath[i].is_junction)
+				junction_id = i;
+		}
+
 		return true;
 	}
 	else
@@ -146,6 +165,7 @@ bool GuidanceManager::buildGuides()
 		if (i > 0)
 		{
 			angle = getDegree(path.pts[i - 1], path.pts[i], path.pts[i + 1]);
+			//printf("%d\n", angle);
 		}
 		ExtendedPathElement tmppath(curnid, cureid, nextnid, nexteid, angle, path.pts[i].x, path.pts[i].y);
 
@@ -295,13 +315,14 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	double junction_dist = curEP.remain_distance_to_next_junction;
 	double remain_dist = junction_dist - passsed_dist; // + curedge->length;
 	m_remain_distance = remain_dist;
-	printf("junction_dist: %.2f, passsed_dist: %.2f, remain_dist: %.2f, \n", junction_dist, passsed_dist, remain_dist);
+	//printf("junction_dist: %.2f, passsed_dist: %.2f, remain_dist: %.2f, \n", junction_dist, passsed_dist, remain_dist);
 
 	//check initial status
 	ID nextnid = (curEdge->node_id1 == curnid) ? curEdge->node_id2 : curEdge->node_id1;
 	if (m_guide_idx == 0 && (isNodeInPath(curnid) || isNodeInPath(nextnid)))
 	{
 		m_gstatus = GuideStatus::GUIDE_INITIAL;
+		m_curguidance.announce = true;
 		setSimpleGuide();
 		return true;
 	}
@@ -319,12 +340,12 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	}
 
 	//check announce
-	int announce_dist = (int)remain_dist / m_guide_interval * m_guide_interval;
+	int announce_dist = (int) (remain_dist - 1 ) / m_guide_interval * m_guide_interval;
 	bool announce = false;
 
 	m_gstatus = GuideStatus::GUIDE_NORMAL;
 	//near junction
-	if (remain_dist <= m_uncertain_dist)
+	if (remain_dist <= m_uncertain_dist)// || (curNode->type == Node::NODE_JUNCTION && passsed_dist < m_uncertain_dist))
 	{
 		//if the edge is shorter than 2*m_uncertain_dist
 		if (junction_dist <= 2 * m_uncertain_dist)
@@ -333,8 +354,8 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 			if ((m_last_announce_dist != announce_dist) && !announce)
 			{
 				announce = true;
-				setSimpleGuide();
 				m_last_announce_dist = announce_dist;
+				setSimpleGuide();
 			}
 			else
 			{
@@ -349,9 +370,8 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 		}
 	}
 	//on junction
-	else if (remain_dist < m_arrived_threshold) // || passsed_dist < arrived_threshold
+	else if (remain_dist < m_arrived_threshold)
 	{
-		//	printf("Too close to junction!\n");
 		m_last_announce_dist = -1;	//reset m_last_announce_dist
 		announce = false;
 		setEmptyGuide();
@@ -387,18 +407,23 @@ bool GuidanceManager::setSimpleGuide()
 {
 	Guidance guide;
 	guide.guide_status = m_gstatus;
-	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
-	ExtendedPathElement nextEP = getCurExtendedPath(m_guide_idx + 1);
 
+	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
 	//first action
 	//check robot's direction
-	guide.actions.push_back(setActionGo(curEP.next_node_id, curEP.cur_edge_id));
-
-	//second action (if junction turn exists)
-	if (!isForward(nextEP.junction_degree) && nextEP.is_junction)
+	if (m_remain_distance > m_guide_interval )
+		guide.actions.push_back(setActionGo(curEP.next_node_id, curEP.cur_edge_id));
+	
+	//second action
+	if (curEP.next_junction_idx != 0)
 	{
-		guide.actions.push_back(
-			setActionTurn(nextEP.cur_node_id, nextEP.cur_edge_id, nextEP.junction_degree));
+		ExtendedPathElement nextJuncEP = getCurExtendedPath(curEP.next_junction_idx);
+		//if junction turn exists)
+		if (!isForward(nextJuncEP.cur_degree))
+		{
+			guide.actions.push_back(
+				setActionTurn(nextJuncEP.cur_node_id, nextJuncEP.cur_edge_id, nextJuncEP.cur_degree));
+		}
 	}
 
 	guide.heading_node_id = curEP.next_node_id;
@@ -417,7 +442,7 @@ bool GuidanceManager::setArrivalGuide()
 
 	guide.heading_node_id = 0;
 	guide.distance_to_remain = 0;
-	guide.msg = guide.msg + "[GUIDANCE] Arrived!";
+	guide.msg = guide.msg + "Arrived!";
 	m_curguidance = guide;
 
 	return true;
@@ -577,15 +602,16 @@ std::string GuidanceManager::getStringGuidance(Guidance guidance)
 		}
 		else
 		{
-			str_first = getStringTurnDist(actions[i], actions[i].node_type, guidance.distance_to_remain);
+			str_first = getStringTurn(actions[i], actions[i].node_type);
+			//str_first = getStringTurnDist(actions[i], actions[i].node_type, guidance.distance_to_remain);
 		}
 		str.push_back(str_first);
 	}
 
-	result = "[Guide]";
+	//result = "[Guide]";
 	if (str.size() > 0) result += str[0];
 	if (actions.size() >= 2)	//only 2 steps are shown in msg
-		result = result + str[1];
+		result = result + " and " + str[1];
 
 	return result;
 }
@@ -602,15 +628,18 @@ std::string GuidanceManager::getStringFwdDist(Action act, int ntype, ID nid, dou
 	}
 
 	std::string motion = m_motions[(int)act.cmd];
+	motion.replace(motion.find("_"), 1, " ");
 	std::string edge = m_edges[act.edge_type];
 	std::string str_act = motion + " on " + edge;
 
 	std::string nodetype = m_nodes[ntype];
 
 	std::string nodeid = std::to_string(nid);
-	std::string distance = std::to_string(d).substr(0, 4);
+	std::string distance = std::to_string((int) d);
+	//std::string distance = std::to_string(d).substr(0, 4);
 
-	std::string act_add = " about " + distance + "m" + " until next " + nodetype + "(Node ID : " + nodeid + ")";
+	//std::string act_add = " about " + distance + "m" + " until next " + nodetype + "(Node ID : " + nodeid + ")";
+	std::string act_add = " about " + distance + "m";
 	result = str_act + act_add;
 
 	return result;
@@ -628,15 +657,18 @@ std::string GuidanceManager::getStringFwdDistAfter(Action act, int ntype, ID nid
 	}
 
 	std::string motion = m_motions[(int)act.cmd];
+	motion.replace(motion.find("_"), 1, " ");
 	std::string edge = m_edges[act.edge_type];
 	std::string str_act = motion + " on " + edge;
 
 	std::string nodetype = m_nodes[ntype];
 
 	std::string nodeid = std::to_string(nid);
-	std::string distance = std::to_string(d).substr(0, 4);
+	std::string distance = std::to_string((int) d);
+	//std::string distance = std::to_string(d).substr(0, 4);
 
-	std::string act_add = " for " + distance + "m" + " on " + nodetype + "(Node ID : " + nodeid + ")";
+	//std::string act_add = " for " + distance + "m" + " on " + nodetype + "(Node ID : " + nodeid + ")";
+	std::string act_add = " for " + distance + "m";
 	result = str_act + act_add;
 	return result;
 }
@@ -653,6 +685,7 @@ std::string GuidanceManager::getStringFwd(Action act, int ntype, ID nid)
 	}
 
 	std::string motion = m_motions[(int)act.cmd];
+	motion.replace(motion.find("_"), 1, " ");
 	std::string edge = m_edges[act.edge_type];
 	result = motion + " on " + edge;
 
@@ -676,12 +709,15 @@ std::string GuidanceManager::getStringTurn(Action act, int ntype)
 	}
 
 	std::string motion = m_motions[(int)act.cmd];
+	motion.replace(motion.find("_"), 1, " ");
 	std::string edge = m_edges[act.edge_type];
 	std::string degree = std::to_string(act.degree);
-	std::string str_act = motion + " for " + degree + " degree";
-	std::string nodetype = m_nodes[ntype];
-	std::string act_add = " on " + nodetype;
-	result = str_act + act_add;
+	//std::string str_act = motion + " for " + degree + " degree";
+	std::string str_act = motion;
+	result = str_act;
+	//std::string nodetype = m_nodes[ntype];
+	//std::string act_add = " on " + nodetype;
+	//result = str_act + act_add;
 	return result;
 }
 
@@ -690,6 +726,7 @@ std::string GuidanceManager::getStringTurnDist(Action act, int ntype, double dis
 	std::string result;
 
 	std::string motion = m_motions[(int)act.cmd];
+	motion.replace(motion.find("_"), 1, " ");
 	std::string edge = m_edges[act.edge_type];
 	std::string degree = std::to_string(act.degree);
 
@@ -699,11 +736,12 @@ std::string GuidanceManager::getStringTurnDist(Action act, int ntype, double dis
 	}
 	else
 	{
-		std::string distance = std::to_string(dist);
-		std::string str_act = "After " + distance + "m " + motion + " for " + degree + " degree";
+		std::string distance = std::to_string((int) dist);
+		std::string str_act = motion + " after " + distance + "m ";
 		std::string nodetype = m_nodes[ntype];
-		std::string act_add = " on " + nodetype;
-		result = str_act + act_add;
+		result = str_act;
+		//std::string act_add = " on " + nodetype;
+		//result = str_act + act_add;
 	}
 
 	return result;

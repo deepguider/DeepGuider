@@ -166,6 +166,7 @@ namespace dg
             double past_distance_from_prev_junction = 0;
             ID next_guide_node_id = 0;
             ID next_guide_edge_id = 0;
+            int next_junction_idx = 0;
             int junction_degree = 0;
         };
 

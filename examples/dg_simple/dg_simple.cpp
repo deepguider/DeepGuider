@@ -1065,13 +1065,19 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
     cv::Point center_pos(guide_cx, guide_cy);
 
     std::string dir_msg;
-    dg::GuidanceManager::Motion cmd = guide.actions[0].cmd;
+    //dg::GuidanceManager::Motion cmd = guide.actions[0].cmd; 
+    dg::GuidanceManager::Motion cmd; 
+    cmd = guide.actions.back().cmd;   
+
     if (cmd == dg::GuidanceManager::Motion::GO_FORWARD || cmd == dg::GuidanceManager::Motion::CROSS_FORWARD || cmd == dg::GuidanceManager::Motion::ENTER_FORWARD || cmd == dg::GuidanceManager::Motion::EXIT_FORWARD)
     {
         cv::Mat& icon = m_icon_forward;
         cv::Mat& mask = m_mask_forward;
         int x1 = center_pos.x - icon.cols / 2;
         int y1 = center_pos.y - icon.rows / 2;
+        //int x1 = rect.x - 40*(i+1);
+        //int y1 = rect.y - 40*(i+1);
+
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) dir_msg = "GO_FORWARD";
@@ -1085,6 +1091,8 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         cv::Mat& mask = m_mask_turn_left;
         int x1 = center_pos.x - icon.cols + icon.cols / 6;
         int y1 = center_pos.y - icon.rows / 2;
+        //int x1 = rect.x - 40*(i+1);
+        //int y1 = rect.x - 40*(i+1);
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         if (cmd == dg::GuidanceManager::Motion::TURN_LEFT) dir_msg = "TURN_LEFT";
@@ -1098,6 +1106,8 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         cv::Mat& mask = m_mask_turn_right;
         int x1 = center_pos.x - icon.cols / 6;
         int y1 = center_pos.y - icon.rows / 2;
+        //int x1 = rect.x - 40*(i+1);
+        //int y1 = rect.x - 40*(i+1);
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         if (cmd == dg::GuidanceManager::Motion::TURN_RIGHT) dir_msg = "TURN_RIGHT";
@@ -1111,6 +1121,8 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         cv::Mat& mask = m_mask_turn_back;
         int x1 = center_pos.x - icon.cols / 2;
         int y1 = center_pos.y - icon.rows / 2;
+        //int x1 = rect.x - 10*(i+1);
+        //int y1 = rect.x - 10*(i+1);
         cv::Rect rect(x1, y1, icon.cols, icon.rows);
         if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
         dir_msg = "TURN_BACK";
@@ -1165,7 +1177,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     m_guider_mutex.unlock();
 
     // print guidance message
-    printf("%s\n", cur_guide.msg.c_str());
+    //printf("[tts] %s\n", cur_guide.msg.c_str());
     
     // tts guidance message
     if (m_enable_tts && cur_guide.announce && !cur_guide.actions.empty())
@@ -1174,6 +1186,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         //if (cmd != m_guidance_cmd)
         {
             std::string tts_msg;
+            /*
             if (cmd == dg::GuidanceManager::Motion::GO_FORWARD) tts_msg = "Go forward";
             else if (cmd == dg::GuidanceManager::Motion::CROSS_FORWARD)  tts_msg = "Cross forward";
             else if (cmd == dg::GuidanceManager::Motion::ENTER_FORWARD) tts_msg = "Enter forward";
@@ -1189,8 +1202,13 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
             else if (cmd == dg::GuidanceManager::Motion::TURN_BACK) tts_msg = "Turn back";
             if (cur_guide.distance_to_remain > 25)
                 tts_msg = "Go forward";
-
-            if(!tts_msg.empty()) putTTS(tts_msg.c_str());
+            */
+           tts_msg = cur_guide.msg;
+            if(!tts_msg.empty()) 
+            {
+                putTTS(tts_msg.c_str());
+                printf("[tts] %s\n", cur_guide.msg.c_str());
+            }
             m_guidance_cmd = cmd;
         }
     }
