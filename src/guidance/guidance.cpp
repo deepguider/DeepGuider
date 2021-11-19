@@ -56,6 +56,7 @@ bool GuidanceManager::initiateNewGuidance(TopometricPose pose_topo, Point2F gps_
 				break;
 		}
 
+		//add next junction id
 		int junction_id = 0;
 		for (int i = (int)m_extendedPath.size() - 2; i >= 0; i--)
 		{
@@ -63,7 +64,6 @@ bool GuidanceManager::initiateNewGuidance(TopometricPose pose_topo, Point2F gps_
 			if (m_extendedPath[i].is_junction)
 				junction_id = i;
 		}
-
 
 		ExtendedPathElement dest_element(0, 0, 0, 0, 0, gps_dest.x, gps_dest.y);
 		m_extendedPath.push_back(dest_element);
@@ -285,7 +285,6 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 		m_arrival_cnt++;
 		m_guide_idx = -1;
 		m_last_announce_dist = -1;	//reset m_last_announce_dist
-		//		printf("[setGuideStatus]finishing m_gstatus: %d\n", m_gstatus);
 		return true;
 	}
 
@@ -295,13 +294,11 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	{
 		printf("[Error] GuidanceManager::update - Pose not found on path!\n");
 		m_gstatus = GuideStatus::GUIDE_UNKNOWN;
-		//check announce
 		setEmptyGuide();
 		return false;
 	}
 
 	//if node of pose is changed, update m_guide_idx
-	//printf("m_guide_idx: %d, gidx: %d\n", m_guide_idx, gidx);
 	if (gidx != m_guide_idx)
 	{
 		m_past_guides.push_back(m_curguidance); //save past guidances
@@ -315,17 +312,6 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	double junction_dist = curEP.remain_distance_to_next_junction;
 	double remain_dist = junction_dist - passsed_dist; // + curedge->length;
 	m_remain_distance = remain_dist;
-	//printf("junction_dist: %.2f, passsed_dist: %.2f, remain_dist: %.2f, \n", junction_dist, passsed_dist, remain_dist);
-
-	//check initial status
-	ID nextnid = (curEdge->node_id1 == curnid) ? curEdge->node_id2 : curEdge->node_id1;
-	if (m_guide_idx == 0 && (isNodeInPath(curnid) || isNodeInPath(nextnid)))
-	{
-		m_gstatus = GuideStatus::GUIDE_INITIAL;
-		m_curguidance.announce = true;
-		setSimpleGuide();
-		return true;
-	}
 
 	//check finishing condition
 	if (m_guide_idx >= m_extendedPath.size() - 2 && goal_dist < m_start_exploration_dist)
@@ -379,12 +365,10 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	//normal case
 	else
 	{
-		//	printf("announce_dist: %d, m_last_announce_dist: %d,\n", announce_dist, m_last_announce_dist);
 		if (announce_dist != m_last_announce_dist)
 		{
 			announce = true;
 			setSimpleGuide();
-			//		printf("update announce_dist\n");
 			m_last_announce_dist = announce_dist;
 		}
 		else
@@ -584,7 +568,6 @@ GuidanceManager::Motion GuidanceManager::getMotion(int ntype, int etype, int deg
 
 	return motion;
 }
-
 
 std::string GuidanceManager::getStringGuidance(Guidance guidance)
 {
