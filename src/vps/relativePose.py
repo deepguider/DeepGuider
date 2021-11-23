@@ -1,4 +1,3 @@
-import pykitti
 from ipdb import set_trace as bp
 import numpy as np
 import cv2
@@ -232,6 +231,7 @@ class relativePose:
         plt.pause(0.01)
 
 if __name__ == "__main__":
+    import pykitti
     
     basedir = '/mnt/data1/workdir/DB_Repo2/kitti'
     date = '2011_09_26'
