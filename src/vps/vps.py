@@ -30,12 +30,13 @@ import utm
 #from tensorboardX import SummaryWriter
 import numpy as np
 from netvlad import netvlad
+from relativePose import relativePose
 
 from scipy import io as sio
 
 import copy
 
-import cv2 as cv
+import cv2
 
 from get_streetview import ImgServer, GetStreetView_fromID
 
@@ -133,7 +134,7 @@ class vps:
         self.port = opt.port
         self.set_cubic_str('f')  ## Default is 'f'
         self.PythonOnly = True # This is parameter should become False when vps is used in embedded module by C++ to avoid segmentation fault.
-
+        self.mod_rPose = None
         self.num_workers = opt.threads
         self.cacheBatchSize = opt.cacheBatchSize
 
@@ -629,8 +630,9 @@ class vps:
     def get_region(self):  # region information for image server used in isv.SaveImages
         return self.region
 
-    def flush_db_dir(self):
-        os.system("rm -rf " + os.path.join(self.dataset_struct_dir,'*.jpg')) # You have to pay attention to code 'rm -rf' command
+    def flush_db_dir(self, flush_file="*.jpg", enable=True):
+        if enable == True and self.load_dbfeat != True:  # When load_dbfeat is not used, flush db directory.
+            os.system("rm -rf " + os.path.join(self.dataset_struct_dir, flush_file)) # You have to pay attention to code 'rm -rf' command
 
     def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr=None, port=None, load_dbfeat=0.0, save_dbfeat=0.0):
         ## Init.
@@ -690,9 +692,10 @@ class vps:
                     self.flush_db_dir()
                     return self.getIDConf()
                 if (h < 480) or (w < 640) or (c != 3): # invalid query image
-                    self.flush_db_dir()
-                    return self.getIDConf()
-                cv.imwrite(fname,image)
+                    [IDs, Confs] = self.getIDConf()
+                    self.flush_db_dir()  # Remove downloaded roadview jpg files
+                    return [IDs, Confs]
+                cv2.imwrite(fname,image)
 
             if self.port == "10003":  # input image resolution : 2592*2048
                 whole_db_set,whole_q_set = dataset.get_dg_indoor_test_set()
@@ -709,8 +712,9 @@ class vps:
             raise Exception('Unknown dataset')
 
         ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]        
-        self.flush_db_dir()
-        return self.getIDConf()
+        [IDs, Confs] = self.getIDConf(relativePose_enable=False)
+        self.flush_db_dir()  # Remove downloaded roadview jpg files
+        return [IDs, Confs]
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []
@@ -719,7 +723,39 @@ class vps:
             confidences.append(conf)
         return confidences
 
-    def getIDConf(self):
+    def get_relativePoseRt(self):
+        if self.mod_rPose is None:
+            self.mod_rPose = relativePose()
+            self.mod_rPose.display_init_pose()
+            self.mod_rPose.get_dg_camera_matrix()
+            self.img1_path = []
+
+        if False:   # Normal, compare (db, q)
+            self.img1_path = self.qImage[0]
+            self.img2_path = self.dbImage[self.pred_idx[0,0]]
+            R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
+            self.mod_rPose.display_update_pose()
+        else:  # debug, compare q(t-1), q(t)
+            if True:  # single visual odometry without tracking
+                if len(self.img1_path) == 0:  # Initial time
+                    self.img1_path = self.qImage[0]
+                self.img2_path = self.qImage[0]
+                self.mod_rPose.set_camera_matrix_1(self.mod_rPose.camera_matrix_1, self.mod_rPose.distCoeffs_1)  # default
+                self.mod_rPose.set_camera_matrix_2(self.mod_rPose.camera_matrix_1, self.mod_rPose.distCoeffs_1)  # Use same parameter of cam1 to cam2
+                R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
+                self.mod_rPose.display_update_pose(R, t)
+                self.img1_path = copy.deepcopy(self.mod_rPose.img2)  # Update img1_path(==previous query) with current query image
+            else:  # mono visual odometry with tracking
+                R,t = self.mod_rPose.visual_odometry(self.qImage[0])
+                self.mod_rPose.display_update_pose(R, t)
+
+        if False:
+            img = cv2.drawKeypoints(self.mod_rPose.img2, self.mod_rPose.kps2, None)
+            cv2.imshow('features_in_db', img)
+            cv2.waitKey(0)
+        return R, t
+
+    def getIDConf(self, relativePose_enable=False):
         if self.checking_return_value() < 0:
             print("Broken : vps.py's return value")
         IDs = self.vps_IDandConf[0]
@@ -739,6 +775,9 @@ class vps:
                     # Noisy result is changed to -1.
                     IDs[0] = 0
                     Confs[0] = -1
+
+        if relativePose_enable == True:
+            self.get_relativePoseRt()
 
         return [IDs, Confs]
 
@@ -891,7 +930,7 @@ def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
 
     #qimage = np.uint8(256*np.random.rand(1024,1024,3))
     for fname in qFlist:
-        qimg = cv.imread(fname)
+        qimg = cv2.imread(fname)
         try:
             [h, w, c] = qimg.shape
             if (h < 480) or (w < 640) or c != 3:
@@ -900,7 +939,7 @@ def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
         except:
             print("Broken query image :", fname)
             continue
-        qimg = cv.resize(qimg, (640,480))
+        qimg = cv2.resize(qimg, (640,480))
         st = time.time()
         vps_IDandConf = mod_vps.apply(qimg, K=3, gps_lat=gps_lat, gps_lon=gps_lon, gps_accuracy=0.0,
                 timestamp=1.0, ipaddr=streetview_server_ipaddr, port=streetview_server_port,
