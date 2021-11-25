@@ -29,8 +29,8 @@ class relativePose:
         distCoeffs_1 = np.array([k1, k2, p1, p2])
 
         # Roadview camera model (FOV=90)
-        #camera_matrix_2 = np.array([[731.2117795, 0, 512], [0, 731.2117795, 512], [0, 0, 1]])  # Naver roadview of frontal image, 1024*1024, FOV 70
-        camera_matrix_2 = np.array([[512, 0, 512], [0, 512, 512], [0, 0, 1]])   # Naver roadview of frontal image, 1024*1024, FOV 90
+        #camera_matrix_2 = np.array([[731.2117795, 0, 512], [0, 731.2117795, 512], [0, 0, 1]])  #  Streetvoew of frontal image, 1024*1024, FOV 70
+        camera_matrix_2 = np.array([[512, 0, 512], [0, 512, 512], [0, 0, 1]])   # Streetview of frontal image, 1024*1024, FOV 90
         distCoeffs_2 = None
 
         self.set_camera_matrix_1(camera_matrix_1, distCoeffs_1)
