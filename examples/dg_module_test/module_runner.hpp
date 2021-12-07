@@ -87,6 +87,7 @@ public:
         cv::Mat video_image;
         cv::Mat out_image;
         double timestart = data_loader.getStartTime();
+        dg::MapManager map_manager;
         while (1)
         {
             bool update_gui = false;
@@ -180,7 +181,7 @@ public:
                     {
                         video_image = data_loader.getFrame(data_time);
                         dg::ID sv_id = (dg::ID)(vdata[1] + 0.5);
-                        if (dg::MapManager::getStreetViewImage(sv_id, result_image, "f") && !result_image.empty())
+                        if (map_manager.getStreetViewImage(sv_id, result_image, "f") && !result_image.empty())
                         {
                             m_vps_localizer->draw(result_image);
                         }

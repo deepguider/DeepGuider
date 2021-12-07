@@ -149,7 +149,7 @@ void procfunc(bool recording, int rec_fps, const char* video_path)
 {
     // Initialize Python module
     RECOGNIZER recognizer;
-    if (!recognizer.initialize()) return;
+    if (!recognizer.initialize("./../src/ocr_recog", "ocr_recognizer", "OCRRecognizer")) return;
     printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
 
     // Run the Python module
@@ -208,50 +208,54 @@ int runOCRloc(LOCALIZER& localizer, DataLoader& data_loader, const std::string& 
     
     if (!rec_traj_file.empty())
     {
-        out_traj = fopen(rec_traj_file.c_str(), "wt");//, ccs=UTF-8");
+        string file_name = "./result/" + rec_traj_file;
+        out_traj = fopen(file_name.c_str(), "wt");//, ccs=UTF-8");
         if (out_traj == nullptr) return -1;
         fprintf(out_traj, "fnumber,timestamp,poi_id,poi_x,poi_y,distance,angle,confidence\n");
         //fprintf(out_traj, "fnumber,timestamp,dname,x,y,w,h,poi_id,poi_name,poi_x,poi_y,poi_floor,distance,angle,confidence,cam_lat,cam_lon\n");
     }
     
     int type;
-    std::vector<std::string> data;
+    std::vector<double> vdata;
+    std::vector<std::string> sdata;
     dg::Timestamp data_time;
     //std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     
     while (1)
     {
-        if (data_loader.getNext(type, data, data_time) == false) break;
+        if (data_loader.getNext(type, vdata, sdata, data_time) == false) break;
 
-        int fnumber = std::stoi(data[0]);
-        double timestamp = std::stod(data[1]); 
-        std::string dname = data[2];
-        //double confidence = data[3];
-        int xmin = std::stoi(data[4]);
-        int ymin = std::stoi(data[5]);
-        int xmax = std::stoi(data[6]);
-        int ymax = std::stoi(data[7]);      
-        double cam_lat = std::stod(data[8]);
-        double cam_lon = std::stod(data[9]);     
-        std::vector<POI> pois;
+        int fnumber = vdata[0];
+        //double timestamp = vdata[1]; 
+        std::string dname = sdata[0];
+        double conf = vdata[2];
+        double xmin = vdata[3];
+        double ymin = vdata[4];
+        double xmax = vdata[5];
+        double ymax = vdata[6];      
+        //double cam_lat = vdata[7];
+        //double cam_lon = vdata[8];     
+        dg::Point2 poi_xy;
+        //std::vector<POI> pois;
         Polar2 relatives;
         double poi_confidences;
 
-        // poi 
-        double x = (xmin + xmax) / 2.0;
-        double y = (ymin + ymax) / 2.0;
-        double w = xmax - xmin;
-        double h = ymax - ymin;
+        // // poi 
+        // double x = (xmin + xmax) / 2.0;
+        // double y = (ymin + ymax) / 2.0;
+        // double w = xmax - xmin;
+        // double h = ymax - ymin;
 
-        bool ok = localizer.applyLoc(data, pois, relatives, poi_confidences);        
+       // bool ok = localizer.applyLoc(data, pois, relatives, poi_confidences);        
+        bool ok = localizer.applyPreprocessed(dname, xmin, ymin, xmax, ymax, conf, data_time, poi_xy, relatives, poi_confidences);
         
         // Record the current state on the CSV file
         if (out_traj != nullptr)
         {
-            if(!pois.empty())
+            if(ok) //pois.empty())
             {
-                printf("%d,%.3lf,%d,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,(int)pois[0].id,pois[0].x,pois[0].y,relatives.lin,relatives.ang,poi_confidences);
-                fprintf(out_traj, "%d,%.3lf,%d,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,(int)pois[0].id,pois[0].x,pois[0].y,relatives.lin,relatives.ang,poi_confidences);       
+                printf("%d,%.3lf,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,data_time,poi_xy.x,poi_xy.y,relatives.lin,relatives.ang,poi_confidences);
+                fprintf(out_traj, "%d,%.3lf,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,data_time,poi_xy.x,poi_xy.y,relatives.lin,relatives.ang,poi_confidences);       
                 // printf("%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
                 // fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
             }
@@ -384,7 +388,7 @@ int testOCRLocalizer()
 }
 
 
-int runOCRrec(RECOGNIZER recognizer, DataLoader4Rec& data_loader, const std::string& rec_traj_file = "")
+int runOCRrec(RECOGNIZER& recognizer, DataLoader4Rec& data_loader, const std::string& rec_traj_file = "")
 {
     // Prepare the result trajectory
     FILE* out_traj = nullptr;
@@ -397,7 +401,8 @@ int runOCRrec(RECOGNIZER recognizer, DataLoader4Rec& data_loader, const std::str
     }
     
     int type;
-    std::vector<double> data;
+    std::vector<double> vdata;
+    std::vector<std::string> sdata;
     dg::Timestamp data_time;
     cv::Mat video_image;
     //double timestart = data_loader.getStartTime();
@@ -407,13 +412,13 @@ int runOCRrec(RECOGNIZER recognizer, DataLoader4Rec& data_loader, const std::str
         if (video_image.empty() == true) break;        
         int fnumber = data_loader.getFrameNumber(data_time);
 
-        data_loader.getNextUntil(data_time, type, data, data_time);
-        dg::LatLon gps_datum(data[1], data[2]);        
+        data_loader.getNextUntil(data_time, type, vdata, sdata, data_time);
+        dg::LatLon gps_datum(vdata[1], vdata[2]);        
 
         bool ok = recognizer.apply(video_image, data_time);//ts);
         std::vector<OCRResult> result;
         result.clear();
-        recognizer.get(result);
+        result = recognizer.get();
         
         // Record the current state on the CSV file
         if (out_traj != nullptr)
@@ -447,7 +452,7 @@ int runOCRRecognizerReal(DataLoader4Rec& data_loader, const std::string& rec_tra
 
     // Initialize Python module
     RECOGNIZER recognizer;
-    if (!recognizer.initialize()) return -1;
+    if (!recognizer.initialize("./../src/ocr_recog", "ocr_recognizer", "OCRRecognizer")) return -1;
     printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
 
     // Run the Python module

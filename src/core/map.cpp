@@ -14,7 +14,7 @@ bool Map::load(const char* filename, bool load_from_latlon)
 {
     removeAll();
 
-    FILE* fid = fopen(filename, "rt+,ccs=UTF-8");
+    FILE* fid = fopen(filename, "rt,ccs=UTF-8");
     if (fid == nullptr) return false;
 
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
