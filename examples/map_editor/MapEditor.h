@@ -13,6 +13,8 @@ void onMouseEvent(int event, int x, int y, int flags, void* param);
 struct MapGUIProp
 {
 public:
+    std::string server_ip = "129.254.81.204";
+    std::string server_port = "10000";
     std::string image_file;
     std::string map_file;
     dg::LatLon  origin_latlon;      // origin of UTM

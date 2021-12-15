@@ -24,6 +24,7 @@ int MapEditor::configure(std::string site)
 {
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
+    ETRI.server_port = "10000";
     ETRI.image_file = "data/ETRI/NaverMap_ETRI(Satellite).png";
     ETRI.map_file = "data/ETRI/TopoMap_ETRI.csv";
     ETRI.origin_latlon = dg::LatLon(36.379208, 127.364585);
@@ -38,6 +39,7 @@ int MapEditor::configure(std::string site)
     ETRI.result_resize = 0.5;
 
     MapGUIProp COEX;
+    COEX.server_port = "10001";
     COEX.image_file = "data/NaverMap_COEX(Satellite)_200929.png";
     COEX.image_scale = cv::Point2d(1.055, 1.055);
     COEX.image_rotation = cx::cvtDeg2Rad(1.2);
@@ -51,6 +53,7 @@ int MapEditor::configure(std::string site)
     COEX.result_resize = 0.6;
 
     MapGUIProp COEX2;
+    COEX2.server_port = "10001";
     COEX2.image_file = "data/COEX/NaverMap_COEX(Satellite).png";
     COEX2.image_scale = cv::Point2d(2.536, 2.536);
     COEX2.image_rotation = cx::cvtDeg2Rad(1.0);
@@ -65,6 +68,7 @@ int MapEditor::configure(std::string site)
     COEX2.result_resize = 0.6;
 
     MapGUIProp Bucheon;
+    Bucheon.server_port = "10002";
     Bucheon.image_file = "data/NaverMap_Bucheon(Satellite).png";
     Bucheon.image_scale = cv::Point2d(1.056, 1.056);
     Bucheon.image_rotation = cx::cvtDeg2Rad(0);
@@ -615,13 +619,13 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                 int key = cv::waitKey(1);
 
                 cv::Mat sv_front;
-                dg::MapManager::getStreetViewImage(sv->id, sv_front, "f");
+                dg::MapManager::getStreetViewImage(sv->id, sv_front, m_guiprop.server_ip, m_guiprop.server_port, "f");
                 if (!sv_front.empty())
                 {
                     if (flags & cv::EVENT_FLAG_SHIFTKEY)
                     {
                         cv::Mat sv_image;
-                        dg::MapManager::getStreetViewImage(sv->id, sv_image);
+                        dg::MapManager::getStreetViewImage(sv->id, sv_image, m_guiprop.server_ip, m_guiprop.server_port);
                         if (!sv_image.empty()) cv::namedWindow("streetview", cv::WINDOW_NORMAL);
                         if (!sv_image.empty()) cv::setWindowProperty("streetview", 5, 1); // cv::WND_PROP_TOPMOST = 5
                         if (!sv_image.empty()) cv::imshow("streetview", sv_image);
