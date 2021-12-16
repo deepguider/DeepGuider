@@ -2,6 +2,10 @@
 _DeepGuider Project_ is a research project funded by national government. The DeepGuider Project aims to develop a navigation guidance system that enables robots to navigate in urban environment
 without the need of pre-mapping of the environment. The project was started in April 2019 and is currently under development.
 
+### DeepGuider Dataset
+* Geo-tagged street video sequences
+* Info & download: [https://nanum.etri.re.kr/share/roricljy/deepguider](https://nanum.etri.re.kr/share/roricljy/deepguider)
+
 ### DeepGuider Modules
 * `core`: Common and basic data structures and interfaces such as pose, path, map, and algorithms
 * `map_manager`: Map management modules to interact with cloud maps and paths
