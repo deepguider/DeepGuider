@@ -5,3 +5,6 @@
 * Seohyun Jeon (seohyunatwork AT gmail DOT com)
 * Jaeho Lim (zeozeo7142 AT gmail DOT com)
 * Seunghwan Park (sinkyv AT chol DOT com)
+
+### Dataset Annotation
+* Jincheol No (xxoo_10000 AT naver DOT com)
