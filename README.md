@@ -41,8 +41,8 @@ without the need of pre-mapping of the environment. The project was started in A
   * Run the executable and enjoy codes
 
 ### DeepGuider Open Dataset
-* Geo-tagged sidewalk-view video sequences
-* Info & download: [https://nanum.etri.re.kr/share/roricljy/deepguider](https://nanum.etri.re.kr/share/roricljy/deepguider)
+* Sidewalk video sequences with GPS and IMU tagging
+* Download: [https://nanum.etri.re.kr/share/roricljy/deepguider](https://nanum.etri.re.kr/share/roricljy/deepguider)
 
 ### How to Contribute Your Codes
 Please refer [CONTRIBUTING.md](CONTRIBUTING.md).
