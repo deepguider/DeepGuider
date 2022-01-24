@@ -605,6 +605,40 @@ Pose2 Map::getNearestPathPose(const Path& path, const Pose2& pose_m)
     return pose;
 }
 
+double levenshtein(std::string s1, std::string s2)
+{
+    if(s1.length() < s2.length())
+        return levenshtein(s2, s1);
+
+    if(s2.length() == 0)
+        return s1.length();
+
+    std::vector<double> previous_row(s2.length() + 1);
+    for(int i = 0; i < int(sizeof(previous_row)/sizeof(double)); i++)
+        previous_row[i] = i;
+
+    for(int i = 0; i < s1.length(); i++)
+    {
+        std::vector<double> current_row = {double(i) + 1};
+        for(int j = 0; j < s2.length(); j++)
+        {
+            double insertions = previous_row[j + 1] + 1;
+            double deletions = current_row[j] + 1;
+            double substitutions = previous_row[j] + (s1[i] != s2[j]);
+            current_row.push_back(std::min(insertions, deletions, substitutions));
+        }
+
+        previous_row = current_row;
+    }
+
+    return previous_row.back();
+}
+
+bool matchPOIname()
+{
+    return true;
+}
+
 int compare_poi(const void* a, const void* b)
 {
     double x = ((std::pair<POI*, double>*)a)->second;
