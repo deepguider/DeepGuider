@@ -634,9 +634,43 @@ double levenshtein(std::string s1, std::string s2)
     return previous_row.back();
 }
 
-bool matchPOIname()
+bool compare_dist(std::tuple<double, double, std::wstring> a, std::tuple<double, double, std::wstring> b)
 {
-    return true;
+    if(a.first == b.first) a.second > b.second;
+
+    return a.first > b.first;
+}
+
+std::vector<std::tuple<double, double, std::wstring>> Map::getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr, int num_neighbors)
+{
+    std::vector<std::tuple<double, double, std::wstring>> distances;
+    for(int i = 0; i < int(sizeof(poi_names)/sizeof(std::wstring)); i++)
+    {
+        double dist = levenshtein(poi_names[i], ocr);
+        double dist_conf = 1.0 - (dist / std::max(ocr.length(), poi_names[i].length()));
+        distances.push_back(std::make_tuple(dist, dist_conf, poi_names[i]));
+    }
+    std::sort(distances.begin(), distances.end(), compare_dist)
+
+    std::vector<std::tuple<double, double, std::wstring>> neighbors;
+    for(int i = 0; i < num_neighbors; i++)
+    {		
+		neighbors.push_back(std::make_pair(distances[i][0], distances[i][1]))
+    }
+
+    return neighbors;
+}
+
+std::vector<std::tuple<double, double, std::wstring>> Map::matchPOIName(OCRResult ocr_result, const Point2& p, double search_radius)
+{
+    std::vector<std::wstring> poi_names = getNearPOINames(p, search_radius);
+
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring ocr = converter.from_bytes(ocr_result.label.c_str());
+
+    std::vector<std::tuple<double, double, std::wstring>> results = getNeighbors(poi_names, ocr, 1);
+
+    return results;
 }
 
 int compare_poi(const void* a, const void* b)
