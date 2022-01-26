@@ -73,16 +73,22 @@ namespace dg
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 			for (int k = 0; k < ocrs.size(); k++)
             {
-                std::wstring poi_name = converter.from_bytes(ocrs[k].label.c_str());
-                std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
-                if (!pois.empty())
-                {
-                    POI* poi = pois[0];
-                    poi_xys.push_back(*poi);
-                    Polar2 relative = computeRelative(ocrs[k].xmin, ocrs[k].ymin, ocrs[k].xmax, ocrs[k].ymax);
-                    relatives.push_back(relative);
-                    poi_confidences.push_back(ocrs[k].confidence);
-                }
+                std::wstring ocr_result = converter.from_bytes(ocrs[k].label.c_str());
+				std::vector<std::tuple<double, double, std::wstring>> poi_names = map->matchPOIName(ocr_result, pose, 300.0, 1);
+				for (int n = 0; n < poi_names.size(); n++)
+            	{
+					std::tuple<double, double, std::wstring> poi_name = poi_names.at(n);
+
+					std::vector<POI*> pois = map->getPOI(std::get<2>(poi_name), pose, m_poi_search_radius, true);
+					if (!pois.empty())
+					{
+						POI* poi = pois[0];
+						poi_xys.push_back(*poi);
+						Polar2 relative = computeRelative(ocrs[k].xmin, ocrs[k].ymin, ocrs[k].xmax, ocrs[k].ymax);
+						relatives.push_back(relative);
+						poi_confidences.push_back(std::get<1>(poi_name)); //ocrs[k].confidence);
+					}
+				}
             }
             return true;
         }
@@ -107,12 +113,15 @@ namespace dg
 			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 			Map* map = m_shared->getMap();
 			if (map == nullptr || map->isEmpty()) return false;
-			std::wstring poi_name = converter.from_bytes(recog_name.c_str());
-			std::vector<POI*> pois = map->getPOI(poi_name, pose, m_poi_search_radius, true);
+			std::wstring ocr_result = converter.from_bytes(recog_name.c_str());
+			std::vector<std::tuple<double, double, std::wstring>> poi_names = map->matchPOIName(ocr_result, pose, 300.0, 1);
+			std::tuple<double, double, std::wstring> poi_name = poi_names.at(0);
+			std::vector<POI*> pois = map->getPOI(std::get<2>(poi_name), pose, m_poi_search_radius, true);
+
 			if (pois.empty()) return false;
 			poi_xy = *(pois[0]);
 			relative = computeRelative(xmin, ymin, xmax, ymax);
-			poi_confidence = conf;
+			poi_confidence = std::get<1>(poi_name); //conf;
 			return true;
 		}
 

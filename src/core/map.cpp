@@ -605,7 +605,7 @@ Pose2 Map::getNearestPathPose(const Path& path, const Pose2& pose_m)
     return pose;
 }
 
-double levenshtein(std::string s1, std::string s2)
+double levenshtein(std::wstring s1, std::wstring s2)
 {
     if(s1.length() < s2.length())
         return levenshtein(s2, s1);
@@ -625,7 +625,7 @@ double levenshtein(std::string s1, std::string s2)
             double insertions = previous_row[j + 1] + 1;
             double deletions = current_row[j] + 1;
             double substitutions = previous_row[j] + (s1[i] != s2[j]);
-            current_row.push_back(std::min(insertions, deletions, substitutions));
+            current_row.push_back(std::min({insertions, deletions, substitutions}));
         }
 
         previous_row = current_row;
@@ -636,39 +636,35 @@ double levenshtein(std::string s1, std::string s2)
 
 bool compare_dist(std::tuple<double, double, std::wstring> a, std::tuple<double, double, std::wstring> b)
 {
-    if(a.first == b.first) a.second > b.second;
+    if(std::get<0>(a) == std::get<0>(b)) std::get<1>(a) > std::get<1>(b);
 
-    return a.first > b.first;
+    return std::get<0>(a) > std::get<0>(b);
 }
 
-std::vector<std::tuple<double, double, std::wstring>> Map::getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr, int num_neighbors)
+std::vector<std::tuple<double, double, std::wstring>> Map::getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr_result, int num_neighbors)
 {
     std::vector<std::tuple<double, double, std::wstring>> distances;
     for(int i = 0; i < int(sizeof(poi_names)/sizeof(std::wstring)); i++)
     {
-        double dist = levenshtein(poi_names[i], ocr);
-        double dist_conf = 1.0 - (dist / std::max(ocr.length(), poi_names[i].length()));
+        double dist = levenshtein(poi_names[i], ocr_result);
+        double dist_conf = 1.0 - (dist / std::max({ocr_result.length(), poi_names[i].length()}));
         distances.push_back(std::make_tuple(dist, dist_conf, poi_names[i]));
     }
-    std::sort(distances.begin(), distances.end(), compare_dist)
+    std::sort(distances.begin(), distances.end(), compare_dist);
 
     std::vector<std::tuple<double, double, std::wstring>> neighbors;
     for(int i = 0; i < num_neighbors; i++)
     {		
-		neighbors.push_back(std::make_pair(distances[i][0], distances[i][1]))
+		neighbors.push_back(distances[i]);
     }
 
     return neighbors;
 }
 
-std::vector<std::tuple<double, double, std::wstring>> Map::matchPOIName(OCRResult ocr_result, const Point2& p, double search_radius)
+std::vector<std::tuple<double, double, std::wstring>> Map::matchPOIName(std::wstring ocr_result, const Point2& p, double search_radius, int num_neighbors)
 {
     std::vector<std::wstring> poi_names = getNearPOINames(p, search_radius);
-
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring ocr = converter.from_bytes(ocr_result.label.c_str());
-
-    std::vector<std::tuple<double, double, std::wstring>> results = getNeighbors(poi_names, ocr, 1);
+    std::vector<std::tuple<double, double, std::wstring>> results = getNeighbors(poi_names, ocr_result, num_neighbors);
 
     return results;
 }
