@@ -40,14 +40,47 @@ public:
 class DataLoader4Rec : public dg::DataLoader
 {
 public:
+    // void fixVideoScale()
+    // {
+    //     m_first_data_time = m_ocr_vdata.front()[0];
+    //     m_video_scale = m_video_fps * (m_ocr_vdata.back()[0] - m_first_data_time) / m_total_frames;
+    // }
+
     int getFrameNumber(const Timestamp time)
     {
-        int frame_i;
+        int frame_i = 0;
         if (m_camera_data.isOpened())
         {
             frame_i = (int)((time - m_first_data_time) * m_video_fps / m_video_scale + 0.5);
         }
         return frame_i;
+    }
+
+    cx::CSVReader::Double2D readOCR4Rec(const std::string& clue_file, cx::CSVReader::String2D& sdata)
+    {
+        cx::CSVReader csv;
+        sdata.clear();
+        if (csv.open(clue_file))
+        {    
+            // fnumber,timestamp,dname,confidence,xmin,ymin,xmax,ymax,lat,lon
+            sdata = csv.extString2D(1, { 2 }); // Skip the header
+            cx::CSVReader::Double2D raw_vdata = csv.extDouble2D(1, { 0, 1, 3, 4, 5, 6, 7 }); // Skip the header
+            return raw_vdata;
+        }
+        return cx::CSVReader::Double2D();
+    }
+
+    bool load4Rec(const std::string& ocr_file = "")
+    {
+        clear();
+
+        if (!ocr_file.empty())
+        {
+            m_ocr_vdata = readOCR4Rec(ocr_file, m_ocr_sdata);
+            if (m_ocr_vdata.empty()) return false;
+        }
+        
+        return true;
     }
 }; // End of 'DataLoader4Rec'
 
@@ -201,7 +234,7 @@ int runOCRLocalizer()
 }
 
 
-int runOCRloc(LOCALIZER& localizer, DataLoader& data_loader, const std::string& rec_traj_file = "")
+int runOCRloc(LOCALIZER& localizer, DataLoader4Rec& data_loader, const std::string& rec_traj_file = "")
 {
     // Prepare the result trajectory
     FILE* out_traj = nullptr;
@@ -225,8 +258,9 @@ int runOCRloc(LOCALIZER& localizer, DataLoader& data_loader, const std::string& 
     {
         if (data_loader.getNext(type, vdata, sdata, data_time) == false) break;
 
+        //double timestamp = vdata[0]; 
+        //int fnumber = data_loader.getFrameNumber(data_time);
         int fnumber = vdata[0];
-        //double timestamp = vdata[1]; 
         std::string dname = sdata[0];
         double conf = vdata[2];
         double xmin = vdata[3];
@@ -273,7 +307,7 @@ int runOCRloc(LOCALIZER& localizer, DataLoader& data_loader, const std::string& 
 }
 
 
-int runOCRLocalizerReal(const std::string& site, DataLoader& data_loader, const std::string& rec_traj_file = "")
+int runOCRLocalizerReal(const std::string& site, DataLoader4Rec& data_loader, const std::string& rec_traj_file = "")
 {
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
@@ -349,7 +383,7 @@ int runOCRLocalizerReal(const std::string& site, DataLoader& data_loader, const 
 
 int testOCRLocalizer()
 {
-    std::string gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+    std::string gps_file, imu_file, ocr_file, poi_file;
 
     //bool enable_gps = false;
     //bool use_novatel = false;
@@ -369,17 +403,19 @@ int testOCRLocalizer()
     };
     const int coex_idx = 5;
     const std::string site = (data_sel < coex_idx) ? "ETRI" : "COEX";
-    std::string video_file;// = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
+    //std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
+    //double video_scale = stod(data_head[data_sel][1]);
     // if (enable_gps && !use_novatel) gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
     // if (enable_gps && use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
-    poi_file = data_head[data_sel][0] + "_ocr.csv";
+    ocr_file = data_head[data_sel][0] + "_ocr.csv";
 
-    dg::DataLoader data_loader;
-    if (!data_loader.load(video_file, gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
+    DataLoader4Rec data_loader;
+    if (!data_loader.load4Rec(ocr_file))
     {
         printf("Failed to load data file\n");
         return -1;
     }
+    //data_loader.fixVideoScale();
     data_loader.setStartSkipTime(start_time);
 
     poi_file = data_head[data_sel][0] + "_poi.csv";
@@ -470,7 +506,7 @@ int runOCRRecognizerReal(DataLoader4Rec& data_loader, const std::string& rec_tra
 
 int testOCRRecognizer()
 {
-    std::string gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+    std::string gps_file, imu_file, ocr_file;
 
     bool enable_gps = true;
     bool use_novatel = false;
@@ -495,16 +531,16 @@ int testOCRRecognizer()
 
     //dg::DataLoader data_loader;
     DataLoader4Rec data_loader;
-    if (!data_loader.load(video_file, gps_file, imu_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
+    if (!data_loader.load(video_file, gps_file, imu_file))
     {
         printf("Failed to load data file\n");
         return -1;
     }
     data_loader.setStartSkipTime(start_time);
 
-    poi_file = data_head[data_sel][0] + "_ocr.csv"; //"_poi.csv";
+    ocr_file = data_head[data_sel][0] + "_ocr.csv";
 
-    return runOCRRecognizerReal(data_loader, poi_file);
+    return runOCRRecognizerReal(data_loader, ocr_file);
 }
 
 
