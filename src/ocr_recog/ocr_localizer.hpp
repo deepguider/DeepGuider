@@ -114,7 +114,7 @@ namespace dg
 			Map* map = m_shared->getMap();
 			if (map == nullptr || map->isEmpty()) return false;
 			std::wstring ocr_result = converter.from_bytes(recog_name.c_str());
-			std::vector<std::tuple<double, double, std::wstring>> poi_names = map->matchPOIName(ocr_result, pose, 300.0, 1);
+			std::vector<std::tuple<double, double, std::wstring>> poi_names = map->matchPOIName(ocr_result, pose, 100.0, 1);
 			std::tuple<double, double, std::wstring> poi_name = poi_names.at(0);
 			std::vector<POI*> pois = map->getPOI(std::get<2>(poi_name), pose, m_poi_search_radius, true);
 

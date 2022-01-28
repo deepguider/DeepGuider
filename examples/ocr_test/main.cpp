@@ -6,7 +6,7 @@
 #include <thread>
 #include "localizer/data_loader.hpp"
 
-#include "../dg_module_test/module_runner.hpp"
+#include "ocr_testset.hpp" //../dg_module_test/module_runner.hpp"
 
 using namespace dg;
 using namespace std;
@@ -31,59 +31,6 @@ public:
     cv::Point   video_offset;
     double      result_resize = 0;
 };
-
-/**
- * @brief DataLoader4Rec
- *
- * This implement interfaces for loading and providing timestamped sensor data for recording
- */
-class DataLoader4Rec : public dg::DataLoader
-{
-public:
-    // void fixVideoScale()
-    // {
-    //     m_first_data_time = m_ocr_vdata.front()[0];
-    //     m_video_scale = m_video_fps * (m_ocr_vdata.back()[0] - m_first_data_time) / m_total_frames;
-    // }
-
-    int getFrameNumber(const Timestamp time)
-    {
-        int frame_i = 0;
-        if (m_camera_data.isOpened())
-        {
-            frame_i = (int)((time - m_first_data_time) * m_video_fps / m_video_scale + 0.5);
-        }
-        return frame_i;
-    }
-
-    cx::CSVReader::Double2D readOCR4Rec(const std::string& clue_file, cx::CSVReader::String2D& sdata)
-    {
-        cx::CSVReader csv;
-        sdata.clear();
-        if (csv.open(clue_file))
-        {    
-            // fnumber,timestamp,dname,confidence,xmin,ymin,xmax,ymax,lat,lon
-            sdata = csv.extString2D(1, { 2 }); // Skip the header
-            cx::CSVReader::Double2D raw_vdata = csv.extDouble2D(1, { 0, 1, 3, 4, 5, 6, 7 }); // Skip the header
-            return raw_vdata;
-        }
-        return cx::CSVReader::Double2D();
-    }
-
-    bool load4Rec(const std::string& ocr_file = "")
-    {
-        clear();
-
-        if (!ocr_file.empty())
-        {
-            m_ocr_vdata = readOCR4Rec(ocr_file, m_ocr_sdata);
-            if (m_ocr_vdata.empty()) return false;
-        }
-        
-        return true;
-    }
-}; // End of 'DataLoader4Rec'
-
 
 void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* image_file = "sample.png", int nItr = 5)
 {
@@ -234,77 +181,77 @@ int runOCRLocalizer()
 }
 
 
-int runOCRloc(LOCALIZER& localizer, DataLoader4Rec& data_loader, const std::string& rec_traj_file = "")
-{
-    // Prepare the result trajectory
-    FILE* out_traj = nullptr;
+// int runOCRloc(LOCALIZER& localizer, DataLoader4Rec& data_loader, const std::string& rec_traj_file = "")
+// {
+//     // Prepare the result trajectory
+//     FILE* out_traj = nullptr;
     
-    if (!rec_traj_file.empty())
-    {
-        string file_name = "./result/" + rec_traj_file;
-        out_traj = fopen(file_name.c_str(), "wt");//, ccs=UTF-8");
-        if (out_traj == nullptr) return -1;
-        fprintf(out_traj, "fnumber,timestamp,poi_id,poi_x,poi_y,distance,angle,confidence\n");
-        //fprintf(out_traj, "fnumber,timestamp,dname,x,y,w,h,poi_id,poi_name,poi_x,poi_y,poi_floor,distance,angle,confidence,cam_lat,cam_lon\n");
-    }
+//     if (!rec_traj_file.empty())
+//     {
+//         string file_name = "./result/" + rec_traj_file;
+//         out_traj = fopen(file_name.c_str(), "wt");//, ccs=UTF-8");
+//         if (out_traj == nullptr) return -1;
+//         fprintf(out_traj, "fnumber,timestamp,poi_id,poi_x,poi_y,distance,angle,confidence\n");
+//         //fprintf(out_traj, "fnumber,timestamp,dname,x,y,w,h,poi_id,poi_name,poi_x,poi_y,poi_floor,distance,angle,confidence,cam_lat,cam_lon\n");
+//     }
     
-    int type;
-    std::vector<double> vdata;
-    std::vector<std::string> sdata;
-    dg::Timestamp data_time;
-    //std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+//     int type;
+//     std::vector<double> vdata;
+//     std::vector<std::string> sdata;
+//     dg::Timestamp data_time;
+//     //std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     
-    while (1)
-    {
-        if (data_loader.getNext(type, vdata, sdata, data_time) == false) break;
+//     while (1)
+//     {
+//         if (data_loader.getNext(type, vdata, sdata, data_time) == false) break;
 
-        //double timestamp = vdata[0]; 
-        //int fnumber = data_loader.getFrameNumber(data_time);
-        int fnumber = vdata[0];
-        std::string dname = sdata[0];
-        double conf = vdata[2];
-        double xmin = vdata[3];
-        double ymin = vdata[4];
-        double xmax = vdata[5];
-        double ymax = vdata[6];      
-        //double cam_lat = vdata[7];
-        //double cam_lon = vdata[8];     
-        dg::Point2 poi_xy;
-        //std::vector<POI> pois;
-        Polar2 relatives;
-        double poi_confidences;
+//         //double timestamp = vdata[0]; 
+//         //int fnumber = data_loader.getFrameNumber(data_time);
+//         int fnumber = vdata[0];
+//         std::string dname = sdata[0];
+//         double conf = vdata[2];
+//         double xmin = vdata[3];
+//         double ymin = vdata[4];
+//         double xmax = vdata[5];
+//         double ymax = vdata[6];      
+//         //double cam_lat = vdata[7];
+//         //double cam_lon = vdata[8];     
+//         dg::Point2 poi_xy;
+//         //std::vector<POI> pois;
+//         Polar2 relatives;
+//         double poi_confidences;
 
-        // // poi 
-        // double x = (xmin + xmax) / 2.0;
-        // double y = (ymin + ymax) / 2.0;
-        // double w = xmax - xmin;
-        // double h = ymax - ymin;
+//         // // poi 
+//         // double x = (xmin + xmax) / 2.0;
+//         // double y = (ymin + ymax) / 2.0;
+//         // double w = xmax - xmin;
+//         // double h = ymax - ymin;
 
-       // bool ok = localizer.applyLoc(data, pois, relatives, poi_confidences);        
-        bool ok = localizer.applyPreprocessed(dname, xmin, ymin, xmax, ymax, conf, data_time, poi_xy, relatives, poi_confidences);
+//        // bool ok = localizer.applyLoc(data, pois, relatives, poi_confidences);        
+//         bool ok = localizer.applyPreprocessed(dname, xmin, ymin, xmax, ymax, conf, data_time, poi_xy, relatives, poi_confidences);
         
-        // Record the current state on the CSV file
-        if (out_traj != nullptr)
-        {
-            if(ok) //pois.empty())
-            {
-                printf("%d,%.3lf,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,data_time,poi_xy.x,poi_xy.y,relatives.lin,relatives.ang,poi_confidences);
-                fprintf(out_traj, "%d,%.3lf,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,data_time,poi_xy.x,poi_xy.y,relatives.lin,relatives.ang,poi_confidences);       
-                // printf("%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
-                // fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
-            }
-            // else
-            // {
-            //     printf("%d,%.3lf,%d,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,0,0.00,0.00,0.00,0.00,0.00);
-            //     fprintf(out_traj, "%d,%.3lf,%d,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,0,0.00,0.00,0.00,0.00,0.00);
-            // }
-        }
-    }
+//         // Record the current state on the CSV file
+//         if (out_traj != nullptr)
+//         {
+//             if(ok) //pois.empty())
+//             {
+//                 printf("%d,%.3lf,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,data_time,poi_xy.x,poi_xy.y,relatives.lin,relatives.ang,poi_confidences);
+//                 fprintf(out_traj, "%d,%.3lf,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,data_time,poi_xy.x,poi_xy.y,relatives.lin,relatives.ang,poi_confidences);       
+//                 // printf("%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
+//                 // fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
+//             }
+//             // else
+//             // {
+//             //     printf("%d,%.3lf,%d,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,0,0.00,0.00,0.00,0.00,0.00);
+//             //     fprintf(out_traj, "%d,%.3lf,%d,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,0,0.00,0.00,0.00,0.00,0.00);
+//             // }
+//         }
+//     }
     
-    if (out_traj != nullptr) fclose(out_traj);
+//     if (out_traj != nullptr) fclose(out_traj);
 
-    return 0;
-}
+//     return 0;
+// }
 
 
 int runOCRLocalizerReal(const std::string& site, DataLoader4Rec& data_loader, const std::string& rec_traj_file = "")
@@ -359,29 +306,18 @@ int runOCRLocalizerReal(const std::string& site, DataLoader4Rec& data_loader, co
     {
         VVS_CHECK_TRUE(map.load(guiprop.map_file.c_str()));
     }
-
-    SharedInterface* shared = nullptr;
-    shared = new ModuleRunner();
-    shared->setMap(map);
-    
-    // Initialize Python module
-    LOCALIZER localizer;
-    if (!localizer.initialize_without_python(shared)) return -1;
-    printf("Initialization: it took %.3lf seconds\n\n\n", localizer.procTime());
-    
-    // Run the Python module
-    runOCRloc(localizer, data_loader, rec_traj_file);
-
-    // Clear the Python module
-    localizer.clear();
-
-    delete shared;
+    map.updateEdgeLR();
+       
+    // Run the localizer
+    OCRTestset ocr_testset;
+    ocr_testset.setMap(map);
+    ocr_testset.runOCRloc(data_loader, rec_traj_file);
     
     return 0;
 }
 
 
-int testOCRLocalizer()
+int recOCRTestset()
 {
     std::string gps_file, imu_file, ocr_file, poi_file;
 
@@ -546,7 +482,7 @@ int testOCRRecognizer()
 
 int main()
 {
-    return testOCRLocalizer();
+    return recOCRTestset();
     //return testOCRRecognizer();
     //return runUnitTest();    
     //return runOCRLocalizer();

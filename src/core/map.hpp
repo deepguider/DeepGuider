@@ -1005,7 +1005,7 @@ public:
      * @param num_neighbors The number of POI names to return
      * @return A list of distance, confidence, and name of matched POIs (empty list if no POI found)
      */
-    std::vector<std::tuple<double, double, std::wstring>> matchPOIName(std::wstring ocr_result, const Point2& p, double search_radius = 300.0, int num_neighbors = 1);
+    std::vector<std::tuple<double, double, std::wstring>> matchPOIName(std::wstring ocr_result, const Point2& p, double search_radius = 100.0, int num_neighbors = 1);
 
     /**
      * Find a POI using ID (time complexity: O(1))

@@ -644,7 +644,8 @@ bool compare_dist(std::tuple<double, double, std::wstring> a, std::tuple<double,
 std::vector<std::tuple<double, double, std::wstring>> Map::getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr_result, int num_neighbors)
 {
     std::vector<std::tuple<double, double, std::wstring>> distances;
-    for(int i = 0; i < int(sizeof(poi_names)/sizeof(std::wstring)); i++)
+    int size = poi_names.size();
+    for(int i = 0; i < poi_names.size(); i++)
     {
         double dist = levenshtein(poi_names[i], ocr_result);
         double dist_conf = 1.0 - (dist / std::max({ocr_result.length(), poi_names[i].length()}));
