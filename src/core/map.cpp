@@ -636,9 +636,9 @@ double levenshtein(std::wstring s1, std::wstring s2)
 
 bool compare_dist(std::tuple<double, double, std::wstring> a, std::tuple<double, double, std::wstring> b)
 {
-    if(std::get<0>(a) == std::get<0>(b)) std::get<1>(a) > std::get<1>(b);
+    if(std::get<1>(a) == std::get<1>(b)) std::get<0>(a) > std::get<0>(b);
 
-    return std::get<0>(a) > std::get<0>(b);
+    return std::get<1>(a) > std::get<1>(b);
 }
 
 std::vector<std::tuple<double, double, std::wstring>> Map::getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr_result, int num_neighbors)
@@ -649,17 +649,24 @@ std::vector<std::tuple<double, double, std::wstring>> Map::getNeighbors(std::vec
     {
         double dist = levenshtein(poi_names[i], ocr_result);
         double dist_conf = 1.0 - (dist / std::max({ocr_result.length(), poi_names[i].length()}));
-        distances.push_back(std::make_tuple(dist, dist_conf, poi_names[i]));
+        double thre = 0.6;
+        if(dist_conf >= thre)
+            distances.push_back(std::make_tuple(dist, dist_conf, poi_names[i]));
     }
-    std::sort(distances.begin(), distances.end(), compare_dist);
+    if(distances.size() > 1)
+    {
+        std::sort(distances.begin(), distances.end(), compare_dist);
 
-    std::vector<std::tuple<double, double, std::wstring>> neighbors;
-    for(int i = 0; i < num_neighbors; i++)
-    {		
-		neighbors.push_back(distances[i]);
+        std::vector<std::tuple<double, double, std::wstring>> neighbors;
+        for(int i = 0; i < num_neighbors; i++)
+        {		
+            neighbors.push_back(distances[i]);
+        }
+
+        return neighbors;
     }
 
-    return neighbors;
+    return std::vector<std::tuple<double, double, std::wstring>>();
 }
 
 std::vector<std::tuple<double, double, std::wstring>> Map::matchPOIName(std::wstring ocr_result, const Point2& p, double search_radius, int num_neighbors)

@@ -75,6 +75,7 @@ namespace dg
             {
                 std::wstring ocr_result = converter.from_bytes(ocrs[k].label.c_str());
 				std::vector<std::tuple<double, double, std::wstring>> poi_names = map->matchPOIName(ocr_result, pose, 300.0, 1);
+				if (poi_names.empty()) return false;
 				for (int n = 0; n < poi_names.size(); n++)
             	{
 					std::tuple<double, double, std::wstring> poi_name = poi_names.at(n);
@@ -115,6 +116,7 @@ namespace dg
 			if (map == nullptr || map->isEmpty()) return false;
 			std::wstring ocr_result = converter.from_bytes(recog_name.c_str());
 			std::vector<std::tuple<double, double, std::wstring>> poi_names = map->matchPOIName(ocr_result, pose, 100.0, 1);
+			if (poi_names.empty()) return false;
 			std::tuple<double, double, std::wstring> poi_name = poi_names.at(0);
 			std::vector<POI*> pois = map->getPOI(std::get<2>(poi_name), pose, m_poi_search_radius, true);
 
