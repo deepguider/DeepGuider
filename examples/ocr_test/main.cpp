@@ -300,7 +300,7 @@ int runOCRLocalizerReal(const std::string& site, DataLoader4Rec& data_loader, co
     MapGUIProp guiprop = (cx::toLowerCase(site) == "coex") ? COEX : (cx::toLowerCase(site) == "bucheon") ? Bucheon : ETRI;
     
     // Prepare a map if given
-    Map map;
+    dg::Map map;
     map.setReference(guiprop.origin_latlon);
     if (!guiprop.map_file.empty())
     {

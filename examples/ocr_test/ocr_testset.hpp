@@ -42,7 +42,7 @@ public:
         {    
             // fnumber,timestamp,dname,confidence,xmin,ymin,xmax,ymax,lat,lon
             sdata = csv.extString2D(1, { 2 }); // Skip the header
-            cx::CSVReader::Double2D raw_vdata = csv.extDouble2D(1, { 0, 1, 3, 4, 5, 6, 7 }); // Skip the header
+            cx::CSVReader::Double2D raw_vdata = csv.extDouble2D(1, { 0, 1, 3, 4, 5, 6, 7, 8, 9 }); // Skip the header
             return raw_vdata;
         }
         return cx::CSVReader::Double2D();
@@ -111,7 +111,7 @@ public:
             string file_name = "./result/" + rec_traj_file;
             out_traj = fopen(file_name.c_str(), "wt");//, ccs=UTF-8");
             if (out_traj == nullptr) return -1;
-            fprintf(out_traj, "fnumber,timestamp,poi_id,poi_x,poi_y,distance,angle,confidence\n");
+            fprintf(out_traj, "fnumber,timestamp,poi_x,poi_y,distance,angle,confidence\n");
             //fprintf(out_traj, "fnumber,timestamp,dname,x,y,w,h,poi_id,poi_name,poi_x,poi_y,poi_floor,distance,angle,confidence,cam_lat,cam_lon\n");
         }
         
@@ -133,9 +133,12 @@ public:
             double xmin = vdata[3];
             double ymin = vdata[4];
             double xmax = vdata[5];
-            double ymax = vdata[6];      
-            //double cam_lat = vdata[7];
-            //double cam_lon = vdata[8];     
+            double ymax = vdata[6];  
+
+            dg::LatLon gps_datum(vdata[7], vdata[8]);
+            dg::Point2 gps_xy = toMetric(gps_datum);
+            m_localizer->setPose(gps_xy);
+
             dg::Point2 poi_xy;
             //std::vector<POI> pois;
             Polar2 relatives;
