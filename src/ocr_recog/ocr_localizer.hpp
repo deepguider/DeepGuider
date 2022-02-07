@@ -10,7 +10,14 @@
 using namespace std;
 
 namespace dg
-{
+{	
+	bool compare_dist(std::tuple<double, double, std::wstring> a, std::tuple<double, double, std::wstring> b)
+	{
+		if(std::get<1>(a) == std::get<1>(b)) std::get<0>(a) > std::get<0>(b);
+
+		return std::get<1>(a) > std::get<1>(b);
+	}
+
     /**
     * @brief OCR Localizer
     */
@@ -74,7 +81,7 @@ namespace dg
 			for (int k = 0; k < ocrs.size(); k++)
             {
                 std::wstring ocr_result = converter.from_bytes(ocrs[k].label.c_str());
-				std::vector<std::tuple<double, double, std::wstring>> poi_names = map->matchPOIName(ocr_result, pose, 300.0, 1);
+				std::vector<std::tuple<double, double, std::wstring>> poi_names = matchPOIName(ocr_result, pose, 300.0, 1);
 				if (poi_names.empty()) return false;
 				for (int n = 0; n < poi_names.size(); n++)
             	{
@@ -115,7 +122,7 @@ namespace dg
 			Map* map = m_shared->getMap();
 			if (map == nullptr || map->isEmpty()) return false;
 			std::wstring ocr_result = converter.from_bytes(recog_name.c_str());
-			std::vector<std::tuple<double, double, std::wstring>> poi_names = map->matchPOIName(ocr_result, pose, 100.0, 1);
+			std::vector<std::tuple<double, double, std::wstring>> poi_names = matchPOIName(ocr_result, pose, 100.0, 1);
 			if (poi_names.empty()) return false;
 			std::tuple<double, double, std::wstring> poi_name = poi_names.at(0);
 			std::vector<POI*> pois = map->getPOI(std::get<2>(poi_name), pose, m_poi_search_radius, true);
@@ -155,7 +162,89 @@ namespace dg
 		}		
 
 
-    protected:
+    protected:		
+		double levenshtein(std::wstring s1, std::wstring s2)
+		{
+			if(s1.length() < s2.length())
+				return levenshtein(s2, s1);
+
+			if(s2.length() == 0)
+				return s1.length();
+
+			std::vector<double> previous_row(s2.length() + 1);
+			for(int i = 0; i < int(sizeof(previous_row)/sizeof(double)); i++)
+				previous_row[i] = i;
+
+			for(int i = 0; i < s1.length(); i++)
+			{
+				std::vector<double> current_row = {double(i) + 1};
+				for(int j = 0; j < s2.length(); j++)
+				{
+					double insertions = previous_row[j + 1] + 1;
+					double deletions = current_row[j] + 1;
+					double substitutions = previous_row[j] + (s1[i] != s2[j]);
+					current_row.push_back(std::min({insertions, deletions, substitutions}));
+				}
+
+				previous_row = current_row;
+			}
+
+			return previous_row.back();
+		}
+
+		/**
+		 * Find Top-n POI names closest to the result of OCR
+		 * @param poi_names POI names within a search radius from a point
+		 * @param ocr_result A result of OCR
+		 * @param num_neighbors The number of POI names to return
+		 * @return A list of distance, confidence, and name of matched POIs (empty list if no POI found)
+		 */
+		std::vector<std::tuple<double, double, std::wstring>> getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr_result, int num_neighbors = 1)
+		{
+			std::vector<std::tuple<double, double, std::wstring>> distances;
+			int size = poi_names.size();
+			for(int i = 0; i < poi_names.size(); i++)
+			{
+				double dist = levenshtein(poi_names[i], ocr_result);
+				double dist_conf = 1.0 - (dist / std::max({ocr_result.length(), poi_names[i].length()}));
+				double thre = 0.6;
+				if(dist_conf >= thre)
+					distances.push_back(std::make_tuple(dist, dist_conf, poi_names[i]));
+			}
+			if(distances.size() > 1)
+			{
+				std::sort(distances.begin(), distances.end(), compare_dist);
+
+				std::vector<std::tuple<double, double, std::wstring>> neighbors;
+				for(int i = 0; i < num_neighbors; i++)
+				{		
+					neighbors.push_back(distances[i]);
+				}
+
+				return neighbors;
+			}
+
+			return std::vector<std::tuple<double, double, std::wstring>>();
+		}
+		
+		/**
+		 * Find POI names matched with the result of OCR
+		 * @param ocr_result A result of OCR
+		 * @param p A given point
+		 * @param search_radius A given search radius
+		 * @param num_neighbors The number of POI names to return
+		 * @return A list of distance, confidence, and name of matched POIs (empty list if no POI found)
+		 */
+		std::vector<std::tuple<double, double, std::wstring>> matchPOIName(std::wstring ocr_result, const Point2& p, double search_radius = 100.0, int num_neighbors = 1)		
+		{
+			Map* map = m_shared->getMap();
+			if (map == nullptr || map->isEmpty()) return std::vector<std::tuple<double, double, std::wstring>>();
+			std::vector<std::wstring> poi_names = map->getNearPOINames(p, search_radius);
+			std::vector<std::tuple<double, double, std::wstring>> results = getNeighbors(poi_names, ocr_result, num_neighbors);
+
+			return results;
+		}
+
         dg::Polar2 computeRelative(double x1, double y1, double x2, double y2)
         {
             dg::Polar2 relative = dg::Polar2(-1, CV_PI);

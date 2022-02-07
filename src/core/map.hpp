@@ -989,25 +989,6 @@ public:
     }
 
     /**
-     * Find Top-n POI names closest to the result of OCR
-     * @param poi_names POI names within a search radius from a point
-     * @param ocr_result A result of OCR
-     * @param num_neighbors The number of POI names to return
-     * @return A list of distance, confidence, and name of matched POIs (empty list if no POI found)
-     */
-    std::vector<std::tuple<double, double, std::wstring>> getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr_result, int num_neighbors = 1);
-
-    /**
-     * Find POI names matched with the result of OCR
-     * @param ocr_result A result of OCR
-     * @param p A given point
-     * @param search_radius A given search radius
-     * @param num_neighbors The number of POI names to return
-     * @return A list of distance, confidence, and name of matched POIs (empty list if no POI found)
-     */
-    std::vector<std::tuple<double, double, std::wstring>> matchPOIName(std::wstring ocr_result, const Point2& p, double search_radius = 100.0, int num_neighbors = 1);
-
-    /**
      * Find a POI using ID (time complexity: O(1))
      * @param id ID to search
      * @return A pointer to the found POI (`nullptr` if not exist)
