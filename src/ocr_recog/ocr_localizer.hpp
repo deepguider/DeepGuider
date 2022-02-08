@@ -172,38 +172,42 @@ namespace dg
 		int jaum_end = 12622;
 		int moum_begin = 12623;
 		int moum_end = 12643;
-		char chosung_list[19] = {'ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ' , 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'};
-		char jungsung_list[21] = {'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'};
-		char jongsung_list[28] = {' ', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ','ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'};
-		char jaum_list[30] = {'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'};
-		char moum_list[21] = {'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'};
+		wchar_t chosung_list[19] = {L'ㄱ', L'ㄲ', L'ㄴ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅅ', L'ㅆ', L'ㅇ' , L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ'};
+		wchar_t jungsung_list[21] = {L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ'};
+		wchar_t jongsung_list[28] = {L' ', L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ'};
+		wchar_t jaum_list[30] = {L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ'};
+		wchar_t moum_list[21] = {L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ'};
 
-		bool character_is_korean(char c)
+		bool character_is_korean(wchar_t c)
 		{
 			int i = (int)c;
 			return ((kor_begin <= i <= kor_end) || (jaum_begin <= i <= jaum_end) || (moum_begin <= i <= moum_end));
 		}
 
-		char compose(char chosung, char jungsung, char jongsung)
+		wchar_t compose(wchar_t chosung, wchar_t jungsung, wchar_t jongsung)
 		{
-			char character = (char)(kor_begin + chosung_base * chosung_list[chosung] + jungsung_base * jungsung_list[jungsung] + jongsung_list[jongsung]);
+			setlocale(LC_ALL, "KOREAN");
+
+			wchar_t character = (wchar_t)(kor_begin + chosung_base * chosung_list[chosung] + jungsung_base * jungsung_list[jungsung] + jongsung_list[jongsung]);
 			return character;
 		}
 
-		const char* decompose(char c)
+		wchar_t* decompose(wchar_t c)
 		{
+			setlocale(LC_ALL, "KOREAN");
+
 			if (!character_is_korean(c))
 				return nullptr;
 
 			int i = (int)c;
 			if (jaum_begin <= i <= jaum_end)
 			{
-				char jamos[3] = {c, ' ', ' '};
+				static wchar_t jamos[4] = {c, L' ', L' ', L'\0'};
 				return jamos;
 			}
 			if (moum_begin <= i <= moum_end)
 			{
-				char jamos[3] = {' ', c, ' '};
+				static wchar_t jamos[4] = {L' ', c, L' ', L'\0'};
 				return jamos;
 			}
 
@@ -212,19 +216,19 @@ namespace dg
 			int cho  = i; // chosung_base
 			int jung = ( i - cho * chosung_base ); // jungsung_base 
 			int jong = ( i - cho * chosung_base - jung * jungsung_base );    
-			char jamos[3] = {chosung_list[cho], jungsung_list[jung], jongsung_list[jong]};
+			static wchar_t jamos[4] = {chosung_list[cho], jungsung_list[jung], jongsung_list[jong], L'\0'};
 
 			return jamos;
 		}
 
-		double substitution_cost(char c1, char c2)
+		double substitution_cost(wchar_t c1, wchar_t c2)
 		{
 			if (c1 == c2)
 				return 0;
-
-			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-			std::wstring s1 = converter.from_bytes(decompose(c1));
-			std::wstring s2 = converter.from_bytes(decompose(c2));
+			
+			//std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			std::wstring s1(decompose(c1));
+			std::wstring s2(decompose(c2));
 			return levenshtein(s1, s2)/3;
 		}
 
