@@ -162,7 +162,101 @@ namespace dg
 		}		
 
 
-    protected:		
+    protected:
+		// hangeul parameters
+		int kor_begin = 44032;
+		int kor_end = 55203;
+		int chosung_base = 588;
+		int jungsung_base = 28;
+		int jaum_begin = 12593;
+		int jaum_end = 12622;
+		int moum_begin = 12623;
+		int moum_end = 12643;
+		char chosung_list[19] = {'ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ' , 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'};
+		char jungsung_list[21] = {'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'};
+		char jongsung_list[28] = {' ', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ','ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'};
+		char jaum_list[30] = {'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'};
+		char moum_list[21] = {'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'};
+
+		bool character_is_korean(char c)
+		{
+			int i = (int)c;
+			return ((kor_begin <= i <= kor_end) || (jaum_begin <= i <= jaum_end) || (moum_begin <= i <= moum_end));
+		}
+
+		char compose(char chosung, char jungsung, char jongsung)
+		{
+			char character = (char)(kor_begin + chosung_base * chosung_list[chosung] + jungsung_base * jungsung_list[jungsung] + jongsung_list[jongsung]);
+			return character;
+		}
+
+		const char* decompose(char c)
+		{
+			if (!character_is_korean(c))
+				return nullptr;
+
+			int i = (int)c;
+			if (jaum_begin <= i <= jaum_end)
+			{
+				char jamos[3] = {c, ' ', ' '};
+				return jamos;
+			}
+			if (moum_begin <= i <= moum_end)
+			{
+				char jamos[3] = {' ', c, ' '};
+				return jamos;
+			}
+
+			// decomposition rule
+			i -= kor_begin;
+			int cho  = i; // chosung_base
+			int jung = ( i - cho * chosung_base ); // jungsung_base 
+			int jong = ( i - cho * chosung_base - jung * jungsung_base );    
+			char jamos[3] = {chosung_list[cho], jungsung_list[jung], jongsung_list[jong]};
+
+			return jamos;
+		}
+
+		double substitution_cost(char c1, char c2)
+		{
+			if (c1 == c2)
+				return 0;
+
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			std::wstring s1 = converter.from_bytes(decompose(c1));
+			std::wstring s2 = converter.from_bytes(decompose(c2));
+			return levenshtein(s1, s2)/3;
+		}
+
+		double levenshtein_jamo(std::wstring s1, std::wstring s2)
+		{
+			if(s1.length() < s2.length())
+				return levenshtein_jamo(s2, s1);
+
+			if(s2.length() == 0)
+				return s1.length();
+
+			std::vector<double> previous_row(s2.length() + 1);
+			for(int i = 0; i < int(sizeof(previous_row)/sizeof(double)); i++)
+				previous_row[i] = i;
+
+			for(int i = 0; i < s1.length(); i++)
+			{
+				std::vector<double> current_row = {double(i) + 1};
+				for(int j = 0; j < s2.length(); j++)
+				{
+					double insertions = previous_row[j + 1] + 1;
+					double deletions = current_row[j] + 1;
+					double substitutions = previous_row[j] + substitution_cost(s1[i], s2[j]);
+					current_row.push_back(std::min({insertions, deletions, substitutions}));
+				}
+
+				previous_row = current_row;
+			}
+
+			return previous_row.back();
+		}
+
 		double levenshtein(std::wstring s1, std::wstring s2)
 		{
 			if(s1.length() < s2.length())
@@ -197,15 +291,20 @@ namespace dg
 		 * @param poi_names POI names within a search radius from a point
 		 * @param ocr_result A result of OCR
 		 * @param num_neighbors The number of POI names to return
+		 * @param jamo_mode A given levenshtein function mode
 		 * @return A list of distance, confidence, and name of matched POIs (empty list if no POI found)
 		 */
-		std::vector<std::tuple<double, double, std::wstring>> getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr_result, int num_neighbors = 1)
+		std::vector<std::tuple<double, double, std::wstring>> getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr_result, int num_neighbors = 1, bool jamo_mode = true)
 		{
 			std::vector<std::tuple<double, double, std::wstring>> distances;
 			int size = poi_names.size();
 			for(int i = 0; i < poi_names.size(); i++)
 			{
-				double dist = levenshtein(poi_names[i], ocr_result);
+				double dist = 0.0;
+				if(jamo_mode == true)
+					dist = levenshtein_jamo(poi_names[i], ocr_result);
+				else
+					dist = levenshtein(poi_names[i], ocr_result);
 				double dist_conf = 1.0 - (dist / std::max({ocr_result.length(), poi_names[i].length()}));
 				double thre = 0.6;
 				if(dist_conf >= thre)
@@ -233,9 +332,10 @@ namespace dg
 		 * @param p A given point
 		 * @param search_radius A given search radius
 		 * @param num_neighbors The number of POI names to return
+		 * @param jamo_mode A given levenshtein function mode
 		 * @return A list of distance, confidence, and name of matched POIs (empty list if no POI found)
 		 */
-		std::vector<std::tuple<double, double, std::wstring>> matchPOIName(std::wstring ocr_result, const Point2& p, double search_radius = 100.0, int num_neighbors = 1)		
+		std::vector<std::tuple<double, double, std::wstring>> matchPOIName(std::wstring ocr_result, const Point2& p, double search_radius = 100.0, int num_neighbors = 1, bool jamo_mode = true)		
 		{
 			Map* map = m_shared->getMap();
 			if (map == nullptr || map->isEmpty()) return std::vector<std::tuple<double, double, std::wstring>>();
