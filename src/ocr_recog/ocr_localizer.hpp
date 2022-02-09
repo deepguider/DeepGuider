@@ -181,7 +181,7 @@ namespace dg
 		bool character_is_korean(wchar_t c)
 		{
 			int i = (int)c;
-			return ((kor_begin <= i <= kor_end) || (jaum_begin <= i <= jaum_end) || (moum_begin <= i <= moum_end));
+			return ((kor_begin <= i && i <= kor_end) || (jaum_begin <= i && i <= jaum_end) || (moum_begin <= i && i <= moum_end));
 		}
 
 		wchar_t compose(wchar_t chosung, wchar_t jungsung, wchar_t jongsung)
@@ -196,27 +196,51 @@ namespace dg
 		{
 			setlocale(LC_ALL, "KOREAN");
 
+			static wchar_t jamos[4] = {L'\0'};
 			if (!character_is_korean(c))
-				return nullptr;
-
-			int i = (int)c;
-			if (jaum_begin <= i <= jaum_end)
 			{
-				static wchar_t jamos[4] = {c, L' ', L' ', L'\0'};
+				jamos[0] = {c};				
+				if(c == L' ')
+				{
+					jamos[1] = {L' '};
+					jamos[2] = {L' '};
+				}
+				else
+				{
+					jamos[1] = {L'\0'};
+					jamos[2] = {L'\0'};
+				}
+				jamos[3] = {L'\0'};
 				return jamos;
 			}
-			if (moum_begin <= i <= moum_end)
+
+			int i = (int)c;
+			if (jaum_begin <= i && i <= jaum_end)
 			{
-				static wchar_t jamos[4] = {L' ', c, L' ', L'\0'};
+				jamos[0] = {c};
+				jamos[1] = {L' '};
+				jamos[2] = {L' '};
+				jamos[3] = {L'\0'};
+				return jamos;
+			}
+			if (moum_begin <= i && i <= moum_end)
+			{
+				jamos[0] = {L' '};
+				jamos[1] = {c};				
+				jamos[2] = {L' '};
+				jamos[3] = {L'\0'};
 				return jamos;
 			}
 
 			// decomposition rule
-			i -= kor_begin;
-			int cho  = i; // chosung_base
-			int jung = ( i - cho * chosung_base ); // jungsung_base 
-			int jong = ( i - cho * chosung_base - jung * jungsung_base );    
-			static wchar_t jamos[4] = {chosung_list[cho], jungsung_list[jung], jongsung_list[jong], L'\0'};
+			i = i - kor_begin;
+			int cho  = i / chosung_base; // chosung_base
+			int jung = ( i - cho * chosung_base ) / jungsung_base; // jungsung_base 
+			int jong = i - cho * chosung_base - jung * jungsung_base;    
+			jamos[0] = {chosung_list[cho]};
+			jamos[1] = {jungsung_list[jung]};
+			jamos[2] = {jongsung_list[jong]};
+			jamos[3] = {L'\0'};
 
 			return jamos;
 		}
@@ -224,7 +248,7 @@ namespace dg
 		double substitution_cost(wchar_t c1, wchar_t c2)
 		{
 			if (c1 == c2)
-				return 0;
+				return 0.0;
 			
 			//std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 			std::wstring s1(decompose(c1));
@@ -310,11 +334,11 @@ namespace dg
 				else
 					dist = levenshtein(poi_names[i], ocr_result);
 				double dist_conf = 1.0 - (dist / std::max({ocr_result.length(), poi_names[i].length()}));
-				double thre = 0.6;
+				double thre = 0.8; //0.6;
 				if(dist_conf >= thre)
 					distances.push_back(std::make_tuple(dist, dist_conf, poi_names[i]));
 			}
-			if(distances.size() > 1)
+			if(distances.size() > 0)
 			{
 				std::sort(distances.begin(), distances.end(), compare_dist);
 
