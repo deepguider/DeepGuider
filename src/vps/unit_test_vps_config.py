@@ -2,7 +2,7 @@
 dataset_region="COEX"
 date_idx = 0
 begin_skip_frame = 0
-ip = "129.254.81.204"
+ip = "X.X.X.X"
 if dataset_region == "ETRI":
     indir = "/home/ccsmm/data1/workdir/DB_Repo2/DeepGuider_system_testset/ETRI"
     input_reference_ext = "*.avi"
