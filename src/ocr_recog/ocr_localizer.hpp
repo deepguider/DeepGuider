@@ -7,6 +7,8 @@
 #include <locale>
 #include <codecvt>
 
+#define MAP_BUF_SIZE               (1024)
+
 using namespace std;
 
 namespace dg
@@ -62,6 +64,36 @@ namespace dg
 			m_camera_height = cam_h;
 			m_poi_height = poi_h;
 			m_poi_search_radius = search_radius;
+		}
+		
+		bool setWeights(const char* filename = "dg_jamo_weights.csv")
+		{
+			FILE* fid = fopen(filename, "rt,ccs=UTF-8");
+			if (fid == nullptr) return false;
+
+			wchar_t buffer[MAP_BUF_SIZE];
+			wchar_t* context;
+			while (!feof(fid))
+			{
+				if (fgetws(buffer, MAP_BUF_SIZE, fid) == nullptr) break;
+				wchar_t* token;
+				if ((token = wcstok(buffer, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+				//if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+				wchar_t c1 = token[0];
+				if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+				wchar_t c2 = token[0];
+				if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+				double similiraty = std::stod(cx::trimBoth(token), nullptr);
+				if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+
+				addWeight(c1, c2, similiraty);
+			}
+			fclose(fid);
+			return true;
+
+		WEIGHT_FAIL:
+			fclose(fid);
+			return false;
 		}
 
         bool apply(const cv::Mat image, const dg::Timestamp image_time, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
@@ -178,6 +210,9 @@ namespace dg
 		wchar_t jaum_list[30] = {L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ'};
 		wchar_t moum_list[21] = {L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ'};
 
+		/** A hash table for finding similarity weight between characters */
+		std::map<std::pair<wchar_t, wchar_t>, double> weights;
+
 		bool character_is_korean(wchar_t c)
 		{
 			int i = (int)c;
@@ -284,6 +319,27 @@ namespace dg
 
 			return previous_row.back();
 		}
+		
+		bool addWeight(const wchar_t c1, const wchar_t c2, const double similarity)
+		{
+			weights.erase(weights.find(std::make_pair(c1, c2)));
+			auto result = weights.insert(std::make_pair(std::make_pair(c1, c2), similarity));
+			if (!result.second) return false;
+
+			return true;
+		}
+		
+		double weight_similarity(wchar_t c1, wchar_t c2)
+		{
+			if (c1 == c2)
+				return 1.0;
+
+			auto weight = weights.find(std::make_pair(c1, c2));
+			if (weight != weights.end())
+				return weight->second;
+			else
+				return 0.0;
+		}
 
 		double levenshtein(std::wstring s1, std::wstring s2)
 		{
@@ -304,7 +360,7 @@ namespace dg
 				{
 					double insertions = previous_row[j + 1] + 1;
 					double deletions = current_row[j] + 1;
-					double substitutions = previous_row[j] + (s1[i] != s2[j]);
+					double substitutions = previous_row[j] + (1 - weight_similarity(s1[i], s2[j]));//(s1[i] != s2[j]);
 					current_row.push_back(std::min({insertions, deletions, substitutions}));
 				}
 

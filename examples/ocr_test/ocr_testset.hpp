@@ -102,6 +102,7 @@ public:
         // initialize module localizers
         m_ocr_localizer = cv::makePtr<dg::OCRLocalizer>();
         VVS_CHECK_TRUE(m_ocr_localizer->initialize_without_python(this));
+        m_ocr_localizer->setWeights("dg_jamo_weights.csv");
 
         // Prepare the result trajectory
         FILE* out_traj = nullptr;
