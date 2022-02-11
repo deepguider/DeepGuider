@@ -66,7 +66,7 @@ namespace dg
 			m_poi_search_radius = search_radius;
 		}
 		
-		bool setWeights(const char* filename = "dg_jamo_weights.csv")
+		bool setWeights(const char* filename = "dg_hangeul_weights.csv")
 		{
 			FILE* fid = fopen(filename, "rt,ccs=UTF-8");
 			if (fid == nullptr) return false;
@@ -78,15 +78,42 @@ namespace dg
 				if (fgetws(buffer, MAP_BUF_SIZE, fid) == nullptr) break;
 				wchar_t* token;
 				if ((token = wcstok(buffer, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-				//if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-				wchar_t c1 = token[0];
-				if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-				wchar_t c2 = token[0];
-				if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-				double similiraty = std::stod(cx::trimBoth(token), nullptr);
-				if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+				if (token[0] == 'J' || token[0] == 'j')
+				{
+					// Read jaum
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c1 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c2 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					double similiraty = std::stod(cx::trimBoth(token), nullptr);
 
-				addWeight(c1, c2, similiraty);
+					addWeight(c1, c2, similiraty);
+				}
+				else if (token[0] == 'M' || token[0] == 'm')
+				{
+					// Read moum
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c1 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c2 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					double similiraty = std::stod(cx::trimBoth(token), nullptr);
+
+					addWeight(c1, c2, similiraty);
+				}
+				else if (token[0] == 'S' || token[0] == 's')
+				{
+					// Read syllable
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c1 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c2 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					double similiraty = std::stod(cx::trimBoth(token), nullptr);
+
+					addWeight(c1, c2, similiraty);
+				}
 			}
 			fclose(fid);
 			return true;
@@ -322,9 +349,10 @@ namespace dg
 		
 		bool addWeight(const wchar_t c1, const wchar_t c2, const double similarity)
 		{
-			weights.erase(weights.find(std::make_pair(c1, c2)));
-			auto result = weights.insert(std::make_pair(std::make_pair(c1, c2), similarity));
-			if (!result.second) return false;
+			auto weight = weights.find(std::make_pair(c1, c2));
+			if (weight != weights.end())
+				weights.erase(std::make_pair(c1, c2));
+			weights[std::make_pair(c1, c2)] = similarity;
 
 			return true;
 		}
