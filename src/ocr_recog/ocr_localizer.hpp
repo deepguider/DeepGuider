@@ -15,7 +15,7 @@ namespace dg
 {	
 	bool compare_dist(std::tuple<double, double, std::wstring> a, std::tuple<double, double, std::wstring> b)
 	{
-		if(std::get<1>(a) == std::get<1>(b)) std::get<0>(a) > std::get<0>(b);
+		if(std::get<1>(a) == std::get<1>(b)) return std::get<0>(a) > std::get<0>(b);
 
 		return std::get<1>(a) > std::get<1>(b);
 	}
@@ -250,7 +250,26 @@ namespace dg
 		{
 			setlocale(LC_ALL, "KOREAN");
 
-			wchar_t character = (wchar_t)(kor_begin + chosung_base * chosung_list[chosung] + jungsung_base * jungsung_list[jungsung] + jongsung_list[jongsung]);
+			int cho_idx = 0;
+			int cho_max = sizeof(chosung_list) / sizeof(wchar_t);
+			while (chosung_list[cho_idx] != chosung && cho_idx < cho_max) cho_idx++;
+
+			int jung_idx = 0;
+			int jung_max = sizeof(jungsung_list) / sizeof(wchar_t);
+			while (jungsung_list[jung_idx] != jungsung && jung_idx < jung_max) jung_idx++;
+
+			int jong_idx = 0;
+			int jong_max = sizeof(jongsung_list) / sizeof(wchar_t);
+			while (jongsung_list[jong_idx] != jongsung && jong_idx < jong_max) jong_idx++;
+
+			if (cho_idx >= cho_max || jung_idx >= jung_max || jong_idx >= jong_max)
+			{
+				printf("OCRLocalizer::compose() - invalid input character!\n");
+				return 0;
+			}
+
+			wchar_t character = (wchar_t)(kor_begin + chosung_base * cho_idx + jungsung_base * jung_idx + jong_idx);
+
 			return character;
 		}
 
@@ -349,20 +368,22 @@ namespace dg
 		
 		bool addWeight(const wchar_t c1, const wchar_t c2, const double similarity)
 		{
-			auto weight = weights.find(std::make_pair(c1, c2));
-			if (weight != weights.end())
-				weights.erase(std::make_pair(c1, c2));
-			weights[std::make_pair(c1, c2)] = similarity;
+			std::pair pair = std::make_pair(c1, c2);
+			//weights[pair] = similarity;
+			weights.insert(std::make_pair(pair, similarity));
 
 			return true;
 		}
 		
-		double weight_similarity(wchar_t c1, wchar_t c2)
+		double weight_similarity(const wchar_t c1, const wchar_t c2)
 		{
 			if (c1 == c2)
 				return 1.0;
 
-			auto weight = weights.find(std::make_pair(c1, c2));
+			std::pair pair = std::make_pair(c1, c2);
+			//double weightd = weights[pair];
+			int count = weights.count(pair);
+			auto weight = weights.find(pair);
 			if (weight != weights.end())
 				return weight->second;
 			else

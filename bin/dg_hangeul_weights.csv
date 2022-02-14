@@ -1,7 +1,6 @@
 # C1, C2, Similiraty
 jaum, ㄴ, ㄷ, 0.65
 jaum, o, 5, 0.6
-jaum, o, 5, 0.5
 jaum, o, 0, 0.9
 jaum, ㅈ, 5, 0.03
 jaum, ㅈ, 0, 0.01
@@ -15,3 +14,5 @@ moum, ㅣ, i, 0.7
 moum, ㅣ, 5, 0.01
 moum, ㅣ, 0, 0.01
 syllable, 액, 엑, 0.75
+syllable,  , 5, 0.005
+syllable, 5,  , 0.005
