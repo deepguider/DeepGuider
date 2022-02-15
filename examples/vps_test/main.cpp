@@ -14,6 +14,12 @@ using namespace std;
 
 std::string map_server_ip = "129.254.81.204"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
 //std::string map_server_ip = "localhost"; // You must pass this to vps.apply() as "const char*" using map_server_ip.c_str()
+std::string map_server_port = "10000";  // Daejeon outdoor
+//std::string map_server_port = "10002";  // Daejeon outdoor
+//std::string map_server_port = "10003";  // Daejeon indoor
+
+const int load_dbfeat = 0;
+const int save_dbfeat = 0;
 
 
 void test_image_run(VPS& recognizer, bool recording = false, const char* image_file = "./data_vps/vps_query.jpg", int nItr = 5)
@@ -28,11 +34,12 @@ void test_image_run(VPS& recognizer, bool recording = false, const char* image_f
     double gps_lon = 127.378867;
     double gps_accuracy = 1.0;    //(0~1), 
 
+
     cv::namedWindow(image_file);
     for (int i = 1; i <= nItr; i++)
     {
         dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        bool ok = recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str());
+        bool ok = recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str(), map_server_port.c_str(), load_dbfeat, save_dbfeat);
         gps_lat += gps_lat_d;
 
 		printf("iteration: %d (it took %lf seconds)\n", i, recognizer.procTime());
@@ -93,7 +100,7 @@ void test_video_run(VPS& recognizer, bool recording = false, int fps = 10, const
 		if (image.empty()) break;
 
 		dg::Timestamp ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-		bool ok = recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str());
+		bool ok = recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str(), map_server_port.c_str(), load_dbfeat, save_dbfeat);
 		if (int(i/300)*300 == i)
 		{
 			gps_lat_d *= -1.0;
@@ -352,7 +359,7 @@ void test_query_run(VPS& recognizer, bool recording = false, const char* qlist =
     double gps_lon;
     double gps_accuracy; //(0~1), 
 	int frame;
-	Timestamp t, t2;
+	Timestamp ts;
 
     int N = 3;  // top-3
 
@@ -380,9 +387,9 @@ void test_query_run(VPS& recognizer, bool recording = false, const char* qlist =
 		image = cv::imread(img);
 		cout << "[" << frame << "-th frame(" << image.rows << "x" << image.cols << ")] : " << img << endl;
 
-	    t = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+	    ts = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 		gps_lat += gps_lat_d;
-        VVS_CHECK_TRUE(recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, t, map_server_ip.c_str()));
+        VVS_CHECK_TRUE(recognizer.apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, map_server_ip.c_str(), map_server_port.c_str(), load_dbfeat, save_dbfeat));
 
 		recognizer.print();
     }
@@ -422,7 +429,7 @@ int main()
     bool test_image = false; // OK
     bool test_video = true; // OK
     bool test_query = false; // OK
-    bool test_thread_run = true; // OK
+    bool test_thread_run = false; // OK
 
 	// Uses server call to external Python flask server
     bool test_thread_run_server = false; // OK
@@ -430,7 +437,7 @@ int main()
 
     bool enable_recording = false;
 
-    int video_sel = 0;
+    int video_sel = 4;
     const char* video_path[] = {
 		"data/ETRI/191115_151140_images.avi",
 		"data/ETRI/200219_150153_images.avi",
@@ -439,17 +446,18 @@ int main()
 		"data/ETRI/200429_140025_images.avi"		
     };
 
+	std::string py_module_path = "./../src/vps";
 
 	if (test_image || test_video || test_query || test_thread_run) /** Python Embedded Version **/
 	{
 
 	    // Initialize the Python interpreter
-	    init_python_environment("python3", "", test_thread_run);
-	
-	    
+	    init_python_environment("python3", "", test_thread_run);	
+   
 	    // Initialize Python module
 	    VPS recognizer;
-		if (!recognizer.initialize())
+
+		if (!recognizer.initialize(py_module_path.c_str(), "vps", "vps"))
 	    {
 	        return -1;
 	    }
@@ -459,7 +467,6 @@ int main()
 	    if(test_image) test_image_run(recognizer, enable_recording);
 	    if(test_video) test_video_run(recognizer, enable_recording, 10, video_path[video_sel]);
 		if(test_query) test_query_run(recognizer, enable_recording);
-	
 	    if(test_thread_run)
 	    {
 	        bool is_running_vps = true;

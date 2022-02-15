@@ -57,12 +57,22 @@ namespace dg
             m_sv_id = vpss[0].id;
             if (m_sv_id == 0) return false;  // no valid matching between query and streetveiw due to lack of db images around query.
 
+            m_rpose_pan = vpss[0].pan;
+            m_rpose_tx = vpss[0].t_scaled_x;
+            m_rpose_ty = vpss[0].t_scaled_y;
+            m_rpose_tz = vpss[0].t_scaled_z;
+
             Map* map = m_shared->getMap();
             if (map == nullptr) return false;
             StreetView* sv = map->getView(m_sv_id);
             if (sv == nullptr) return false;
             streetview_xy = *sv;            
+
+            // To do : calculate relativepose from sv_id and (tx,ty,tz)
             relative = computeRelative(image, m_sv_id, m_sv_image);
+            relative.lin = m_rpose_tz;
+            relative.ang = m_rpose_pan;
+
             streetview_confidence = vpss[0].confidence;
            
             return true;
@@ -79,6 +89,11 @@ namespace dg
             cv::AutoLock lock(m_localizer_mutex);
             return m_sv_image;
         }
+
+        double m_rpose_pan = 0;
+        double m_rpose_tx = 0;
+        double m_rpose_ty = 0;
+        double m_rpose_tz = 0;
 
     protected:
         dg::Polar2 computeRelative(const cv::Mat image, ID sv_id, cv::Mat& sv_image)

@@ -529,7 +529,7 @@ int DeepGuider::run()
     cv::Mat gui_image;
     int wait_msec = 200;
     int itr = 0;
-    double start_time = 200;
+    double start_time = 500;
     data_loader.setStartSkipTime(start_time);
     while (1)
     {

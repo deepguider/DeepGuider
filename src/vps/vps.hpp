@@ -16,6 +16,8 @@ namespace dg
     {
         dg::ID id;
         double confidence;
+        double pan;
+        double t_scaled_x, t_scaled_y, t_scaled_z;
     };
 
     /**
@@ -107,7 +109,7 @@ namespace dg
                     return false;
                 }
 
-                // [[id1,...idN],[conf1,...,confN]] : matched top-N streetview ID's and Confidences
+                // [[id1,...idN],[conf1,...,confN], pan_top1, [t_scaled_top1_x, _y, _z]] : matched top-N streetview ID's and Confidences
 
                 // ID list
                 std::vector<dg::ID> ids;
@@ -135,6 +137,35 @@ namespace dg
                     }
                 }
 
+                /*** Relative pose of top-1 :
+                 * pan : 0           
+                 * scaled_t(3x1) : [0., 0., 0.]
+                ***/
+                double pan;
+                pan = 0.0;
+                pValue = PyList_GetItem(pRet, 2);
+                if(pValue) pan= PyFloat_AsDouble(pValue);
+
+                // t_scaled of top-1 : [tx, ty, tz]
+                double t_scaled_x, t_scaled_y, t_scaled_z;
+                t_scaled_x = 0.0;
+                t_scaled_y = 0.0;
+                t_scaled_z = 0.0;                                
+                PyObject* pList3 = PyList_GetItem(pRet, 3);
+                if (pList3)
+                {
+                    int idx2 = 0;
+                    pValue = PyList_GetItem(pList3, idx2++);
+                    if(pValue) t_scaled_x = PyFloat_AsDouble(pValue);
+                    
+                    pValue = PyList_GetItem(pList3, idx2++);
+                    if(pValue) t_scaled_y = PyFloat_AsDouble(pValue);
+                    
+                    pValue = PyList_GetItem(pList3, idx2++);
+                    if(pValue) t_scaled_z = PyFloat_AsDouble(pValue);                    
+                }
+
+         
                 // Save the result
                 cv::AutoLock lock(m_mutex);
                 m_result.clear();
@@ -143,6 +174,20 @@ namespace dg
                     VPSResult vps;
                     vps.id = ids[i];
                     vps.confidence = confs[i];
+                    if (i == 0)
+                    {
+                        vps.pan = pan;
+                        vps.t_scaled_x = t_scaled_x;
+                        vps.t_scaled_y = t_scaled_y;
+                        vps.t_scaled_z = t_scaled_z;
+                    }
+                    else
+                    {
+                        vps.pan = 0.0;
+                        vps.t_scaled_x = 0.0;
+                        vps.t_scaled_y = 0.0;
+                        vps.t_scaled_z = 0.0;
+                    }
                     m_result.push_back(vps);
                 }
             }

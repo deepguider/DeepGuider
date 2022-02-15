@@ -1,5 +1,7 @@
 from __future__ import print_function
 import argparse
+from calendar import c
+import math
 from math import log10, ceil
 import random
 import shutil
@@ -56,8 +58,7 @@ class vps:
         self.angle = -1  # road direction (radian)
         self.vps_prob = -1   # reliablity of the result. 0: fail ~ 1: success
         self.K = int(3) # K for Top-K for best matching
-        if self.init_vps_IDandConf(self.K) < 0: #init_vps_IDandConf after setting self.K
-            bp()
+        self.init_vps_IDandConf(self.K) < 0 #init_vps_IDandConf after setting self.K
         self.ToTensor = transforms.ToTensor()
         self.verbose = False # 1 : print internal results
         self.StreetViewServerAvaiable = True
@@ -610,12 +611,19 @@ class vps:
         return 0
 
 
+    def get_zero_Rt(self):
+        R0 = np.eye(3)
+        t0 = np.zeros((3, 1))       
+        return R0, t0
+
     def init_vps_IDandConf(self,K):
         # vps_imgID = [int(i) for i in np.zeros(K)] # list of uint64, fixed dg'issue #36
         # vps_imgConf = [float(i) for i in np.zeros(K)] # list of double(float64), fixed dg'issue #36
         vps_imgID = [int(0) for i in np.zeros(K)] # list of uint64, fixed dg'issue #36
         vps_imgConf = [float(-1) for i in np.zeros(K)] # list of double(float64), fixed dg'issue #36
-        self.vps_IDandConf = [vps_imgID, vps_imgConf]
+        R0, t0 = self.get_zero_Rt()
+        vps_imgRelativePose = np.concatenate((R0, t0), axis=1).astype(float)  # [3x3 | 3x1] ==> [3x4]
+        self.vps_IDandConf = [vps_imgID, vps_imgConf, vps_imgRelativePose]
         return 0
 
 
@@ -690,11 +698,11 @@ class vps:
                     h, w, c = image.shape
                 except: # invalid query image
                     self.flush_db_dir()
-                    return self.getIDConf()
+                    return self.getIDConf(relativePose_enable=False)
                 if (h < 480) or (w < 640) or (c != 3): # invalid query image
-                    [IDs, Confs] = self.getIDConf()
-                    self.flush_db_dir()  # Remove downloaded roadview jpg files
-                    return [IDs, Confs]
+                    [IDs, Confs, relative] = self.getIDConf(relativePose_enable=False)                    
+                    self.flush_db_dir()  # Remove downloaded roadview jpg files, getIDConf() shoud be called before this.
+                    return [IDs, Confs, relative]
                 cv2.imwrite(fname,image)
 
             if self.port == "10003":  # input image resolution : 2592*2048
@@ -707,49 +715,70 @@ class vps:
                 print('===> Evaluating on test set')
                 print('===> Running evaluation step')
             ## Calculate image feature, vlad feature and do matching of query and DBs
-            acc = self.test_dg(whole_db_set,whole_q_set, epoch, write_tboard=False) #may cause segmentation fault.
+            acc = self.test_dg(whole_db_set, whole_q_set, epoch, write_tboard=False) #may cause segmentation fault.
         else:
             raise Exception('Unknown dataset')
 
         ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]        
-        [IDs, Confs] = self.getIDConf(relativePose_enable=False)
-        self.flush_db_dir()  # Remove downloaded roadview jpg files
-        return [IDs, Confs]
+        [IDs, Confs, pan, t_scaled] = self.getIDConf(relativePose_enable=True)
+
+        self.flush_db_dir()  # Remove downloaded roadview jpg files. getIDConf() shoud be called before this.
+        return [IDs, Confs, pan, t_scaled]
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []
         for dist in distances:
-            conf = np.exp(-1*sigma*dist)
+            if dist > 0:
+                conf = np.exp(-1*sigma*dist)
+            else:
+                conf = dist  # -1
             confidences.append(conf)
         return confidences
 
-    def get_relativePoseRt(self):
+    def get_pan_tilt(self, R):
+        ''' Get pan(yaw) and tile(pitch) of unit vector on z-axis(to proceeding direction)
+            Eq. 4 at  https://darkpgmr.tistory.com/122
+        '''
+        unit_z = [0,0,1]
+        Zc = unit_z
+        Zw = np.matmul(R.T, Zc) + 0  # translation (0) is not requried to calculate angle. R_inv is R.T in case of rotation matrix.
+        pan = math.atan2(Zw[1], Zw[0]) - math.pi/2
+        tilt = math.atan2(Zw[2], math.sqrt(Zw[0]*Zw[0] + Zw[1]*Zw[1]))
+        return pan, tilt
+
+    def get_relativePoseRt(self, mode='normal', feature_display=False):
         if self.mod_rPose is None:
             self.mod_rPose = relativePose()
             self.mod_rPose.display_init_pose()
             self.mod_rPose.get_dg_camera_matrix()
             self.img1_path = []
 
-        if False:   # Normal, compare (db, q)
+        if 'normal' in mode.lower():   # Normal, compare (db, q)
             self.img1_path = self.qImage[0]
             self.img2_path = self.dbImage[self.pred_idx[0,0]]
             R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
-            self.mod_rPose.display_update_pose()
-        else:  # debug, compare q(t-1), q(t)
-            if True:  # single visual odometry without tracking
-                if len(self.img1_path) == 0:  # Initial time
-                    self.img1_path = self.qImage[0]
-                self.img2_path = self.qImage[0]
-                self.mod_rPose.set_camera_matrix_1(self.mod_rPose.camera_matrix_1, self.mod_rPose.distCoeffs_1)  # default
-                self.mod_rPose.set_camera_matrix_2(self.mod_rPose.camera_matrix_1, self.mod_rPose.distCoeffs_1)  # Use same parameter of cam1 to cam2
-                R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
-                self.mod_rPose.display_update_pose(R, t)
-                self.img1_path = copy.deepcopy(self.mod_rPose.img2)  # Update img1_path(==previous query) with current query image
-            else:  # mono visual odometry with tracking
-                R,t = self.mod_rPose.visual_odometry(self.qImage[0])
-                self.mod_rPose.display_update_pose(R, t)
+        elif 'debug_matching' in mode.lower():  # debug, compare q(t-1), q(t) using single visual odometry without tracking
+            if len(self.img1_path) == 0:  # Initial time
+                self.img1_path = self.qImage[0]
+            self.img2_path = self.qImage[0]
+            self.mod_rPose.set_camera_matrix_1(self.mod_rPose.camera_matrix_1, self.mod_rPose.distCoeffs_1)  # default
+            self.mod_rPose.set_camera_matrix_2(self.mod_rPose.camera_matrix_1, self.mod_rPose.distCoeffs_1)  # Use same parameter of cam1 to cam2
+            R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
+            self.img1_path = copy.deepcopy(self.mod_rPose.img2)  # Update img1_path(==previous query) with current query image
+        elif 'debug_tracking' in mode.lower():  # debug, compare q(t-1), q(t) using mono visual odometry with tracking
+            if len(self.img1_path) == 0:  # Initial time
+                self.img1_path = self.qImage[0]
+            R, t = self.mod_rPose.visual_odometry(self.qImage[0])
+        elif 'zero' in mode.lower():
+            R, t = self.mod_rPose.get_zero_Rt()
+        else:
+            self.img1_path = self.qImage[0]
+            self.img2_path = self.dbImage[self.pred_idx[0,0]]
+            R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
 
-        if False:
+        #self.mod_rPose.display_update_pose(R, t)
+
+        if feature_display == True:  # To do : bug report : It stops after display first image.
             img = cv2.drawKeypoints(self.mod_rPose.img2, self.mod_rPose.kps2, None)
             cv2.imshow('features_in_db', img)
             cv2.waitKey(0)
@@ -762,12 +791,12 @@ class vps:
         Distances = self.vps_IDandConf[1]
         Confs = self.convert_distance_to_confidence(Distances)
 
-        ## Filter out noisy result with ransac for top-1 for indoor test
+        ## Filter out noisy result with median filter for top-1 for indoor test
         if self.port == "10003":  # 10003 means indoor
             top1_id = IDs[0]
             _, lat, lon = GetStreetView_fromID(top1_id, roi_radius=1, ipaddr=self.ipaddr)
             if lat != -1:  # Image server is ready.
-                # When image server is not available, do not filter out.
+                # When image server is not available, do not filter out because it cannot get current lat, lon information.
                 utm_x, utm_y, r_num, r_str = utm.from_latlon(lat, lon)  # (353618.4250711136, 4027830.874694569, 52, 'S')
                 self.mVps_filter.set_utm_distance_threshold(5)  # filter radius 5 meters for indoor
                 #self.mVps_filter.set_utm_distance_threshold(self.get_radius())  # filter radius 50 meters for outdoor
@@ -776,10 +805,23 @@ class vps:
                     IDs[0] = 0
                     Confs[0] = -1
 
+        R, t = self.get_relativePoseRt('zero')
         if relativePose_enable == True:
-            self.get_relativePoseRt()
+            if Confs[0] > 0.4:
+                R, t = self.get_relativePoseRt('normal')
+            #self.get_relativePoseRt('debug_matching')
+        
+        # relative = np.concatenate((R, t), axis=1)  # [3x3 | 3x1] ==> [3x4]
+        if False:
+            scale = 1.0
+        else:
+            scale = 3 / (t[1]+ 1e-6)  # Assume that ty*scale is 3 meter which is the distance between road center(cam_db) and sidewalk center(cam_q)
+            scale = min(scale, 10.0)  # maximum is 10 meters
 
-        return [IDs, Confs]
+        t_scaled = t * scale
+        pan, tilt = self.get_pan_tilt(R)
+        print("=============> VPS pan(deg), [tx,ty,tz], scale : {}, {}, {}, {}, {}".format(np.rad2deg(pan), t[0], t[1], t[2], scale))
+        return [IDs, Confs, pan, t_scaled.tolist()]  # [[id1, id2, ..., idn], [conf1, conf2, ..., confn], pan, tx, ty, tz], where pan and (tx, ty, tz) is for top-1.
 
     def set_radius_by_accuracy(self, gps_accuracy=0.79):
         self.roi_radius = int(10 + 190*(1-gps_accuracy))  # 10 meters ~ 200 meters, 0.79 for 50 meters
