@@ -765,6 +765,8 @@ class vps:
             self.mod_rPose.set_camera_matrix_2(self.mod_rPose.camera_matrix_1, self.mod_rPose.distCoeffs_1)  # Use same parameter of cam1 to cam2
             R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
             self.img1_path = copy.deepcopy(self.mod_rPose.img2)  # Update img1_path(==previous query) with current query image
+
+            self.mod_rPose.get_dg_camera_matrix()  # Restore camera matrix for normal mode
         elif 'debug_tracking' in mode.lower():  # debug, compare q(t-1), q(t) using mono visual odometry with tracking
             if len(self.img1_path) == 0:  # Initial time
                 self.img1_path = self.qImage[0]
@@ -776,12 +778,13 @@ class vps:
             self.img2_path = self.dbImage[self.pred_idx[0,0]]
             R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
 
-        #self.mod_rPose.display_update_pose(R, t)
+        if 'debug_' in mode.lower():
+            self.mod_rPose.display_update_pose(R, t)        
+            if feature_display == True:  # To do : bug report : It stops after display first image.
+                img = cv2.drawKeypoints(self.mod_rPose.img2, self.mod_rPose.kps2, None)
+                cv2.imshow('features_in_db', img)
+                cv2.waitKey(1)
 
-        if feature_display == True:  # To do : bug report : It stops after display first image.
-            img = cv2.drawKeypoints(self.mod_rPose.img2, self.mod_rPose.kps2, None)
-            cv2.imshow('features_in_db', img)
-            cv2.waitKey(0)
         return R, t
 
     def getIDConf(self, relativePose_enable=False):
@@ -809,7 +812,7 @@ class vps:
         if relativePose_enable == True:
             if Confs[0] > 0.4:
                 R, t = self.get_relativePoseRt('normal')
-            #self.get_relativePoseRt('debug_matching')
+        #    self.get_relativePoseRt('debug_matching', feature_display=True)
         
         # relative = np.concatenate((R, t), axis=1)  # [3x3 | 3x1] ==> [3x4]
         if False:

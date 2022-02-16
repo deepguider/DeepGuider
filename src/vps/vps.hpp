@@ -247,7 +247,8 @@ namespace dg
             std::string str_id = cv::format("ID: %zu", m_result[0].id);
             cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), (int)(5 * drawing_scale));
             cv::putText(image, str_id.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), (int)(2 * drawing_scale));
-            msg_offset.y += (30 * drawing_scale);
+            msg_offset.y 
+            += (30 * drawing_scale);
             std::string str_confidence = cv::format("Confidence: %.2lf", m_result[0].confidence);
             cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(0, 255, 255), (int)(5 * drawing_scale));
             cv::putText(image, str_confidence.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, font_scale, cv::Scalar(255, 0, 0), (int)(2 * drawing_scale));

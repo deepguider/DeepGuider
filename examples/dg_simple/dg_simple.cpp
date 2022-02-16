@@ -181,6 +181,9 @@ protected:
     cv::Mutex m_vps_mutex;
     cv::Mat m_vps_image;            // top-1 matched streetview image
     dg::ID m_vps_id;                // top-1 matched streetview id
+    dg::Point2 m_vps_xy;            // top-1 matched streetview's position (x,y)
+    dg::Polar2 m_vps_relative;      // top-1 matched streetview's relative position (pan, tz) or (theta_z, delta_z)
+
 
     cv::Mutex m_roadlr_mutex;
     cv::Mat m_roadlr_image;
@@ -919,6 +922,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         cv::Mat result_image;
         m_vps_mutex.lock();
         dg::ID sv_id = m_vps_id;
+        dg::Point2 sv_xy = m_vps_xy;
+        dg::Polar2 sv_relative = m_vps_relative;          
         if (!m_vps_image.empty())
         {
             double fy = (double)win_rect.height / m_vps_image.rows;
@@ -931,7 +936,12 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
             if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
             dg::StreetView* sv = m_map.getView(sv_id);
-            if (sv)m_painter.drawPoint(image, *sv, 6, cv::Vec3b(255, 255, 0), view_offset, view_zoom);
+            // Draw streetview's gps location
+            if (sv)m_painter.drawPoint(image, *sv, 6, cv::Vec3b(255, 255, 0), view_offset, view_zoom);  // sky color for streetview position
+            // Draw streetview's gps location with relative pose (tz).
+            sv_xy.x = sv_xy.x;
+            sv_xy.y = sv_xy.y + sv_relative.lin;
+            if (sv)m_painter.drawPoint(image, sv_xy, 6, cv::Vec3b(0, 0, 255), view_offset, view_zoom); // red color for  streetview position with relative pose
         }
     }
 
@@ -1418,6 +1428,8 @@ bool DeepGuider::procVps()
             m_vps_mutex.lock();
             m_vps_id = m_vps.getViewID();
             m_vps_image = sv_image;
+            m_vps_xy = sv_xy;
+            m_vps_relative = relative;
             m_vps_mutex.unlock();
         }
         return true;

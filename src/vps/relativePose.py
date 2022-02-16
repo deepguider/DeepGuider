@@ -94,17 +94,17 @@ class relativePose:
 
         return self.R, self.t
 
-    def get_relativePose(self, img0, img1):
-        self.img0 = self.get_img(img0)
+    def get_relativePose(self, img1, img2):
         self.img1 = self.get_img(img1)
+        self.img2 = self.get_img(img2)
         self.R, self.t = self.get_zero_Rt()
         self.pts1 = []
         self.pts2 = []
         self.kps1 = []
         self.kps2 = []
-        if (len(self.img0) != 0) and (len(self.img1) != 0):
+        if (len(self.img1) != 0) and (len(self.img2) != 0):
             #self.F, self.mask, self.pts1, self.pts2, self.kps1, self.kps2 = self.estimate_fundamental_matrix(self.img0, self.img1)
-            self.pts1, self.pts2, self.kps1, self.kps2 = self.detect_matching_points(self.img0, self.img1)
+            self.pts1, self.pts2, self.kps1, self.kps2 = self.detect_matching_points(self.img1, self.img2)
             if len(self.pts1) > 10:
                 _, self.R, self.t = self.estimate_relative_pose_from_correspondence(self.pts1, self.pts2, self.camera_matrix_1, self.camera_matrix_2)
                 #_, self.R, self.t = self.estimate_relative_pose_from_correspondence(self.pts1, self.pts2, self.camera_matrix_1, self.camera_matrix_2, self.distCoeffs_1)
@@ -177,7 +177,8 @@ class relativePose:
 
     def get_zero_Rt(self):
         R0 = np.eye(3)
-        t0 = np.zeros((3, 1))
+        #t0 = np.zeros((3, 1))
+        t0 = np.zeros(3)
         return R0, t0
 
     def euler_to_rotMat(yaw, pitch, roll):
@@ -218,22 +219,24 @@ class relativePose:
         buf[-1] = newdata 
         return buf
 
-    def display_update_pose(self, R=[], t=[], accumulated_pose_display=False):
+    def display_update_pose(self, R=[], t=[], scale=0, accumulated_pose_display=False):
         if len(R) == 0:
             R = self.R
         if len(t) == 0:
             t = self.t
+        if scale == 0:
+            scale = self.scale
 
         ## Accumulate trace of position
-        self.current_pos += self.current_rot.dot(t) * self.scale
+        self.current_pos += self.current_rot.dot(t) * scale
         self.current_rot = R.dot(self.current_rot)
-        self.update_buffer(self.pos_x, self.current_pos[0][0])
-        self.update_buffer(self.pos_y, self.current_pos[1][0])
-        self.update_buffer(self.pos_z, self.current_pos[2][0])
+        self.update_buffer(self.pos_x, self.current_pos[0])
+        self.update_buffer(self.pos_y, self.current_pos[1])
+        self.update_buffer(self.pos_z, self.current_pos[2])
 
         ## Relative position from origion for every frame
         _, t0 = self.get_zero_Rt()
-        relPos = (R.dot(t0) + R.dot(t))*self.scale 
+        relPos = (R.dot(t0) + R.dot(t))*scale 
 
         if accumulated_pose_display == True:  # display accumulated pose
             self.position_axes.cla()
@@ -246,7 +249,7 @@ class relativePose:
             self.position_axes.plot([t0[0], relPos[0]], [t0[2],relPos[2]],"g")  # x : horizontal, z : cam's optical direction, from cam to world direction
             self.position_axes.plot(relPos[0], relPos[2],"r*")  # x : horizontal, z : cam's optical direction, from cam to world direction
             self.position_axes.set_aspect('equal', adjustable='box')
-            lim_max = self.scale * 1.5
+            lim_max = scale * 1.5
 
         plt.xlim(-lim_max, lim_max)
         plt.ylim(-lim_max, lim_max)
@@ -277,7 +280,7 @@ if __name__ == "__main__":
         img1 = np.asarray(cam0_image)  # Get current image
         print(img_count)
         img_count+=1
-        if False:  # no tracking
+        if True:  # no tracking
             mod_rPose.set_camera_matrix_1(camera_matrix_1)
             mod_rPose.set_camera_matrix_2(camera_matrix_1)
             if len(img0) == 0:
