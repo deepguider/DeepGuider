@@ -369,7 +369,9 @@ namespace dg
 		bool addWeight(const wchar_t c1, const wchar_t c2, const double similarity)
 		{
 			std::pair pair = std::make_pair(c1, c2);
-			//weights[pair] = similarity;
+			auto weight = weights.find(pair);
+			if (weight != weights.end())
+				weights.erase(pair);
 			weights.insert(std::make_pair(pair, similarity));
 
 			return true;
@@ -379,10 +381,11 @@ namespace dg
 		{
 			if (c1 == c2)
 				return 1.0;
+			
+			//for (std::map<std::pair<wchar_t, wchar_t>, double>::iterator itr = weights.begin(); itr != weights.end(); ++itr) 
+			//	std::cout << itr->first.first << "," << itr->first.second << " " << itr->second << std::endl;
 
 			std::pair pair = std::make_pair(c1, c2);
-			//double weightd = weights[pair];
-			int count = weights.count(pair);
 			auto weight = weights.find(pair);
 			if (weight != weights.end())
 				return weight->second;
