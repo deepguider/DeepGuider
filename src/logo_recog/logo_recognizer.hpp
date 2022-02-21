@@ -24,6 +24,11 @@ namespace dg
     class LogoRecognizer : public PythonModuleWrapper
     {
     public:
+        bool initialize(const char* py_module_path = "./../src/logo_recog", const char* module_name = "logo_recognizer", const char* class_name = "logo_recognizer")
+        {
+            return PythonModuleWrapper::initialize(py_module_path, module_name, class_name);
+        }
+
         /**
         * Run once the module for a given input
         * @return true if successful (false if failed)

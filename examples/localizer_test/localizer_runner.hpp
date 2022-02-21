@@ -5,7 +5,7 @@
 #include "localizer/data_loader.hpp"
 #include "intersection_cls/intersection_localizer.hpp"
 #include "vps/vps_localizer.hpp"
-#include "lrpose_recog/lrpose_localizer.hpp"
+#include "roadlr/roadlr_localizer.hpp"
 #include "ocr_recog/ocr_localizer.hpp"
 #include "dg_roadtheta.hpp"
 #include "utils/viewport.hpp"
@@ -22,7 +22,7 @@ protected:
     dg::IntersectionLocalizer m_intersection_localizer;
     dg::OCRLocalizer m_ocr_localizer;
     dg::VPSLocalizer m_vps_localizer;
-    dg::LRLocalizer m_lr_localizer;
+    dg::RoadLRLocalizer m_lr_localizer;
     dg::RoadThetaLocalizer m_roadtheta;
 
 public:
@@ -180,7 +180,7 @@ public:
                     if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
                 }
             }
-            else if (type == dg::DATA_LR && dg_localizer)
+            else if (type == dg::DATA_RoadLR && dg_localizer)
             {
                 double cls = vdata[1];
                 double cls_conf = vdata[2];
@@ -188,7 +188,7 @@ public:
                 double lr_confidence;
                 if (m_lr_localizer.applyPreprocessed(cls, cls_conf, data_time, lr_cls, lr_confidence))
                 {
-                    bool success = dg_localizer->applyLRPose(lr_cls, data_time, lr_confidence);
+                    bool success = dg_localizer->applyRoadLR(lr_cls, data_time, lr_confidence);
                     if (!success) fprintf(stderr, "applyLRPose() was failed.\n");
                 }
             }

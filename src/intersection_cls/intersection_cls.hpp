@@ -23,6 +23,11 @@ namespace dg
     class IntersectionClassifier: public PythonModuleWrapper
     {
     public:
+        bool initialize(const char* py_module_path = "./../src/intersection_cls", const char* module_name = "intersection_cls", const char* class_name = "IntersectionClassifier")
+        {
+            return PythonModuleWrapper::initialize(py_module_path, module_name, class_name);
+        }
+
         /**
         * Run once the module for a given input
         * @return true if successful (false if failed)
