@@ -25,6 +25,8 @@ fi
 # -d n: delay rosbag play n seconds
 # -s n: skip first n seconds
 # -r k: replay rosbag k times faster than normal speed
+
+# You need to modify the topic_name_index parameter in dg_ros.yml to select the appropriate ros topic for the following rosbag.
 gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
 #gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/coex.bag
 #gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/etri.bag
