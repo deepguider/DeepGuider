@@ -42,11 +42,21 @@ import cv2
 
 from get_streetview import ImgServer, GetStreetView_fromID
 
-from netvlad import etri_dbloader as dataset
-
 from vps_filter import vps_filter
 
 from ipdb import set_trace as bp
+
+def makedir(fdir):
+    if not os.path.exists(fdir):
+        os.makedirs(fdir)
+
+def init_db_q_dir():
+    tmpdir = "/mnt/ramdisk/.vps_dataset"  # tmpdir is symbolic-linked to netvlad_etri_datasets
+    q_dir = "data_vps/netvlad_etri_datasets/qImg/999_newquery"
+    db_dir = "data_vps/netvlad_etri_datasets/dbImg/StreetView"
+    makedir(tmpdir)
+    makedir(q_dir)
+    makedir(db_dir)
 
 class vps:
     def __init__(self, which_gpu=0, region="ETRI"):
@@ -67,6 +77,7 @@ class vps:
         self.device = torch.device(device)
         self.set_region(region)
         self.load_dbfeat_initialized = False
+
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -303,12 +314,13 @@ class vps:
             return 0 # Failed
 
         elif opt.dataset.lower() == 'deepguider':
+            init_db_q_dir()
             from netvlad import etri_dbloader as dataset
             self.dataset_root_dir = dataset.root_dir
             self.dataset_struct_dir = os.path.join(dataset.struct_dir,'StreetView')
             self.dataset_queries_dir = os.path.join(dataset.queries_dir,'999_newquery')
-            self.makedir(self.dataset_struct_dir)
-            self.makedir(self.dataset_queries_dir)
+            makedir(self.dataset_struct_dir)
+            makedir(self.dataset_queries_dir)
             return 1 # Non-zero means success return 
     
     def set_threads(self, num_workers=0):
@@ -623,11 +635,6 @@ class vps:
         self.vps_IDandConf = [vps_imgID, vps_imgConf, vps_imgRelativePose]
         return 0
 
-
-    def makedir(self,fdir):
-        if not os.path.exists(fdir):
-            os.makedirs(fdir)
-
     def set_region(self, region="ETRI"):  # region information for image server used in isv.SaveImages
         self.region = region
 
@@ -684,6 +691,7 @@ class vps:
             print('[vps] ===> Running evaluation step')
             recalls = self.test(whole_test_set, epoch, write_tboard=False)
         elif opt.dataset.lower() == 'deepguider':
+            init_db_q_dir()
             from netvlad import etri_dbloader as dataset
             if self.load_dbfeat == True:
                     print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
@@ -940,6 +948,7 @@ class vps:
 
 
 def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
+    init_db_q_dir()
     from netvlad import etri_dbloader as dataset
     from PIL import Image
     #streetview_server_ipaddr = "localhost"
