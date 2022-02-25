@@ -26,17 +26,26 @@ fi
 # -s n: skip first n seconds
 # -r k: replay rosbag k times faster than normal speed
 
-function set_topic_idx(){
-    # You can modify the topic_name_index parameter in dg_ros.yml to select the appropriate ros topic
-    # using set_topic_idx function
-    local topic_name_idx=${1} # 0, 1, 2 for topic_names_set: ["ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
-    sed -i "s|topic_name_index: [0-9]|topic_name_index: ${topic_name_idx}|g" dg_ros.yml
+function set_site_idx(){
+    # You can modify the site_index parameter in dg_ros.yml
+    #                     0        1        2          3             4            5
+    local index=${1} # ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR"]
+    local param="site_index"
+    sed -i "s|${param}: [0-9]|${param}: ${index}|g" dg_ros.yml
 }
 
-set_topic_idx 0; gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
-#set_topic_idx 0; gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/coex.bag
-#set_topic_idx 2; gnome-terminal -- rosbag play -d 10 -s 1000 -r 10 ./recordings/etri.bag
-#set_topic_idx 0; gnome-terminal -- rosbag play -d 5 -s 0 -r 1 ./recordings/indoor.bag
+function set_topic_idx(){
+    # You can modify the topic_name_index parameter in dg_ros.yml
+    #                         0                 1             2
+    local index=${1} # ["ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
+    local param="topic_name_index"
+    sed -i "s|${param}: [0-9]|${param}: ${index}|g" dg_ros.yml
+}
+
+set_site_idx 4; set_topic_idx 0; gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
+#set_site_idx 4; set_topic_idx 0; gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/coex.bag
+#set_site_idx 3; set_topic_idx 2; gnome-terminal -- rosbag play -d 10 -s 600 -r 10 ./recordings/etri.bag
+#set_site_idx 5; set_topic_idx 0; gnome-terminal -- rosbag play -d 5 -s 0 -r 1 ./recordings/indoor.bag
 
 ## Start dg_simple_ros package (working directory: devel/lib/dg_simple_ros/)
 CWD=`pwd`
