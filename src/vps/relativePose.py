@@ -51,46 +51,52 @@ class relativePose:
             self.distCoeffs_2 = distCoeffs
 
     def get_img(self, path_or_cv2data, gray_enable=True):
-        image = []
+        image = None
         if type(path_or_cv2data) in [str, np.str_]  :
-            if gray_enable == True:
-                image = cv2.imread(path_or_cv2data, cv2.IMREAD_GRAYSCALE)
-            else:
-                image = cv2.imread(path_or_cv2data)  # BGR
-            image = cv2.resize(image, (640, 480))
-            if image is None:
-                image = []
+            if os.path.exists(path_or_cv2data):
+                if gray_enable == True:
+                    image = cv2.imread(path_or_cv2data, cv2.IMREAD_GRAYSCALE)
+                else:
+                    image = cv2.imread(path_or_cv2data)  # BGR
         elif type(path_or_cv2data) == np.ndarray:
             image = path_or_cv2data
         else:
-            print("Unknown type of image : ", type(path_or_cv2data))
-        return image
+            print("[vps] Unknown type of image : ", type(path_or_cv2data))
+
+        if image is not None:
+            try:
+                image = cv2.resize(image, (640, 480))
+            except:
+                image = None
+        return image  # ndarray [h,w,c] or None
 
     def visual_odometry(self, image):
+        self.R, self.t = self.get_zero_Rt()
+
         self.image1 = self.get_img(image)
-
-        self.keypoint1 = self.feature_detector.detect(self.image1, None)
-        if self.image0 is None:  # Initialize
-            self.image0 = self.image1.copy()
-            self.keypoint0 = self.keypoint1.copy()
-
-        #pts0 = np.array(map(lambda x: [x.pt], self.keypoint0), dtype=np.float32)
-        pts0 = np.array([i for i in map(lambda x: [x.pt], self.keypoint0)], dtype=np.float32).squeeze()
-        try:
-            pts1, st, err = cv2.calcOpticalFlowPyrLK(self.image0, self.image1, pts0, None, **self.lk_params)
-
-            # Save the good points from the optical flow
-            st = st.squeeze()
-            self.good0 = pts0[st == 1]
-            self.good1 = pts1[st == 1]
-
-            E, mask = cv2.findEssentialMat(self.good1, self.good0, self.camera_matrix_1, cv2.RANSAC, 0.999, 1.0, None)
-
-            _, self.R, self.t, mask = cv2.recoverPose(E, self.good0, self.good1, self.current_rot.copy(), self.current_pos.copy(), self.camera_matrix_1)
-            self.image0 = self.image1.copy()
-            self.keypoint0 = self.keypoint1.copy()
-        except:
-            self.R, self.t = self.get_zero_Rt()
+        if len(self.image1) > 0:
+            self.keypoint1 = self.feature_detector.detect(self.image1, None)
+            if self.image0 is None:  # Initialize
+                self.image0 = self.image1.copy()
+                self.keypoint0 = self.keypoint1.copy()
+    
+            #pts0 = np.array(map(lambda x: [x.pt], self.keypoint0), dtype=np.float32)
+            pts0 = np.array([i for i in map(lambda x: [x.pt], self.keypoint0)], dtype=np.float32).squeeze()
+            try:
+                pts1, st, err = cv2.calcOpticalFlowPyrLK(self.image0, self.image1, pts0, None, **self.lk_params)
+    
+                # Save the good points from the optical flow
+                st = st.squeeze()
+                self.good0 = pts0[st == 1]
+                self.good1 = pts1[st == 1]
+    
+                E, mask = cv2.findEssentialMat(self.good1, self.good0, self.camera_matrix_1, cv2.RANSAC, 0.999, 1.0, None)
+    
+                _, self.R, self.t, mask = cv2.recoverPose(E, self.good0, self.good1, self.current_rot.copy(), self.current_pos.copy(), self.camera_matrix_1)
+                self.image0 = self.image1.copy()
+                self.keypoint0 = self.keypoint1.copy()
+            except:
+                self.R, self.t = self.get_zero_Rt()
 
         return self.R, self.t
 
@@ -102,7 +108,7 @@ class relativePose:
         self.pts2 = []
         self.kps1 = []
         self.kps2 = []
-        if (len(self.img1) != 0) and (len(self.img2) != 0):
+        if (self.img1 is not None) and (self.img2 is not None):
             #self.F, self.mask, self.pts1, self.pts2, self.kps1, self.kps2 = self.estimate_fundamental_matrix(self.img0, self.img1)
             self.pts1, self.pts2, self.kps1, self.kps2 = self.detect_matching_points(self.img1, self.img2)
             if len(self.pts1) > 10:
