@@ -42,11 +42,21 @@ import cv2
 
 from get_streetview import ImgServer, GetStreetView_fromID
 
-from netvlad import etri_dbloader as dataset
-
 from vps_filter import vps_filter
 
 from ipdb import set_trace as bp
+
+def makedir(fdir):
+    if not os.path.exists(fdir):
+        os.makedirs(fdir)
+
+def init_db_q_dir():
+    tmpdir = "/mnt/ramdisk/.vps_dataset"  # tmpdir is symbolic-linked to netvlad_etri_datasets
+    q_dir = "data_vps/netvlad_etri_datasets/qImg/999_newquery"
+    db_dir = "data_vps/netvlad_etri_datasets/dbImg/StreetView"
+    makedir(tmpdir)
+    makedir(q_dir)
+    makedir(db_dir)
 
 class vps:
     def __init__(self, which_gpu=0, region="ETRI"):
@@ -60,13 +70,14 @@ class vps:
         self.K = int(3) # K for Top-K for best matching
         self.init_vps_IDandConf(self.K) < 0 #init_vps_IDandConf after setting self.K
         self.ToTensor = transforms.ToTensor()
-        self.verbose = False # 1 : print internal results
+        self.verbose = False
         self.StreetViewServerAvaiable = True
         self.callcounter_gSV = 0 # N of call of getStreetView(), for debugging purpose
         device = 'cuda:{}'.format(which_gpu) if torch.cuda.is_available() else 'cpu'  #cuda:0
         self.device = torch.device(device)
         self.set_region(region)
         self.load_dbfeat_initialized = False
+
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -130,7 +141,7 @@ class vps:
     def initialize(self):
         self.init_param()
         opt = self.parser.parse_args()
-        self.verbose = opt.verbose
+        self.verbose = False  # True for debugging, opt.verbose
         self.ipaddr = opt.ipaddr
         self.port = opt.port
         self.set_cubic_str('f')  ## Default is 'f'
@@ -303,13 +314,13 @@ class vps:
             return 0 # Failed
 
         elif opt.dataset.lower() == 'deepguider':
+            init_db_q_dir()
             from netvlad import etri_dbloader as dataset
-            import os
             self.dataset_root_dir = dataset.root_dir
             self.dataset_struct_dir = os.path.join(dataset.struct_dir,'StreetView')
             self.dataset_queries_dir = os.path.join(dataset.queries_dir,'999_newquery')
-            self.makedir(self.dataset_struct_dir)
-            self.makedir(self.dataset_queries_dir)
+            makedir(self.dataset_struct_dir)
+            makedir(self.dataset_queries_dir)
             return 1 # Non-zero means success return 
     
     def set_threads(self, num_workers=0):
@@ -379,9 +390,8 @@ class vps:
 
         if self.load_dbfeat == True:
             if self.load_dbfeat_initialized == False: ## Initial condition is False (off)
-                print('[vps]====> Initializing load_dbfeat.')
                 if self.verbose:
-                    print('====> Initializing load_dbfeat.')
+                    print('[vps]====> Initializing load_dbfeat.')
                 dbFeat_dict = sio.loadmat(opt.dbFeat_fname)
                 dbFeat = dbFeat_dict['Feat']
                 self.dbImage = dbFeat_dict['dbImage']
@@ -573,7 +583,6 @@ class vps:
         dbImage = test_data_loader.dataset.dbStruct.dbImage
         dbImage_predicted = test_data_loader.dataset.dbStruct.dbImage[pred_idx[:,0]] #Use first K for display
 
-        import os
         print('QueryImage <=================> predicted dbImage')
         match_cnt = 0
         total_cnt = len(qImage)
@@ -626,12 +635,6 @@ class vps:
         self.vps_IDandConf = [vps_imgID, vps_imgConf, vps_imgRelativePose]
         return 0
 
-
-    def makedir(self,fdir):
-        import os
-        if not os.path.exists(fdir):
-            os.makedirs(fdir)
-
     def set_region(self, region="ETRI"):  # region information for image server used in isv.SaveImages
         self.region = region
 
@@ -641,6 +644,11 @@ class vps:
     def flush_db_dir(self, flush_file="*.jpg", enable=True):
         if enable == True and self.load_dbfeat != True:  # When load_dbfeat is not used, flush db directory.
             os.system("rm -rf " + os.path.join(self.dataset_struct_dir, flush_file)) # You have to pay attention to code 'rm -rf' command
+
+    def flush_db_dir_and_return_val(self, relativePose_enable=True):
+        [IDs, Confs, pan, t_scaled] = self.getIDConf(relativePose_enable)
+        self.flush_db_dir()  # Remove downloaded roadview jpg files. getIDConf() shoud be called before this.
+        return [IDs, Confs, pan, t_scaled]
 
     def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr=None, port=None, load_dbfeat=0.0, save_dbfeat=0.0):
         ## Init.
@@ -679,30 +687,29 @@ class vps:
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
             whole_test_set = dataset.get_whole_test_set()
-            print('===> Evaluating on test set')
-            print('===> Running evaluation step')
+            print('[vps] ===> Evaluating on test set')
+            print('[vps] ===> Running evaluation step')
             recalls = self.test(whole_test_set, epoch, write_tboard=False)
         elif opt.dataset.lower() == 'deepguider':
+            init_db_q_dir()
             from netvlad import etri_dbloader as dataset
-            if self.load_dbfeat == False:
+            if self.load_dbfeat == True:
+                    print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
+            else:
                 ## Get DB images from streetview image server            
                 ret = self.getStreetView(self.dataset_struct_dir)               
                 if ret < 0:
-                    print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
-            else:
-                self.flush_db_dir()
+                    print("[vps] Cannot connect to the streetview server.")
+                    return self.getIDConf(relativePose_enable=False) # return default [IDs, Confs, pan, t_scaled]
 
             if image is not None:
                 fname = os.path.join(self.dataset_queries_dir,'newquery.jpg')
                 try:
                     h, w, c = image.shape
                 except: # invalid query image
-                    self.flush_db_dir()
-                    return self.getIDConf(relativePose_enable=False)
+                    return self.flush_db_dir_and_return_val(relativePose_enable=False)  # return default [IDs, Confs, pan, t_scaled]
                 if (h < 480) or (w < 640) or (c != 3): # invalid query image
-                    [IDs, Confs, relative] = self.getIDConf(relativePose_enable=False)                    
-                    self.flush_db_dir()  # Remove downloaded roadview jpg files, getIDConf() shoud be called before this.
-                    return [IDs, Confs, relative]
+                    return self.flush_db_dir_and_return_val(relativePose_enable=False)  # return default [IDs, Confs, pan, t_scaled]
                 cv2.imwrite(fname,image)
 
             if self.port == "10003":  # input image resolution : 2592*2048
@@ -711,19 +718,15 @@ class vps:
                 whole_db_set,whole_q_set = dataset.get_dg_test_set()
 
             if self.verbose:
-                print('===> With Query captured near the ETRI Campus')
-                print('===> Evaluating on test set')
-                print('===> Running evaluation step')
+                print('[vps] ===> With Query captured near the ETRI Campus')
+                print('[vps] ===> Evaluating on test set')
+                print('[vps] ===> Running evaluation step')
             ## Calculate image feature, vlad feature and do matching of query and DBs
             acc = self.test_dg(whole_db_set, whole_q_set, epoch, write_tboard=False) #may cause segmentation fault.
         else:
             raise Exception('Unknown dataset')
 
-        ## Return [ [id1,id2,...,idN],[conf1,conf2,...,confidenceN]]        
-        [IDs, Confs, pan, t_scaled] = self.getIDConf(relativePose_enable=True)
-
-        self.flush_db_dir()  # Remove downloaded roadview jpg files. getIDConf() shoud be called before this.
-        return [IDs, Confs, pan, t_scaled]
+        return self.flush_db_dir_and_return_val(relativePose_enable=True)  # [IDs, Confs, pan, t_scaled]
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []
@@ -815,7 +818,7 @@ class vps:
         #    self.get_relativePoseRt('debug_matching', feature_display=True)
         
         # relative = np.concatenate((R, t), axis=1)  # [3x3 | 3x1] ==> [3x4]
-        if False:
+        if True:
             scale = 1.0
         else:
             scale = 3 / (t[1]+ 1e-6)  # Assume that ty*scale is 3 meter which is the distance between road center(cam_db) and sidewalk center(cam_q)
@@ -823,8 +826,8 @@ class vps:
 
         t_scaled = t * scale
         pan, tilt = self.get_pan_tilt(R)
-        print("=============> VPS pan(deg), [tx,ty,tz], scale : {}, {}, {}, {}, {}".format(np.rad2deg(pan), t[0], t[1], t[2], scale))
-        return [IDs, Confs, pan, t_scaled.tolist()]  # [[id1, id2, ..., idn], [conf1, conf2, ..., confn], pan, tx, ty, tz], where pan and (tx, ty, tz) is for top-1.
+        print("[vps] =============> pan(deg), [tx,ty,tz], scale : {}, {}, {}, {}, {}".format(np.rad2deg(pan), t[0], t[1], t[2], scale))
+        return [IDs, Confs, pan, t_scaled.tolist()]  # [[id1, id2, ..., idn], [conf1, conf2, ..., confn], pan, scale*[tx, ty, tz]], where pan and (tx, ty, tz) is for top-1.
 
     def set_radius_by_accuracy(self, gps_accuracy=0.79):
         self.roi_radius = int(10 + 190*(1-gps_accuracy))  # 10 meters ~ 200 meters, 0.79 for 50 meters
@@ -892,7 +895,6 @@ class vps:
         return self.prob
 
     def Fname2ID(self,flist):
-        import os
         if type(flist) is str:
             flist = [flist]
         ID = []
@@ -946,6 +948,7 @@ class vps:
 
 
 def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
+    init_db_q_dir()
     from netvlad import etri_dbloader as dataset
     from PIL import Image
     #streetview_server_ipaddr = "localhost"
