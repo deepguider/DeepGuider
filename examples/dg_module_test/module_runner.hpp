@@ -88,6 +88,7 @@ public:
         cv::Mat out_image;
         double timestart = data_loader.getStartTime();
         dg::MapManager map_manager;
+        int fnumber = -1;
         while (1)
         {
             bool update_gui = false;
@@ -125,7 +126,7 @@ public:
                     }
                     if (show_gui)
                     {
-                        video_image = data_loader.getFrame(data_time);
+                        video_image = data_loader.getFrame(data_time, fnumber);
                         result_image = video_image.clone();
                         m_intersection_localizer->draw(result_image);
                         update_gui = true;
@@ -149,9 +150,10 @@ public:
                     }
                     if (show_gui)
                     {
-                        video_image = data_loader.getFrame(data_time);
+                        video_image = data_loader.getFrame(data_time, fnumber);
                         result_image = video_image.clone();
                         m_ocr_localizer->draw(result_image);
+                        m_ocr_localizer->print();
                         update_gui = true;
                     }
                 }
@@ -164,9 +166,10 @@ public:
                     if (!success) fprintf(stderr, "applyPOI() was failed.\n");
                     if (show_gui)
                     {
-                        video_image = data_loader.getFrame(data_time);
+                        video_image = data_loader.getFrame(data_time, fnumber);
                         result_image = video_image.clone();
                         m_ocr_localizer->draw(result_image);
+                        m_ocr_localizer->print();
                         update_gui = true;
                     }
                 }
@@ -179,7 +182,7 @@ public:
                     if (!success) fprintf(stderr, "applyVPS() was failed.\n");
                     if (show_gui)
                     {
-                        video_image = data_loader.getFrame(data_time);
+                        video_image = data_loader.getFrame(data_time, fnumber);
                         dg::ID sv_id = (dg::ID)(vdata[1] + 0.5);
                         if (map_manager.getStreetViewImage(sv_id, result_image, "f") && !result_image.empty())
                         {
@@ -201,7 +204,7 @@ public:
                     }
                     if (show_gui)
                     {
-                        video_image = data_loader.getFrame(data_time);
+                        video_image = data_loader.getFrame(data_time, fnumber);
                         result_image = video_image.clone();
                         m_lr_localizer->draw(result_image);
                         update_gui = true;
@@ -215,7 +218,7 @@ public:
                     if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
                     if (show_gui)
                     {
-                        video_image = data_loader.getFrame(data_time);
+                        video_image = data_loader.getFrame(data_time, fnumber);
                         result_image = video_image.clone();
                         m_roadtheta_localizer->draw(result_image);
                         update_gui = true;
@@ -225,7 +228,7 @@ public:
             else  // run modules online
             {
                 double capture_time;
-                video_image = data_loader.getNextFrame(capture_time);
+                video_image = data_loader.getNextFrame(capture_time, fnumber);
                 if (video_image.empty()) break;
                 update_gui = true;
 
@@ -280,6 +283,7 @@ public:
                     {
                         result_image = video_image.clone();
                         m_ocr_localizer->draw(result_image);
+                        m_ocr_localizer->print();
                     }
                 }
                 else if (module_sel == DG_VPS)
@@ -389,6 +393,9 @@ public:
                 {
                     cv::Mat resized;
                     cv::resize(result_image, resized, cv::Size(), result_resize, result_resize);
+                    std::string fn = cv::format("#%d", fnumber);
+                    cv::putText(resized, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
+                    cv::putText(resized, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
                     cv::Point offset = video_rect.br() + cv::Point(10, -resized.rows);
                     cx::Painter::pasteImage(out_image, resized, offset);
                     video_rect = cv::Rect(offset, resized.size());

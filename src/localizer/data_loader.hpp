@@ -309,6 +309,43 @@ public:
     }
 
     /**
+     * Get image frame that is closest to a given timestamp
+     * @param time The input timestamp
+     * @param fnumber The frame number of the returned image frame
+     */
+    cv::Mat getFrame(const Timestamp time, int& fnumber)
+    {
+        cv::Mat frame;
+        if (m_camera_data.isOpened())
+        {
+            int frame_i = (int)((time - m_first_data_time) * m_video_fps / m_video_scale + 0.5);
+            m_camera_data.set(cv::VideoCaptureProperties::CAP_PROP_POS_FRAMES, frame_i);
+            m_camera_data >> frame;
+            fnumber = frame_i;
+        }
+        return frame;
+    }
+
+    /**
+     * Get a next image frame from the camera data
+     * @param[out] time The timestamp of the returned image frame
+     * @param fnumber The frame number of the returned image frame
+     */
+    cv::Mat getNextFrame(Timestamp& time, int& fnumber)
+    {
+        cv::Mat frame;
+        if (m_camera_data.isOpened() && m_frame_index < m_total_frames)
+        {
+            m_camera_data.set(cv::VideoCaptureProperties::CAP_PROP_POS_FRAMES, m_frame_index);
+            m_camera_data >> frame;
+            time = m_frame_index * m_video_scale / m_video_fps + m_first_data_time;
+            fnumber = m_frame_index;
+            m_frame_index++;
+        }
+        return frame;
+    }
+
+    /**
      * Get a next image frame from the camera data
      * @param[out] time The timestamp of the returned image frame
      */
