@@ -409,7 +409,10 @@ public:
 
                 cv::imshow("ModuleRunner::run()", out_image);
                 int key = cv::waitKey(gui_wnd_wait_msec);
-                if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+                if (key == cx::KEY_SPACE)
+                {
+                    while ((key = cv::waitKey(0)) != cx::KEY_SPACE && key != cx::KEY_ESC);
+                }
                 if (key == cx::KEY_ESC) break;
             }
         }

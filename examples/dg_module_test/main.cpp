@@ -34,7 +34,7 @@ int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_s
     ETRI.grid_unit_pos = cv::Point(-215, -6);
     ETRI.video_resize = 0.2;
     ETRI.video_offset = cv::Point(350, 840);
-    ETRI.result_resize = 0.5;
+    ETRI.result_resize = 0.9;
 
     MapGUIProp COEX;
     COEX.image_file = "data/NaverMap_COEX(Satellite)_200929.png";
@@ -145,7 +145,7 @@ int runModule()
     localizer->setParamValue("enable_map_projection", true);
     localizer->setParamValue("enable_backtracking_ekf", true);
     localizer->setParamValue("enable_gps_smoothing", true);
-    localizer->setParamValue("enable_debugging_display", true);
+    localizer->setParamValue("enable_debugging_display", false);
     localizer->setParamValue("lr_mismatch_cost", 50);
     localizer->setParamValue("enable_lr_reject", false);
     localizer->setParamValue("lr_reject_cost", 20);             // 20
@@ -161,13 +161,13 @@ int runModule()
     //module_sel = DG_Intersection;
     //module_sel = DG_VPS;
     //module_sel = DG_RoadLR;
-    //module_sel = DG_OCR;
+    module_sel = DG_OCR;
     //module_sel = DG_POI;
-    module_sel = DG_RoadTheta;
+    //module_sel = DG_RoadTheta;
 
-    int data_sel = 8;
+    int data_sel = 0;
     double start_time = 0;     // time skip (seconds)
-    start_time = 0;     // time skip (seconds)
+    start_time = 1360;     // time skip (seconds)
     //rec_video_file = "result.mkv";
     std::vector<std::string> data_head[] = {
         {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
