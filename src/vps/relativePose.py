@@ -135,8 +135,11 @@ class relativePose:
 
     def detect_matching_points(self, img0, img1):  # Get fundamental matrix, input is cv2 img
     
-        #sift = cv2.xfeatures2d.SIFT_create()
-        sift = cv2.SIFT_create()
+        try:
+            sift = cv2.xfeatures2d.SIFT_create() # cv2.__version__ < 4.4.0
+        except:
+            sift = cv2.SIFT_create()  # cv2.__version__ >= 4.4.0
+
         # find the keypoints and descriptors with SIFT
         kp1, des1 = sift.detectAndCompute(img0,None)
         kp2, des2 = sift.detectAndCompute(img1,None)

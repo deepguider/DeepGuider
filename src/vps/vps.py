@@ -302,6 +302,7 @@ class vps:
                           .format(resume_ckpt, checkpoint['epoch']))
             else:
                 print("=> no checkpoint found at '{}'".format(resume_ckpt))
+                return 0 # Returning zero means fail to initialize vps.
     
         self.model = model
         if self.verbose:
@@ -457,7 +458,7 @@ class vps:
         if self.verbose:
             print('QueryImage <=================> predicted dbImage')
         match_cnt = 0
-        total_cnt = len(qImage)
+        total_cnt = len(qImage)  # Maybe 1.
 
         if total_cnt == 0:
             return 0
@@ -469,7 +470,8 @@ class vps:
                 vps_imgConf_str = [val for val in pred_confidence[i]] # list
                 vps_imgID = [np.int(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
                 vps_imgConf = [np.float(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
-                self.vps_IDandConf = [vps_imgID, vps_imgConf]
+                if pred_confidence.squeeze() > 0.0:  # Check that network was initialized well.
+                    self.vps_IDandConf = [vps_imgID, vps_imgConf]
  
             if self.verbose:
                 dbImage_predicted = dbImage[pred_idx[i,0]] #Use best [0] image for display
