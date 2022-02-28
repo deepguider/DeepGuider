@@ -18,6 +18,13 @@ if [ ! -n "${pid}" ];then  # If process is not running.
     sleep 2s    # wait until roscore is ready
 fi
 
+## Run theta360z1 publish
+pid=`pgrep main_ros_python27`
+if [ -n "${pid}" ];then  # If process is running.
+    kill -9 ${pid}
+fi
+gnome-terminal --tab --title="theta360z1_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/theta360z1/publish && python main_ros_python27.py'
+
 ## Start recording cart sensor
 pid=`pgrep roslaunch`
 if [ -n "${pid}" ];then  # If process is running.

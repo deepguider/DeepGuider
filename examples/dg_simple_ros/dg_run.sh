@@ -12,7 +12,7 @@ source devel/setup.bash
 ## Start roscore
 pid=`pgrep roscore`
 if [ ! -n "${pid}" ];then  # If process is not running.
-    gnome-terminal -- roscore
+    gnome-terminal --tab -- roscore
     sleep 2s    # wait until roscore is ready
 fi
 

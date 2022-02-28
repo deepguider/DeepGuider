@@ -12,7 +12,7 @@ source devel/setup.bash
 ## Start roscore
 pid=`pgrep roscore`
 if [ ! -n "${pid}" ];then  # If process is not running.
-    gnome-terminal -- roscore
+    gnome-terminal --tab -- roscore
     sleep 2s    # wait until roscore is ready
 fi
 
@@ -42,10 +42,10 @@ function set_topic_idx(){
     sed -i "s|${param}: [0-9]|${param}: ${index}|g" dg_ros.yml
 }
 
-set_site_idx 4; set_topic_idx 0; gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
-#set_site_idx 4; set_topic_idx 0; gnome-terminal -- rosbag play -d 10 -s 0 -r 10 ./recordings/coex.bag
-#set_site_idx 3; set_topic_idx 2; gnome-terminal -- rosbag play -d 10 -s 600 -r 10 ./recordings/etri.bag
-#set_site_idx 5; set_topic_idx 0; gnome-terminal -- rosbag play -d 5 -s 0 -r 1 ./recordings/indoor.bag
+set_site_idx 4; set_topic_idx 0; gnome-terminal --tab -- rosbag play -d 10 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
+#set_site_idx 4; set_topic_idx 0; gnome-terminal --tab -- rosbag play -d 10 -s 0 -r 10 ./recordings/coex.bag
+#set_site_idx 3; set_topic_idx 2; gnome-terminal --tab -- rosbag play -d 10 -s 600 -r 10 ./recordings/etri.bag
+#set_site_idx 5; set_topic_idx 0; gnome-terminal --tab -- rosbag play -d 5 -s 0 -r 1 ./recordings/indoor.bag
 
 ## Start dg_simple_ros package (working directory: devel/lib/dg_simple_ros/)
 CWD=`pwd`
