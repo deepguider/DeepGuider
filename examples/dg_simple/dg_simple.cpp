@@ -226,7 +226,7 @@ void onMouseEvent(int event, int x, int y, int flags, void* param)
 DeepGuider::~DeepGuider()
 {
     m_intersection.clear();
-    //m_ocr.clear();
+    m_ocr.clear();
     m_vps.clear();
     m_roadlr.clear();
     m_roadtheta.clear();

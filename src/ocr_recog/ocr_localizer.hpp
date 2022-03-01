@@ -23,7 +23,7 @@ namespace dg
     /**
     * @brief OCR Localizer
     */
-    class OCRLocalizer : public OCRRecognizer, public cx::Algorithm
+    class OCRLocalizer : public OCRRecognizer
     {
 	protected:
 		// camera parameters

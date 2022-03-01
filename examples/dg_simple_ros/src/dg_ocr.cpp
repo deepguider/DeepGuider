@@ -133,7 +133,7 @@ bool DGNodeOCR::loadConfig(std::string config_file)
 
 void DGNodeOCR::close()
 { 
-	//m_recognizer.clear();
+	m_recognizer.clear();
     close_python_environment();
 }
 
