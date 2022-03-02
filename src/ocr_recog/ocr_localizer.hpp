@@ -358,7 +358,7 @@ namespace dg
 				return levenshtein_jamo(s2, s1);
 
 			if(s2.length() == 0)
-				return s1.length();
+				return (double)s1.length();
 
 			std::vector<double> previous_row(s2.length() + 1);
 			for(int i = 0; i < int(sizeof(previous_row)/sizeof(double)); i++)
@@ -383,7 +383,7 @@ namespace dg
 		
 		bool addWeight(const wchar_t c1, const wchar_t c2, const double similarity)
 		{
-			std::pair pair = std::make_pair(c1, c2);
+			auto pair = std::make_pair(c1, c2);
 			auto weight = weights.find(pair);
 			if (weight != weights.end())
 				weights.erase(pair);
@@ -400,7 +400,7 @@ namespace dg
 			//for (std::map<std::pair<wchar_t, wchar_t>, double>::iterator itr = weights.begin(); itr != weights.end(); ++itr) 
 			//	std::cout << itr->first.first << "," << itr->first.second << " " << itr->second << std::endl;
 
-			std::pair pair = std::make_pair(c1, c2);
+			auto pair = std::make_pair(c1, c2);
 			auto weight = weights.find(pair);
 			if (weight != weights.end())
 				return weight->second;
@@ -414,7 +414,7 @@ namespace dg
 				return levenshtein(s2, s1);
 
 			if(s2.length() == 0)
-				return s1.length();
+				return (double)s1.length();
 
 			std::vector<double> previous_row(s2.length() + 1);
 			for(int i = 0; i < int(sizeof(previous_row)/sizeof(double)); i++)
@@ -447,7 +447,6 @@ namespace dg
 		std::vector<std::tuple<double, double, std::wstring>> getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr_result, bool jamo_mode = true)
 		{
 			std::vector<std::tuple<double, double, std::wstring>> distances;
-			int size = poi_names.size();
 			for(int i = 0; i < poi_names.size(); i++)
 			{
 				double dist = 0.0;
