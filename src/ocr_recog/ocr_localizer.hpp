@@ -38,6 +38,7 @@ namespace dg
 		double m_poi_search_radius = 100;	// POI search range, Unit: [m]
 		double m_poi_match_thresh = 0.3;	// POI matching threshold
 	    bool m_enable_debugging_display = true;
+		int m_w = 2; // minimum string length
 
         /** Read parameters from cv::FileNode - Inherited from cx::Algorithm */
         virtual int readParam(const cv::FileNode& fn)
@@ -349,7 +350,10 @@ namespace dg
 			//std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 			std::wstring s1(decompose(c1));
 			std::wstring s2(decompose(c2));
-			return levenshtein(s1, s2)/3;
+			s1.erase(std::remove(s1.begin(), s1.end(), ' '), s1.end()); // remove spaces
+			s2.erase(std::remove(s2.begin(), s2.end(), ' '), s2.end()); // remove spaces
+			
+			return levenshtein(s1, s2)/std::max({s1.length(), s2.length()});
 		}
 
 		double levenshtein_jamo(std::wstring s1, std::wstring s2)
@@ -370,7 +374,7 @@ namespace dg
 				for(int j = 0; j < s2.length(); j++)
 				{
 					double insertions = previous_row[j + 1] + 1;
-					double deletions = current_row[j] + 1;
+					double deletions = current_row[j] + 1;					
 					double substitutions = previous_row[j] + substitution_cost(s1[i], s2[j]);
 					current_row.push_back(std::min({insertions, deletions, substitutions}));
 				}
@@ -447,16 +451,23 @@ namespace dg
 		std::vector<std::tuple<double, double, std::wstring>> getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr_result, bool jamo_mode = true)
 		{
 			std::vector<std::tuple<double, double, std::wstring>> distances;
+			ocr_result.erase(std::remove(ocr_result.begin(), ocr_result.end(), ' '), ocr_result.end()); // remove spaces
+
 			for(int i = 0; i < poi_names.size(); i++)
 			{
 				double dist = 0.0;
+				poi_names[i].erase(std::remove(poi_names[i].begin(), poi_names[i].end(), ' '), poi_names[i].end()); // remove spaces
+				
 				if(jamo_mode == true)
 					dist = levenshtein_jamo(poi_names[i], ocr_result);
 				else
 					dist = levenshtein(poi_names[i], ocr_result);
-				double dist_conf = 1.0 - (dist / std::max({ocr_result.length(), poi_names[i].length()}));
-				if(dist_conf >= m_poi_match_thresh)
-					distances.push_back(std::make_tuple(dist, dist_conf, poi_names[i]));
+				double norm_score = 1.0 - (dist / std::max({ocr_result.length(), poi_names[i].length()}));
+				double count_score = std::max({ocr_result.length(), poi_names[i].length()}) - dist;
+				double match_score = norm_score + count_score/m_w;
+
+				if(match_score >= m_poi_match_thresh)
+					distances.push_back(std::make_tuple(dist, match_score, poi_names[i]));
 			}
 			if(distances.size() > 0)
 			{
