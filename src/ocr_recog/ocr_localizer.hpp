@@ -13,11 +13,12 @@ using namespace std;
 
 namespace dg
 {	
-	bool compare_dist(std::tuple<double, double, std::wstring> a, std::tuple<double, double, std::wstring> b)
+	// <ocr_index, poi_index, levenshtein_distance, match_score>
+	bool compare_score(std::tuple<int, int, double, double> a, std::tuple<int, int, double, double> b)
 	{
-		if(std::get<1>(a) == std::get<1>(b)) return std::get<0>(a) > std::get<0>(b);
+		if(std::get<3>(a) == std::get<3>(b)) return std::get<0>(a) < std::get<0>(b);
 
-		return std::get<1>(a) > std::get<1>(b);
+		return std::get<3>(a) > std::get<3>(b);
 	}
 
     /**
@@ -139,49 +140,46 @@ namespace dg
 			return false;
 		}
 
+		/**
+		 * @return True if there is any detection, False otherwise.
+		 */
         bool apply(const cv::Mat image, const dg::Timestamp image_time, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
         {
+			// OCR detection (vision module)
 			if (!OCRRecognizer::apply(image, image_time)) return false;
-
 			cv::AutoLock lock(m_localizer_mutex);
 			std::vector<OCRResult> ocrs = get();
 			if (ocrs.empty()) return false;
 
+			// retrieve nearby POIs from the server
             if (m_shared == nullptr) return false;
 			Pose2 pose = m_shared->getPose();
 			Map* map = m_shared->getMap();
 			if (map == nullptr || map->isEmpty()) return false;
+			std::vector<dg::POI*> pois = map->getNearPOIs(pose, m_poi_search_radius);
+			if(pois.empty()) return false;
 
-            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;			
-			for (int k = 0; k < ocrs.size(); k++)
+			// match OCR detections with nearby POIs: <ocr_index, poi_index, levenshtein_distance, match_score>
+			std::vector<std::tuple<int, int, double, double>> matches = matchPOI(ocrs, pois);
+			if(matches.empty()) return false;
+
+			// estimate relative pose of the matched POIs
+			for (size_t k = 0; k < matches.size(); k++)
             {
-                std::wstring ocr_result = converter.from_bytes(ocrs[k].label.c_str());
-				std::vector<std::tuple<double, double, std::wstring>> poi_names = matchPOIName(ocr_result, pose, m_poi_search_radius, 1);
-				if (poi_names.empty()) continue;
-				for (int n = 0; n < poi_names.size(); n++)
-            	{
-					std::tuple<double, double, std::wstring> poi_name = poi_names.at(n);
-
-					std::vector<POI*> pois = map->getPOI(std::get<2>(poi_name), pose, m_poi_search_radius, true);
-					if (!pois.empty())
-					{
-						POI* poi = pois[0];
-						poi_xys.push_back(*poi);
-						Polar2 relative = computeRelative(ocrs[k].xmin, ocrs[k].ymin, ocrs[k].xmax, ocrs[k].ymax);
-						relatives.push_back(relative);
-						poi_confidences.push_back(std::get<1>(poi_name)); //ocrs[k].confidence);
-					}
-				}
+				int ocr_i = std::get<0>(matches[k]);
+				int poi_i = std::get<1>(matches[k]);
+				double match_score = std::get<3>(matches[k]);
+				poi_xys.push_back(*(pois[poi_i]));
+				Polar2 relative = computeRelative(ocrs[ocr_i].xmin, ocrs[ocr_i].ymin, ocrs[ocr_i].xmax, ocrs[ocr_i].ymax);
+				relatives.push_back(relative);
+				double conf = match_score * ocrs[ocr_i].confidence;
+				poi_confidences.push_back(conf);
             }
             return true;
         }
 
 		bool applyPreprocessed(std::string recog_name, double xmin, double ymin, double xmax, double ymax, double conf, const dg::Timestamp data_time, dg::Point2& poi_xy, dg::Polar2& relative, double& poi_confidence)
 		{
-			cv::AutoLock lock(m_localizer_mutex);
-			if (m_shared == nullptr) return false;
-			Pose2 pose = m_shared->getPose();
-
 			std::vector<OCRResult> ocrs;
 			OCRResult ocr;
 			ocr.label = recog_name;
@@ -193,19 +191,26 @@ namespace dg
 			ocrs.push_back(ocr);
 			set(ocrs, data_time);
 
-			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			// retrieve nearby POIs from the server
+			cv::AutoLock lock(m_localizer_mutex);
+            if (m_shared == nullptr) return false;
+			Pose2 pose = m_shared->getPose();
 			Map* map = m_shared->getMap();
 			if (map == nullptr || map->isEmpty()) return false;
-			std::wstring ocr_result = converter.from_bytes(recog_name.c_str());
-			std::vector<std::tuple<double, double, std::wstring>> poi_names = matchPOIName(ocr_result, pose, 100.0, 1);
-			if (poi_names.empty()) return false;
-			std::tuple<double, double, std::wstring> poi_name = poi_names.at(0);
-			std::vector<POI*> pois = map->getPOI(std::get<2>(poi_name), pose, m_poi_search_radius, true);
+			std::vector<dg::POI*> pois = map->getNearPOIs(pose, m_poi_search_radius);
+			if(pois.empty()) return false;
 
-			if (pois.empty()) return false;
-			poi_xy = *(pois[0]);
+			// match OCR detections with nearby POIs: <ocr_index, poi_index, levenshtein_distance, match_score>
+			std::vector<std::tuple<int, int, double, double>> matches = matchPOI(ocrs, pois);
+			if(matches.empty()) return false;
+
+			// estimate relative pose of the matched POIs
+			int ocr_i = std::get<0>(matches[0]);
+			int poi_i = std::get<1>(matches[0]);
+			double match_score = std::get<3>(matches[0]);
+			poi_xy = *(pois[poi_i]);
 			relative = computeRelative(xmin, ymin, xmax, ymax);
-			poi_confidence = std::get<1>(poi_name); //conf;
+			poi_confidence = match_score * conf;
 			return true;
 		}
 
@@ -442,71 +447,70 @@ namespace dg
 		}
 
 		/**
-		 * Find Top-n POI names closest to the result of OCR
-		 * @param poi_names POI names within a search radius from a point
-		 * @param ocr_result A result of OCR
+		 * Find POIs matched with the result of OCR
+		 * @param ocrs A list of OCR detections
+		 * @param pois A list of POIs to be matched
 		 * @param jamo_mode A given levenshtein function mode
-		 * @return A list of distance, confidence, and name of matched POIs (empty list if no POI found)
+		 * @return A list of matches <OCR index, POI index, Levenshtein_distance, match_score> (empty list if no POI matched)
 		 */
-		std::vector<std::tuple<double, double, std::wstring>> getNeighbors(std::vector<std::wstring> poi_names, std::wstring ocr_result, bool jamo_mode = true)
+		std::vector<std::tuple<int, int, double, double>> matchPOI(const std::vector<OCRResult>& ocrs, const std::vector<dg::POI*>& pois, bool jamo_mode = true)
 		{
-			std::vector<std::tuple<double, double, std::wstring>> distances;
-			ocr_result.erase(std::remove(ocr_result.begin(), ocr_result.end(), ' '), ocr_result.end()); // remove spaces
+			// preprocessing: remove spaces from POI names, remove duplications
+			std::vector<std::wstring> poi_names;
+			for (int k = 0; k < (int)pois.size(); k++)
+            {
+				// remove spaces
+				std::wstring poi_name = pois[k]->name;
+				poi_name.erase(std::remove(poi_name.begin(), poi_name.end(), ' '), poi_name.end());
+				poi_names.push_back(poi_name);
 
-			for(int i = 0; i < poi_names.size(); i++)
-			{
-				double dist = 0.0;
-				poi_names[i].erase(std::remove(poi_names[i].begin(), poi_names[i].end(), ' '), poi_names[i].end()); // remove spaces
-				
-				if(jamo_mode == true)
-					dist = levenshtein_jamo(poi_names[i], ocr_result);
-				else
-					dist = levenshtein(poi_names[i], ocr_result);
-				double norm_score = 1.0 - (dist / std::max({ocr_result.length(), poi_names[i].length()}));
-				double count_score = std::max({ocr_result.length(), poi_names[i].length()}) - dist;
-				double match_score = norm_score + count_score/m_w;
-
-				if(match_score >= m_poi_match_thresh)
-					distances.push_back(std::make_tuple(dist, match_score, poi_names[i]));
+				// remove farther POIs in case of duplicated POI names
+				// TBD ...
 			}
-			if(distances.size() > 0)
-			{
-				std::sort(distances.begin(), distances.end(), compare_dist);
-			}
-			return distances;
-		}
-		
-		/**
-		 * Find POI names matched with the result of OCR
-		 * @param ocr_result A result of OCR
-		 * @param p A given point
-		 * @param search_radius A given search radius
-		 * @param num_neighbors The number of POI names to return
-		 * @param jamo_mode A given levenshtein function mode
-		 * @return A list of distance, confidence, and name of matched POIs (empty list if no POI found)
-		 */
-		std::vector<std::tuple<double, double, std::wstring>> matchPOIName(std::wstring ocr_result, const Point2& p, double search_radius = 50.0, int num_neighbors = 1, bool jamo_mode = true)		
-		{
-			Map* map = m_shared->getMap();
-			if (map == nullptr || map->isEmpty()) return std::vector<std::tuple<double, double, std::wstring>>();
-			std::vector<std::wstring> poi_names = map->getNearPOINames(p, search_radius);
-			std::vector<std::tuple<double, double, std::wstring>> results = getNeighbors(poi_names, ocr_result);
 
-			if(m_enable_debugging_display)
-			{
-				std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-				std::string on = converter.to_bytes(ocr_result);
-				for(size_t i = 0; i<results.size(); i++)
+			// match <ocr_index, poi_index, levenshtein_distance, match_score>
+			std::vector<std::tuple<int, int, double, double>> matches;
+	        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			for (int i = 0; i < (int)ocrs.size(); i++)
+            {
+                std::wstring ocr_result = converter.from_bytes(ocrs[i].label.c_str());
+				ocr_result.erase(std::remove(ocr_result.begin(), ocr_result.end(), ' '), ocr_result.end()); // remove spaces
+
+				std::vector<std::tuple<int, int, double, double>> candidates;
+				for(int j = 0; j < poi_names.size(); j++)
 				{
-					double leven_dist = std::get<0>(results[i]);
-					double match_score = std::get<1>(results[i]);
-					wstring poi_name = std::get<2>(results[i]);
-					std::string pn = converter.to_bytes(poi_name);
-					printf("\t%s - %s: dist = %.2lf, conf = %.2lf\n", on.c_str(), pn.c_str(), leven_dist, match_score);
-				}
-			}
+					double leven_dist = 0.0;
+					if(jamo_mode == true)
+						leven_dist = levenshtein_jamo(poi_names[j], ocr_result);
+					else
+						leven_dist = levenshtein(poi_names[j], ocr_result);
+					double norm_score = 1.0 - (leven_dist / std::max({ocr_result.length(), poi_names[j].length()}));
+					double count_score = std::max({ocr_result.length(), poi_names[j].length()}) - leven_dist;
+					double match_score = norm_score + count_score/m_w;
 
-			return results;
+					if(match_score >= m_poi_match_thresh)
+						candidates.push_back(std::make_tuple(i, j, leven_dist, match_score));
+				}
+				if(candidates.size() > 0)
+				{
+					std::sort(candidates.begin(), candidates.end(), compare_score);
+					matches.push_back(candidates[0]);
+				}
+
+				if(m_enable_debugging_display)
+				{
+					std::string ocr_name = ocrs[i].label;
+					for(size_t k = 0; k < candidates.size(); k++)
+					{
+						std::string poi_name = converter.to_bytes(pois[std::get<1>(candidates[k])]->name);
+						double leven_dist = std::get<2>(candidates[k]);
+						double match_score = std::get<3>(candidates[k]);
+						printf("\t%s - %s: dist = %.2lf, score = %.2lf\n", ocr_name.c_str(), poi_name.c_str(), leven_dist, match_score);
+					}
+				}
+            }
+
+			return matches;
 		}
 
         dg::Polar2 computeRelative(double x1, double y1, double x2, double y2)

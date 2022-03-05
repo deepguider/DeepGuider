@@ -1353,8 +1353,11 @@ bool DeepGuider::procOcr()
         {
             m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
         }
-        m_ocr.print();
+    }
 
+    std::vector<OCRResult> ocrs = m_ocr.get();
+    if(!ocrs.empty())
+    {
         m_ocr.draw(cam_image, 1.5);
         m_ocr_mutex.lock();
         m_ocr_image = cam_image;
@@ -1364,9 +1367,8 @@ bool DeepGuider::procOcr()
     else
     {
         m_ocr.print();
+        return false;
     }
-
-    return false;
 }
 
 bool DeepGuider::procRoadTheta()
