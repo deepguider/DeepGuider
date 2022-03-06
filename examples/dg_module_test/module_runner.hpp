@@ -283,7 +283,7 @@ public:
                     {
                         result_image = video_image.clone();
                         m_ocr_localizer->draw(result_image);
-                        m_ocr_localizer->print();
+                        //m_ocr_localizer->print();
                     }
                 }
                 else if (module_sel == DG_VPS)

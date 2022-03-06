@@ -57,6 +57,14 @@ namespace dg
 	
 
     public:
+		OCRLocalizer()
+		{
+			if (!setWeights("dg_hangeul_weights.csv"))
+			{
+				printf("[ocr_localizer] fail to load weights file\n");
+			}
+		}
+
         bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/ocr_recog")
         {
 			if (!OCRRecognizer::initialize(py_module_path.c_str(), "ocr_recognizer", "OCRRecognizer")) return false;
@@ -152,6 +160,7 @@ namespace dg
 			cv::AutoLock lock(m_localizer_mutex);
 			std::vector<OCRResult> ocrs = get();
 			if (ocrs.empty()) return false;
+			OCRRecognizer::print();
 
 			// retrieve nearby POIs from the server
             if (m_shared == nullptr) return false;
