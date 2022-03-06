@@ -20,7 +20,6 @@ public:
 
 int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_saved_testset, const std::string& site, dg::DataLoader& data_loader, const std::string& rec_video_file = "")
 {
-
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
     ETRI.image_file = "data/ETRI/NaverMap_ETRI(Satellite).png";

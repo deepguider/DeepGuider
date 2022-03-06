@@ -37,7 +37,9 @@ namespace dg
 		// configuable parameters
 		double m_poi_height = 3.8;			// Height of POI from ground plane, Unit: [m]
 		double m_poi_search_radius = 100;	// POI search range, Unit: [m]
-		double m_poi_match_thresh = 0.3;	// POI matching threshold
+		double m_poi_match_thresh = 1.5;	// POI matching threshold
+		bool m_check_jungsung_type = true;	// distinguish bottom-side jungsung and right-side jungsung
+		bool m_fixed_template_match = true;	// use substring template match instead of Levenshtein distance
 	    bool m_enable_debugging_display = true;
 		int m_w = 2; // minimum string length
 
@@ -254,6 +256,8 @@ namespace dg
 		int moum_end = 12643;
 		wchar_t chosung_list[19] = { L'ㄱ', L'ㄲ', L'ㄴ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅅ', L'ㅆ', L'ㅇ' , L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
 		wchar_t jungsung_list[21] = { L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ' };
+		enum {JUNG_RB = 0, JUNG_R = 1, JUNG_B = -1}; // jungsung type (right-bottom, right, bottom)
+		int jungsung_type_list[21] = { JUNG_R, JUNG_R, JUNG_R, JUNG_R, JUNG_R, JUNG_R, JUNG_R, JUNG_R, JUNG_B, JUNG_RB, JUNG_RB, JUNG_RB, JUNG_B, JUNG_B, JUNG_RB, JUNG_RB, JUNG_RB, JUNG_B, JUNG_B, JUNG_RB, JUNG_R };
 		wchar_t jongsung_list[28] = { L' ', L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
 		wchar_t jaum_list[30] = { L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
 		wchar_t moum_list[21] = { L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ' };
@@ -294,7 +298,7 @@ namespace dg
 			return character;
 		}
 
-		wchar_t* decompose(wchar_t c)
+		wchar_t* decompose(wchar_t c, int* jungsung_type = nullptr)
 		{
 			setlocale(LC_ALL, "KOREAN");
 
@@ -302,6 +306,8 @@ namespace dg
 			if (!character_is_korean(c))
 			{
 				jamos[0] = {c};				
+				jamos[1] = {L'\0'};
+				/*
 				if(c == L' ')
 				{
 					jamos[1] = {L' '};
@@ -313,6 +319,7 @@ namespace dg
 					jamos[2] = {L'\0'};
 				}
 				jamos[3] = {L'\0'};
+				*/
 				return jamos;
 			}
 
@@ -320,17 +327,24 @@ namespace dg
 			if (jaum_begin <= i && i <= jaum_end)
 			{
 				jamos[0] = {c};
+				jamos[1] = {L'\0'};
+				/*
 				jamos[1] = {L' '};
 				jamos[2] = {L' '};
 				jamos[3] = {L'\0'};
+				*/
 				return jamos;
 			}
 			if (moum_begin <= i && i <= moum_end)
 			{
+				/*
 				jamos[0] = {L' '};
 				jamos[1] = {c};				
 				jamos[2] = {L' '};
 				jamos[3] = {L'\0'};
+				*/
+				jamos[0] = {c};
+				jamos[1] = {L'\0'};
 				return jamos;
 			}
 
@@ -344,6 +358,12 @@ namespace dg
 			jamos[2] = {jongsung_list[jong]};
 			jamos[3] = {L'\0'};
 
+			if(jamos[2] == L' ')
+				jamos[2] = {L'\0'};
+
+			if(jungsung_type != nullptr)
+				*jungsung_type = jungsung_type_list[jung];
+
 			return jamos;
 		}
 
@@ -352,11 +372,11 @@ namespace dg
 			if (c1 == c2)
 				return 0.0;
 			
-			//std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-			std::wstring s1(decompose(c1));
-			std::wstring s2(decompose(c2));
-			s1.erase(std::remove(s1.begin(), s1.end(), ' '), s1.end()); // remove spaces
-			s2.erase(std::remove(s2.begin(), s2.end(), ' '), s2.end()); // remove spaces
+			int type1 = 0;
+			int type2 = 0;
+			std::wstring s1(decompose(c1, &type1));
+			std::wstring s2(decompose(c2, &type2));
+			if(m_check_jungsung_type && type1*type2<0) return 1;
 			
 			return levenshtein(s1, s2)/std::max({s1.length(), s2.length()});
 		}
@@ -446,6 +466,55 @@ namespace dg
 			return previous_row.back();
 		}
 
+		double fixed_substitution_cost(wchar_t c1, wchar_t c2)
+		{
+			if (c1 == c2) return 0.0;
+			
+			int type1 = 0;
+			int type2 = 0;
+			std::wstring s1(decompose(c1, &type1));
+			std::wstring s2(decompose(c2, &type2));
+			if(m_check_jungsung_type && type1*type2<0) return 1;
+
+			int n_min = (s1.length() < s2.length()) ? s1.length() : s2.length();
+			int n_max = (s1.length() > s2.length()) ? s1.length() : s2.length();
+			double cost = 0;
+			for(int i = 0; i < n_min; i++)
+			{
+				if(s1[i] == s2[i]) continue;
+				cost += (1 - weight_similarity(s1[i], s2[i]));
+			}
+			cost += (n_max - n_min);
+
+			return cost/n_max;
+		}
+
+		double fixed_levenshtein_jamo(std::wstring s1, std::wstring s2)
+		{
+			if(s1.length() < s2.length())
+				return fixed_levenshtein_jamo(s2, s1);
+
+			if(s2.length() == 0)
+				return (double)s1.length();
+
+			double min_cost = DBL_MAX;
+			for(int i = 0; i <= s1.length() - s2.length(); i++)
+			{
+				double cost = 0.0;
+				for(int j = 0; j < s2.length(); j++)
+				{
+					cost += fixed_substitution_cost(s1[i + j], s2[j]);
+				}
+				cost += (s1.length() - s2.length());
+
+				if(cost < min_cost)
+				{
+					min_cost = cost;
+				}
+			}
+			return min_cost;
+		}
+
 		/**
 		 * Find POIs matched with the result of OCR
 		 * @param ocrs A list of OCR detections
@@ -480,7 +549,9 @@ namespace dg
 				for(int j = 0; j < poi_names.size(); j++)
 				{
 					double leven_dist = 0.0;
-					if(jamo_mode == true)
+					if(m_fixed_template_match)
+						leven_dist = fixed_levenshtein_jamo(poi_names[j], ocr_result);
+					else if(jamo_mode == true)
 						leven_dist = levenshtein_jamo(poi_names[j], ocr_result);
 					else
 						leven_dist = levenshtein(poi_names[j], ocr_result);
