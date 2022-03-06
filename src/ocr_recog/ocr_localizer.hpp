@@ -307,19 +307,6 @@ namespace dg
 			{
 				jamos[0] = {c};				
 				jamos[1] = {L'\0'};
-				/*
-				if(c == L' ')
-				{
-					jamos[1] = {L' '};
-					jamos[2] = {L' '};
-				}
-				else
-				{
-					jamos[1] = {L'\0'};
-					jamos[2] = {L'\0'};
-				}
-				jamos[3] = {L'\0'};
-				*/
 				return jamos;
 			}
 
@@ -328,21 +315,10 @@ namespace dg
 			{
 				jamos[0] = {c};
 				jamos[1] = {L'\0'};
-				/*
-				jamos[1] = {L' '};
-				jamos[2] = {L' '};
-				jamos[3] = {L'\0'};
-				*/
 				return jamos;
 			}
 			if (moum_begin <= i && i <= moum_end)
 			{
-				/*
-				jamos[0] = {L' '};
-				jamos[1] = {c};				
-				jamos[2] = {L' '};
-				jamos[3] = {L'\0'};
-				*/
 				jamos[0] = {c};
 				jamos[1] = {L'\0'};
 				return jamos;
@@ -357,12 +333,8 @@ namespace dg
 			jamos[1] = {jungsung_list[jung]};
 			jamos[2] = {jongsung_list[jong]};
 			jamos[3] = {L'\0'};
-
-			if(jamos[2] == L' ')
-				jamos[2] = {L'\0'};
-
-			if(jungsung_type != nullptr)
-				*jungsung_type = jungsung_type_list[jung];
+			if(jamos[2] == L' ') jamos[2] = {L'\0'};
+			if(jungsung_type != nullptr) *jungsung_type = jungsung_type_list[jung];
 
 			return jamos;
 		}
@@ -423,11 +395,7 @@ namespace dg
 		
 		double weight_similarity(const wchar_t c1, const wchar_t c2)
 		{
-			if (c1 == c2)
-				return 1.0;
-			
-			//for (std::map<std::pair<wchar_t, wchar_t>, double>::iterator itr = weights.begin(); itr != weights.end(); ++itr) 
-			//	std::cout << itr->first.first << "," << itr->first.second << " " << itr->second << std::endl;
+			if (c1 == c2) return 1.0;
 
 			auto pair = std::make_pair(c1, c2);
 			auto weight = weights.find(pair);
