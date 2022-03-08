@@ -12,8 +12,8 @@ enable_imu: 0
 enable_mapserver: 0    # 0: use saved offline map, 1: online mapserver
 
 ### Main Options
-site_index: 5            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, ...
-site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR"]
+site_index: 5            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, 5:TEST_ETRI_INDOOR, 6:ETRI_EXTENDED, ...
+site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR", 'ETRI_EXTENDED']
 server_ip_index: 0     # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
 image_server_port: "10000"  # etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
@@ -34,6 +34,20 @@ vps_save_dbfeat: 0
 vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
 
 ## Pre-defined Place Settings
+
+ETRI_EXTENDED:
+  map_image_path: "data/ETRI/NaverMap_ETRI(Satellite)_large.png"
+  map_data_path: "data/ETRI/TopoMap_ETRI.csv"
+  map_ref_point_latlon: [36.379208, 127.364585]
+  map_ref_point_pixel: [3794, 3400]
+  map_pixel_per_meter: 2.0865
+  map_image_rotation: 0.96
+  map_view_offset: [1289, 371]
+  map_view_size: [1800, 1012]
+  image_server_port: "10000"
+  gps_input_path: "data/ETRI/191115_151140_ascen_fix.csv"
+  video_input_path: "data/ETRI/191115_151140_images.avi"
+
 TEST_ETRI:
   map_image_path: "data/ETRI/NaverMap_ETRI(Satellite).png"
   map_data_path: "data/ETRI/TopoMap_ETRI.csv"
