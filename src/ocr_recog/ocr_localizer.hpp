@@ -598,7 +598,7 @@ namespace dg
 
 			// result
 			relative.lin = D;
-			relative.ang = poi_pan;
+			relative.ang = poi_pan - CV_PI/2;
 			return relative;
 		}
 

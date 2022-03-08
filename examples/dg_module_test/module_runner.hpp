@@ -275,10 +275,15 @@ public:
                 {
                     if (m_ocr_localizer->apply(video_image, capture_time, pois, poi_relatives, poi_confidences))
                     {
+                        dg::Pose2 pose = localizer->getPose();
+                        printf("\tlocalizer: x = %.2lf, y = %.2lf, theta = %.1lf\n", pose.x, pose.y, cx::cvtRad2Deg(pose.theta));
+    
                         for (size_t i = 0; i < pois.size(); i++)
                         {
                             bool success = localizer->applyPOI(*(pois[i]), poi_relatives[i], data_time, poi_confidences[i]);
                             if (!success) fprintf(stderr, "applyPOI() was failed.\n");
+                            pose = localizer->getPose();
+                            printf("\t[%d] x = %.2lf, y = %.2lf, theta = %.1lf\n", (int)i, pose.x, pose.y, cx::cvtRad2Deg(pose.theta));
                         }
                     }
                     if (show_gui)
@@ -382,7 +387,7 @@ public:
                     gui_painter->drawPoint(out_image, *(pois[k]), scaled_radius, cv::Vec3b(255, 255, 0), m_viewport.offset(), m_viewport.zoom());  // sky color for POI position
 
                     // robot position estimated from relative pose
-                    double poi_theta = pose.theta - (CV_PI/2 - poi_relatives[k].ang);
+                    double poi_theta = pose.theta + poi_relatives[k].ang;
                     double rx = pois[k]->x - poi_relatives[k].lin * cos(poi_theta);
                     double ry = pois[k]->y - poi_relatives[k].lin * sin(poi_theta);
                     gui_painter->drawPoint(out_image, cv::Point2d(rx, ry), scaled_radius, cv::Vec3b(0, 0, 255), m_viewport.offset(), m_viewport.zoom());  // sky color for POI position
