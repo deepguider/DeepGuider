@@ -153,7 +153,7 @@ namespace dg
 		/**
 		 * @return True if there is any detection, False otherwise.
 		 */
-        bool apply(const cv::Mat image, const dg::Timestamp image_time, std::vector<dg::Point2>& poi_xys, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
+        bool apply(const cv::Mat image, const dg::Timestamp image_time, std::vector<dg::POI*>& pois, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
         {
 			// OCR detection (vision module)
 			if (!OCRRecognizer::apply(image, image_time)) return false;
@@ -167,11 +167,11 @@ namespace dg
 			Pose2 pose = m_shared->getPose();
 			Map* map = m_shared->getMap();
 			if (map == nullptr || map->isEmpty()) return false;
-			std::vector<dg::POI*> pois = map->getNearPOIs(pose, m_poi_search_radius);
-			if(pois.empty()) return false;
+			std::vector<dg::POI*> pois_near = map->getNearPOIs(pose, m_poi_search_radius);
+			if(pois_near.empty()) return false;
 
 			// match OCR detections with nearby POIs: <ocr_index, poi_index, levenshtein_distance, match_score>
-			std::vector<std::tuple<int, int, double, double>> matches = matchPOI(ocrs, pois);
+			std::vector<std::tuple<int, int, double, double>> matches = matchPOI(ocrs, pois_near);
 			if(matches.empty()) return false;
 
 			// estimate relative pose of the matched POIs
@@ -180,7 +180,7 @@ namespace dg
 				int ocr_i = std::get<0>(matches[k]);
 				int poi_i = std::get<1>(matches[k]);
 				double match_score = std::get<3>(matches[k]);
-				poi_xys.push_back(*(pois[poi_i]));
+				pois.push_back(pois_near[poi_i]);
 				Polar2 relative = computeRelative(ocrs[ocr_i].xmin, ocrs[ocr_i].ymin, ocrs[ocr_i].xmax, ocrs[ocr_i].ymax);
 				relatives.push_back(relative);
 				double conf = match_score * ocrs[ocr_i].confidence;
@@ -583,20 +583,22 @@ namespace dg
 			pc.at<double>(1) = (poi_ty - m_cy) / m_focal_length;
 			pc.at<double>(2) = 1;
 
-			// pan, tilt of poi top
+			// world coordinate of poi top (ignore translation)
 			cv::Mat pw = cv::Mat(R.t()) * pc;
 			double xw = pw.at<double>(0);
 			double yw = pw.at<double>(1);
 			double zw = pw.at<double>(2);
+
+			// pan, tilt of poi top
 			double poi_pan = atan2(yw, xw);
 			double poi_tilt = atan2(zw, sqrt(xw * xw + yw * yw));
 
-			// world distance from camera to poi
+			// ground distance from camera to poi
 			double D = (m_poi_height - m_camera_height) / tan(poi_tilt);
 
 			// result
 			relative.lin = D;
-			relative.ang = poi_pan - CV_PI / 2;
+			relative.ang = poi_pan;
 			return relative;
 		}
 

@@ -241,10 +241,41 @@ public:
         int iradius = (int)(radius * zoom + 0.5);
         if (iradius < 1) iradius = 1;
         if (thickness > 0) thickness = (int)(thickness * zoom + 0.5);
-        cv::Point center_px = (cvtValue2Pixel(center) - offset) * zoom;
+        cv::Point center_px = (cvtValue2Pixel(center) - offset) * zoom + cv::Point2d(0.5, 0.5);
         cv::circle(image, center_px, iradius, color, thickness, linetype);
         return true;
     }
+
+    bool drawLine(cv::Mat& image, const cv::Point2d& val1, const cv::Point2d& val2, const cv::Vec3b& color, const cv::Point2d& offset = cv::Point2d(0, 0), double zoom = 1, int thickness = 1, int linetype = cv::LineTypes::LINE_8) const
+    {
+        if (thickness <= 0) return false;
+        if (image.empty()) clearCanvas(image);
+        int ithickness = (int)(thickness * zoom + 0.5);
+        if (ithickness < 1) ithickness = 1;
+
+        cv::Point px1 = (cvtValue2Pixel(val1) - offset)*zoom + cv::Point2d(0.5, 0.5); // + 0.5: Rounding
+        cv::Point px2 = (cvtValue2Pixel(val2) - offset)*zoom + cv::Point2d(0.5, 0.5); // + 0.5: Rounding
+        cv::line(image, px1, px2, color, ithickness, linetype);
+        return true;
+    }
+
+    bool drawLine(cv::Mat& image, const std::vector<cv::Point2d>& vals, const cv::Vec3b& color, const cv::Point2d& offset = cv::Point2d(0, 0), double zoom = 1, int thickness = 1, int linetype = cv::LineTypes::LINE_8) const
+    {
+        if (thickness <= 0 || vals.size() < 2) return false;
+        if (image.empty()) clearCanvas(image);
+        int ithickness = (int)(thickness * zoom + 0.5);
+        if (ithickness < 1) ithickness = 1;
+
+        cv::Point px_prev = (cvtValue2Pixel(vals.front()) - offset)*zoom + cv::Point2d(0.5, 0.5); // + 0.5: Rounding
+        for (size_t i = 1; i < vals.size(); i++)
+        {
+            cv::Point px = (cvtValue2Pixel(vals[i]) - offset)*zoom + cv::Point2d(0.5, 0.5); // + 0.5: Rounding
+            cv::line(image, px_prev, px, color, ithickness, linetype);
+            px_prev = px;
+        }
+        return true;
+    }
+
 
 protected:
     double m_node_radius;

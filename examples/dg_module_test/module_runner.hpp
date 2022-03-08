@@ -93,6 +93,11 @@ public:
         {
             bool update_gui = false;
             cv::Mat result_image;
+
+            std::vector<dg::POI*> pois;
+            std::vector<dg::Polar2> poi_relatives;
+            std::vector<double> poi_confidences;
+
             if (use_saved_testset)
             {
                 if (data_loader.getNext(type, vdata, sdata, data_time) == false) break;
@@ -268,14 +273,11 @@ public:
                 }
                 else if (module_sel == DG_OCR || module_sel == DG_POI)
                 {
-                    std::vector<dg::Point2> poi_xys;
-                    std::vector<dg::Polar2> relatives;
-                    std::vector<double> poi_confidences;
-                    if (m_ocr_localizer->apply(video_image, capture_time, poi_xys, relatives, poi_confidences))
+                    if (m_ocr_localizer->apply(video_image, capture_time, pois, poi_relatives, poi_confidences))
                     {
-                        for (size_t i = 0; i < poi_xys.size(); i++)
+                        for (size_t i = 0; i < pois.size(); i++)
                         {
-                            bool success = localizer->applyPOI(poi_xys[i], relatives[i], data_time, poi_confidences[i]);
+                            bool success = localizer->applyPOI(*(pois[i]), poi_relatives[i], data_time, poi_confidences[i]);
                             if (!success) fprintf(stderr, "applyPOI() was failed.\n");
                         }
                     }
@@ -368,6 +370,23 @@ public:
                     cv::Point2d pose_px = (gui_painter->cvtValue2Pixel(pose) - cv::Point2d(m_viewport.offset())) * m_viewport.zoom();
                     cv::Point2d head_px(scaled_radius* m_viewport.zoom() * cos(pose.theta), -scaled_radius * m_viewport.zoom() * sin(pose.theta));
                     cv::line(out_image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, (int)(scaled_thickness * m_viewport.zoom())); // Robot heading
+                }
+
+                // Draw matched POIs
+                for (size_t k = 0; k < pois.size(); k++)
+                {
+                    // poi position
+                    int radius = 6;
+                    double scaled_radius = (m_viewport.zoom() >= 2) ? radius * 2 / m_viewport.zoom() : radius;
+                    int scaled_thickness = (m_viewport.zoom() >= 4) ? 1 : 2;
+                    gui_painter->drawPoint(out_image, *(pois[k]), scaled_radius, cv::Vec3b(255, 255, 0), m_viewport.offset(), m_viewport.zoom());  // sky color for POI position
+
+                    // robot position estimated from relative pose
+                    double poi_theta = pose.theta - (CV_PI/2 - poi_relatives[k].ang);
+                    double rx = pois[k]->x - poi_relatives[k].lin * cos(poi_theta);
+                    double ry = pois[k]->y - poi_relatives[k].lin * sin(poi_theta);
+                    gui_painter->drawPoint(out_image, cv::Point2d(rx, ry), scaled_radius, cv::Vec3b(0, 0, 255), m_viewport.offset(), m_viewport.zoom());  // sky color for POI position
+                    gui_painter->drawLine(out_image, *(pois[k]), cv::Point2d(rx,ry), cv::Vec3b(0, 0, 255), m_viewport.offset(), m_viewport.zoom(), scaled_thickness);
                 }
 
                 // Draw debugging info (localizer)

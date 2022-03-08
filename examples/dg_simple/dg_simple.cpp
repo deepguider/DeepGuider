@@ -1344,14 +1344,14 @@ bool DeepGuider::procOcr()
     cv::Mat cam_image = m_cam_image.clone();
     m_cam_mutex.unlock();
 
-    std::vector<dg::Point2> poi_xys;
+    std::vector<dg::POI*> pois;
     std::vector<dg::Polar2> relatives;
     std::vector<double> poi_confidences;
-    if (m_ocr.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
+    if (m_ocr.apply(cam_image, capture_time, pois, relatives, poi_confidences))
     {
-        for (int k = 0; k < (int)poi_xys.size(); k++)
+        for (int k = 0; k < (int)pois.size(); k++)
         {
-            m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
+            m_localizer.applyPOI(*(pois[k]), relatives[k], capture_time, poi_confidences[k]);
         }
     }
 
