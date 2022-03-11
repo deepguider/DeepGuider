@@ -453,8 +453,8 @@ namespace dg
 			std::wstring s2(decompose(c2, &type2));
 			if(m_check_jungsung_type && type1*type2<0) return 1;
 
-			int n_min = (s1.length() < s2.length()) ? s1.length() : s2.length();
-			int n_max = (s1.length() > s2.length()) ? s1.length() : s2.length();
+			int n_min = (s1.length() < s2.length()) ? (int)s1.length() : (int)s2.length();
+			int n_max = (s1.length() > s2.length()) ? (int)s1.length() : (int)s2.length();
 			double cost = 0;
 			for(int i = 0; i < n_min; i++)
 			{
