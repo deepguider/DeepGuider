@@ -254,7 +254,7 @@ namespace dg
             return true;
         }
 
-        virtual void setPose(const dg::Pose2& pose)
+        virtual void setPose(const dg::Pose2& pose, Timestamp time = -1)
         {
             cv::AutoLock lock(m_mutex);
             m_state_vec = 0;
@@ -263,6 +263,7 @@ namespace dg
             m_state_vec.at<double>(2) = pose.theta;
             m_state_cov = cv::Mat::eye(5, 5, m_state_vec.type());
             m_pose_initialized = true;
+            if (time >= 0) m_time_last_update = time;
         }
 
         virtual Pose2 getPose(Timestamp* timestamp = nullptr) const
@@ -455,7 +456,7 @@ namespace dg
 
             // check degenerate case
             double dx = clue_xy.x - m_state_vec.at<double>(0);
-            double dy = clue_xy.x - m_state_vec.at<double>(1);
+            double dy = clue_xy.y - m_state_vec.at<double>(1);
             double dr = sqrt(dx * dx + dy * dy);
 
             double interval = 0;

@@ -170,10 +170,10 @@ namespace dg
             return BaseLocalizer::setShared(shared);
         }
 
-        virtual void setPose(const Pose2 pose)
+        virtual void setPose(const Pose2 pose, Timestamp time = -1)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_ekf) m_ekf->setPose(pose);
+            if (m_ekf) m_ekf->setPose(pose, time);
             m_state_history.resize(m_history_size);
             m_observation_history.resize(m_history_size);
             m_pose_history.resize(m_history_size);
