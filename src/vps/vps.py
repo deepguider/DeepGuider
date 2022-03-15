@@ -740,28 +740,28 @@ class vps:
             confidences.append(conf)
         return confidences
 
-    def get_pan_tilt(self, R):
-        ''' Get pan(yaw) and tile(pitch) of unit vector on z-axis(to proceeding direction)
-            Eq. 4 at  https://darkpgmr.tistory.com/122
-        '''
-        unit_z = [0,0,1]
-        Zc = unit_z
-        Zw = np.matmul(R.T, Zc) + 0  # translation (0) is not requried to calculate angle. R_inv is R.T in case of rotation matrix.
-        pan = math.atan2(Zw[1], Zw[0]) - math.pi/2
-        tilt = math.atan2(Zw[2], math.sqrt(Zw[0]*Zw[0] + Zw[1]*Zw[1]))
-        return pan, tilt
+#    def get_pan_tilt(self, R):
+#        ''' Get pan(yaw) and tile(pitch) of unit vector on z-axis(to proceeding direction)
+#            Eq. 4 at  https://darkpgmr.tistory.com/122
+#        '''
+#        unit_z = [0,0,1]
+#        Zc = unit_z
+#        Zw = np.matmul(R.T, Zc) + 0  # translation (0) is not requried to calculate angle. R_inv is R.T in case of rotation matrix.
+#        pan = math.atan2(Zw[1], Zw[0]) - math.pi/2
+#        tilt = math.atan2(Zw[2], math.sqrt(Zw[0]*Zw[0] + Zw[1]*Zw[1]))
+#        return pan, tilt
 
-    def get_relativePoseRt(self, mode='normal', feature_display=False):
+    def get_relativePose(self, mode='normal', Tx=6.0, feature_display=False):  # lane*2 = 6 meter
         if self.mod_rPose is None:
-            self.mod_rPose = relativePose()
-            self.mod_rPose.display_init_pose()
-            self.mod_rPose.get_dg_camera_matrix()
+            #self.mod_rPose = relativePose(mode='test', swap_input=True)
+            self.mod_rPose = relativePose(mode='normal', swap_input=True)
             self.img1_path = []
 
         if 'normal' in mode.lower():   # Normal, compare (db, q)
             self.img1_path = self.qImage[0]
             self.img2_path = self.dbImage[self.pred_idx[0,0]]
-            R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
+            #R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
+            R, t = self.mod_rPose.get_Rt(self.img1_path, self.img2_path)
         elif 'debug_matching' in mode.lower():  # debug, compare q(t-1), q(t) using single visual odometry without tracking
             if len(self.img1_path) == 0:  # Initial time
                 self.img1_path = self.qImage[0]
@@ -813,23 +813,17 @@ class vps:
                     IDs[0] = 0
                     Confs[0] = -1
 
-        R, t = self.get_relativePoseRt('zero')
+        R, t = self.get_relativePose('zero')
+
         if relativePose_enable == True:
             if Confs[0] > 0.4:
-                R, t = self.get_relativePoseRt('normal')
-        #    self.get_relativePoseRt('debug_matching', feature_display=True)
-        
-        # relative = np.concatenate((R, t), axis=1)  # [3x3 | 3x1] ==> [3x4]
-        if True:
-            scale = 1.0
-        else:
-            scale = 3 / (t[1]+ 1e-6)  # Assume that ty*scale is 3 meter which is the distance between road center(cam_db) and sidewalk center(cam_q)
-            scale = min(scale, 10.0)  # maximum is 10 meters
+                R, t = self.get_relativePose('normal')
 
-        t_scaled = t * scale
-        pan, tilt = self.get_pan_tilt(R)
-        print("[vps] =============> pan(deg), [tx,ty,tz], scale : {}, {}, {}, {}, {}".format(np.rad2deg(pan), t[0], t[1], t[2], scale))
-        return [IDs, Confs, pan, t_scaled.tolist()]  # [[id1, id2, ..., idn], [conf1, conf2, ..., confn], pan, scale*[tx, ty, tz]], where pan and (tx, ty, tz) is for top-1.
+        pan, tilt = self.mod_rPose.get_pan_tilt(R)
+        db_pos = [0,0,0]
+        _, query_pos = self.mod_rPose.update_pos(R, t, Tx=6.0, prevR=np.eye(3), prevPos=db_pos)
+        print("[vps] =============> pan(deg) : {}, [tx,ty,tz] : {}".format(np.rad2deg(pan), query_pos))
+        return [IDs, Confs, pan, query_pos.tolist()]  # [[id1, id2, ..., idn], [conf1, conf2, ..., confn], pan, scale*[tx, ty, tz]], where pan and (tx, ty, tz) is for top-1.
 
     def set_radius_by_accuracy(self, gps_accuracy=0.79):
         self.roi_radius = int(10 + 190*(1-gps_accuracy))  # 10 meters ~ 200 meters, 0.79 for 50 meters
