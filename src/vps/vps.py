@@ -77,7 +77,7 @@ class vps:
         self.device = torch.device(device)
         self.set_region(region)
         self.load_dbfeat_initialized = False
-
+        self.Tx = 6.0  # Distance from roadview cam to query cam in meter.
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -740,57 +740,49 @@ class vps:
             confidences.append(conf)
         return confidences
 
-#    def get_pan_tilt(self, R):
-#        ''' Get pan(yaw) and tile(pitch) of unit vector on z-axis(to proceeding direction)
-#            Eq. 4 at  https://darkpgmr.tistory.com/122
-#        '''
-#        unit_z = [0,0,1]
-#        Zc = unit_z
-#        Zw = np.matmul(R.T, Zc) + 0  # translation (0) is not requried to calculate angle. R_inv is R.T in case of rotation matrix.
-#        pan = math.atan2(Zw[1], Zw[0]) - math.pi/2
-#        tilt = math.atan2(Zw[2], math.sqrt(Zw[0]*Zw[0] + Zw[1]*Zw[1]))
-#        return pan, tilt
-
-    def get_relativePose(self, mode='normal', Tx=6.0, feature_display=False):  # lane*2 = 6 meter
+    def get_relativePose(self, mode='normal', Tx=None):  # lane*2 = 6 meter
+        if Tx is None:
+            Tx = self.Tx
         if self.mod_rPose is None:
-            #self.mod_rPose = relativePose(mode='test', swap_input=True)
-            self.mod_rPose = relativePose(mode='normal', swap_input=True)
+            self.mod_rPose = relativePose(mode='normal', Tx=Tx)
             self.img1_path = []
 
         if 'normal' in mode.lower():   # Normal, compare (db, q)
             self.img1_path = self.qImage[0]
             self.img2_path = self.dbImage[self.pred_idx[0,0]]
-            #R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
             R, t = self.mod_rPose.get_Rt(self.img1_path, self.img2_path)
-        elif 'debug_matching' in mode.lower():  # debug, compare q(t-1), q(t) using single visual odometry without tracking
-            if len(self.img1_path) == 0:  # Initial time
-                self.img1_path = self.qImage[0]
-            self.img2_path = self.qImage[0]
-            self.mod_rPose.set_camera_matrix_1(self.mod_rPose.camera_matrix_1, self.mod_rPose.distCoeffs_1)  # default
-            self.mod_rPose.set_camera_matrix_2(self.mod_rPose.camera_matrix_1, self.mod_rPose.distCoeffs_1)  # Use same parameter of cam1 to cam2
-            R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
-            self.img1_path = copy.deepcopy(self.mod_rPose.img2)  # Update img1_path(==previous query) with current query image
+            if False:  # Save images for debugging
+                save_idx = int(self.timestamp)
+                fname_db = "vps_img/{}_cam1_db_{}".format(save_idx, os.path.basename(self.img2_path))
+                fname_q = "vps_img/{}_cam2_query.jpg".format(save_idx)
+                img_q = self.mod_rPose.get_img(self.img1_path, gray_enable=False)
+                img_db = self.mod_rPose.get_img(self.img2_path, gray_enable=False)
+                try:
+                    if (len(img_q) > 0) and (len(img_db) > 0):
+                       cv2.imwrite(fname_q, img_q)
+                       cv2.imwrite(fname_db, img_db)
+                except:
+                    pass
 
-            self.mod_rPose.get_dg_camera_matrix()  # Restore camera matrix for normal mode
-        elif 'debug_tracking' in mode.lower():  # debug, compare q(t-1), q(t) using mono visual odometry with tracking
-            if len(self.img1_path) == 0:  # Initial time
-                self.img1_path = self.qImage[0]
-            R, t = self.mod_rPose.visual_odometry(self.qImage[0])
         elif 'zero' in mode.lower():
             R, t = self.mod_rPose.get_zero_Rt()
         else:
             self.img1_path = self.qImage[0]
             self.img2_path = self.dbImage[self.pred_idx[0,0]]
-            R, t = self.mod_rPose.get_relativePose(self.img1_path, self.img2_path)
-
-        if 'debug_' in mode.lower():
-            self.mod_rPose.display_update_pose(R, t)        
-            if feature_display == True:  # To do : bug report : It stops after display first image.
-                img = cv2.drawKeypoints(self.mod_rPose.img2, self.mod_rPose.kps2, None)
-                cv2.imshow('features_in_db', img)
-                cv2.waitKey(1)
+            R, t = self.mod_rPose.get_Rt(self.img1_path, self.img2_path)
 
         return R, t
+
+    def check_cam2_pose(self, pan, tilt, cam2_pose):
+        # Check validation of R|t with simple constraint.
+        valid = False
+        (x, y, z) = cam2_pose
+        if np.abs(pan) < 45:
+            if np.abs(tilt) < 30:
+                if np.abs(x) < 1.5*self.Tx:
+                    if np.abs(z) < 5*self.Tx:
+                        valid = True
+        return valid
 
     def getIDConf(self, relativePose_enable=False):
         if self.checking_return_value() < 0:
@@ -817,13 +809,16 @@ class vps:
 
         if relativePose_enable == True:
             if Confs[0] > 0.4:
-                R, t = self.get_relativePose('normal')
+                R0, t0 = self.get_relativePose('normal')
+                pan, tilt = self.mod_rPose.get_pan_tilt(R0)
+                query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R0, t0)
+                if self.check_cam2_pose(pan, tilt, query_cam2_pos) == True:
+                    R, t = R0, t0
 
-        pan, tilt = self.mod_rPose.get_pan_tilt(R)
-        db_pos = [0,0,0]
-        _, query_pos = self.mod_rPose.update_pos(R, t, Tx=6.0, prevR=np.eye(3), prevPos=db_pos)
-        print("[vps] =============> pan(deg) : {}, [tx,ty,tz] : {}".format(np.rad2deg(pan), query_pos))
-        return [IDs, Confs, pan, query_pos.tolist()]  # [[id1, id2, ..., idn], [conf1, conf2, ..., confn], pan, scale*[tx, ty, tz]], where pan and (tx, ty, tz) is for top-1.
+        query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R, t)
+
+        print("[vps] ===> relativePose(red dot on map), pan(deg) : {0:.2f}, query_cam_position : ({1:.2f}, {2:.2f}, {3:.2f})".format(np.rad2deg(pan), query_cam2_pos[0], query_cam2_pos[1], query_cam2_pos[2]))
+        return [IDs, Confs, pan, query_cam2_pos.tolist()]  # [[id1, id2, ..., idn], [conf1, conf2, ..., confn], pan, scale*[tx, ty, tz]], where pan and (tx, ty, tz) is for top-1.
 
     def set_radius_by_accuracy(self, gps_accuracy=0.79):
         self.roi_radius = int(10 + 190*(1-gps_accuracy))  # 10 meters ~ 200 meters, 0.79 for 50 meters

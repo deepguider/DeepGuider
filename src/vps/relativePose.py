@@ -6,9 +6,10 @@ import copy
 import glob, os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+#from noise_filter import noise_filter
 
 class relativePose:
-    def __init__(self, mode='normal', swap_input=True):
+    def __init__(self, mode='normal', Tx=6.0, swap_input=False):
         self.n_features = 0
         self.lk_params = dict(winSize=(21, 21),
                      criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.03))
@@ -17,6 +18,7 @@ class relativePose:
         self.init_vo()
         self.mode = mode
         self.swap_input = swap_input   # swap input1 and input2
+        self.Tx = Tx  # Distance from cam1 to cam2 in x-direction in meter.
 
         if self.swap_input == True:
             self.set_camera_matrix_1(self.get_c930e_camera_matrix())
@@ -52,28 +54,49 @@ class relativePose:
             R, t = self.get_relativePose_by_vo(img1, img2)  # Input are image path or np.ndarray(cv2 image)
         else:
             R, t = self.get_relativePose(img1, img2)  # Input are image path or np.ndarray(cv2 image)
-    
+
         return R, t
 
-    @staticmethod
-    def update_pos(R, t, Tx=6.0, prevR=None, prevPos=[0,0,0]):
-        ''' 
-            Tx = 6.0  # scale* tx = Tx meter. Metric distance between center of cam0 and cam1 in x-direction (left to right)
-        '''
+    def get_absolute_scale(self, t, Tx=None):
+        if Tx is None:
+            Tx = self.Tx
+        eps = 1e-6
         (tx, ty, tz) = t 
-        scale = Tx / tx
+        scale = np.abs(Tx) / (np.abs(tx) + eps)
+        return scale
+
+    def get_cam2origin_on_cam1coordinate(self, R, t, Tx=None):
+        '''
+            Tx = 6.0  # scale* tx = Tx meter. Metric distance between center of cam0 and cam1 in x-direction (left to right)
+            From https://docs.opencv.org/3.4/d9/d0c/group__calib3d.html
+            Let, 
+                P1 : 3D point on camera 1 (Cam1) coordinate
+                P2 : 3D point on camera 2 (Cam2) coordinate
+                P2 = [R|t]P1 = R*P1 + t
+            Then,
+                For Cam1's origin in Cam2 coordinate (P2_cam1origin) : 
+                    P2_cam1origin = R*P1_cam1origin + t
+                    P2_cam1origin = R*(0,0,0)       + t = t = scale*(tx,ty,tz)
+                For Cam2's origin in Cam1 coordinate (P1_cam2origin): 
+                    P2_cam2origin = R*P1_cam2origin + t
+                    P2_cam2origin = (0,0,0)
+                               0  = R*P1_cam2origin + t
+                               -t = R*P1_cam2origin
+                               P1_cam2origin = -R_inv*t = -R.T*t, because R*(R.T) = I
+            We will return Cam2's origin on Cam coordinate as pos
+        '''
+        if Tx is None:
+            Tx = self.Tx
+        scale = self.get_absolute_scale(t, Tx)
+        t = scale * t
 
         # next two will be used as prevR and prevPos at next call
-        if prevR is None:
-            prevR = np.eye(3)
+        P1_cam2origin = - (R.T).dot(t)  # cam2's origin on cam1's coordinate
 
-        currPos = prevPos + scale * prevR.dot(t) 
-        currR = R.dot(prevR)
-
-        return currR, currPos
+        return P1_cam2origin
 
     @staticmethod
-    def check_t(t):
+    def check_cam2_pos(cam2_pos):
         '''
         C1: centre of cam1, C2: centre of cam2, t (tx,ty,tz) is tralslation from C1 to C2
     
@@ -88,12 +111,12 @@ class relativePose:
          Y                                   Y
         '''
         valid_t = False
-        (tx, ty, tz) = np.abs(t)
-        if t[0] > 0 :  # cam2 should be located to the right of of cam1. tx > 0
+        (tx, ty, tz) = np.abs(cam2_pos)
+        if tx > 0 :  # cam2 should be located to the right of of cam1. tx > 0
             if tx > ty*2 :  # |tx| (movement in left or right) should be at least 2 times greater than |ty| (altitude)
-                #if tz > ty*2:  # |tz| (movement in front or backward) should be at least 2 times greater than |ty| (altitude)
-                if tz < tx*3: # |tz| is three times smaller than |tx|
-                    valid_t = True
+                if tz > ty*2:  # |tz| (movement in front or backward) should be at least 2 times greater than |ty| (altitude)
+                    if tz < tx*5: # |tz| is three times smaller than |tx|
+                        valid_t = True
         return valid_t
 
     def get_roadview_camera_matrix(self):
@@ -537,9 +560,9 @@ def draw_vector(vec_start=[0,0,0], vec_end=[0.58, 0.58, 0.58]):
         draw_vector_ax = draw_vector_fig.add_subplot(1,1,1, projection='3d')
 
     plt.cla()
-    draw_vector_ax.set_xlim(-1,3)
-    draw_vector_ax.set_ylim(-1,3)
-    draw_vector_ax.set_zlim(-1,3)
+    draw_vector_ax.set_xlim(-1,30)
+    draw_vector_ax.set_ylim(-1,30)
+    draw_vector_ax.set_zlim(-1,30)
     draw_vector_ax.set_xlabel('X')
     draw_vector_ax.set_ylabel('Y')
     draw_vector_ax.set_zlabel('Z')
@@ -551,80 +574,68 @@ def draw_vector(vec_start=[0,0,0], vec_end=[0.58, 0.58, 0.58]):
     draw_vector_ax.quiver(vec_start[0], vec_start[1], vec_start[2], vec_end[0], vec_end[1], vec_end[2], color='black')
     plt.pause(0.1)
 
-def rigid(img_path, dx=0, dy=0, dz=0):
-    from image_transformer import ImageTransformer
-    it = ImageTransformer(img_path, None)
-    rotated_img = it.rotate_along_axis(phi = 0, dx=0, dy=dy, dz=700)
-    return True, rotated_img
-
-def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, feature_display=True, vector_display=True):
+def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, feature_display=True, vector_display=True, interlaced=False):
     '''
         feature_mode = 'normal' : two images ==> SIFT desc ==> matching ==> EssentialMatrix ==> R,t from recoverPose
         feature_mode = 'opticalflow' : two images ==> SIFT desc ==> matching ==> EssentialMatrix ==> R,t from recoverPose
     '''
-    cap = cv2.VideoCapture(video_src)
-    while(True):
-        ret, frame = cap.read()
-        skip_frame = skip_frame - 1
-        print("Skipping {}    \r".format(skip_frame), end='')
-        if skip_frame < 0:
-            break
-    H,W,C = frame.shape
-    print("H,W,C = ", H,W,C)
+    if ".avi" in video_src.lower():
+        cap = cv2.VideoCapture(video_src)
+    elif 0 == video_src.lower():
+        cap = cv2.VideoCapture(video_src)
+    else:
+        from simple_VideoCapture import simple_VideoCapture
+        cap = simple_VideoCapture(video_src, "jpg")
 
-    ref_img = frame # first image is query image.
+    if interlaced ==False:
+        while(True):
+            ret, frame = cap.read()
+            skip_frame = skip_frame - 1
+            print("Skipping {}    \r".format(skip_frame), end='')
+            if skip_frame < 0:
+                break
+        ref_img = frame # first image is query image.
 
     fig, ax = None, None
     mod_rPose = None
-    origin = [0,0,0]
     t = [0.57735027, 0.57735027,  0.57735027]
 
     global draw_vector_fig, draw_vector_ax
     draw_vector_fig = None
     draw_vector_ax = None
 
-    dz = 0
     fig_num = 100
     frame_num = 0
-    mod_rPose = relativePose(mode='test', swap_input=True)
-    #mod_rPose = relativePose(mode='normal', swap_input=True)
+    mod_rPose = relativePose(mode=feature_mode, Tx=Tx)
 
     while(True):
-        ret, img2 = cap.read()
-        #ret, img2 = rigid(img1, dz=dz)
-        dz = dz + 1
+        if interlaced == True:
+            ret1, img1 = cap.read()
+            ret2, img2 = cap.read()
+            ret = ret1 and ret2
+        else:
+            img1 = ref_img.copy()
+            ret, img2 = cap.read()
 
         if not ret:
             break
-        
-        img1 = ref_img.copy()
 
         print("Press [esc] to exit.")
         print(" Frame : {}".format(frame_num))
 
         frame_num = frame_num + 1
 
-        prev_R = np.eye(3)
         R, t = mod_rPose.get_Rt(img1, img2)  # Swapping input works fine. why?
         pan, tilt = mod_rPose.get_pan_tilt(R)
+        cam2_pos = mod_rPose.get_cam2origin_on_cam1coordinate(R, t)
 
-        if mod_rPose.check_t(prev_R.dot(t)) is False:
+        if mod_rPose.check_cam2_pos(cam2_pos) is False:
             print("\033[F", end='') # put the cursor to the previous line
             print("\033[F", end='') # put the cursor to the previous line
             continue
 
-        (tx, ty, tz) = prev_R.dot(t)
-
-        # Tx = 1.0  # scale* tx = 1.0 meter. Metric distance between center of cam0 and cam1 in x-direction (left to right)
-        scale = Tx / tx
-
-        pos = origin + scale * prev_R.dot(t)
-
-        # update prev_R, but it will not be used.
-        prev_R = R.dot(prev_R)
-
-        print("   >>         (tx,ty,tz)[meters] : ({0:02.3f}, {1:02.3f}, {2:02.3f})   ".format(tx, ty, tz))
-        print("   >> scale * (tx,ty,tz)[meters] : ({0:02.3f}, {1:02.3f}, {2:02.3f})   ".format(scale*tx, scale*ty, scale*tz))
+        print("   >> (tx,ty,tz)        : ({0:02.3f}, {1:02.3f}, {2:02.3f})   ".format(t[0], t[1], t[2]))
+        print("   >> Cam2's origin [m] : ({0:02.3f}, {1:02.3f}, {2:02.3f})   ".format(cam2_pos[0], cam2_pos[1], cam2_pos[2]))
         print("   >> pan[degree]: {0:03.3f}, tilt: {1:03.3f}    ".format(np.rad2deg(pan), np.rad2deg(tilt)))
         print("\033[F", end='') # put the cursor to the previous line
         print("\033[F", end='') # put the cursor to the previous line
@@ -633,29 +644,49 @@ def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, feature
         print("\033[F", end='') # put the cursor to the previous line
 
         if vector_display:
-            draw_vector(origin, pos)
+            cam1_pos = [0,0,0]
+            draw_vector(cam1_pos, cam2_pos)
 
         if feature_display:
-            if feature_mode.lower() in 'normal':
-                img = cv2.drawMatches(mod_rPose.img1, mod_rPose.raw_kps1, mod_rPose.img2, mod_rPose.raw_kps2, mod_rPose.good_matches, None, flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS )
-                #img = cv2.drawKeypoints(mod_rPose.img2, mod_rPose.kps2, None)
-            elif feature_mode.lower() in 'opticalflow':
+            if feature_mode.lower() in 'opticalflow':
                 img = mod_rPose.vo_result
-            cv2.imshow('features', img)
+            else:
+                img = cv2.drawMatches(mod_rPose.img1, mod_rPose.raw_kps1, mod_rPose.img2, mod_rPose.raw_kps2, mod_rPose.good_matches, None, flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS )
+            img_re = img_resize(img, w_resize=1000)
+            cv2.imshow('features', img_re)
         else:
-            w_re = 500
-            ratio = w_re / W
-            h_re = int(H*ratio)
-            cv2.imshow('img', cv2.resize(img2, (w_re, h_re)))
+            img1_re = img_resize(img1, w_resize=500)
+            cv2.imshow('img1', img1_re)
+            if interlaced == True:
+                img2_re = img_resize(img2, w_resize=500)
+                cv2.imshow('img2', img2_re)
 
         if cv2.waitKey(1000) & 0xFF == 27:  # Esc key to stop
-            print("\n\n\n\n\n")
             break
 
+    print("\n\n\n\n\n")
     cap.release()
     cv2.destroyAllWindows()
+
+def img_resize(img, w_resize=None, h_resize=None):
+    H,W,C = img.shape
+
+    if w_resize is not None:
+        ratio = w_resize / W
+        h_resize = int(H*ratio)
+
+    if h_resize is not None:
+        ratio = h_resize / H
+        w_resize = int(W*ratio)
+
+    if (w_resize == None) or (h_resize ==  None):
+        w_resize = W
+        h_resize = H
+
+    return cv2.resize(img, (w_resize, h_resize))
+
             
-def run_usbcam_simple(video_src=0, feature_mode='normal', Tx=1.0, feature_display=True, vector_display=True):
+def run_usbcam_simple(video_src=0, feature_mode='normal', Tx=1.0):
     cap = cv2.VideoCapture(video_src)
     ret, frame = cap.read()
     ref_img = frame # first image is query image.
@@ -669,11 +700,9 @@ def run_usbcam_simple(video_src=0, feature_mode='normal', Tx=1.0, feature_displa
     draw_vector_fig = None
     draw_vector_ax = None
 
-    dz = 0
     fig_num = 100
     frame_num = 0
-    mod_rPose = relativePose(mode='test', swap_input=True)
-    #mod_rPose = relativePose(mode='normal', swap_input=True)
+    mod_rPose = relativePose(mode=feature_mode, Tx=Tx)
     while(True):
         ret, img2 = cap.read()
         if not ret:
@@ -682,15 +711,10 @@ def run_usbcam_simple(video_src=0, feature_mode='normal', Tx=1.0, feature_displa
 
         R, t = mod_rPose.get_Rt(img1, img2)  # Swapping input works fine. why?
         pan, tilt = mod_rPose.get_pan_tilt(R)
+        cam2_pos = mod_rPose.get_cam2origin_on_cam1coordinate(R, t)
 
-        # Tx = 1.0  # scale* tx = 1.0 meter. Metric distance between center of cam0 and cam1 in x-direction (left to right)
-        (tx, ty, tz) = t
-        scale = Tx / tx
-        pos = [0,0,0] + scale * np.eye(3).dot(t)
-
-
-        print("   >>         (tx,ty,tz)[meters] : ({0:02.3f}, {1:02.3f}, {2:02.3f})   ".format(tx, ty, tz))
-        print("   >> scale * (tx,ty,tz)[meters] : ({0:02.3f}, {1:02.3f}, {2:02.3f})   ".format(scale*tx, scale*ty, scale*tz))
+        print("   >> (tx,ty,tz)        : ({0:02.3f}, {1:02.3f}, {2:02.3f})   ".format(t[0], t[1], t[2]))
+        print("   >> Cam2's origin [m] : ({0:02.3f}, {1:02.3f}, {2:02.3f})   ".format(cam2_pos[0], cam2_pos[1], cam2_pos[2]))
         print("   >> pan[degree]: {0:03.3f}, tilt: {1:03.3f}    ".format(np.rad2deg(pan), np.rad2deg(tilt)))
         print("==================================================")
 
@@ -705,11 +729,26 @@ def run_usbcam_simple(video_src=0, feature_mode='normal', Tx=1.0, feature_displa
     cap.release()
     cv2.destroyAllWindows()
 
+
 if __name__ == "__main__":
-#    run_kitti()
+    ## Prepare dataset
+    #interlaced = False # video sequence : ref, tar1, tar2, tar2, tar3, ...
+    #interlaced = True  # video sequence : db0, q0, db1, q1, ... , dbn, qn
+    
+    #feature_mode = "test"  # Same camera for cam1, cam2  
+    #feature_mode = "normal" # cam1 is roadview, cam2 is logitech c903e
+
+    feature_display=True
+    vector_display=True
+
+    ############################
+    ## Choose one in following :
     #video_src = 0  # usb cam
-    video_src = "./video.avi"
-    run_usbcam(video_src, feature_mode='test', Tx=1.0, skip_frame=0, feature_display=False, vector_display=True)
-    #run_usbcam_simple(video_src, feature_mode='test', Tx=1.0, feature_display=True, vector_display=True)
-    #run_usbcam(video_src, feature_mode='normal', Tx=1.0, skip_frame=0, feature_display=False, vector_display=True)
-    #run_usbcam(video_src, feature_mode='opticalflow', skip_frame=2, feature_display=True, vector_display=True)
+    #video_src = "./video_indoor.avi"; Tx=1.0; feature_mode = "test"; interlaced = False
+    video_src = "./test_relativePose_outdoor.avi"; Tx=6.0; feature_mode = "test"; interlaced = False
+    #video_src = "../../bin/vps_img"; Tx=6.0; feature_mode = "normal"; interlaced = True
+    ############################
+
+    ## Run
+    run_usbcam(video_src, feature_mode=feature_mode, Tx=Tx, skip_frame=0, feature_display=feature_display, vector_display=vector_display, interlaced=interlaced)
+    #run_kitti()
