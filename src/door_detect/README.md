@@ -15,7 +15,9 @@ python train.py --img 640 --batch 16 --epochs 3 --data door.yaml --weights check
 ```
 
 ### For testing
-Put input images in `./test`.
+Put input images in `test`.
 ```
 python test_wrapper.py
 ```
+The detected results are saved in the `result` folder together with the image containing the detection results.
+In `result/labels`, the detection result for each image is saved as a `filename.txt` file.
