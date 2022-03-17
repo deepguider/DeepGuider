@@ -774,11 +774,13 @@ class vps:
         return R, t
 
     def check_cam2_pose(self, pan, tilt, cam2_pose):
+        pan_deg = np.rad2deg(pan)
+        tilt_deg = np.rad2deg(tilt)
         # Check validation of R|t with simple constraint.
         valid = False
         (x, y, z) = cam2_pose
-        if np.abs(pan) < 45:
-            if np.abs(tilt) < 30:
+        if np.abs(pan_deg) < 90:
+            if np.abs(tilt_deg) < 50:
                 if np.abs(x) < 1.5*self.Tx:
                     if np.abs(z) < 5*self.Tx:
                         valid = True
@@ -816,6 +818,7 @@ class vps:
                     R, t = R0, t0
 
         query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R, t)
+        pan, tilt = self.mod_rPose.get_pan_tilt(R)
 
         print("[vps] ===> relativePose(red dot on map), pan(deg) : {0:.2f}, query_cam_position : ({1:.2f}, {2:.2f}, {3:.2f})".format(np.rad2deg(pan), query_cam2_pos[0], query_cam2_pos[1], query_cam2_pos[2]))
         return [IDs, Confs, pan, query_cam2_pos.tolist()]  # [[id1, id2, ..., idn], [conf1, conf2, ..., confn], pan, scale*[tx, ty, tz]], where pan and (tx, ty, tz) is for top-1.

@@ -940,8 +940,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             // Draw streetview's gps location
             if (sv)m_painter.drawPoint(image, *sv, 6, cv::Vec3b(255, 255, 0), view_offset, view_zoom);  // sky color for streetview position
             // Draw streetview's gps location with relative pose (tz).
-            sv_xy.x = sv_xy.x;
-            sv_xy.y = sv_xy.y + sv_relative.lin;
+            sv_xy.x = sv_xy.x + sv_relative.lin * cos(3.141592/2 + sv_relative.ang);
+            sv_xy.y = sv_xy.y + sv_relative.lin * sin(3.141592/2 + sv_relative.ang);
             if (sv)m_painter.drawPoint(image, sv_xy, 6, cv::Vec3b(0, 0, 255), view_offset, view_zoom); // red color for  streetview position with relative pose
         }
     }
