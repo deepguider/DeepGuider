@@ -29,6 +29,14 @@ public:
     virtual bool setParamMotionNoise(double sigma_linear_velocity, double sigma_angular_velocity_deg, double cov_lin_ang = 0) = 0;
 
     /**
+     * Set bounds of motion
+     * @param max_linear_velocity Max. velocity of linear motion (Unit: [m/sec])
+     * @param max_angular_velocity_deg Max. velocity of angular motion (Unit: [deg/sec])
+     * @param min_linear_velocity Min. velocitiy of linear motion (-1: undefined)
+     */
+    virtual bool setParamMotionBounds(double max_linear_velocity, double max_angular_velocity_deg, double min_linear_velocity = -1) = 0;
+
+    /**
      * Set error covariance of GPS
      * @param sigma_normal Standard deviation of gps position at normal (Unit: [m])
      * @param sigma_deadzone Standard deviation of gps position at deadzone (Unit: [deg])
@@ -44,11 +52,25 @@ public:
 
     /**
      * Set error covariance of POI observation
+     * @param sigma_position Standard deviation of position error of POI localization (Unit: [m])
+     * @param sigma_theta_deg Standard deviation of orientation error of POI localization (Unit: [deg])
+     */
+    virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg) = 0;
+
+    /**
+     * Set error covariance of VPS observation
+     * @param sigma_position Standard deviation of position error of VPS localization (Unit: [m])
+     * @param sigma_theta_deg Standard deviation of orientation error of VPS localization (Unit: [deg])
+     */
+    virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg) = 0;
+
+    /**
+     * Set error covariance of POI observation
      * @param sigma_rel_dist Standard deviation of estimated relative distance (Unit: [m])
      * @param sigma_rel_theta_deg Standard deviation of estimated relative orientation (Unit: [deg])
      * @param sigma_position Standard deviation of position error of POI (Unit: [m])
      */
-    virtual bool setParamPOINoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1) = 0;
+    virtual bool setParamPOINoiseRelative(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position) = 0;
 
     /**
      * Set error covariance of VPS observation
@@ -56,7 +78,7 @@ public:
      * @param sigma_rel_theta_deg Standard deviation of estimated relative orientation (Unit: [deg])
      * @param sigma_position Standard deviation of position error of StreetView (Unit: [m])
      */
-    virtual bool setParamVPSNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1) = 0;
+    virtual bool setParamVPSNoiseRelative(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position) = 0;
 
     /**
      * Set error covariance of Intersection-based localization
@@ -126,26 +148,28 @@ public:
     virtual bool applyRoadTheta(double theta, Timestamp time = -1, double confidence = -1) = 0;
 
     /**
-     * Apply position observation from POI localizer
+     * Apply relative position observation from POI localizer
      * @param clue_xy The coordinate of observed clue
      * @param relative The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
      *  If relative.lin < 0, the relative distance is invalid. If relative.ang >= CV_PI, the relative angle is invalid.
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
+     * @param use_relative_model Use relative observation model in EKF if True
      * @return True if successful (false if failed)
      */
-    virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
+    virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false) = 0;
 
     /**
-     * Apply position observation from VPS localizer
+     * Apply relative position observation from VPS localizer
      * @param clue_xy The coordinate of observed clue
      * @param relative The relative distance and angle of the observed clue (Unit: [m] and [rad])<br>
      *  If relative.lin < 0, the relative distance is invalid. If relative.ang >= CV_PI, the relative angle is invalid.
      * @param time The observed time (Unit: [sec])
      * @param confidence The observation confidence
+     * @param use_relative_model Use relative observation model in EKF if True
      * @return True if successful (false if failed)
      */
-    virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1) = 0;
+    virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false) = 0;
 
     /**
      * Apply position observation from Intersection-based localizer

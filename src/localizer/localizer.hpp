@@ -170,10 +170,11 @@ namespace dg
             return BaseLocalizer::setShared(shared);
         }
 
-        virtual void setPose(const Pose2 pose, Timestamp time = -1)
+        virtual void setPose(const Pose2 pose, Timestamp time = -1, bool reset_velocity = true, bool reset_cov = true)
+
         {
             cv::AutoLock lock(m_mutex);
-            if (m_ekf) m_ekf->setPose(pose, time);
+            if (m_ekf) m_ekf->setPose(pose, time, reset_velocity, reset_cov);
             m_state_history.resize(m_history_size);
             m_observation_history.resize(m_history_size);
             m_pose_history.resize(m_history_size);
@@ -185,6 +186,13 @@ namespace dg
         {
             cv::AutoLock lock(m_mutex);
             if (m_ekf) return m_ekf->setParamMotionNoise(sigma_linear_velocity, sigma_angular_velocity_deg, cov_lin_ang);
+            return false;
+        }
+
+        virtual bool setParamMotionBounds(double max_linear_velocity, double max_angular_velocity_deg, double min_linear_velocity = -1)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (m_ekf) return m_ekf->setParamMotionBounds(max_linear_velocity, max_angular_velocity_deg, min_linear_velocity);
             return false;
         }
 
@@ -223,17 +231,31 @@ namespace dg
             return false;
         }
 
-        virtual bool setParamPOINoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
+        virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_ekf) return m_ekf->setParamPOINoise(sigma_rel_dist, sigma_rel_theta_deg, sigma_position);
+            if (m_ekf) return m_ekf->setParamPOINoise(sigma_position, sigma_theta_deg);
             return false;
         }
 
-        virtual bool setParamVPSNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
+        virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_ekf) return m_ekf->setParamVPSNoise(sigma_rel_dist, sigma_rel_theta_deg, sigma_position);
+            if (m_ekf) return m_ekf->setParamVPSNoise(sigma_position, sigma_theta_deg);
+            return false;
+        }
+
+        virtual bool setParamPOINoiseRelative(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (m_ekf) return m_ekf->setParamPOINoiseRelative(sigma_rel_dist, sigma_rel_theta_deg, sigma_position);
+            return false;
+        }
+
+        virtual bool setParamVPSNoiseRelative(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (m_ekf) return m_ekf->setParamVPSNoiseRelative(sigma_rel_dist, sigma_rel_theta_deg, sigma_position);
             return false;
         }
 
@@ -298,7 +320,7 @@ namespace dg
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
 
-        virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+        virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false)
         {
             cv::AutoLock lock(m_mutex);
             if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
@@ -307,13 +329,13 @@ namespace dg
                 return applyPathLocalizer(m_ekf->getPose(), time);
             }
             else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
-            if (!m_ekf->applyPOI(clue_xy, relative, time, confidence)) return false;
+            if (!m_ekf->applyPOI(clue_xy, relative, time, confidence, use_relative_model)) return false;
             saveObservation(ObsData::OBS_POI, clue_xy, relative, time, confidence);
             saveEKFState(m_ekf, time);
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
 
-        virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+        virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false)
         {
             cv::AutoLock lock(m_mutex);
             if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
@@ -322,7 +344,7 @@ namespace dg
                 return applyPathLocalizer(m_ekf->getPose(), time);
             }
             else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
-            if (!m_ekf->applyVPS(clue_xy, relative, time, confidence)) return false;
+            if (!m_ekf->applyVPS(clue_xy, relative, time, confidence, use_relative_model)) return false;
             saveObservation(ObsData::OBS_VPS, clue_xy, relative, time, confidence);
             saveEKFState(m_ekf, time);
             return applyPathLocalizer(m_ekf->getPose(), time);

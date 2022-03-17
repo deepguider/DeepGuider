@@ -11,6 +11,9 @@ namespace dg
     protected:
         // configuable parameters
         cv::Mat m_motion_noise;
+        double m_max_linear_velocity;
+        double m_min_linear_velocity;
+        double m_max_angular_velocity;
         cv::Mat m_gps_noise_normal;
         cv::Mat m_gps_noise_deadzone;
         cv::Mat m_gps_noise;
@@ -26,12 +29,15 @@ namespace dg
         Polar2 m_camera_offset;
         cv::Mat m_poi_noise;
         cv::Mat m_vps_noise;
+        cv::Mat m_poi_noise_relative;
+        cv::Mat m_vps_noise_relative;
         cv::Mat m_intersectcls_noise;
         cv::Mat m_observation_noise;
         double m_threshold_time;
         double m_threshold_clue_dist;
         double m_norm_conf_a;
         double m_norm_conf_b;
+        Polar2 m_sensor_offset;
 
         // Internal variables
         bool m_pose_initialized;
@@ -42,6 +48,9 @@ namespace dg
         {
             // Parameters
             m_motion_noise = cv::Mat::eye(2, 2, CV_64F);
+            m_max_linear_velocity = -1;
+            m_min_linear_velocity = -1;
+            m_max_angular_velocity = -1;
             m_gps_noise_normal = cv::Mat::eye(2, 2, CV_64F);
             m_gps_noise_deadzone = 10 * cv::Mat::eye(2, 2, CV_64F);
             m_gps_noise = m_gps_noise_normal;
@@ -53,10 +62,13 @@ namespace dg
             m_imu_compass_prev_time = -1;
             m_roadtheta_noise = (cv::Mat_<double>(1, 1) << cx::cvtDeg2Rad(1));
             m_roadtheta_offset = 0;
-            m_poi_noise = cv::Mat::eye(4, 4, CV_64F);
-            m_vps_noise = cv::Mat::eye(4, 4, CV_64F);
+            m_poi_noise = cv::Mat::eye(3, 3, CV_64F);
+            m_vps_noise = cv::Mat::eye(3, 3, CV_64F);
+            m_poi_noise_relative = cv::Mat::eye(4, 4, CV_64F);
+            m_vps_noise_relative = cv::Mat::eye(4, 4, CV_64F);
             m_intersectcls_noise = cv::Mat::eye(2, 2, CV_64F);
             m_camera_offset = Polar2(0, 0);
+            m_sensor_offset = Polar2(0, 0);
 
             m_threshold_time = 0.01;    // second
             m_threshold_clue_dist = 1e-6;
@@ -88,6 +100,8 @@ namespace dg
             //CX_LOAD_PARAM_COUNT(fn, "camera_offset", m_camera_offset, n_read); // cv::read() doesn't support Polar2
             CX_LOAD_PARAM_COUNT(fn, "poi_noise", m_poi_noise, n_read);
             CX_LOAD_PARAM_COUNT(fn, "vps_noise", m_vps_noise, n_read);
+            CX_LOAD_PARAM_COUNT(fn, "poi_noise_relative", m_poi_noise_relative, n_read);
+            CX_LOAD_PARAM_COUNT(fn, "vps_noise_relative", m_vps_noise_relative, n_read);
             CX_LOAD_PARAM_COUNT(fn, "intersectcls_noise", m_intersectcls_noise, n_read);
             CX_LOAD_PARAM_COUNT(fn, "threshold_time", m_threshold_time, n_read);
             CX_LOAD_PARAM_COUNT(fn, "threshold_clue_dist", m_threshold_clue_dist, n_read);
@@ -110,17 +124,26 @@ namespace dg
         virtual bool setParamMotionNoise(double sigma_linear_velocity, double sigma_angular_velocity_deg, double cov_lin_ang = 0)
         {
             cv::AutoLock lock(m_mutex);
-            double v = sigma_linear_velocity;
-            double w = cx::cvtDeg2Rad(sigma_angular_velocity_deg);
-            m_motion_noise = (cv::Mat_<double>(2, 2) << v * v, cov_lin_ang, cov_lin_ang, w * w);
+            double sv = sigma_linear_velocity;
+            double sw = cx::cvtDeg2Rad(sigma_angular_velocity_deg);
+            m_motion_noise = (cv::Mat_<double>(2, 2) << sv * sv, cov_lin_ang, cov_lin_ang, sw * sw);
+            return true;
+        }
+
+        virtual bool setParamMotionBounds(double max_linear_velocity, double max_angular_velocity_deg, double min_linear_velocity = -1)
+        {
+            cv::AutoLock lock(m_mutex);
+            m_max_linear_velocity = max_linear_velocity;
+            m_min_linear_velocity = min_linear_velocity;
+            m_max_angular_velocity = cx::cvtDeg2Rad(max_angular_velocity_deg);
             return true;
         }
 
         virtual bool setParamGPSNoise(double sigma_normal, double sigma_deadzone = -1)
         {
             cv::AutoLock lock(m_mutex);
-            if (sigma_normal > 0) m_gps_noise_normal = (cv::Mat_<double>(2, 2) << sigma_normal * sigma_normal, 0, 0, sigma_normal * sigma_normal);
-            if (sigma_deadzone > 0) m_gps_noise_deadzone = (cv::Mat_<double>(2, 2) << sigma_deadzone * sigma_deadzone, 0, 0, sigma_deadzone * sigma_deadzone);
+            if (sigma_normal >= 0) m_gps_noise_normal = (cv::Mat_<double>(2, 2) << sigma_normal * sigma_normal, 0, 0, sigma_normal * sigma_normal);
+            if (sigma_deadzone >= 0) m_gps_noise_deadzone = (cv::Mat_<double>(2, 2) << sigma_deadzone * sigma_deadzone, 0, 0, sigma_deadzone * sigma_deadzone);
             m_gps_noise = m_gps_noise_normal;
             return true;
         }
@@ -157,25 +180,45 @@ namespace dg
             return true;
         }
 
-        virtual bool setParamPOINoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
+        virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg)
         {
             cv::AutoLock lock(m_mutex);
-            m_poi_noise = cv::Mat::zeros(4, 4, CV_64F);
-            m_poi_noise.at<double>(0, 0) = sigma_rel_dist * sigma_rel_dist;
-            m_poi_noise.at<double>(1, 1) = cx::cvtDeg2Rad(sigma_rel_theta_deg) * cx::cvtDeg2Rad(sigma_rel_theta_deg);
-            m_poi_noise.at<double>(2, 2) = sigma_position * sigma_position;
-            m_poi_noise.at<double>(3, 3) = sigma_position * sigma_position;
+            m_poi_noise = cv::Mat::zeros(3, 3, CV_64F);
+            m_poi_noise.at<double>(0, 0) = sigma_position * sigma_position;
+            m_poi_noise.at<double>(1, 1) = sigma_position * sigma_position;
+            m_poi_noise.at<double>(2, 2) = cx::cvtDeg2Rad(sigma_theta_deg) * cx::cvtDeg2Rad(sigma_theta_deg);
             return true;
         }
 
-        virtual bool setParamVPSNoise(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_position = 1)
+        virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg)
         {
             cv::AutoLock lock(m_mutex);
-            m_vps_noise = cv::Mat::zeros(4, 4, CV_64F);
-            m_vps_noise.at<double>(0, 0) = sigma_rel_dist * sigma_rel_dist;
-            m_vps_noise.at<double>(1, 1) = cx::cvtDeg2Rad(sigma_rel_theta_deg) * cx::cvtDeg2Rad(sigma_rel_theta_deg);
-            m_vps_noise.at<double>(2, 2) = sigma_position * sigma_position;
-            m_vps_noise.at<double>(3, 3) = sigma_position * sigma_position;
+            m_vps_noise = cv::Mat::zeros(3, 3, CV_64F);
+            m_vps_noise.at<double>(0, 0) = sigma_position * sigma_position;
+            m_vps_noise.at<double>(1, 1) = sigma_position * sigma_position;
+            m_vps_noise.at<double>(2, 2) = cx::cvtDeg2Rad(sigma_theta_deg) * cx::cvtDeg2Rad(sigma_theta_deg);
+            return true;
+        }
+
+        virtual bool setParamPOINoiseRelative(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_poi_position)
+        {
+            cv::AutoLock lock(m_mutex);
+            m_poi_noise_relative = cv::Mat::zeros(4, 4, CV_64F);
+            m_poi_noise_relative.at<double>(0, 0) = sigma_rel_dist * sigma_rel_dist;
+            m_poi_noise_relative.at<double>(1, 1) = cx::cvtDeg2Rad(sigma_rel_theta_deg) * cx::cvtDeg2Rad(sigma_rel_theta_deg);
+            m_poi_noise_relative.at<double>(2, 2) = sigma_poi_position * sigma_poi_position;
+            m_poi_noise_relative.at<double>(3, 3) = sigma_poi_position * sigma_poi_position;
+            return true;
+        }
+
+        virtual bool setParamVPSNoiseRelative(double sigma_rel_dist, double sigma_rel_theta_deg, double sigma_streetview_position)
+        {
+            cv::AutoLock lock(m_mutex);
+            m_vps_noise_relative = cv::Mat::zeros(4, 4, CV_64F);
+            m_vps_noise_relative.at<double>(0, 0) = sigma_rel_dist * sigma_rel_dist;
+            m_vps_noise_relative.at<double>(1, 1) = cx::cvtDeg2Rad(sigma_rel_theta_deg) * cx::cvtDeg2Rad(sigma_rel_theta_deg);
+            m_vps_noise_relative.at<double>(2, 2) = sigma_streetview_position * sigma_streetview_position;
+            m_vps_noise_relative.at<double>(3, 3) = sigma_streetview_position * sigma_streetview_position;
             return true;
         }
 
@@ -190,12 +233,14 @@ namespace dg
         {
             Point2 xy = toMetric(ll);
             m_observation_noise = m_gps_noise;
+            m_sensor_offset = m_gps_offset;
             return applyPosition(xy, time, confidence);
         }
 
         virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
             m_observation_noise = m_gps_noise;
+            m_sensor_offset = m_gps_offset;
             return applyPosition(xy, time, confidence);
         }
 
@@ -212,38 +257,72 @@ namespace dg
         virtual bool applyRoadTheta(double theta, Timestamp time = -1, double confidence = -1)
         {
             m_observation_noise = m_roadtheta_noise;
+            m_sensor_offset = m_camera_offset;
             return applyOrientation(theta, time, confidence);
         }
 
-        virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+        virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false)
         {
-            if (relative.lin <= 0)
+            if (use_relative_model)
             {
-                double sigma_x = m_poi_noise.at<double>(2, 2);
-                double sigma_y = m_poi_noise.at<double>(3, 3);
-                m_observation_noise = (cv::Mat_<double>(2, 2) << sigma_x * sigma_x, 0, 0, sigma_y * sigma_y);
-                return applyPosition(clue_xy, time, confidence);
-            }            
+                if (relative.lin <= 0)
+                {
+                    double sigma_x = m_poi_noise_relative.at<double>(2, 2);
+                    double sigma_y = m_poi_noise_relative.at<double>(3, 3);
+                    m_observation_noise = (cv::Mat_<double>(2, 2) << sigma_x * sigma_x, 0, 0, sigma_y * sigma_y);
+                    return applyPosition(clue_xy, time, confidence);
+                }
+                m_observation_noise = m_poi_noise_relative;
+                m_sensor_offset = m_camera_offset;
+                return applyLocClue(clue_xy, relative, time, confidence);
+            }
+
+            // robot pose estimated from relative pose
+            Pose2 pose = getPose();
+            double poi_theta = pose.theta + relative.ang;
+            double rx = clue_xy.x - relative.lin * cos(poi_theta);
+            double ry = clue_xy.y - relative.lin * sin(poi_theta);
+            pose.x = rx;
+            pose.y = ry;
+
             m_observation_noise = m_poi_noise;
-            return applyLocClue(clue_xy, relative, time, confidence);
+            m_sensor_offset = m_camera_offset;
+            return applyPose(pose, time, confidence);
         }
 
-        virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1)
+        virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false)
         {
-            if (relative.lin <= 0)
+            if (use_relative_model)
             {
-                double sigma_x = m_vps_noise.at<double>(2, 2);
-                double sigma_y = m_vps_noise.at<double>(3, 3);
-                m_observation_noise = (cv::Mat_<double>(2, 2) << sigma_x * sigma_x, 0, 0, sigma_y * sigma_y);
-                return applyPosition(clue_xy, time, confidence);
-            }            
+                if (relative.lin <= 0)
+                {
+                    double sigma_x = m_vps_noise_relative.at<double>(2, 2);
+                    double sigma_y = m_vps_noise_relative.at<double>(3, 3);
+                    m_observation_noise = (cv::Mat_<double>(2, 2) << sigma_x * sigma_x, 0, 0, sigma_y * sigma_y);
+                    return applyPosition(clue_xy, time, confidence);
+                }
+                m_observation_noise = m_vps_noise_relative;
+                m_sensor_offset = m_camera_offset;
+                return applyLocClue(clue_xy, relative, time, confidence);
+            }
+
+            // robot pose estimated from relative pose
+            Pose2 pose = getPose();
+            double poi_theta = pose.theta + relative.ang;
+            double rx = clue_xy.x - relative.lin * cos(poi_theta);
+            double ry = clue_xy.y - relative.lin * sin(poi_theta);
+            pose.x = rx;
+            pose.y = ry;
+
             m_observation_noise = m_vps_noise;
-            return applyLocClue(clue_xy, relative, time, confidence);
+            m_sensor_offset = m_camera_offset;
+            return applyPose(pose, time, confidence);
         }
 
         virtual bool applyIntersectCls(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
             m_observation_noise = m_intersectcls_noise;
+            m_sensor_offset = m_camera_offset;
             return applyPosition(xy, time, confidence);
         }
 
@@ -254,16 +333,31 @@ namespace dg
             return true;
         }
 
-        virtual void setPose(const dg::Pose2& pose, Timestamp time = -1)
+        virtual void setPosition(const dg::Point2& pos, Timestamp time = -1, bool reset_velocity = true, bool reset_cov = true)
         {
             cv::AutoLock lock(m_mutex);
-            m_state_vec = 0;
+            m_state_vec.at<double>(0) = pos.x;
+            m_state_vec.at<double>(1) = pos.y;
+            if (reset_velocity)
+            {
+                m_state_vec.at<double>(3) = 0;
+                m_state_vec.at<double>(4) = 0;
+            }
+            if (reset_cov) m_state_cov = cv::Mat::eye(5, 5, m_state_vec.type());
+            if (time >= 0) m_time_last_update = time;
+            m_pose_initialized = true;
+        }
+
+        virtual void setPose(const dg::Pose2& pose, Timestamp time = -1, bool reset_velocity = true, bool reset_cov = true)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (reset_velocity) m_state_vec = 0;
             m_state_vec.at<double>(0) = pose.x;
             m_state_vec.at<double>(1) = pose.y;
             m_state_vec.at<double>(2) = pose.theta;
-            m_state_cov = cv::Mat::eye(5, 5, m_state_vec.type());
-            m_pose_initialized = true;
+            if (reset_cov) m_state_cov = cv::Mat::eye(5, 5, m_state_vec.type());
             if (time >= 0) m_time_last_update = time;
+            m_pose_initialized = true;
         }
 
         virtual Pose2 getPose(Timestamp* timestamp = nullptr) const
@@ -360,7 +454,31 @@ namespace dg
         virtual bool applyPose(const Pose2& pose, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
-            // TODO: Consider pose observation if available
+            if (!m_pose_initialized)
+            {
+                m_state_vec.at<double>(0) = pose.x;
+                m_state_vec.at<double>(1) = pose.y;
+                m_state_vec.at<double>(2) = cx::trimRad(pose.theta);
+                m_time_last_update = time;
+                m_pose_initialized = true;
+                return true;
+            }
+
+            double interval = 0;
+            if (m_time_last_update > 0) interval = time - m_time_last_update;
+            if (interval > m_threshold_time)
+            {
+                predict(interval);
+                m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
+            }
+
+            if (correct(cv::Vec3d(pose.x, pose.y, pose.theta)))
+            {
+                m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
+                applyMotionBounds(m_state_vec);
+                m_time_last_update = time;
+                return true;
+            }
             return false;
         }
 
@@ -406,6 +524,7 @@ namespace dg
                     m_state_vec.at<double>(3) *= -1;
                 }
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
+                applyMotionBounds(m_state_vec);
                 m_time_last_update = time;
                 return true;
             }
@@ -496,6 +615,19 @@ namespace dg
         virtual cv::Mat getObservationNoise()
         {
             return m_observation_noise;
+        }
+
+        virtual void applyMotionBounds(cv::Mat& state_vec)
+        {
+            double v = state_vec.at<double>(3);
+            double w = state_vec.at<double>(4);
+            if (m_max_linear_velocity > 0 && v > m_max_linear_velocity) v = m_max_linear_velocity;
+            if (m_max_linear_velocity > 0 && v < -m_max_linear_velocity) v = -m_max_linear_velocity;
+            if (m_min_linear_velocity >= 0 && v < m_min_linear_velocity) v = m_min_linear_velocity;
+            if (m_max_angular_velocity > 0 && w > m_max_angular_velocity) w = m_max_angular_velocity;
+            if (m_max_angular_velocity > 0 && w < -m_max_angular_velocity) w = -m_max_angular_velocity;
+            state_vec.at<double>(3) = v;
+            state_vec.at<double>(4) = w;
         }
 
         virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
@@ -595,13 +727,28 @@ namespace dg
             else if (measure.rows == 2)
             {
                 // Measurement: [ x_{GPS}, y_{GPS} ]
-                const double c = cos(theta + m_gps_offset.ang), s = sin(theta + m_gps_offset.ang);
+                const double c = cos(theta + m_sensor_offset.ang);
+                const double s = sin(theta + m_sensor_offset.ang);
                 func = (cv::Mat_<double>(2, 1) <<
-                    x + m_gps_offset.lin * c,
-                    y + m_gps_offset.lin * s);
+                    x + m_sensor_offset.lin * c,
+                    y + m_sensor_offset.lin * s);
                 jacobian = (cv::Mat_<double>(2, 5) <<
-                    1, 0, -m_gps_offset.lin * s, 0, 0,
-                    0, 1, m_gps_offset.lin * c, 0, 0);
+                    1, 0, -m_sensor_offset.lin * s, 0, 0,
+                    0, 1, m_sensor_offset.lin * c, 0, 0);
+            }
+            else if (measure.rows == 3)
+            {
+                // Measurement: [ x, y, theta ]
+                const double c = cos(theta + m_sensor_offset.ang);
+                const double s = sin(theta + m_sensor_offset.ang);
+                func = (cv::Mat_<double>(3, 1) <<
+                    x + m_sensor_offset.lin * c,
+                    y + m_sensor_offset.lin * s,
+                    cx::trimRad(theta + m_sensor_offset.ang));
+                jacobian = (cv::Mat_<double>(3, 5) <<
+                    1, 0, -m_sensor_offset.lin * s, 0, 0,
+                    0, 1, m_sensor_offset.lin * c, 0, 0,
+                    0, 0, 1, 0, 0);
             }
             else if (measure.rows >= 4)
             {
