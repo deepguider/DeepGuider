@@ -175,7 +175,7 @@ class DoorDetector():
                     for *xyxy, conf, cls in reversed(det):
                         if save_txt:  # Write to file
                             #xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                            line = (cls, *xyxy, conf) # if save_conf else (cls, *xywh)  # label format
+                            line = (*xyxy, conf) # if save_conf else (cls, *xywh)  # label format
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
                         if save_img or save_crop or view_img:  # Add bbox to image
