@@ -70,7 +70,7 @@ namespace dg
 
             // To do : calculate relativepose from sv_id and (tx,ty,tz)
             relative = computeRelative(image, m_sv_id, m_sv_image);
-            relative.lin = m_rpose_tz;
+            relative.lin = sqrt(m_rpose_tx*m_rpose_tx + m_rpose_ty*m_rpose_ty + m_rpose_tz*m_rpose_tz);
             relative.ang = m_rpose_pan;
 
             streetview_confidence = vpss[0].confidence;

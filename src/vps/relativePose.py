@@ -314,42 +314,28 @@ class relativePose:
         return self.R, self.t.squeeze()
 
     def get_pan_tilt(self, R):
-        ''' Get pan(yaw) and tile(pitch) of unit vector on z-axis(to proceeding direction)
-            Eq. 4 at  https://darkpgmr.tistory.com/122
-            R : 3x3 rotation matrix
+        '''
+        Let,
+            P2 = R*P1 + t , where P1 is point on camera 2' coord., P2 is point on camera 1's coord.
+            Zc : Z-axis of camera 2, [0,0,1].
+            Zw : Z-axis of camera 2 on camera 1's coordinate.
+        Then,
+            Zc = R*Zw + t, where we can set t as zero to calculate angle without translation.
+            Zc = R*Zw + 0
+            Zw = R_inv*Zc = R.T*Zc
+        And,
+            pan is angle between Z-axis and Zw(Z-axis of camera 2) on XZ-plane.
+            tilt is angle between XZ-plane and Zw(Z-axis of camera 2)i.
 
-            Refer to ./dg_pan_tilt.png
-            Zc is Z axis of cam2 in cam2's coordinate.
-            Zw is Z axis of cam2 in cam1's coordinate.
-            Z0 is Z axis of cam1 in cam1's coordinate.
-            pan : angle between Z0 and Zw on x-z plane in cam1's coordinate. Rotation axis is y-axis.
-                positive value : turn right
-                negative value : turn left
-                pan is angle of Zw from z-axis to x-axis.
-                theta is angle of Zw from x-axis to z-axis.
-                pan = pi/2 - theta
-                tan(theta) = zz / zx
-                theta = arctan2(zz, zx)
-                pan = pi/2 - arctan2(zz, zx)
-                or
-                pan = arctan2(zx, zz)
-            tilt : Rotation axis is x-axis.
-                positive value : turn down
-                negative value : turn up
-                tan(tilt) = zy / d, where d = sqrt(zx^2 + zz^2)
-                tilt = arctan2(zy, d)
+        Refer to https://github.com/deepguider/DeepGuider/blob/master/src/vps/vps_pan_tilt.png
+
         '''
         unit_z = [0,0,1]
         Zc = unit_z  # Z axis of camera 2
-        Zw = np.matmul(R.T, Zc) + 0  # Translation is not requried to calculate angle, so it is zero. R_inv is R.T in case of rotation matrix.
-        (zx, zy, zz) = Zw
-        if False:  # darkpgmr
-            pan = math.atan2(Zw[1], Zw[0]) - np.pi/2
-            tilt = math.atan2(Zw[2], np.sqrt(Zw[0]*Zw[0] + Zw[1]*Zw[1]))
-        else:  # ccsmm
-            #pan = np.pi/2 - np.arctan2(zz, zx)  # negative angle : turn left, positive : turn right
-            pan  = np.arctan2(zx, zz)  # negative angle : turn left, positive : turn right
-            tilt = np.arctan2(zy, np.sqrt(zx**2 + zz**2))  # negative angle : turn up, postive angle : turn down
+        Zw = (R.T).dot(Zc) + 0  # Translation is not requried to calculate angle, so it is zero. R_inv is R.T in case of rotation matrix.
+        (x, y, z) = Zw
+        pan  = np.arctan2(z, x) - np.pi/2  #  ccw direction
+        tilt = np.arctan2(np.sqrt(x**2 + z**2), y) - np.pi/2  # ccw direction
         return pan, tilt
 
     @staticmethod
