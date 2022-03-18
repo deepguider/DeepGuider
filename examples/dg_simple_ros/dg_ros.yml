@@ -17,8 +17,8 @@ site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_IND
 server_ip_index: 1          # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
 image_server_port: "10000"  # etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
-topic_name_index: 0         # 0: ETRI CART_VER2, 1: KETI ROBOT
-topic_names_set: ["ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
+topic_name_index: 0         # 0: ETRI CART_VER2_ANDROIDGPS, 1: ETRI CART_VER2, 2:KETI ROBOT
+topic_names_set: ["ETRI_CART_VER2_ANDROIDGPS", "ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
 
 dg_srcdir: "/home/dgtest/deepguider/src"  # path of deepguider/src folder (required for python embedding)
 enable_tts: 1
@@ -37,6 +37,14 @@ vps_save_dbfeat: 0
 vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
 
 ## Topic Names Set
+ETRI_CART_VER2_ANDROIDGPS:
+  topic_cam: "/uvc_camera/image_raw/compressed"
+  topic_gps: "/andro2linux_gps"
+  #topic_dgps: "/gps/fix"
+  #topic_imu: "/imu/data"
+  #topic_rgbd_image: "/camera/color/image_raw/compressed"
+  #topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
+
 ETRI_CART_VER2:
   topic_cam: "/uvc_camera/image_raw/compressed"
   topic_gps: "/ascen_gps/fix"
