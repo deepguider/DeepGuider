@@ -89,9 +89,8 @@ public:
     /**
      * Set error variance of RoadTheta
      * @param sigma_theta_deg Standard deviation of RoadTheta error (Unit: [deg])
-     * @param theta_offset Angular offset of RoadTheta (It corresponds to the offset of camera orientation, Unit: [deg])
      */
-    virtual bool setParamRoadThetaNoise(double sigma_theta_deg, double theta_offset = 0) = 0;
+    virtual bool setParamRoadThetaNoise(double sigma_theta_deg) = 0;
 
     /**
      * Set GPS offset

@@ -217,10 +217,10 @@ namespace dg
             return false;
         }
 
-        virtual bool setParamRoadThetaNoise(double sigma_theta_deg, double offset = 0)
+        virtual bool setParamRoadThetaNoise(double sigma_theta_deg)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_ekf) return m_ekf->setParamRoadThetaNoise(sigma_theta_deg, offset);
+            if (m_ekf) return m_ekf->setParamRoadThetaNoise(sigma_theta_deg);
             return false;
         }
 

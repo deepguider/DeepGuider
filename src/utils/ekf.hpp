@@ -95,7 +95,7 @@ namespace cx
          * @param measure The given measurement
          * @return True if successful (false if failed)
          */
-        virtual bool correct(cv::InputArray measure)
+        virtual bool correct(cv::InputArray measure, bool fix_theta_discontinuity = false, int theta_index = 0)
         {
             cv::Mat z = measure.getMat();
             if (z.rows < z.cols) z = z.t();
@@ -106,6 +106,16 @@ namespace cx
             cv::Mat S = H * m_state_cov * H.t() + R;
             cv::Mat K = m_state_cov * H.t() * S.inv(cv::DecompTypes::DECOMP_SVD);
             cv::Mat innovation = z - expectation;
+
+            // Fix orientation discontinuity
+            if (fix_theta_discontinuity)
+            {
+                double radian = innovation.at<double>(theta_index);
+                radian -= static_cast<int>(radian / (2 * CV_PI)) * (2 * CV_PI);
+                if (radian >= CV_PI) radian -= 2 * CV_PI;
+                if (radian < -CV_PI) radian += 2 * CV_PI;
+                innovation.at<double>(theta_index) = radian;
+            }
 
             // Correct the state
             m_state_vec = m_state_vec + K * innovation;

@@ -77,7 +77,7 @@ int configureLocalizer(cv::Ptr<dg::BaseLocalizer> localizer)
     if (!localizer->setParamPOINoise(1, 10)) return -1;         // position error(m), orientation error(deg)
     if (!localizer->setParamVPSNoise(1, 10)) return -1;         // position error(m), orientation error(deg)
     if (!localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
-    if (!localizer->setParamRoadThetaNoise(10, 0)) return -1;   // angle arror(deg), angle offset(deg)
+    if (!localizer->setParamRoadThetaNoise(50)) return -1;      // angle arror(deg)
     if (!localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
     localizer->setParamValue("gps_reverse_vel", -1);
     localizer->setParamValue("search_turn_weight", 100);

@@ -25,7 +25,6 @@ namespace dg
         double m_imu_compass_prev_angle;
         double m_imu_compass_prev_time;
         cv::Mat m_roadtheta_noise;
-        double m_roadtheta_offset;
         Polar2 m_camera_offset;
         cv::Mat m_poi_noise;
         cv::Mat m_vps_noise;
@@ -61,7 +60,6 @@ namespace dg
             m_imu_compass_prev_angle = 0;
             m_imu_compass_prev_time = -1;
             m_roadtheta_noise = (cv::Mat_<double>(1, 1) << cx::cvtDeg2Rad(1));
-            m_roadtheta_offset = 0;
             m_poi_noise = cv::Mat::eye(3, 3, CV_64F);
             m_vps_noise = cv::Mat::eye(3, 3, CV_64F);
             m_poi_noise_relative = cv::Mat::eye(4, 4, CV_64F);
@@ -96,7 +94,6 @@ namespace dg
             CX_LOAD_PARAM_COUNT(fn, "imu_compass_prev_angle", m_imu_compass_prev_angle, n_read);
             CX_LOAD_PARAM_COUNT(fn, "imu_compass_prev_time", m_imu_compass_prev_time, n_read);
             CX_LOAD_PARAM_COUNT(fn, "roadtheta_noise", m_roadtheta_noise, n_read);
-            CX_LOAD_PARAM_COUNT(fn, "roadtheta_offset", m_roadtheta_offset, n_read);
             //CX_LOAD_PARAM_COUNT(fn, "camera_offset", m_camera_offset, n_read); // cv::read() doesn't support Polar2
             CX_LOAD_PARAM_COUNT(fn, "poi_noise", m_poi_noise, n_read);
             CX_LOAD_PARAM_COUNT(fn, "vps_noise", m_vps_noise, n_read);
@@ -164,12 +161,11 @@ namespace dg
             return true;
         }
 
-        virtual bool setParamRoadThetaNoise(double sigma_theta_deg, double offset = 0)
+        virtual bool setParamRoadThetaNoise(double sigma_theta_deg)
         {
             cv::AutoLock lock(m_mutex);
             double sigma_rad = cx::cvtDeg2Rad(sigma_theta_deg);
             m_roadtheta_noise = (cv::Mat_<double>(1, 1) << (sigma_rad * sigma_rad));
-            m_roadtheta_offset = 0;
             return true;
         }
 
@@ -472,7 +468,7 @@ namespace dg
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
             }
 
-            if (correct(cv::Vec3d(pose.x, pose.y, pose.theta)))
+            if (correct(cv::Vec3d(pose.x, pose.y, pose.theta), true, 2))
             {
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
                 applyMotionBounds(m_state_vec);
@@ -549,8 +545,7 @@ namespace dg
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
             }
 
-            theta = m_state_vec.at<double>(2) + cx::trimRad(theta - cx::trimRad(m_state_vec.at<double>(2)));
-            if (correct(theta))
+            if (correct(theta, true, 0))
             {
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
                 m_time_last_update = time;
@@ -720,8 +715,8 @@ namespace dg
             cv::Mat func;
             if (measure.rows == 1)
             {
-                // Measurement: [ theta_{compass} ]
-                func = (cv::Mat_<double>(1, 1) << theta + m_imu_compass_offset);
+                // Measurement: [ theta_{roadtheta} ]
+                func = (cv::Mat_<double>(1, 1) << theta + m_sensor_offset.ang);
                 jacobian = (cv::Mat_<double>(1, 5) << 0, 0, 1, 0, 0);
             }
             else if (measure.rows == 2)
