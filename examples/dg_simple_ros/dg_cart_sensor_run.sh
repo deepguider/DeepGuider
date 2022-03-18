@@ -25,6 +25,13 @@ if [ -n "${pid}" ];then  # If process is running.
 fi
 gnome-terminal --tab --title="theta360z1_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/theta360z1/publish && python main_ros_python27.py'
 
+# Run andro2linux_gps publish
+pid=`pgrep andro2linux_gps_rospublisher`
+if [ -n "${pid}" ];then  # If process is running.
+    kill -9 ${pid}
+fi
+gnome-terminal --tab --title="andro2linux_gps_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/andro2linux_gps/publish && python andro2linux_gps_rospublisher.py'
+
 ## Start recording cart sensor
 pid=`pgrep roslaunch`
 if [ -n "${pid}" ];then  # If process is running.
