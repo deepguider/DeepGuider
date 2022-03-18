@@ -182,6 +182,7 @@ protected:
     cv::Mat m_vps_image;            // top-1 matched streetview image
     dg::ID m_vps_id;                // top-1 matched streetview id
     dg::Point2 m_vps_xy;            // top-1 matched streetview's position (x,y)
+    dg::Point2 m_vps_custom_sv_xy;  // top-1 matched custom streetview's position (x,y)
     dg::Polar2 m_vps_relative;      // top-1 matched streetview's relative position (pan, tz) or (theta_z, delta_z)
 
 
@@ -924,6 +925,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_vps_mutex.lock();
         dg::ID sv_id = m_vps_id;
         dg::Point2 sv_xy = m_vps_xy;
+        dg::Point2 custom_sv_xy = m_vps_custom_sv_xy;
         dg::Polar2 sv_relative = m_vps_relative;          
         if (!m_vps_image.empty())
         {
@@ -931,7 +933,12 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             cv::resize(m_vps_image, result_image, cv::Size(), fy, fy);
         }
         m_vps_mutex.unlock();
-
+		// debugging begin
+		// To do : convert custom_sv_x,y, which are given by vps.py using custom streetview images, to x,y on map coordinate.
+		//printf("\t********************[vps-custom_xy] %f, %f\n", custom_sv_xy.x, custom_sv_xy.y);
+		//printf("\t********************[vps-sv_xy] %f, %f\n", sv_xy.x, sv_xy.y);
+        m_painter.drawPoint(image, custom_sv_xy, 6, cv::Vec3b(0, 0, 128), view_offset, view_zoom); // light red color for custom streetview position
+		// debugging end
         if (!result_image.empty())
         {
             win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
@@ -1417,9 +1424,10 @@ bool DeepGuider::procVps()
     m_cam_mutex.unlock();
 
     dg::Point2 sv_xy;
+    dg::Point2 custom_sv_xy;  // utm result using custom streetview images as db.
     dg::Polar2 relative;
     double sv_confidence;
-    if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
+    if (m_vps.apply(cam_image, capture_time, sv_xy, custom_sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
     {
         m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
@@ -1432,6 +1440,7 @@ bool DeepGuider::procVps()
             m_vps_id = m_vps.getViewID();
             m_vps_image = sv_image;
             m_vps_xy = sv_xy;
+            m_vps_custom_sv_xy = custom_sv_xy;
             m_vps_relative = relative;
             m_vps_mutex.unlock();
         }
@@ -1441,6 +1450,7 @@ bool DeepGuider::procVps()
     {
         m_vps.print();
     }
+    m_vps_custom_sv_xy = custom_sv_xy;  // debugging
 
     return false;
 }

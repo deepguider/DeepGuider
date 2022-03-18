@@ -16,6 +16,8 @@ namespace dg
     {
         dg::ID id;
         double confidence;
+        double utm_x;
+        double utm_y;
         double pan;
         double t_scaled_x, t_scaled_y, t_scaled_z;
     };
@@ -109,11 +111,14 @@ namespace dg
                     return false;
                 }
 
-                // [[id1,...idN],[conf1,...,confN], pan_top1, [t_scaled_top1_x, _y, _z]] : matched top-N streetview ID's and Confidences
+                // [[id1,...idN],[conf1,...,confN], utm_x_top1, utm_y_top1, pan_top1, [t_scaled_top1_x, _y, _z]] : matched top-N streetview ID's and Confidences
+
+				int read_counter;
+				read_counter = 0;
 
                 // ID list
                 std::vector<dg::ID> ids;
-                PyObject* pList0 = PyList_GetItem(pRet, 0);
+                PyObject* pList0 = PyList_GetItem(pRet, read_counter++);
                 if (pList0)
                 {
                     Py_ssize_t cnt0 = PyList_Size(pList0);
@@ -126,7 +131,7 @@ namespace dg
                 
                 // Confidence list
                 std::vector<double> confs;
-                PyObject* pList1 = PyList_GetItem(pRet, 1);
+                PyObject* pList1 = PyList_GetItem(pRet, read_counter++);
                 if (pList1)
                 {
                     Py_ssize_t cnt1 = PyList_Size(pList1);
@@ -137,13 +142,22 @@ namespace dg
                     }
                 }
 
+				// utm_x, utm_y using custom roadview images
+                double utm_x, utm_y;
+                utm_x = 0.0;
+                utm_y = 0.0;
+                pValue = PyList_GetItem(pRet, read_counter++);
+                if(pValue) utm_x = PyFloat_AsDouble(pValue);
+                pValue = PyList_GetItem(pRet, read_counter++);
+                if(pValue) utm_y = PyFloat_AsDouble(pValue);
+
                 /*** Relative pose of top-1 :
                  * pan : 0           
                  * scaled_t(3x1) : [0., 0., 0.]
                 ***/
                 double pan;
                 pan = 0.0;
-                pValue = PyList_GetItem(pRet, 2);
+                pValue = PyList_GetItem(pRet, read_counter++);
                 if(pValue) pan= PyFloat_AsDouble(pValue);
 
                 // t_scaled of top-1 : [tx, ty, tz]
@@ -151,7 +165,7 @@ namespace dg
                 t_scaled_x = 0.0;
                 t_scaled_y = 0.0;
                 t_scaled_z = 0.0;                                
-                PyObject* pList3 = PyList_GetItem(pRet, 3);
+                PyObject* pList3 = PyList_GetItem(pRet, read_counter++);
                 if (pList3)
                 {
                     int idx2 = 0;
@@ -164,7 +178,6 @@ namespace dg
                     pValue = PyList_GetItem(pList3, idx2++);
                     if(pValue) t_scaled_z = PyFloat_AsDouble(pValue);                    
                 }
-
          
                 // Save the result
                 cv::AutoLock lock(m_mutex);
@@ -176,6 +189,8 @@ namespace dg
                     vps.confidence = confs[i];
                     if (i == 0)
                     {
+						vps.utm_x = utm_x;
+						vps.utm_y = utm_y;
                         vps.pan = pan;
                         vps.t_scaled_x = t_scaled_x;
                         vps.t_scaled_y = t_scaled_y;
@@ -183,6 +198,8 @@ namespace dg
                     }
                     else
                     {
+						vps.utm_x = 0.0;
+						vps.utm_y = 0.0;
                         vps.pan = 0.0;
                         vps.t_scaled_x = 0.0;
                         vps.t_scaled_y = 0.0;

@@ -35,7 +35,7 @@ namespace dg
             return (m_shared != nullptr);
         }
 
-        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence, double manual_gps_accuracy, const int load_dbfeat, const int save_dbfeat)
+        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Point2& custom_streetview_xy, dg::Polar2& relative, double& streetview_confidence, double manual_gps_accuracy, const int load_dbfeat, const int save_dbfeat)
         {
             int N = 1;  // top-1
             if (m_shared == nullptr) return false;
@@ -57,16 +57,13 @@ namespace dg
             m_sv_id = vpss[0].id;
             if (m_sv_id == 0) return false;  // no valid matching between query and streetveiw due to lack of db images around query.
 
+			m_custom_utm_x = vpss[0].utm_x;
+			m_custom_utm_y = vpss[0].utm_y;
+
             m_rpose_pan = vpss[0].pan;
             m_rpose_tx = vpss[0].t_scaled_x;
             m_rpose_ty = vpss[0].t_scaled_y;
             m_rpose_tz = vpss[0].t_scaled_z;
-
-            Map* map = m_shared->getMap();
-            if (map == nullptr) return false;
-            StreetView* sv = map->getView(m_sv_id);
-            if (sv == nullptr) return false;
-            streetview_xy = *sv;            
 
             // To do : calculate relativepose from sv_id and (tx,ty,tz)
             relative = computeRelative(image, m_sv_id, m_sv_image);
@@ -74,7 +71,14 @@ namespace dg
             relative.ang = m_rpose_pan;
 
             streetview_confidence = vpss[0].confidence;
-           
+			custom_streetview_xy = dg::Point2(m_custom_utm_x, m_custom_utm_y);
+
+            Map* map = m_shared->getMap();
+            if (map == nullptr) return false;
+            StreetView* sv = map->getView(m_sv_id);
+            if (sv == nullptr) return false;
+            streetview_xy = *sv;            
+
             return true;
         }
 
@@ -90,6 +94,8 @@ namespace dg
             return m_sv_image;
         }
 
+        double m_custom_utm_x = 0;  // matched utm using custom roadview image
+        double m_custom_utm_y = 0;
         double m_rpose_pan = 0;
         double m_rpose_tx = 0;
         double m_rpose_ty = 0;
