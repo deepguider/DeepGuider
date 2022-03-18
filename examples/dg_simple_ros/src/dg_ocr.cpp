@@ -223,19 +223,19 @@ bool DGNodeOCR::runOnce(double timestamp)
     }    
     m_cam_mutex.unlock();
 
-    std::vector<dg::Point2> poi_xys;
+    std::vector<dg::POI*> pois;
     std::vector<dg::Polar2> relatives;
     std::vector<double> poi_confidences;
-    if (!cam_image.empty() && m_recognizer.apply(cam_image, capture_time, poi_xys, relatives, poi_confidences))
+    if (!cam_image.empty() && m_recognizer.apply(cam_image, capture_time, pois, relatives, poi_confidences))
     {
-        if(!poi_xys.empty())
+        if(!pois.empty())
         {
             dg_simple_ros::ocr_info msg;
-            for(int i=0; i<(int)poi_xys.size(); i++)
+            for(int i=0; i<(int)pois.size(); i++)
             {
                 dg_simple_ros::ocr ocr;
-                ocr.x = poi_xys[i].x;
-                ocr.y = poi_xys[i].y;
+                ocr.x = pois[i]->x;
+                ocr.y = pois[i]->y;
                 ocr.rel_r = relatives[i].lin;
                 ocr.rel_pi = relatives[i].ang;
                 ocr.confidence = poi_confidences[i];
