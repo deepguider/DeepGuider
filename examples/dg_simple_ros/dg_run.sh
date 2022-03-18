@@ -27,4 +27,10 @@ pid=`pgrep dg_simple_ros`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
+
+
+CWD=`pwd`
+LIBDIR="devel/lib/dg_simple_ros"
+
+ln -sf ${CWD}/dg_ros.yml ${LIBDIR}/.
 roslaunch dg_simple_ros dg_simple_ros.launch
