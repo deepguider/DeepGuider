@@ -1,6 +1,5 @@
 import os
 
-onlyDB = True
 root_dir = './data_vps/custom_dataset/dataset_seoul'
 db_dir = os.path.join(root_dir, '.')
 queries_dir = os.path.join(root_dir, '.')

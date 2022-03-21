@@ -16,10 +16,11 @@ namespace dg
     {
         dg::ID id;
         double confidence;
-        double utm_x;
-        double utm_y;
+        double lat;
+        double lon;
         double pan;
         double t_scaled_x, t_scaled_y, t_scaled_z;
+		std::string custom_dataset_abs_path;
     };
 
     /**
@@ -34,14 +35,14 @@ namespace dg
         * @param N number of matched images to be returned (top-N)
         * @return true if successful (false if failed)
         */
-        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port, const int load_dbfeat, const int save_dbfeat)
+        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port, const int load_dbfeat, const int save_dbfeat, const int use_custom_image_server)
         {
             dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
             PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            bool ret = _apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, ipaddr, port, load_dbfeat, save_dbfeat);
+            bool ret = _apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, ipaddr, port, load_dbfeat, save_dbfeat, use_custom_image_server);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
 
@@ -57,7 +58,7 @@ namespace dg
         * @param N number of matched images to be returned (top-N)
         * @return true if successful (false if failed)
         */
-        bool _apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port, const int load_dbfeat, const int save_dbfeat)
+        bool _apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port, const int load_dbfeat, const int save_dbfeat, const int use_custom_image_server)
         {
             // Set function arguments
             int arg_idx = 0;
@@ -90,9 +91,8 @@ namespace dg
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
             // Image server's ip address, port
-            pValue = PyUnicode_FromString(ipaddr);
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
-            pValue = PyUnicode_FromString(port);
+            std::string ip_port = cv::format("%s:%s", ipaddr, port);
+            pValue = PyUnicode_FromString(ip_port.c_str());
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
 			// Use pre-built database features
@@ -101,7 +101,11 @@ namespace dg
             pValue = PyFloat_FromDouble(save_dbfeat);
             PyTuple_SetItem(pArgs, arg_idx++, pValue);
 
-            // Call the method
+			// Use custom image dataset instead of naver roadview
+            pValue = PyFloat_FromDouble(use_custom_image_server);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+
+            // Call the method (ccsmm's comment : It seems that the number of input parameters should not exceed 10. So, arg_idx max is 10. Otherwise, You will meet out of tuple error."
             PyObject* pRet = PyObject_CallObject(m_pFuncApply, pArgs);
             if (pRet != NULL) {
                 Py_ssize_t n_ret = PyList_Size(pRet);
@@ -111,7 +115,7 @@ namespace dg
                     return false;
                 }
 
-                // [[id1,...idN],[conf1,...,confN], utm_x_top1, utm_y_top1, pan_top1, [t_scaled_top1_x, _y, _z]] : matched top-N streetview ID's and Confidences
+                // To parse return values from python : [[id1,...idN],[conf1,...,confN], lat_top1, lon_top1, pan_top1, [t_scaled_top1_x, _y, _z]] : matched top-N streetview ID's and Confidences
 
 				int read_counter;
 				read_counter = 0;
@@ -142,14 +146,14 @@ namespace dg
                     }
                 }
 
-				// utm_x, utm_y using custom roadview images
-                double utm_x, utm_y;
-                utm_x = 0.0;
-                utm_y = 0.0;
+				// lat, lon using custom roadview images
+                double lat, lon;
+                lat = 0.0;
+                lon = 0.0;
                 pValue = PyList_GetItem(pRet, read_counter++);
-                if(pValue) utm_x = PyFloat_AsDouble(pValue);
+                if(pValue) lat = PyFloat_AsDouble(pValue);
                 pValue = PyList_GetItem(pRet, read_counter++);
-                if(pValue) utm_y = PyFloat_AsDouble(pValue);
+                if(pValue) lon = PyFloat_AsDouble(pValue);
 
                 /*** Relative pose of top-1 :
                  * pan : 0           
@@ -178,6 +182,11 @@ namespace dg
                     pValue = PyList_GetItem(pList3, idx2++);
                     if(pValue) t_scaled_z = PyFloat_AsDouble(pValue);                    
                 }
+
+                // custom_dataset_abs_path
+                string custom_dataset_abs_path;
+				pValue = PyList_GetItem(pRet, read_counter++);
+				custom_dataset_abs_path = PyUnicode_AsUTF8(pValue);
          
                 // Save the result
                 cv::AutoLock lock(m_mutex);
@@ -189,21 +198,23 @@ namespace dg
                     vps.confidence = confs[i];
                     if (i == 0)
                     {
-						vps.utm_x = utm_x;
-						vps.utm_y = utm_y;
+						vps.lat = lat;
+						vps.lon = lon;
                         vps.pan = pan;
                         vps.t_scaled_x = t_scaled_x;
                         vps.t_scaled_y = t_scaled_y;
                         vps.t_scaled_z = t_scaled_z;
+						vps.custom_dataset_abs_path = custom_dataset_abs_path;
                     }
                     else
                     {
-						vps.utm_x = 0.0;
-						vps.utm_y = 0.0;
+						vps.lat = 0.0;
+						vps.lon = 0.0;
                         vps.pan = 0.0;
                         vps.t_scaled_x = 0.0;
                         vps.t_scaled_y = 0.0;
                         vps.t_scaled_z = 0.0;
+						vps.custom_dataset_abs_path = "";
                     }
                     m_result.push_back(vps);
                 }

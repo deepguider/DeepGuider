@@ -29,35 +29,43 @@ named_dbStruct = namedtuple('dbStruct', ['whichSet', 'dataset',
     'posDistThr', 'posDistSqThr', 'nonTrivPosDistSqThr'])
 
 class WholeDatasetFromStruct():
-    def __init__(self, structFile, db_dir, queries_dir, onlyDB=True, onlyQ=False):
-        if 'dg' in structFile.split('/')[-1]:
-            self.dbStruct = self.Load_dbStruct(structFile)
-        else:
-            self.dbStruct = self.parse_dbStruct(structFile)
-
-        self.db_dir = db_dir
-        self.queries_dir = queries_dir
-
-        if onlyDB: # generate only db images for enumerate
-            self.images = [join(db_dir, dbIm) for dbIm in self.dbStruct.dbImage]
-        elif onlyQ: # generate only q images for enumerate
-            self.images = [join(queries_dir, qIm) for qIm in self.dbStruct.qImage]
-        else: # normal
-            self.images = [join(db_dir, dbIm) for dbIm in self.dbStruct.dbImage]
-            self.images += [join(queries_dir, qIm) for qIm in self.dbStruct.qImage]
-
-        self.whichSet = self.dbStruct.whichSet
-        self.dataset = self.dbStruct.dataset
-
+    def __init__(self):
+        self.abs_image_path = ''
+        self.curr_path = os.getcwd()
         self.positives = None
         self.distances = None
-        self.init_tmp_dir()
+
+    def initialize(self, structFile, db_dir, queries_dir):
+        if os.path.exists(structFile) == False:
+            print("[vps] ===> Not Found custom dataset : {}".format(structFile))
+            return False
+        try:
+            if 'dg' in structFile.split('/')[-1]:
+                self.dbStruct = self.Load_dbStruct(structFile)
+            else:
+                self.dbStruct = self.parse_dbStruct(structFile)
+        except:
+            return False
+        self.db_dir = db_dir
+        self.queries_dir = queries_dir
+        ## Only use db image
+        self.images = [join(db_dir, dbIm) for dbIm in self.dbStruct.dbImage]
+        if len(self.images) == 0:
+            return False
+        self.whichSet = self.dbStruct.whichSet
+        self.dataset = self.dbStruct.dataset
+        try:
+            self.init_tmp_dir()
+        except:
+            return False
+        self.abs_image_path = os.path.join(self.curr_path, self.db_dir, os.path.dirname(self.dbStruct.dbImage[0]))
+        return True
+
+    def get_abs_image_path(self):
+        return self.abs_image_path
 
     def __getitem__(self, index):
         img = get_single_image(self.images[index])
-
-        if self.input_transform:
-            img = self.input_transform(img)
 
         return img, index
 
@@ -172,11 +180,13 @@ class WholeDatasetFromStruct():
             ## Flush directory befor downloading jpg images.
             self.flush_db_dir()
             db_paths = self.db_idx2FullPath(db_idx)
+            srcs = ''
             for f in db_paths:
                 '''
                     cp ./netvlad_v100_datasets_dg/././qImg/201007_seoul/000125.jpg /mnt/ramdisk/.vps_dataset/dbImg/StreetView/
                 '''
-                os.system("rsync {} {}/".format(f, outdir))
+                srcs = "{} {}".format(srcs, os.path.join(self.curr_path, f))
+            os.system("ln -sf {} {}/.".format(srcs, outdir))
             return 0
         else:
             return -1
@@ -248,10 +258,13 @@ class WholeDatasetFromStruct():
                 utmQ, numDb, numQ, posDistThr,
                 posDistSqThr, nonTrivPosDistSqThr)
     
-    @staticmethod
-    def get_single_image(path):
-        img = Image.open(path)
-        return img.resize((640,480))
+    def get_single_image(self, path):
+        #img = Image.open(path)
+        #if self.input_transform:
+        #    img = self.input_transform(img)
+        #img = img.resize((1280, 720))
+        img = cv2.imread(path)
+        return
 
     @staticmethod
     def faiss_knn(self, Db, Q, K): 
@@ -270,7 +283,7 @@ class WholeDatasetFromStruct():
         ])
     
 def test_custom_image_server(config):
-    custom_dataset = WholeDatasetFromStruct(config.structFile, config.db_dir, config.queries_dir, config.onlyDB)
+    custom_dataset = WholeDatasetFromStruct(config.structFile, config.db_dir, config.queries_dir)
 
     qImage = custom_dataset.get_qImage()
     for i in range(len(qImage)):
@@ -303,7 +316,7 @@ def test_custom_image_server(config):
         custom_dataset.GetStreetView(utmQ[0], utmQ[1], 'utm', 25)
 
 def test_simple(config):
-    custom_dataset = WholeDatasetFromStruct(config.structFile, config.db_dir, config.queries_dir, config.onlyDB)
+    custom_dataset = WholeDatasetFromStruct(config.structFile, config.db_dir, config.queries_dir)
     x, y, coord, radius = config.x, config.y, config.coord, config.radius
 
     ## Get db information for single position
@@ -321,7 +334,7 @@ def test_simple(config):
     return True
 
 def test_download(config):
-    custom_dataset = WholeDatasetFromStruct(config.structFile, config.db_dir, config.queries_dir, config.onlyDB)
+    custom_dataset = WholeDatasetFromStruct(config.structFile, config.db_dir, config.queries_dir)
     x, y, coord, radius = config.x, config.y, config.coord, config.radius
 
     ## Download custom roadview.
@@ -330,10 +343,10 @@ def test_download(config):
     return True
 
 if __name__ == "__main__":
-    if False:  # Seoul
+    if True:  # Seoul
         import config_seoul as config
 
-    if True:  # Daejeon
+    if False:  # Daejeon
         import config_daejeon as config
 
     test_simple(config)

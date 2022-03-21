@@ -13,7 +13,7 @@ if __name__ == '__main__':
     parser.add_argument('--draw_rect', action='store_true', help='')
     parser.add_argument('--no_display', action='store_true', help='')
     parser.add_argument('--fps', type=float, default=29, help = '')
-    parser.add_argument('--watermark', type=str, default=[], help = '') 
+    parser.add_argument('--watermark', type=str, default=None, help = '') 
     opt = parser.parse_args()
 
     avi_out = None
@@ -28,7 +28,7 @@ if __name__ == '__main__':
         frame = imutils.resize(frame, height=480)
 
         # Do your own process
-        if len(opt.watermark) > 0:
+        if opt.watermark is not None:
             text1 = "[{}] frame - {}".format(opt.watermark, frame_cnt)
             (x, y) = (20, 20)
             cv2.putText(frame, text1, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)

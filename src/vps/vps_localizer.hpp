@@ -15,7 +15,7 @@ namespace dg
     class VPSLocalizer : public VPS
     {
     public:
-        bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/vps", std::string server_ipaddr = "129.254.81.204", std::string server_port="10000")
+        bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/vps", std::string server_ipaddr = "129.254.81.204", std::string server_port="10000", const int use_custom_image_server=0)
         {
             if (!VPS::initialize(py_module_path.c_str(), "vps", "vps")) return false;
 
@@ -23,6 +23,7 @@ namespace dg
             m_shared = shared;
             m_server_ipaddr = server_ipaddr;
             m_server_port = server_port;
+            m_use_custom_image_server = use_custom_image_server;
             return (m_shared != nullptr);
         }
 
@@ -35,7 +36,7 @@ namespace dg
             return (m_shared != nullptr);
         }
 
-        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Point2& custom_streetview_xy, dg::Polar2& relative, double& streetview_confidence, double manual_gps_accuracy, const int load_dbfeat, const int save_dbfeat)
+        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::LatLon& custom_streetview_latlon, dg::Polar2& relative, double& streetview_confidence, double manual_gps_accuracy, const int load_dbfeat, const int save_dbfeat)
         {
             int N = 1;  // top-1
             if (m_shared == nullptr) return false;
@@ -45,7 +46,7 @@ namespace dg
             double pose_confidence = manual_gps_accuracy; // 0(vps search radius = 200m) ~ 1(search radius = 10m)
 
 			/** In streetview image server, download_radius = int(10 + 190*(1-manual_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters **/
-            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str(), m_server_port.c_str(), load_dbfeat, save_dbfeat)) return false;
+            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str(), m_server_port.c_str(), load_dbfeat, save_dbfeat, m_use_custom_image_server)) return false;
 
             std::vector<VPSResult> vpss = get();
 
@@ -57,13 +58,14 @@ namespace dg
             m_sv_id = vpss[0].id;
             if (m_sv_id == 0) return false;  // no valid matching between query and streetveiw due to lack of db images around query.
 
-			m_custom_utm_x = vpss[0].utm_x;
-			m_custom_utm_y = vpss[0].utm_y;
+			m_custom_lat = vpss[0].lat;
+			m_custom_lon = vpss[0].lon;
 
             m_rpose_pan = vpss[0].pan;
             m_rpose_tx = vpss[0].t_scaled_x;
             m_rpose_ty = vpss[0].t_scaled_y;
             m_rpose_tz = vpss[0].t_scaled_z;
+            m_custom_dataset_abs_path = vpss[0].custom_dataset_abs_path;
 
             // To do : calculate relativepose from sv_id and (tx,ty,tz)
             relative = computeRelative(image, m_sv_id, m_sv_image);
@@ -71,7 +73,7 @@ namespace dg
             relative.ang = m_rpose_pan;
 
             streetview_confidence = vpss[0].confidence;
-			custom_streetview_xy = dg::Point2(m_custom_utm_x, m_custom_utm_y);
+			custom_streetview_latlon = dg::LatLon(m_custom_lat, m_custom_lon);
 
             Map* map = m_shared->getMap();
             if (map == nullptr) return false;
@@ -88,14 +90,35 @@ namespace dg
             return m_sv_id;
         }
 
-        cv::Mat getViewImage()
+        inline bool file_exists(const std::string& name)
         {
-            cv::AutoLock lock(m_localizer_mutex);
-            return m_sv_image;
+            struct stat buffer;
+            return (stat(name.c_str(), &buffer) == 0); 
         }
 
-        double m_custom_utm_x = 0;  // matched utm using custom roadview image
-        double m_custom_utm_y = 0;
+        cv::Mat getViewImage()
+        {
+            if (m_use_custom_image_server > 0)
+            {
+                dg::ID img_id = getViewID();
+                cv::Mat image;
+                std::string fpath = cv::format("%s/%06ld.jpg", m_custom_dataset_abs_path.c_str(), img_id);
+                if (file_exists(fpath))
+                {
+                    image = cv::imread(fpath);
+                }
+                cv::AutoLock lock(m_localizer_mutex);                           
+                return m_sv_image = image;
+            }
+            else  // default
+            {
+                cv::AutoLock lock(m_localizer_mutex);
+                return m_sv_image;                
+            }
+        }
+
+        double m_custom_lat = 0;  // matched utm using custom roadview image
+        double m_custom_lon = 0;
         double m_rpose_pan = 0;
         double m_rpose_tx = 0;
         double m_rpose_ty = 0;
@@ -118,6 +141,8 @@ namespace dg
         std::string m_server_port;
         dg::ID m_sv_id = 0;
         cv::Mat m_sv_image;
+        int m_use_custom_image_server=0;
+        std::string m_custom_dataset_abs_path;
         cv::Mutex m_localizer_mutex;
     };
 

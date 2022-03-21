@@ -60,9 +60,11 @@ protected:
     int m_gui_gps_trj_radius = 2;
     int m_gui_robot_trj_radius = 1;
 
+	// 0.0 means "Not using", 1.0 means "Using"
 	double m_vps_load_dbfeat = 0.0;
 	double m_vps_save_dbfeat = 0.0;
 	double m_vps_gps_accuracy = 0.9;  // Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
+	double m_vps_use_custom_image_server = 0.0;  // use custom image dataset instead of naver roadview to avoid wide baseline problem
 
     int m_exploration_state_count = 0;
     const int m_exploration_state_count_max = 20;
@@ -182,7 +184,7 @@ protected:
     cv::Mat m_vps_image;            // top-1 matched streetview image
     dg::ID m_vps_id;                // top-1 matched streetview id
     dg::Point2 m_vps_xy;            // top-1 matched streetview's position (x,y)
-    dg::Point2 m_vps_custom_sv_xy;  // top-1 matched custom streetview's position (x,y)
+    dg::LatLon m_vps_custom_sv_ll;  // top-1 matched custom streetview's position (lat,lon)
     dg::Polar2 m_vps_relative;      // top-1 matched streetview's relative position (pan, tz) or (theta_z, delta_z)
 
 
@@ -298,6 +300,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "vps_load_dbfeat", m_vps_load_dbfeat, n_read);
     CX_LOAD_PARAM_COUNT(fn, "vps_save_dbfeat", m_vps_save_dbfeat, n_read);
     CX_LOAD_PARAM_COUNT(fn, "vps_gps_accuracy", m_vps_gps_accuracy, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "vps_use_custom_image_server", m_vps_use_custom_image_server, n_read);
 
     // Read Site-specific Setting
     if (!site_tagname.empty())
@@ -343,7 +346,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize VPS
     py_module_path = m_srcdir + "/vps";
-    if (m_enable_vps==1 && !m_vps.initialize(this, py_module_path, m_server_ip, m_image_server_port)) return false;
+    if (m_enable_vps==1 && !m_vps.initialize(this, py_module_path, m_server_ip, m_image_server_port, m_vps_use_custom_image_server)) return false;
     if (m_enable_vps==1) printf("\tVPS initialized in %.3lf seconds!\n", m_vps.procTime());
 
     // initialize RoadLR
@@ -925,7 +928,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_vps_mutex.lock();
         dg::ID sv_id = m_vps_id;
         dg::Point2 sv_xy = m_vps_xy;
-        dg::Point2 custom_sv_xy = m_vps_custom_sv_xy;
+        dg::Point2 custom_sv_xy;  // matched position using custom image server
         dg::Polar2 sv_relative = m_vps_relative;          
         if (!m_vps_image.empty())
         {
@@ -933,12 +936,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             cv::resize(m_vps_image, result_image, cv::Size(), fy, fy);
         }
         m_vps_mutex.unlock();
-		// debugging begin
-		// To do : convert custom_sv_x,y, which are given by vps.py using custom streetview images, to x,y on map coordinate.
-		//printf("\t********************[vps-custom_xy] %f, %f\n", custom_sv_xy.x, custom_sv_xy.y);
-		//printf("\t********************[vps-sv_xy] %f, %f\n", sv_xy.x, sv_xy.y);
-        m_painter.drawPoint(image, custom_sv_xy, 6, cv::Vec3b(0, 0, 128), view_offset, view_zoom); // light red color for custom streetview position
-		// debugging end
+
         if (!result_image.empty())
         {
             win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
@@ -949,7 +947,13 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             // Draw streetview's gps location with relative pose (tz).
             sv_xy.x = sv_xy.x + sv_relative.lin * cos(3.141592/2 + sv_relative.ang);
             sv_xy.y = sv_xy.y + sv_relative.lin * sin(3.141592/2 + sv_relative.ang);
-            if (sv)m_painter.drawPoint(image, sv_xy, 6, cv::Vec3b(0, 0, 255), view_offset, view_zoom); // red color for  streetview position with relative pose
+            if (sv)m_painter.drawPoint(image, sv_xy, 20, cv::Vec3b(40, 40, 40), view_offset, view_zoom); // light black for  streetview position with relative pose
+
+            if (m_vps_use_custom_image_server > 0.0)
+            {
+                custom_sv_xy = toMetric(m_vps_custom_sv_ll);  // convert utm to map image point
+                m_painter.drawPoint(image, custom_sv_xy, 20, cv::Vec3b(50, 50, 50), view_offset, view_zoom); // light black for custom streetview position
+            }
         }
     }
 
@@ -1424,10 +1428,10 @@ bool DeepGuider::procVps()
     m_cam_mutex.unlock();
 
     dg::Point2 sv_xy;
-    dg::Point2 custom_sv_xy;  // utm result using custom streetview images as db.
+    dg::LatLon custom_sv_ll;  // utm result using custom streetview images as db.
     dg::Polar2 relative;
     double sv_confidence;
-    if (m_vps.apply(cam_image, capture_time, sv_xy, custom_sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
+    if (m_vps.apply(cam_image, capture_time, sv_xy, custom_sv_ll, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
     {
         m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
@@ -1440,18 +1444,26 @@ bool DeepGuider::procVps()
             m_vps_id = m_vps.getViewID();
             m_vps_image = sv_image;
             m_vps_xy = sv_xy;
-            m_vps_custom_sv_xy = custom_sv_xy;
+            m_vps_custom_sv_ll = custom_sv_ll;
             m_vps_relative = relative;
             m_vps_mutex.unlock();
+        
         }
         return true;
     }
     else
     {
+        if (m_vps_use_custom_image_server > 0.0)  // for debugging when using custom_image_server in which sv_image is null.
+        {
+            cv::Mat sv_image = m_vps.getViewImage().clone();
+            m_vps_mutex.lock();
+            m_vps_id = m_vps.getViewID();
+            m_vps_image = sv_image;            
+            m_vps_custom_sv_ll = custom_sv_ll;
+            m_vps_mutex.unlock();
+        }
         m_vps.print();
     }
-    m_vps_custom_sv_xy = custom_sv_xy;  // debugging
-
     return false;
 }
 

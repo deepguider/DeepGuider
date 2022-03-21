@@ -12,9 +12,9 @@ enable_imu: 0
 enable_mapserver: 0    # 0: use saved offline map, 1: online mapserver
 
 ### Main Options
-site_index: 5            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, 5:TEST_ETRI_INDOOR, 6:ETRI_EXTENDED, ...
+site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, 5:TEST_ETRI_INDOOR, 6:ETRI_EXTENDED, ...
 site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR", 'ETRI_EXTENDED']
-server_ip_index: 0     # 0: 127.0.0.1, 1: 129.254.81.204, ...
+server_ip_index: 1     # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
 image_server_port: "10000"  # etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
 
@@ -31,6 +31,7 @@ recording_header_name: "dg_simple_"
 ### VPS Specific Options
 vps_load_dbfeat: 0
 vps_save_dbfeat: 0
+vps_use_custom_image_server: 0   # 0 (default) to use naver roadview, 1 to use custom images for database images
 vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
 
 ## Pre-defined Place Settings
