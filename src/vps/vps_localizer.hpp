@@ -63,6 +63,10 @@ namespace dg
                 double custom_lat = vpss[0].lat;
                 double custom_lon = vpss[0].lon;
                 streetview_xy = m_shared->toMetric(dg::LatLon(custom_lat, custom_lon));
+				if (custom_lat <= 0 || custom_lon <=0)
+				{
+					return false;
+				}
             }
             else
             {

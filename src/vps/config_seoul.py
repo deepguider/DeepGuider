@@ -14,4 +14,5 @@ struct_dir = os.path.join(root_dir, 'datasets') # For mat files in which list of
 #structFile = os.path.join(struct_dir, 'dg_daejeon_test.mat')
 structFile = os.path.join(struct_dir, 'dg_seoul_test.mat')
 
-x, y, coord, radius = 327934.67464998, 4153535.06119226, 'utm', 25
+#x, y, coord, radius = 327934.67464998, 4153535.06119226, 'utm', 25
+x, y, coord, radius = 37.511634, 127.061298, 'latlon', 25

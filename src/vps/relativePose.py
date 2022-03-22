@@ -9,7 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 #from noise_filter import noise_filter
 
 class relativePose:
-    def __init__(self, mode='normal', Tx=6.0, check_ratio=True, check_roi=False, swap_input=False):
+    def __init__(self, mode='normal', Tx=6.0, check_ratio=True, check_roi=False, swap_input=False, use_same_camera_model=False):
         self.n_features = 0
         self.lk_params = dict(winSize=(21, 21),
                      criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.03))
@@ -21,6 +21,7 @@ class relativePose:
         self.Tx = Tx  # Distance from cam1 to cam2 in x-direction in meter.
         self.check_ratio = check_ratio
         self.check_roi = check_roi
+        self.use_same_camera_model = use_same_camera_model
 
         if self.swap_input == True:
             self.set_camera_matrix_1(self.get_c930e_camera_matrix())
@@ -29,7 +30,7 @@ class relativePose:
             self.set_camera_matrix_1(self.get_roadview_camera_matrix())
             self.set_camera_matrix_2(self.get_c930e_camera_matrix())
 
-        if 'test' in self.mode.lower():
+        if self.use_same_camera_model == True:
             self.set_camera_matrix_1(self.get_c930e_camera_matrix())
             self.set_camera_matrix_2(self.get_c930e_camera_matrix())
 
@@ -97,8 +98,36 @@ class relativePose:
 
         return P1_cam2origin
 
+    def check_cam2_pose(self, pan=0.0, tilt=0.0, cam2_pose=[1, 0, 0], Tx=1.0):
+        '''
+        All are hyper-parameter here to be tuned.
+        C1: centre of cam1, C2: centre of cam2, t (tx,ty,tz) is tralslation from C1 to C2
+    
+             Z (optical axis)                    Z (optical axis) 
+            /                                   /
+           /                                   /
+          /                --------->         /
+        C1------- X        (tx,ty,tz)       C2------- X
+         |                                   |
+         |                                   |
+         |                                   |
+         Y                                   Y
+        '''
+        pan_deg = np.rad2deg(pan)
+        tilt_deg = np.rad2deg(tilt)
+        # Check validation of R|t with simple constraint.
+        valid = False
+        (x, y, z) = cam2_pose
+        (X, Y, Z) = cam2_pose*Tx
+        if np.abs(pan_deg) < 90:
+            if np.abs(tilt_deg) < 60:
+                if np.abs(Y) < np.abs(X):  # Altitude is smaller than X. We assume that planar road.
+                    if np.sqrt(X*X + Y*Y + Z*Z) < 50:  # absolute scale < 50 meters between db and q
+                        valid = True
+        return valid
+
     @staticmethod
-    def check_cam2_pos(cam2_pos):
+    def check_cam2_pos_old(cam2_pos):
         '''
         C1: centre of cam1, C2: centre of cam2, t (tx,ty,tz) is tralslation from C1 to C2
     
@@ -636,7 +665,7 @@ def draw_vector(vec_start=[0,0,0], vec_end=[0.58, 0.58, 0.58], fname="relativePo
     img = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
     return img
 
-def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, interlaced=False, check_ratio=True, check_roi=False):
+def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, interlaced=False, check_ratio=True, check_roi=False, use_same_camera_model=False):
     '''
         feature_mode = 'normal' : two images ==> SIFT desc ==> matching ==> EssentialMatrix ==> R,t from recoverPose
         feature_mode = 'opticalflow' : two images ==> SIFT desc ==> matching ==> EssentialMatrix ==> R,t from recoverPose
@@ -668,7 +697,7 @@ def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, interla
 
     fig_num = 100
     frame_num = 0
-    mod_rPose = relativePose(mode=feature_mode, Tx=Tx, check_ratio=check_ratio, check_roi=check_roi)
+    mod_rPose = relativePose(mode=feature_mode, Tx=Tx, check_ratio=check_ratio, check_roi=check_roi, use_same_camera_model=use_same_camera_model)
 
     out_dir="relativePose_result"
     if os.path.exists(out_dir) == False:
@@ -695,7 +724,7 @@ def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, interla
         pan, tilt = mod_rPose.get_pan_tilt(R)
         cam2_pos = mod_rPose.get_cam2origin_on_cam1coordinate(R, t)
 
-        if mod_rPose.check_cam2_pos(cam2_pos) is False:
+        if mod_rPose.check_cam2_pose(pan, tilt, cam2_pos, Tx) is False:
             print("\033[F", end='') # put the cursor to the previous line
             print("\033[F", end='') # put the cursor to the previous line
             continue
@@ -823,17 +852,27 @@ if __name__ == "__main__":
     #interlaced = False # video sequence : ref, tar1, tar2, tar2, tar3, ...
     #interlaced = True  # video sequence : db0, q0, db1, q1, ... , dbn, qn
     
-    #feature_mode = "test"  # Same camera for cam1, cam2  
-    #feature_mode = "normal" # cam1 is roadview, cam2 is logitech c903e
+    #feature_mode = "opticalflow"  # Same camera for cam1, cam2  
+    feature_mode = "normal" # cam1 is roadview, cam2 is logitech c903e
+
+    use_same_camera_model = False  # Same camera model is used for db and q 
 
     ############################
     ## Choose one in following :
+    
     #video_src = 0  # usb cam
+
     #video_src = "./video_indoor.avi"; Tx=1.0; feature_mode = "test"; interlaced = False
-    video_src = "./test_relativePose_outdoor.avi"; Tx=6.0; feature_mode = "test"; interlaced = False; check_ratio=True; check_roi=False
-    video_src = "../../bin/data_vps/matched_image"; Tx=6.0; feature_mode = "normal"; interlaced = True; check_ratio=True; check_roi=True
+
+    #video_src = "./test_relativePose_outdoor.avi"; Tx=6.0; feature_mode = "test"; interlaced = False; check_ratio=True; check_roi=False
+
+    ## When Naver roadview is used.
+    #video_src = "../../bin/data_vps/matched_image"; Tx=6.0; feature_mode = "normal"; interlaced = True; check_ratio=True; check_roi=True
+    
+    ## When custom roadview is used captured near sideway. So Tx is smaller than Naver. mode = 'test' because same camera is used for db and q.
+    video_src = "../../bin/data_vps/matched_image"; Tx=1.0; feature_mode = "test"; interlaced = True; check_ratio=True; check_roi=True; use_same_camera_model = True
     ############################
 
     ## Run
-    run_usbcam(video_src, feature_mode=feature_mode, Tx=Tx, skip_frame=0, interlaced=interlaced, check_ratio=check_ratio, check_roi=check_roi)
+    run_usbcam(video_src, feature_mode=feature_mode, Tx=Tx, skip_frame=0, interlaced=interlaced, check_ratio=check_ratio, check_roi=check_roi, use_same_camera_model=use_same_camera_model)
     #run_kitti()

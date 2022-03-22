@@ -78,11 +78,18 @@ class vps:
         self.device = torch.device(device)
         self.set_region(region)
         self.load_dbfeat_initialized = False
-        self.Tx = 6.0  # Distance from roadview cam to query cam in meter.
+
+        ## Custom dataset parameter
         self.custom_dataset = None
         self.use_custom_dataset = False
         self.is_custom_dataset_valid = False
         self.custom_dataset_abs_path = ""
+
+        ## Relative Pose parameter
+        self.use_same_camera_model = False  # When same camera model is used for db and q. This affects relativePose()
+        self.check_ratio = True  # (Always true) Lowe's paper
+        self.check_roi = True  # True for Naver roadview (use features in 1st-quater). False for custom dataset(use all feature)
+        self.Tx = 6.0  # Distance from roadview cam to query cam in meter.
 
     def init_param(self):
         self.parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -481,7 +488,7 @@ class vps:
                 if pred_confidence.squeeze() > 0.0:  # Check that network was initialized well.
                     self.vps_IDandConf = [vps_imgID, vps_imgConf]
                     if (self.use_custom_dataset == True) and (self.is_custom_dataset_valid == True):
-                        pred_utmDb = self.custom_dataset.get_utmDb()[self.pred_idx[i]]
+                        pred_utmDb = self.custom_dataset.db_name2utm(vps_imgID[i])
                         self.pred_utmDb = [float(i) for i in pred_utmDb[0]]  # [327922.6661131374, 4153540.910004767]
                         #utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
                         #lat, lon = utm.to_latlon(utm_x, utm_y, 52, 'S')
@@ -701,6 +708,10 @@ class vps:
 
         if self.use_custom_dataset == True:
             ## This statement is executed only the first time.
+            self.Tx = 1.0  # Distance from roadview cam to query cam in meter. When custom dataset is used, Tx is smaller than Naver, because db and query are captured near sideway.
+            self.use_same_camera_model = True
+            self.check_ratio = True
+            self.check_roi = False
             if self.custom_dataset is None:
                 ## Custom roadview image API instead of Naver roadview image server
                 '''etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003'''
@@ -800,7 +811,7 @@ class vps:
         if Tx is None:
             Tx = self.Tx
         if self.mod_rPose is None:
-            self.mod_rPose = relativePose(mode='normal', Tx=Tx)
+            self.mod_rPose = relativePose(mode=mode, Tx=Tx, check_ratio=self.check_ratio, check_roi=self.check_roi, use_same_camera_model=self.use_same_camera_model)
             self.img1_path = []
 
         if 'normal' in mode.lower():   # Normal, compare (db, q)
@@ -831,19 +842,6 @@ class vps:
 
         return R, t
 
-    def check_cam2_pose(self, pan, tilt, cam2_pose):
-        pan_deg = np.rad2deg(pan)
-        tilt_deg = np.rad2deg(tilt)
-        # Check validation of R|t with simple constraint.
-        valid = False
-        (x, y, z) = cam2_pose
-        if np.abs(pan_deg) < 90:
-            if np.abs(tilt_deg) < 50:
-                if np.abs(x) < 1.5*self.Tx:
-                    if np.abs(z) < 5*self.Tx:
-                        valid = True
-        return valid
-
     def getVpsResult(self, relativePose_enable=False):
         if self.checking_return_value() < 0:
             print("Broken : vps.py's return value")
@@ -873,7 +871,7 @@ class vps:
                 R0, t0 = self.get_relativePose('normal')
                 pan, tilt = self.mod_rPose.get_pan_tilt(R0)
                 query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R0, t0)
-                if self.check_cam2_pose(pan, tilt, query_cam2_pos) == True:
+                if self.mod_rPose.check_cam2_pose(pan, tilt, query_cam2_pos, self.Tx) == True:
                     R, t = R0, t0
 
         query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R, t)

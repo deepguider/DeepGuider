@@ -125,6 +125,17 @@ class WholeDatasetFromStruct():
             fname = self.dbStruct.qImage[idx]
         return fname
 
+    def db_name2idx(self, name):  # ex) of name is 54800
+        dbImage = self.get_dbImage()
+        name = "{}.jpg".format(name)
+        idx =  [i for i in range(len(dbImage)) if name in dbImage[i]] 
+        return idx
+
+    def db_name2utm(self, name):
+        utmDb = self.get_utmDb()
+        idx = self.db_name2idx(name)
+        return utmDb[idx]
+
     def db_idx2utm(self, idx):
         if type(idx) == type(None):
             return None
@@ -283,7 +294,10 @@ class WholeDatasetFromStruct():
         ])
     
 def test_custom_image_server(config):
-    custom_dataset = WholeDatasetFromStruct(config.structFile, config.db_dir, config.queries_dir)
+    custom_dataset = WholeDatasetFromStruct()
+    is_custom_dataset_valid = custom_dataset.initialize(config.structFile, config.db_dir, config.queries_dir)
+    if is_custom_dataset_valid == False:
+        return False
 
     qImage = custom_dataset.get_qImage()
     for i in range(len(qImage)):
@@ -316,7 +330,11 @@ def test_custom_image_server(config):
         custom_dataset.GetStreetView(utmQ[0], utmQ[1], 'utm', 25)
 
 def test_simple(config):
-    custom_dataset = WholeDatasetFromStruct(config.structFile, config.db_dir, config.queries_dir)
+    custom_dataset = WholeDatasetFromStruct()
+    is_custom_dataset_valid = custom_dataset.initialize(config.structFile, config.db_dir, config.queries_dir)
+    if is_custom_dataset_valid == False:
+        return False
+
     x, y, coord, radius = config.x, config.y, config.coord, config.radius
 
     ## Get db information for single position
@@ -334,7 +352,10 @@ def test_simple(config):
     return True
 
 def test_download(config):
-    custom_dataset = WholeDatasetFromStruct(config.structFile, config.db_dir, config.queries_dir)
+    custom_dataset = WholeDatasetFromStruct()
+    is_custom_dataset_valid = custom_dataset.initialize(config.structFile, config.db_dir, config.queries_dir)
+    if is_custom_dataset_valid == False:
+        return False
     x, y, coord, radius = config.x, config.y, config.coord, config.radius
 
     ## Download custom roadview.
@@ -349,6 +370,6 @@ if __name__ == "__main__":
     if False:  # Daejeon
         import config_daejeon as config
 
-    test_simple(config)
+    #test_simple(config)
     test_download(config)
-    test_custom_image_server(config)
+    #test_custom_image_server(config)

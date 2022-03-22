@@ -54,9 +54,11 @@ protected:
     double m_map_image_rotation = cx::cvtDeg2Rad(1.0);
     std::string m_gps_input_path = "data/191115_ETRI_asen_fix.csv";
     std::string m_video_input_path = "data/ETRI/191115_151140_images.avi";
-    cv::Vec3b m_gui_robot_color = cv::Vec3b(0, 0, 255);
+    cv::Vec3b m_gui_robot_color = cv::Vec3b(0, 0, 255);  // B,G,R
     cv::Vec3b m_gui_gps_color = cv::Vec3b(80, 80, 80);
     cv::Vec3b m_gui_gps_novatel_color = cv::Vec3b(255, 0, 0);
+    cv::Vec3b m_gui_vps_color = cv::Vec3b(229, 204, 255); // bright pink
+    cv::Vec3b m_gui_vps_rpose_color = cv::Vec3b(127, 0, 255);  // pink
     int m_gui_gps_trj_radius = 2;
     int m_gui_robot_trj_radius = 1;
 
@@ -497,6 +499,8 @@ bool DeepGuider::initializeDefaultMap()
     return true;
 }
 
+
+
 int DeepGuider::run()
 {
     // load test dataset    
@@ -552,7 +556,7 @@ int DeepGuider::run()
         {
             const dg::LatLon gps_datum(vdata[1], vdata[2]);
             procGpsData(gps_datum, data_time);
-            m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_color);
+			m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_color);
             printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, data_time);
 
             video_image = data_loader.getFrame(data_time);
@@ -936,14 +940,14 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             // Draw matched streetview position
             win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
             if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
-            m_painter.drawPoint(image, sv_xy, 6, cv::Vec3b(255, 255, 0), view_offset, view_zoom);  // sky color for streetview position
+            m_painter.drawPoint(image, sv_xy, 20, m_gui_vps_color, view_offset, view_zoom);  // sky color for streetview position
 
             // Draw virtual robot position computed from relative pose
             dg::Pose2 pose = getPose();
             double poi_theta = pose.theta + sv_relative.ang;
             double rx = sv_xy.x - sv_relative.lin * cos(poi_theta);
             double ry = sv_xy.y - sv_relative.lin * sin(poi_theta);
-            m_painter.drawPoint(image, Point2(rx,ry), 20, cv::Vec3b(40, 40, 40), view_offset, view_zoom); // light black for  streetview position with relative pose
+            m_painter.drawPoint(image, Point2(rx,ry), 20, m_gui_vps_rpose_color, view_offset, view_zoom); // light black for  streetview position with relative pose
         }
     }
 
@@ -1418,7 +1422,6 @@ bool DeepGuider::procVps()
     m_cam_mutex.unlock();
 
     dg::Point2 sv_xy;
-    dg::LatLon custom_sv_ll;  // utm result using custom streetview images as db.
     dg::Polar2 relative;
     double sv_confidence;
     if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
@@ -1435,7 +1438,6 @@ bool DeepGuider::procVps()
             m_vps_xy = sv_xy;
             m_vps_relative = relative;
             m_vps_mutex.unlock();
-        
         }
         return true;
     }
