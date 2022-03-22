@@ -64,7 +64,7 @@ protected:
 	double m_vps_load_dbfeat = 0.0;
 	double m_vps_save_dbfeat = 0.0;
 	double m_vps_gps_accuracy = 0.9;  // Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
-	double m_vps_use_custom_image_server = 0.0;  // use custom image dataset instead of naver roadview to avoid wide baseline problem
+	int m_vps_use_custom_image_server = 0;  // use custom image dataset instead of naver roadview to avoid wide baseline problem
 
     int m_exploration_state_count = 0;
     const int m_exploration_state_count_max = 20;
@@ -182,11 +182,8 @@ protected:
 
     cv::Mutex m_vps_mutex;
     cv::Mat m_vps_image;            // top-1 matched streetview image
-    dg::ID m_vps_id;                // top-1 matched streetview id
     dg::Point2 m_vps_xy;            // top-1 matched streetview's position (x,y)
-    dg::LatLon m_vps_custom_sv_ll;  // top-1 matched custom streetview's position (lat,lon)
     dg::Polar2 m_vps_relative;      // top-1 matched streetview's relative position (pan, tz) or (theta_z, delta_z)
-
 
     cv::Mutex m_roadlr_mutex;
     cv::Mat m_roadlr_image;
@@ -465,7 +462,6 @@ bool DeepGuider::initialize(std::string config_file)
     m_cam_image.release();
     m_cam_capture_time = -1;
     m_vps_image.release();
-    m_vps_id = 0;
     m_roadlr_image.release();
     m_logo_image.release();
     m_ocr_image.release();
@@ -926,9 +922,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     {
         cv::Mat result_image;
         m_vps_mutex.lock();
-        dg::ID sv_id = m_vps_id;
         dg::Point2 sv_xy = m_vps_xy;
-        dg::Point2 custom_sv_xy;  // matched position using custom image server
         dg::Polar2 sv_relative = m_vps_relative;          
         if (!m_vps_image.empty())
         {
@@ -939,21 +933,17 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
 
         if (!result_image.empty())
         {
+            // Draw matched streetview position
             win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
             if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
-            dg::StreetView* sv = m_map.getView(sv_id);
-            // Draw streetview's gps location
-            if (sv)m_painter.drawPoint(image, *sv, 6, cv::Vec3b(255, 255, 0), view_offset, view_zoom);  // sky color for streetview position
-            // Draw streetview's gps location with relative pose (tz).
-            sv_xy.x = sv_xy.x + sv_relative.lin * cos(3.141592/2 + sv_relative.ang);
-            sv_xy.y = sv_xy.y + sv_relative.lin * sin(3.141592/2 + sv_relative.ang);
-            if (sv)m_painter.drawPoint(image, sv_xy, 20, cv::Vec3b(40, 40, 40), view_offset, view_zoom); // light black for  streetview position with relative pose
+            m_painter.drawPoint(image, sv_xy, 6, cv::Vec3b(255, 255, 0), view_offset, view_zoom);  // sky color for streetview position
 
-            if (m_vps_use_custom_image_server > 0.0)
-            {
-                custom_sv_xy = toMetric(m_vps_custom_sv_ll);  // convert utm to map image point
-                m_painter.drawPoint(image, custom_sv_xy, 20, cv::Vec3b(50, 50, 50), view_offset, view_zoom); // light black for custom streetview position
-            }
+            // Draw virtual robot position computed from relative pose
+            dg::Pose2 pose = getPose();
+            double poi_theta = pose.theta + sv_relative.ang;
+            double rx = sv_xy.x - sv_relative.lin * cos(poi_theta);
+            double ry = sv_xy.y - sv_relative.lin * sin(poi_theta);
+            m_painter.drawPoint(image, Point2(rx,ry), 20, cv::Vec3b(40, 40, 40), view_offset, view_zoom); // light black for  streetview position with relative pose
         }
     }
 
@@ -1431,20 +1421,18 @@ bool DeepGuider::procVps()
     dg::LatLon custom_sv_ll;  // utm result using custom streetview images as db.
     dg::Polar2 relative;
     double sv_confidence;
-    if (m_vps.apply(cam_image, capture_time, sv_xy, custom_sv_ll, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
+    if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
     {
         m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
 
-        cv::Mat sv_image = m_vps.getViewImage().clone();
+        cv::Mat sv_image = m_vps.getViewImage();
         if(!sv_image.empty())
         {
             m_vps.draw(sv_image, 3.0);
             m_vps_mutex.lock();
-            m_vps_id = m_vps.getViewID();
             m_vps_image = sv_image;
             m_vps_xy = sv_xy;
-            m_vps_custom_sv_ll = custom_sv_ll;
             m_vps_relative = relative;
             m_vps_mutex.unlock();
         
@@ -1453,15 +1441,6 @@ bool DeepGuider::procVps()
     }
     else
     {
-        if (m_vps_use_custom_image_server > 0.0)  // for debugging when using custom_image_server in which sv_image is null.
-        {
-            cv::Mat sv_image = m_vps.getViewImage().clone();
-            m_vps_mutex.lock();
-            m_vps_id = m_vps.getViewID();
-            m_vps_image = sv_image;            
-            m_vps_custom_sv_ll = custom_sv_ll;
-            m_vps_mutex.unlock();
-        }
         m_vps.print();
     }
     return false;
