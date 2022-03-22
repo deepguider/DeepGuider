@@ -15,9 +15,16 @@ int testSimpleMapManager()
 	// Change the server IP address
 	manager.setIP("129.254.81.204");
 	std::string ip = manager.getIP();
-	manager.setIP("localhost");
-	ip = manager.getIP();
-	manager.setIP("129.254.81.1");
+	// manager.setIP("localhost");
+	// ip = manager.getIP();
+	// manager.setIP("129.254.81.1");
+
+	dg::Map map;
+	ok = manager.getTopoMap(37.510928, 126.764344, 2000, map);
+	ok = manager.getPOI(37.510928, 126.764344, 2000, map);
+	ok = manager.getStreetView(37.510928, 126.764344, 2000, map);
+	map.save("TopoMap_Bucheon_220322.csv");
+
 	/* commented by jylee	
 	// Get the path & map
 	dg::Path path;
@@ -87,8 +94,8 @@ int testSimpleMapManager()
 	*/	// end of 'commented by jylee'
 
 	// Get the StreetView image
-	cv::Mat sv_image;
-	ok = manager.getStreetViewImage(14255003037, sv_image, "");	// f, b, l, r, u, d
+	//cv::Mat sv_image;
+	//ok = manager.getStreetViewImage(14255003037, sv_image, "");	// f, b, l, r, u, d
 	
 
     return 0;
