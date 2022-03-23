@@ -82,7 +82,8 @@ run_parse "$rosbag_file" "$output_dir"
 
 source ~/.virtualenvs/dg_venv3.6/bin/activate
 echo "Draw map from $rosbag_file"
-extracted_dir="$output_dir"
+
+extracted_dir="$output_dir/uvc_image"
 map_name="map/$ofdir"
 
 ## Draw map
@@ -92,8 +93,17 @@ videopath="${extracted_dir}/${ofdir}.avi"
 #	--no_display
 #    --watermark=ETRI_Building12_Floor7
 python ${SRCPATH}/imgs2video.py \
+	--no_display \
     --in_imgpath=${extracted_dir} \
     --ext=jpg \
     --out_videopath=${videopath} \
-    --fps=1
+    --fps=15
 
+extracted_dir="$output_dir/omni_image"
+videopath="${extracted_dir}/${ofdir}.avi"
+python ${SRCPATH}/imgs2video.py \
+	--no_display \
+    --in_imgpath=${extracted_dir} \
+    --ext=jpg \
+    --out_videopath=${videopath} \
+    --fps=15

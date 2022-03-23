@@ -79,6 +79,9 @@ if __name__ == '__main__':
     poseFile = opt.ifname
     poseMode = opt.coord
 
+    if os.path.exists(poseFile) == False:
+        print("File not found : {}".format(poseFile))
+        exit(0)
     txt_lines = open(poseFile,'r').readlines()
     # file content :
     # 000000 354559.16244695638 4028082.80969046941 52 S
