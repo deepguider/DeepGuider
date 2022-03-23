@@ -31,8 +31,12 @@ class simple_VideoCapture():
             frame = cv2.imread(fname)
             self.frame_idx+=1
             ret = True
-
         return ret, frame
+
+    def get_path(self):
+        if (self.frame_idx > 0) and (self.frame_idx < self.frame_length):
+            fname = self.img_list[self.frame_idx-1]  # return previous file path which is current frame's path
+        return fname
 
     def release(self):
         return 0

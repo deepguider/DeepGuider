@@ -9,7 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 #from noise_filter import noise_filter
 
 class relativePose:
-    def __init__(self, mode='normal', Tx=6.0, swap_input=False):
+    def __init__(self, mode='normal', Tx=6.0, check_ratio=True, check_roi=False, swap_input=False, use_same_camera_model=False):
         self.n_features = 0
         self.lk_params = dict(winSize=(21, 21),
                      criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.03))
@@ -19,6 +19,9 @@ class relativePose:
         self.mode = mode
         self.swap_input = swap_input   # swap input1 and input2
         self.Tx = Tx  # Distance from cam1 to cam2 in x-direction in meter.
+        self.check_ratio = check_ratio
+        self.check_roi = check_roi
+        self.use_same_camera_model = use_same_camera_model
 
         if self.swap_input == True:
             self.set_camera_matrix_1(self.get_c930e_camera_matrix())
@@ -27,7 +30,7 @@ class relativePose:
             self.set_camera_matrix_1(self.get_roadview_camera_matrix())
             self.set_camera_matrix_2(self.get_c930e_camera_matrix())
 
-        if 'test' in self.mode.lower():
+        if self.use_same_camera_model == True:
             self.set_camera_matrix_1(self.get_c930e_camera_matrix())
             self.set_camera_matrix_2(self.get_c930e_camera_matrix())
 
@@ -95,8 +98,36 @@ class relativePose:
 
         return P1_cam2origin
 
+    def check_cam2_pose(self, pan=0.0, tilt=0.0, cam2_pose=[1, 0, 0], Tx=1.0):
+        '''
+        All are hyper-parameter here to be tuned.
+        C1: centre of cam1, C2: centre of cam2, t (tx,ty,tz) is tralslation from C1 to C2
+    
+             Z (optical axis)                    Z (optical axis) 
+            /                                   /
+           /                                   /
+          /                --------->         /
+        C1------- X        (tx,ty,tz)       C2------- X
+         |                                   |
+         |                                   |
+         |                                   |
+         Y                                   Y
+        '''
+        pan_deg = np.rad2deg(pan)
+        tilt_deg = np.rad2deg(tilt)
+        # Check validation of R|t with simple constraint.
+        valid = False
+        (x, y, z) = cam2_pose
+        (X, Y, Z) = cam2_pose*Tx
+        if np.abs(pan_deg) < 90:
+            if np.abs(tilt_deg) < 60:
+                if np.abs(Y) < np.abs(X):  # Altitude is smaller than X. We assume that planar road.
+                    if np.sqrt(X*X + Y*Y + Z*Z) < 50:  # absolute scale < 50 meters between db and q
+                        valid = True
+        return valid
+
     @staticmethod
-    def check_cam2_pos(cam2_pos):
+    def check_cam2_pos_old(cam2_pos):
         '''
         C1: centre of cam1, C2: centre of cam2, t (tx,ty,tz) is tralslation from C1 to C2
     
@@ -289,7 +320,7 @@ class relativePose:
                 bp()
                 return self.R, self.t.squeeze()
 
-            if len(self.good_pts1) > 10:
+            if len(self.good_pts1) > 30:
                 _, self.R, self.t = self.estimate_relative_pose_from_correspondence(self.good_pts1, self.good_pts2, self.camera_matrix_1, self.camera_matrix_2, self.distCoeffs_1, self.distCoeffs_2)
 
         return self.R, self.t.squeeze()
@@ -304,9 +335,9 @@ class relativePose:
         self.kps2 = []
         if (self.img1 is not None) and (self.img2 is not None):
             #self.F, self.mask, self.pts1, self.pts2, self.kps1, self.kps2 = self.estimate_fundamental_matrix(self.img0, self.img1)
-            self.pts1, self.pts2, self.kps1, self.kps2 = self.detect_matching_points(self.img1, self.img2)
+            self.pts1, self.pts2, self.kps1, self.kps2 = self.detect_matching_points(self.img1, self.img2, check_ratio=self.check_ratio, check_roi=self.check_roi)
             if len(self.pts1) > 10:
-                _, self.R, self.t = self.estimate_relative_pose_from_correspondence(self.pts1, self.pts2, self.camera_matrix_1, self.camera_matrix_2, self.distCoeffs_1, self.distCoeffs_2)
+                self.ransac_mask, self.R, self.t = self.estimate_relative_pose_from_correspondence(self.pts1, self.pts2, self.camera_matrix_1, self.camera_matrix_2, self.distCoeffs_1, self.distCoeffs_2)
                 #_, self.R, self.t = self.estimate_relative_pose_from_correspondence(self.pts1, self.pts2, self.camera_matrix_1, self.camera_matrix_2, self.distCoeffs_1)
             else:
                 self.R, self.t = self.get_zero_Rt()
@@ -352,7 +383,7 @@ class relativePose:
         points, R_est, t_est, mask_pose = cv2.recoverPose(E, pts1_norm, pts2_norm)
         return mask[:,0].astype(np.bool), R_est, t_est
 
-    def detect_matching_points(self, img1, img2):  # Get fundamental matrix, input is cv2 img
+    def detect_matching_points(self, img1, img2, check_ratio=True, check_roi=False):  # Get fundamental matrix, input is cv2 img
         try:
             sift = cv2.xfeatures2d.SIFT_create()  # cv2.__version__ < 4.4.0
         except:
@@ -373,10 +404,33 @@ class relativePose:
         pts2 = []
         kps1 = []
         kps2 = []
+
+        h1, w1 = img1.shape[0], img1.shape[1]
+        h2, w2 = img2.shape[0], img2.shape[1]
     
         # ratio test as per Lowe's paper
         for i,(m,n) in enumerate(matches):  # m is for top-1. n is for top-2, k=2
-            if m.distance < 0.75*n.distance:  # ori. 0.8
+            ratio_is_good = False
+            roi_is_good = False
+            if check_ratio == True:
+                if m.distance < 0.75*n.distance:  # ori. 0.8
+                    ratio_is_good = True
+                else:
+                    ratio_is_good = False
+            else:
+                roi_is_good = True
+
+            if check_roi == True:
+                p1 = kp1[m.queryIdx].pt
+                if self.check_quater(p1, h1, w1) in [1] :  # Search right top quater of image
+                #if self.check_quater(p1, h1, w1) in [1, 4] :  # Search right side of image except hood of car
+                    roi_is_good = True
+                else:
+                    roi_is_good = False
+            else:
+                roi_is_good = True
+
+            if (ratio_is_good == True) and (roi_is_good == True):
                 good.append(m)
                 pts2.append(kp2[m.trainIdx].pt)  # trainIdx : matched point's idx of img2
                 pts1.append(kp1[m.queryIdx].pt)  # queryIdx : reference idx of img1
@@ -385,7 +439,8 @@ class relativePose:
                 
         self.raw_kps1 = kp1
         self.raw_kps2 = kp2
-        self.raw_matches = matches
+        top1_matches = [i[0] for i in matches] 
+        self.raw_matches = top1_matches
         self.good_matches = good
     
         pts1 = np.int32(pts1)
@@ -393,6 +448,45 @@ class relativePose:
     
         return pts1, pts2, kps1, kps2
 
+    def get_very_good_matches(self):
+        good_matches = self.good_matches
+        mask = self.ransac_mask
+        very_good = []
+        for i,m in enumerate(self.good_matches):
+            if mask[i] > 0:
+                very_good.append(m)
+        self.very_good_matches = very_good
+        return self.very_good_matches
+
+    def check_quater(self, p, h, w, hood_y=0.75):
+        '''
+            |    .p(x,y)   
+         2Q |  1Q       
+    -----(cx,cy)-----   
+         3Q |  4Q       
+            |           
+
+        hood_y is a ratio of upper y point of hood (or bonnet).
+        '''
+        ## Check quator of point
+        x, y = p[0], p[1]
+        cx, cy = w/2, h/2
+        if x >= cx and y <= cy:
+            q = 1
+        elif x < cx and y <= cy:
+            q = 2
+        elif x < cx and y > cy:
+            q = 3
+        elif x >= cx and y > cy:
+            q = 4
+        else:  # (cx, cy)
+            q = 1
+
+        ## Check whether point is free of car's hood
+        if y > h*hood_y:  # except point in car's hood
+            q = 5
+
+        return q
 
     def estimate_fundamental_matrix(self, img0, img1):  # Get fundamental matrix, input is cv2 img
         pts1, pts2, kps1, kps2 = self.detect_matching_points(img0, img1)
@@ -538,7 +632,7 @@ def run_kitti():
             cv2.imshow('feature', img)
             cv2.waitKey(1)
 
-def draw_vector(vec_start=[0,0,0], vec_end=[0.58, 0.58, 0.58]):
+def draw_vector(vec_start=[0,0,0], vec_end=[0.58, 0.58, 0.58], fname="relativePose.png"):
     global draw_vector_fig, draw_vector_ax
     if draw_vector_fig is None:
         draw_vector_fig = plt.figure()
@@ -558,9 +652,20 @@ def draw_vector(vec_start=[0,0,0], vec_end=[0.58, 0.58, 0.58]):
     draw_vector_ax.set_axisbelow(True)        
     draw_vector_ax.scatter(vec_start[0], vec_start[1], vec_start[2], color='r', s=20)
     draw_vector_ax.quiver(vec_start[0], vec_start[1], vec_start[2], vec_end[0], vec_end[1], vec_end[2], color='black')
-    plt.pause(0.1)
+    #plt.pause(0.1)
+    #plt.savefig(fname, dpi=300)
+    # redraw the canvas
+    draw_vector_fig.canvas.draw()
 
-def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, feature_display=True, vector_display=True, interlaced=False):
+    # convert canvas to image
+    img = np.fromstring(draw_vector_fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+    img = img.reshape(draw_vector_fig.canvas.get_width_height()[::-1] + (3,))
+
+    # img is rgb, convert to opencv's default bgr
+    img = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
+    return img
+
+def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, interlaced=False, check_ratio=True, check_roi=False, use_same_camera_model=False):
     '''
         feature_mode = 'normal' : two images ==> SIFT desc ==> matching ==> EssentialMatrix ==> R,t from recoverPose
         feature_mode = 'opticalflow' : two images ==> SIFT desc ==> matching ==> EssentialMatrix ==> R,t from recoverPose
@@ -592,7 +697,11 @@ def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, feature
 
     fig_num = 100
     frame_num = 0
-    mod_rPose = relativePose(mode=feature_mode, Tx=Tx)
+    mod_rPose = relativePose(mode=feature_mode, Tx=Tx, check_ratio=check_ratio, check_roi=check_roi, use_same_camera_model=use_same_camera_model)
+
+    out_dir="relativePose_result"
+    if os.path.exists(out_dir) == False:
+        os.makedirs(out_dir)
 
     while(True):
         if interlaced == True:
@@ -615,7 +724,7 @@ def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, feature
         pan, tilt = mod_rPose.get_pan_tilt(R)
         cam2_pos = mod_rPose.get_cam2origin_on_cam1coordinate(R, t)
 
-        if mod_rPose.check_cam2_pos(cam2_pos) is False:
+        if mod_rPose.check_cam2_pose(pan, tilt, cam2_pos, Tx) is False:
             print("\033[F", end='') # put the cursor to the previous line
             print("\033[F", end='') # put the cursor to the previous line
             continue
@@ -629,26 +738,48 @@ def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, feature
         print("\033[F", end='') # put the cursor to the previous line
         print("\033[F", end='') # put the cursor to the previous line
 
-        if vector_display:
-            cam1_pos = [0,0,0]
-            draw_vector(cam1_pos, cam2_pos)
+        try:
+            fname = cap.get_path()
+        except:
+            fname = "{0:06d}".format(frame_num-1)
+            
+        fname_prefix = os.path.basename(fname).split('.')[0]
+        fname_prefix = os.path.join(out_dir, fname_prefix)
 
-        if feature_display:
-            if feature_mode.lower() in 'opticalflow':
-                img = mod_rPose.vo_result
-            else:
-                img = cv2.drawMatches(mod_rPose.img1, mod_rPose.raw_kps1, mod_rPose.img2, mod_rPose.raw_kps2, mod_rPose.good_matches, None, flags=cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS )
-            img_re = img_resize(img, w_resize=1000)
-            cv2.imshow('features', img_re)
+        cam1_pos = [0,0,0]
+        fname = "{}_4_relativePose.png".format(fname_prefix)
+        vector_img = draw_vector(cam1_pos, cam2_pos, fname)
+
+        if feature_mode.lower() in 'opticalflow':
+            img = mod_rPose.vo_result
+            img = img_resize(img, w_resize=1000)
+            cv2.imshow('features', img)
+            if cv2.waitKey(1000) & 0xFF == 27:  # Esc key to stop
+                break
         else:
-            img1_re = img_resize(img1, w_resize=500)
-            cv2.imshow('img1', img1_re)
-            if interlaced == True:
-                img2_re = img_resize(img2, w_resize=500)
-                cv2.imshow('img2', img2_re)
+            flags = cv2.DRAW_MATCHES_FLAGS_NOT_DRAW_SINGLE_POINTS  # 2
+            #flags = cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS  # 4
+            img1 = cv2.drawMatches(mod_rPose.img1, mod_rPose.raw_kps1, mod_rPose.img2, mod_rPose.raw_kps2, mod_rPose.raw_matches, None, flags=cv2.DRAW_MATCHES_FLAGS_DEFAULT)
+            img2 = cv2.drawMatches(mod_rPose.img1, mod_rPose.raw_kps1, mod_rPose.img2, mod_rPose.raw_kps2, mod_rPose.good_matches, None, flags=flags)
+            img3 = cv2.drawMatches(mod_rPose.img1, mod_rPose.raw_kps1, mod_rPose.img2, mod_rPose.raw_kps2, mod_rPose.get_very_good_matches(), None, flags=flags)
+            img1 = img_resize(img1, w_resize=1000)
+            img2 = img_resize(img2, w_resize=1000)
+            img3 = img_resize(img3, w_resize=1000)
 
-        if cv2.waitKey(1000) & 0xFF == 27:  # Esc key to stop
-            break
+            img4_1 = img_resize(img3, h_resize=500)
+            img4_2 = img_resize(vector_img, h_resize=500)
+            img4 = np.hstack((img4_1, img4_2))
+            #cv2.imshow('features(all)', img1)
+            #cv2.imshow('features(ratio,roi)', img2)
+            #cv2.imshow('features(ratio,roi,ransac)', img3)
+            path1 = "{}_1_all_matches.jpg".format(fname_prefix)
+            path2 = "{}_2_ratio_roi_matches.jpg".format(fname_prefix)
+            path3 = "{}_3_ratio_roi_ransac_matches.jpg".format(fname_prefix)
+            path4 = "{}_4_result.jpg".format(fname_prefix)
+            cv2.imwrite(path1, img1)
+            cv2.imwrite(path2, img2)
+            cv2.imwrite(path3, img3)
+            cv2.imwrite(path4, img4)
 
     print("\n\n\n\n\n")
     cap.release()
@@ -688,7 +819,7 @@ def run_usbcam_simple(video_src=0, feature_mode='normal', Tx=1.0):
 
     fig_num = 100
     frame_num = 0
-    mod_rPose = relativePose(mode=feature_mode, Tx=Tx)
+    mod_rPose = relativePose(mode=feature_mode, Tx=Tx, check_ratio=True, check_roi=True)
     while(True):
         ret, img2 = cap.read()
         if not ret:
@@ -721,20 +852,27 @@ if __name__ == "__main__":
     #interlaced = False # video sequence : ref, tar1, tar2, tar2, tar3, ...
     #interlaced = True  # video sequence : db0, q0, db1, q1, ... , dbn, qn
     
-    #feature_mode = "test"  # Same camera for cam1, cam2  
-    #feature_mode = "normal" # cam1 is roadview, cam2 is logitech c903e
+    #feature_mode = "opticalflow"  # Same camera for cam1, cam2  
+    feature_mode = "normal" # cam1 is roadview, cam2 is logitech c903e
 
-    feature_display=True
-    vector_display=True
+    use_same_camera_model = False  # Same camera model is used for db and q 
 
     ############################
     ## Choose one in following :
+    
     #video_src = 0  # usb cam
+
     #video_src = "./video_indoor.avi"; Tx=1.0; feature_mode = "test"; interlaced = False
-    video_src = "./test_relativePose_outdoor.avi"; Tx=6.0; feature_mode = "test"; interlaced = False
-    #video_src = "../../bin/vps_img"; Tx=6.0; feature_mode = "normal"; interlaced = True
+
+    #video_src = "./test_relativePose_outdoor.avi"; Tx=6.0; feature_mode = "test"; interlaced = False; check_ratio=True; check_roi=False
+
+    ## When Naver roadview is used.
+    #video_src = "../../bin/data_vps/matched_image"; Tx=6.0; feature_mode = "normal"; interlaced = True; check_ratio=True; check_roi=True
+    
+    ## When custom roadview is used captured near sideway. So Tx is smaller than Naver. mode = 'test' because same camera is used for db and q.
+    video_src = "../../bin/data_vps/matched_image"; Tx=1.0; feature_mode = "test"; interlaced = True; check_ratio=True; check_roi=True; use_same_camera_model = True
     ############################
 
     ## Run
-    run_usbcam(video_src, feature_mode=feature_mode, Tx=Tx, skip_frame=0, feature_display=feature_display, vector_display=vector_display, interlaced=interlaced)
+    run_usbcam(video_src, feature_mode=feature_mode, Tx=Tx, skip_frame=0, interlaced=interlaced, check_ratio=check_ratio, check_roi=check_roi, use_same_camera_model=use_same_camera_model)
     #run_kitti()

@@ -43,6 +43,7 @@ import cv2
 from get_streetview import ImgServer, GetStreetView_fromID
 
 from vps_filter import vps_filter
+from custom_image_server import WholeDatasetFromStruct
 
 from ipdb import set_trace as bp
 
@@ -77,6 +78,17 @@ class vps:
         self.device = torch.device(device)
         self.set_region(region)
         self.load_dbfeat_initialized = False
+
+        ## Custom dataset parameter
+        self.custom_dataset = None
+        self.use_custom_dataset = False
+        self.is_custom_dataset_valid = False
+        self.custom_dataset_abs_path = ""
+
+        ## Relative Pose parameter
+        self.use_same_camera_model = False  # When same camera model is used for db and q. This affects relativePose()
+        self.check_ratio = True  # (Always true) Lowe's paper
+        self.check_roi = True  # True for Naver roadview (use features in 1st-quater). False for custom dataset(use all feature)
         self.Tx = 6.0  # Distance from roadview cam to query cam in meter.
 
     def init_param(self):
@@ -149,6 +161,8 @@ class vps:
         self.mod_rPose = None
         self.num_workers = opt.threads
         self.cacheBatchSize = opt.cacheBatchSize
+        self.custom_dataset = None
+        self.use_custom_dataset = False
 
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
@@ -332,7 +346,7 @@ class vps:
         if cacheBatchSize > 1:
             self.cacheBatchSize = cacheBatchSize 
 
-    def test_sub(self,eval_set,epoch=0):
+    def test_sub(self,eval_set):
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
         test_data_loader = DataLoader(dataset=eval_set, 
@@ -384,7 +398,7 @@ class vps:
         self.faiss_index.add(dbFeat)
         return self.faiss_index
 
-    def test_dg(self,eval_set_db,eval_set_q, epoch=0, write_tboard=False):
+    def test_dg(self,eval_set_db,eval_set_q, write_tboard=False):
         # TODO what if features dont fit in memory? 
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
@@ -416,7 +430,7 @@ class vps:
             #print('[vps]====> Extracting dbfeat.')
             if self.verbose:
                 print('====> Extracting dbfeat.')
-            dbFeat = self.test_sub(eval_set_db, epoch=epoch)
+            dbFeat = self.test_sub(eval_set_db)
             dbFeat = dbFeat.astype('float32') #[ndbImg,32768]
             test_db_data_loader = DataLoader(dataset=eval_set_db, 
                 num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
@@ -433,7 +447,7 @@ class vps:
             print('====> Building faiss index')
 
         # extracted for query, now split in own sets
-        qFeat = self.test_sub(eval_set_q,epoch=epoch)
+        qFeat = self.test_sub(eval_set_q)
         qFeat = qFeat.astype('float32') #[nqImg,32768]
 
         test_q_data_loader = DataLoader(dataset=eval_set_q, 
@@ -470,8 +484,14 @@ class vps:
                 vps_imgConf_str = [val for val in pred_confidence[i]] # list
                 vps_imgID = [np.int(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
                 vps_imgConf = [np.float(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
+                self.pred_utmDb = [-1.0, -1.0]  # utm_x, utm_y
                 if pred_confidence.squeeze() > 0.0:  # Check that network was initialized well.
                     self.vps_IDandConf = [vps_imgID, vps_imgConf]
+                    if (self.use_custom_dataset == True) and (self.is_custom_dataset_valid == True):
+                        pred_utmDb = self.custom_dataset.db_name2utm(vps_imgID[i])
+                        self.pred_utmDb = [float(i) for i in pred_utmDb[0]]  # [327922.6661131374, 4153540.910004767]
+                        #utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
+                        #lat, lon = utm.to_latlon(utm_x, utm_y, 52, 'S')
  
             if self.verbose:
                 dbImage_predicted = dbImage[pred_idx[i,0]] #Use best [0] image for display
@@ -516,7 +536,7 @@ class vps:
         return 0
 
 
-    def test(self,eval_set, epoch=0, write_tboard=False):
+    def test(self,eval_set, write_tboard=False):
         # TODO what if features dont fit in memory? 
         opt = self.parser.parse_args()
         cuda = not opt.nocuda
@@ -596,6 +616,12 @@ class vps:
 
             if qName in 'newquery.jpg':
                 flist = test_data_loader.dataset.dbStruct.dbImage[pred_idx[i]]
+                self.pred_utmDb = [-1.0, -1.0]  # utm_x, utm_y
+                if (self.use_custom_dataset == True) and (self.is_custom_dataset_valid == True):
+                    pred_utmDb = self.custom_dataset.get_utmDb()[self.pred_idx[i]]
+                    self.pred_utmDb = [float(i) for i in pred_utmDb[0]]
+                    #utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
+                    #lat, lon = utm.to_latlon(utm_x, utm_y, 52, 'S')
                 vps_imgID = self.Fname2ID(flist)
                 vps_imgConf = [val for val in pred_confidence[i]]
                 self.vps_IDandConf = [vps_imgID, vps_imgConf] #ori
@@ -611,16 +637,13 @@ class vps:
         print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
         return acc
 
-        
     def get_param(self):
         # get parameter
         return 0
-        
 
     def set_param(self):
         # set parameter
         return 0
-
 
     def get_zero_Rt(self):
         R0 = np.eye(3)
@@ -635,6 +658,7 @@ class vps:
         R0, t0 = self.get_zero_Rt()
         vps_imgRelativePose = np.concatenate((R0, t0), axis=1).astype(float)  # [3x3 | 3x1] ==> [3x4]
         self.vps_IDandConf = [vps_imgID, vps_imgConf, vps_imgRelativePose]
+        self.pred_utmDb = [-1.0, -1.0]
         return 0
 
     def set_region(self, region="ETRI"):  # region information for image server used in isv.SaveImages
@@ -647,17 +671,24 @@ class vps:
         if enable == True and self.load_dbfeat != True:  # When load_dbfeat is not used, flush db directory.
             os.system("rm -rf " + os.path.join(self.dataset_struct_dir, flush_file)) # You have to pay attention to code 'rm -rf' command
 
-    def flush_db_dir_and_return_val(self, relativePose_enable=True):
-        [IDs, Confs, pan, t_scaled] = self.getIDConf(relativePose_enable)
-        self.flush_db_dir()  # Remove downloaded roadview jpg files. getIDConf() shoud be called before this.
-        return [IDs, Confs, pan, t_scaled]
+    def flush_db_dir_and_return_val(self, relativePose_enable=True, flush_db=True):
+        [IDs, Confs, custom_sv_lat, custom_sv_lon, pan, t_scaled] = self.getVpsResult(relativePose_enable)
+        if flush_db == True:
+            self.flush_db_dir()  # Remove downloaded roadview jpg files. getVpsResult() shoud be called before this.
+        return [IDs, Confs, custom_sv_lat, custom_sv_lon, pan, t_scaled, self.custom_dataset_abs_path]
 
-    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr=None, port=None, load_dbfeat=0.0, save_dbfeat=0.0):
-        ## Init.
-        if ipaddr != None:
-            self.ipaddr = ipaddr
-        if port != None:
-            self.port = port
+    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr_port="127.0.0.1:10000", load_dbfeat=0.0, save_dbfeat=0.0, use_custom_image_server=0.0):
+        '''
+            It seems that the number of input parameters should not exceed 10.
+            #print("image[0] = {0}, K = {1}, gps = lat = {2}, gps lon = {3}, gps acc. = {4}\nts = {5}, ip = {6}, port = {7}, load = {8}, save = {9}, custom = {10}".format(image[0][0], K , gps_lat, gps_lon, gps_accuracy, timestamp, ipaddr, port, load_dbfeat, save_dbfeat, use_custom_image_server))
+        '''
+        ipaddr = ipaddr_port.split(":")[0]
+        port   = ipaddr_port.split(":")[1]
+
+        if use_custom_image_server > 0:
+            self.use_custom_dataset = True
+        else:
+            self.use_custom_dataset = False
 
         if load_dbfeat > 0:
             self.load_dbfeat = True
@@ -668,6 +699,36 @@ class vps:
             self.save_dbfeat = True
         else:
             self.save_dbfeat = False
+
+        ## Init.
+        if ipaddr != None:
+            self.ipaddr = ipaddr
+        if port != None:
+            self.port = port
+
+        if self.use_custom_dataset == True:
+            ## This statement is executed only the first time.
+            self.Tx = 1.0  # Distance from roadview cam to query cam in meter. When custom dataset is used, Tx is smaller than Naver, because db and query are captured near sideway.
+            self.use_same_camera_model = True
+            self.check_ratio = True
+            self.check_roi = False
+            if self.custom_dataset is None:
+                ## Custom roadview image API instead of Naver roadview image server
+                '''etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003'''
+                if self.port == '10000':
+                    import config_daejeon as config
+                elif self.port == '10001':
+                    import config_seoul as config
+                elif self.port == '10002':
+                    import config_bucheon as config
+                elif self.port == '10003':
+                    import config_etri_indoor as config
+                else:
+                    import config_seoul as config
+                self.custom_dataset = WholeDatasetFromStruct()
+                self.is_custom_dataset_valid = self.custom_dataset.initialize(config.structFile, config.db_dir, config.queries_dir)
+                if (self.is_custom_dataset_valid):
+                    self.custom_dataset_abs_path = self.custom_dataset.get_abs_image_path()
 
         self.gps_lat = float(gps_lat)
         self.gps_lon = float(gps_lon)
@@ -684,14 +745,13 @@ class vps:
 
         if self.verbose:
             print('===> Loading dataset(s)')
-        epoch = 1
         ## Load dataset
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
             whole_test_set = dataset.get_whole_test_set()
             print('[vps] ===> Evaluating on test set')
             print('[vps] ===> Running evaluation step')
-            recalls = self.test(whole_test_set, epoch, write_tboard=False)
+            recalls = self.test(whole_test_set, write_tboard=False)
         elif opt.dataset.lower() == 'deepguider':
             init_db_q_dir()
             from netvlad import etri_dbloader as dataset
@@ -699,19 +759,26 @@ class vps:
                     print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
             else:
                 ## Get DB images from streetview image server            
-                ret = self.getStreetView(self.dataset_struct_dir)               
+                if self.use_custom_dataset == True:
+                    if self.is_custom_dataset_valid == True:
+                        ret = self.custom_dataset.GetStreetView(self.gps_lat, self.gps_lon, "latlon", self.roi_radius)
+                    else:
+                        print("[vps] Not Found available custom dataset.")
+                else:
+                    ret = self.getStreetView(self.dataset_struct_dir)              
                 if ret < 0:
                     print("[vps] Cannot connect to the streetview server.")
-                    return self.getIDConf(relativePose_enable=False) # return default [IDs, Confs, pan, t_scaled]
+                    ## return without flushing db dir.
+                    return self.flush_db_dir_and_return_val(relativePose_enable=False, flush_db=False)
 
             if image is not None:
                 fname = os.path.join(self.dataset_queries_dir,'newquery.jpg')
                 try:
                     h, w, c = image.shape
                 except: # invalid query image
-                    return self.flush_db_dir_and_return_val(relativePose_enable=False)  # return default [IDs, Confs, pan, t_scaled]
+                    return self.flush_db_dir_and_return_val(relativePose_enable=False)
                 if (h < 480) or (w < 640) or (c != 3): # invalid query image
-                    return self.flush_db_dir_and_return_val(relativePose_enable=False)  # return default [IDs, Confs, pan, t_scaled]
+                    return self.flush_db_dir_and_return_val(relativePose_enable=False)
                 cv2.imwrite(fname,image)
 
             if self.port == "10003":  # input image resolution : 2592*2048
@@ -724,11 +791,11 @@ class vps:
                 print('[vps] ===> Evaluating on test set')
                 print('[vps] ===> Running evaluation step')
             ## Calculate image feature, vlad feature and do matching of query and DBs
-            acc = self.test_dg(whole_db_set, whole_q_set, epoch, write_tboard=False) #may cause segmentation fault.
+            acc = self.test_dg(whole_db_set, whole_q_set, write_tboard=False) #may cause segmentation fault.
         else:
             raise Exception('Unknown dataset')
 
-        return self.flush_db_dir_and_return_val(relativePose_enable=True)  # [IDs, Confs, pan, t_scaled]
+        return self.flush_db_dir_and_return_val(relativePose_enable=True)
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []
@@ -744,17 +811,19 @@ class vps:
         if Tx is None:
             Tx = self.Tx
         if self.mod_rPose is None:
-            self.mod_rPose = relativePose(mode='normal', Tx=Tx)
+            self.mod_rPose = relativePose(mode=mode, Tx=Tx, check_ratio=self.check_ratio, check_roi=self.check_roi, use_same_camera_model=self.use_same_camera_model)
             self.img1_path = []
 
         if 'normal' in mode.lower():   # Normal, compare (db, q)
             self.img1_path = self.qImage[0]
             self.img2_path = self.dbImage[self.pred_idx[0,0]]
             R, t = self.mod_rPose.get_Rt(self.img1_path, self.img2_path)
-            if False:  # Save images for debugging
+            if True:  # Save images for debugging
+                internal_result_dir = os.path.join("data_vps", "matched_image")
+                makedir(internal_result_dir)
                 save_idx = int(self.timestamp)
-                fname_db = "vps_img/{}_cam1_db_{}".format(save_idx, os.path.basename(self.img2_path))
-                fname_q = "vps_img/{}_cam2_query.jpg".format(save_idx)
+                fname_db = os.path.join(internal_result_dir, "{}_cam1_db_{}".format(save_idx, os.path.basename(self.img2_path)))
+                fname_q = os.path.join(internal_result_dir, "{}_cam2_query.jpg".format(save_idx))
                 img_q = self.mod_rPose.get_img(self.img1_path, gray_enable=False)
                 img_db = self.mod_rPose.get_img(self.img2_path, gray_enable=False)
                 try:
@@ -773,25 +842,13 @@ class vps:
 
         return R, t
 
-    def check_cam2_pose(self, pan, tilt, cam2_pose):
-        pan_deg = np.rad2deg(pan)
-        tilt_deg = np.rad2deg(tilt)
-        # Check validation of R|t with simple constraint.
-        valid = False
-        (x, y, z) = cam2_pose
-        if np.abs(pan_deg) < 90:
-            if np.abs(tilt_deg) < 50:
-                if np.abs(x) < 1.5*self.Tx:
-                    if np.abs(z) < 5*self.Tx:
-                        valid = True
-        return valid
-
-    def getIDConf(self, relativePose_enable=False):
+    def getVpsResult(self, relativePose_enable=False):
         if self.checking_return_value() < 0:
             print("Broken : vps.py's return value")
         IDs = self.vps_IDandConf[0]
         Distances = self.vps_IDandConf[1]
         Confs = self.convert_distance_to_confidence(Distances)
+        utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
 
         ## Filter out noisy result with median filter for top-1 for indoor test
         if self.port == "10003":  # 10003 means indoor
@@ -814,14 +871,29 @@ class vps:
                 R0, t0 = self.get_relativePose('normal')
                 pan, tilt = self.mod_rPose.get_pan_tilt(R0)
                 query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R0, t0)
-                if self.check_cam2_pose(pan, tilt, query_cam2_pos) == True:
+                if self.mod_rPose.check_cam2_pose(pan, tilt, query_cam2_pos, self.Tx) == True:
                     R, t = R0, t0
 
         query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R, t)
         pan, tilt = self.mod_rPose.get_pan_tilt(R)
 
-        print("[vps] ===> relativePose(red dot on map), pan(deg) : {0:.2f}, query_cam_position : ({1:.2f}, {2:.2f}, {3:.2f})".format(np.rad2deg(pan), query_cam2_pos[0], query_cam2_pos[1], query_cam2_pos[2]))
-        return [IDs, Confs, pan, query_cam2_pos.tolist()]  # [[id1, id2, ..., idn], [conf1, conf2, ..., confn], pan, scale*[tx, ty, tz]], where pan and (tx, ty, tz) is for top-1.
+        ## Converting utm to lat, lon
+        if utm_x > 0  and utm_y > 0:
+            custom_sv_lat, custom_sv_lon = utm.to_latlon(utm_x, utm_y, 52, 'S')
+        else:
+            custom_sv_lat, custom_sv_lon = utm_x, utm_y  #[-1.0 , -1.0]
+
+        custom_sv_lat = np.float64(custom_sv_lat)  # np.float64() is required to return python double to c++ API for float type data
+        custom_sv_lon = np.float64(custom_sv_lon)  # np.float64() is required to return python double to c++ API for float type data
+        #print("[vps] ===> relativePose(red dot on map), pan(deg) : {0:.2f}, query_cam_position : ({1:.2f}, {2:.2f}, {3:.2f})".format(np.rad2deg(pan), query_cam2_pos[0], query_cam2_pos[1], query_cam2_pos[2]))
+        #if utm_x > 0:
+        #    print("[vps] ===> (utm_x, utm_y) : ({}, {}) using custom roadview dataset".format(utm_x, utm_y))
+        #    print("[vps] ===> (custom_sv_lat, custom_sv_lon) : ({}, {}) using custom roadview dataset".format(custom_sv_lat, custom_sv_lon))
+
+        pan = np.float64(pan)
+
+        ## [[id1, id2, ..., idn], [conf1, conf2, ..., confn], custom_lat, custom_lon, pan, scale*[tx, ty, tz]], where pan and (tx, ty, tz) is for top-1.
+        return [IDs, Confs, custom_sv_lat, custom_sv_lon, pan, query_cam2_pos.tolist()]
 
     def set_radius_by_accuracy(self, gps_accuracy=0.79):
         self.roi_radius = int(10 + 190*(1-gps_accuracy))  # 10 meters ~ 200 meters, 0.79 for 50 meters
@@ -901,7 +973,6 @@ class vps:
                 imgID = imgID.split('.')[0]
             ID.append(imgID) # string
         return ID
-
 
     def ID2LL(self,imgID):
         lat,lon,degree2north = -1,-1,-1

@@ -54,15 +54,19 @@ protected:
     double m_map_image_rotation = cx::cvtDeg2Rad(1.0);
     std::string m_gps_input_path = "data/191115_ETRI_asen_fix.csv";
     std::string m_video_input_path = "data/ETRI/191115_151140_images.avi";
-    cv::Vec3b m_gui_robot_color = cv::Vec3b(0, 0, 255);
+    cv::Vec3b m_gui_robot_color = cv::Vec3b(0, 0, 255);  // B,G,R
     cv::Vec3b m_gui_gps_color = cv::Vec3b(80, 80, 80);
     cv::Vec3b m_gui_gps_novatel_color = cv::Vec3b(255, 0, 0);
+    cv::Vec3b m_gui_vps_color = cv::Vec3b(229, 204, 255); // bright pink
+    cv::Vec3b m_gui_vps_rpose_color = cv::Vec3b(127, 0, 255);  // pink
     int m_gui_gps_trj_radius = 2;
     int m_gui_robot_trj_radius = 1;
 
+	// 0.0 means "Not using", 1.0 means "Using"
 	double m_vps_load_dbfeat = 0.0;
 	double m_vps_save_dbfeat = 0.0;
 	double m_vps_gps_accuracy = 0.9;  // Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
+	int m_vps_use_custom_image_server = 0;  // use custom image dataset instead of naver roadview to avoid wide baseline problem
 
     int m_exploration_state_count = 0;
     const int m_exploration_state_count_max = 20;
@@ -180,10 +184,8 @@ protected:
 
     cv::Mutex m_vps_mutex;
     cv::Mat m_vps_image;            // top-1 matched streetview image
-    dg::ID m_vps_id;                // top-1 matched streetview id
     dg::Point2 m_vps_xy;            // top-1 matched streetview's position (x,y)
     dg::Polar2 m_vps_relative;      // top-1 matched streetview's relative position (pan, tz) or (theta_z, delta_z)
-
 
     cv::Mutex m_roadlr_mutex;
     cv::Mat m_roadlr_image;
@@ -297,6 +299,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "vps_load_dbfeat", m_vps_load_dbfeat, n_read);
     CX_LOAD_PARAM_COUNT(fn, "vps_save_dbfeat", m_vps_save_dbfeat, n_read);
     CX_LOAD_PARAM_COUNT(fn, "vps_gps_accuracy", m_vps_gps_accuracy, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "vps_use_custom_image_server", m_vps_use_custom_image_server, n_read);
 
     // Read Site-specific Setting
     if (!site_tagname.empty())
@@ -342,7 +345,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize VPS
     py_module_path = m_srcdir + "/vps";
-    if (m_enable_vps==1 && !m_vps.initialize(this, py_module_path, m_server_ip, m_image_server_port)) return false;
+    if (m_enable_vps==1 && !m_vps.initialize(this, py_module_path, m_server_ip, m_image_server_port, m_vps_use_custom_image_server)) return false;
     if (m_enable_vps==1) printf("\tVPS initialized in %.3lf seconds!\n", m_vps.procTime());
 
     // initialize RoadLR
@@ -461,7 +464,6 @@ bool DeepGuider::initialize(std::string config_file)
     m_cam_image.release();
     m_cam_capture_time = -1;
     m_vps_image.release();
-    m_vps_id = 0;
     m_roadlr_image.release();
     m_logo_image.release();
     m_ocr_image.release();
@@ -496,6 +498,8 @@ bool DeepGuider::initializeDefaultMap()
 
     return true;
 }
+
+
 
 int DeepGuider::run()
 {
@@ -552,7 +556,7 @@ int DeepGuider::run()
         {
             const dg::LatLon gps_datum(vdata[1], vdata[2]);
             procGpsData(gps_datum, data_time);
-            m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_color);
+			m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_color);
             printf("[GPS] lat=%lf, lon=%lf, ts=%lf\n", gps_datum.lat, gps_datum.lon, data_time);
 
             video_image = data_loader.getFrame(data_time);
@@ -922,7 +926,6 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     {
         cv::Mat result_image;
         m_vps_mutex.lock();
-        dg::ID sv_id = m_vps_id;
         dg::Point2 sv_xy = m_vps_xy;
         dg::Polar2 sv_relative = m_vps_relative;          
         if (!m_vps_image.empty())
@@ -934,15 +937,17 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
 
         if (!result_image.empty())
         {
+            // Draw matched streetview position
             win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
             if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
-            dg::StreetView* sv = m_map.getView(sv_id);
-            // Draw streetview's gps location
-            if (sv)m_painter.drawPoint(image, *sv, 6, cv::Vec3b(255, 255, 0), view_offset, view_zoom);  // sky color for streetview position
-            // Draw streetview's gps location with relative pose (tz).
-            sv_xy.x = sv_xy.x + sv_relative.lin * cos(3.141592/2 + sv_relative.ang);
-            sv_xy.y = sv_xy.y + sv_relative.lin * sin(3.141592/2 + sv_relative.ang);
-            if (sv)m_painter.drawPoint(image, sv_xy, 6, cv::Vec3b(0, 0, 255), view_offset, view_zoom); // red color for  streetview position with relative pose
+            m_painter.drawPoint(image, sv_xy, 20, m_gui_vps_color, view_offset, view_zoom);  // sky color for streetview position
+
+            // Draw virtual robot position computed from relative pose
+            dg::Pose2 pose = getPose();
+            double poi_theta = pose.theta + sv_relative.ang;
+            double rx = sv_xy.x - sv_relative.lin * cos(poi_theta);
+            double ry = sv_xy.y - sv_relative.lin * sin(poi_theta);
+            m_painter.drawPoint(image, Point2(rx,ry), 20, m_gui_vps_rpose_color, view_offset, view_zoom); // light black for  streetview position with relative pose
         }
     }
 
@@ -1424,12 +1429,11 @@ bool DeepGuider::procVps()
         m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
 
-        cv::Mat sv_image = m_vps.getViewImage().clone();
+        cv::Mat sv_image = m_vps.getViewImage();
         if(!sv_image.empty())
         {
             m_vps.draw(sv_image, 3.0);
             m_vps_mutex.lock();
-            m_vps_id = m_vps.getViewID();
             m_vps_image = sv_image;
             m_vps_xy = sv_xy;
             m_vps_relative = relative;
@@ -1441,7 +1445,6 @@ bool DeepGuider::procVps()
     {
         m_vps.print();
     }
-
     return false;
 }
 
