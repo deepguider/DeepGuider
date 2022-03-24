@@ -696,13 +696,12 @@ int DeepGuider::run()
 
     // end system
     printf("Shutdown deepguider system...\n");
-    if(m_threaded_run_modules) terminateThreadFunctions();
-    if(m_threaded_run_modules) printf("\tthread terminated\n");
+    terminateThreadFunctions();
     if(m_video_recording) m_video_gui.release();
     if(m_video_recording) printf("\trecording closed\n");
     cv::destroyWindow(m_winname);
     printf("\tgui window destroyed\n");
-    printf("all done!\n");    
+    printf("all done!\n");
 
     return 0;
 }
@@ -1481,7 +1480,6 @@ bool DeepGuider::procRoadLR()
     return false;
 }
 
-
 bool DeepGuider::procExploration()
 {
     // printf("################m_exploration_state_count = %d\n", m_exploration_state_count);
@@ -1667,7 +1665,6 @@ void DeepGuider::threadfunc_roadtheta(DeepGuider* guider)
     guider->is_roadtheta_running = false;
     printf("\troadtheta thread ends\n");
 }
-
 
 // Thread fnuction for Exploration
 void DeepGuider::threadfunc_exploration(DeepGuider* guider)
