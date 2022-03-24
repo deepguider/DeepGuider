@@ -24,7 +24,7 @@ namespace dg
     /**
     * @brief OCR Localizer
     */
-    class OCRLocalizer : public OCRRecognizer
+    class OCRLocalizer : public OCRRecognizer, public cx::Algorithm
     {
 	protected:
 		// camera parameters
@@ -36,8 +36,8 @@ namespace dg
 
 		// configuable parameters
 		double m_poi_height = 3.8;			// Height of POI from ground plane, Unit: [m]
-		double m_poi_search_radius = 100;	// POI search range, Unit: [m]
-		double m_poi_match_thresh = 1.5;	// POI matching threshold
+		double m_poi_search_radius = 50;	// POI search range, Unit: [m]
+		double m_poi_match_thresh = 2.0;	// POI matching threshold
 		bool m_check_jungsung_type = true;	// distinguish bottom-side jungsung and right-side jungsung
 		bool m_fixed_template_match = true;	// use substring template match instead of Levenshtein distance
 	    bool m_enable_debugging_display = true;
@@ -55,11 +55,10 @@ namespace dg
             return n_read;
         }
 	
-
     public:
 		OCRLocalizer()
 		{
-			if (!setWeights("dg_hangeul_weights.csv"))
+			if (!loadHangeulWeights("dg_hangeul_weights.csv"))
 			{
 				printf("[ocr_localizer] fail to load weights file\n");
 			}
@@ -93,63 +92,6 @@ namespace dg
 			m_poi_search_radius = search_radius;
 		}
 		
-		bool setWeights(const char* filename = "dg_hangeul_weights.csv")
-		{
-			FILE* fid = fopen(filename, "rt,ccs=UTF-8");
-			if (fid == nullptr) return false;
-
-			wchar_t buffer[MAP_BUF_SIZE];
-			wchar_t* context;
-			while (!feof(fid))
-			{
-				if (fgetws(buffer, MAP_BUF_SIZE, fid) == nullptr) break;
-				wchar_t* token;
-				if ((token = wcstok(buffer, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-				if (token[0] == 'J' || token[0] == 'j')
-				{
-					// Read jaum
-					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-					wchar_t c1 = token[1];
-					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-					wchar_t c2 = token[1];
-					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-					double similiraty = std::stod(cx::trimBoth(token), nullptr);
-
-					addWeight(c1, c2, similiraty);
-				}
-				else if (token[0] == 'M' || token[0] == 'm')
-				{
-					// Read moum
-					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-					wchar_t c1 = token[1];
-					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-					wchar_t c2 = token[1];
-					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-					double similiraty = std::stod(cx::trimBoth(token), nullptr);
-
-					addWeight(c1, c2, similiraty);
-				}
-				else if (token[0] == 'S' || token[0] == 's')
-				{
-					// Read syllable
-					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-					wchar_t c1 = token[1];
-					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-					wchar_t c2 = token[1];
-					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
-					double similiraty = std::stod(cx::trimBoth(token), nullptr);
-
-					addWeight(c1, c2, similiraty);
-				}
-			}
-			fclose(fid);
-			return true;
-
-		WEIGHT_FAIL:
-			fclose(fid);
-			return false;
-		}
-
 		/**
 		 * @return True if there is any detection, False otherwise.
 		 */
@@ -250,8 +192,118 @@ namespace dg
 				}
 			}
 			return true;
-		}		
+		}
 
+	    void clear()
+		{
+			OCRRecognizer::clear();
+		}
+
+		bool loadHangeulWeights(const char* filename = "dg_hangeul_weights.csv")
+		{
+			FILE* fid = fopen(filename, "rt,ccs=UTF-8");
+			if (fid == nullptr) return false;
+
+			wchar_t buffer[MAP_BUF_SIZE];
+			wchar_t* context;
+			while (!feof(fid))
+			{
+				if (fgetws(buffer, MAP_BUF_SIZE, fid) == nullptr) break;
+				wchar_t* token;
+				if ((token = wcstok(buffer, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+				if (token[0] == 'P' || token[0] == 'p')
+				{
+					wchar_t index = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					if (index == '1') chosung_list = cx::trimBoth(token);
+					else if (index == '2') jungsung_list = cx::trimBoth(token);
+					else if (index == '3')
+					{
+						jongsung_list = cx::trimBoth(token);
+						jongsung_list.insert(jongsung_list.begin(), L' ');
+					}
+					else if (index == '4') jaum_list = cx::trimBoth(token);
+					else if (index == '5') moum_list = cx::trimBoth(token);
+					else goto WEIGHT_FAIL;
+				}
+				if (token[0] == 'T' || token[0] == 't')
+				{
+					wchar_t index = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					if (index == '1') jungsung_type_list = cx::trimBoth(token);
+					else goto WEIGHT_FAIL;
+				}
+				else if (token[0] == 'J' || token[0] == 'j')
+				{
+					// Read jaum
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c1 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c2 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					double similiraty = std::stod(cx::trimBoth(token), nullptr);
+
+					addWeight(c1, c2, similiraty);
+				}
+				else if (token[0] == 'M' || token[0] == 'm')
+				{
+					// Read moum
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c1 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c2 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					double similiraty = std::stod(cx::trimBoth(token), nullptr);
+
+					addWeight(c1, c2, similiraty);
+				}
+				else if (token[0] == 'S' || token[0] == 's')
+				{
+					// Read syllable
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c1 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					wchar_t c2 = token[1];
+					if ((token = wcstok(nullptr, L",", &context)) == nullptr) goto WEIGHT_FAIL;
+					double similiraty = std::stod(cx::trimBoth(token), nullptr);
+
+					addWeight(c1, c2, similiraty);
+				}
+			}
+			fclose(fid);
+			return true;
+
+		WEIGHT_FAIL:
+			fclose(fid);
+			return false;
+		}
+
+		void printHangeulWeights()
+		{
+			setlocale(LC_ALL, "");
+
+			// Korean Phoneme Table
+			wprintf(L"Korean Phoneme Table\n");
+			wprintf(L"\tchosung: %ls\n", chosung_list.c_str());
+			wprintf(L"\tjungsung: %ls\n", jungsung_list.c_str());
+			wprintf(L"\tjongsung: %ls\n", jongsung_list.c_str());
+			wprintf(L"\tjaum: %ls\n", jaum_list.c_str());
+			wprintf(L"\tmoum: %ls\n", moum_list.c_str());
+
+			// Phoneme Type Table
+			wprintf(L"Phoneme Type Table\n");
+			wprintf(L"\tjungsung: %ls\n", jungsung_type_list.c_str());
+
+			// Phoneme Similiraty Table
+			wprintf(L"Phoneme Similarity Table\n");
+			for(auto it = weights.begin(); it != weights.end(); it++)
+			{
+				wchar_t c1 = it->first.first;
+				wchar_t c2 = it->first.second;
+				double similarity = it->second;
+				wprintf(L"\t(%lc - %lc) = %lf\n", c1, c2, similarity);
+			}
+		}
 
     protected:
 		// hangeul parameters
@@ -263,13 +315,17 @@ namespace dg
 		int jaum_end = 12622;
 		int moum_begin = 12623;
 		int moum_end = 12643;
-		wchar_t chosung_list[19] = { L'ㄱ', L'ㄲ', L'ㄴ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅅ', L'ㅆ', L'ㅇ' , L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
-		wchar_t jungsung_list[21] = { L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ' };
-		enum {JUNG_RB = 0, JUNG_R = 1, JUNG_B = -1}; // jungsung type (right-bottom, right, bottom)
-		int jungsung_type_list[21] = { JUNG_R, JUNG_R, JUNG_R, JUNG_R, JUNG_R, JUNG_R, JUNG_R, JUNG_R, JUNG_B, JUNG_RB, JUNG_RB, JUNG_RB, JUNG_B, JUNG_B, JUNG_RB, JUNG_RB, JUNG_RB, JUNG_B, JUNG_B, JUNG_RB, JUNG_R };
-		wchar_t jongsung_list[28] = { L' ', L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
-		wchar_t jaum_list[30] = { L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
-		wchar_t moum_list[21] = { L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ' };
+		std::wstring chosung_list;
+		std::wstring jungsung_list;
+		std::wstring jongsung_list;
+		std::wstring jaum_list;
+		std::wstring moum_list;
+		std::wstring jungsung_type_list;	// r: right, b: bottom, m: mixed(bottom-right)
+		//wchar_t chosung_list[19] = { L'ㄱ', L'ㄲ', L'ㄴ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅅ', L'ㅆ', L'ㅇ' , L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
+		//wchar_t jungsung_list[21] = { L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ' };
+		//wchar_t jongsung_list[28] = { L' ', L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
+		//wchar_t jaum_list[30] = { L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
+		//wchar_t moum_list[21] = { L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ' };
 
 		/** A hash table for finding similarity weight between characters */
 		std::map<std::pair<wchar_t, wchar_t>, double> weights;
@@ -285,16 +341,16 @@ namespace dg
 			setlocale(LC_ALL, "KOREAN");
 
 			int cho_idx = 0;
-			int cho_max = sizeof(chosung_list) / sizeof(wchar_t);
-			while (chosung_list[cho_idx] != chosung && cho_idx < cho_max) cho_idx++;
+			int cho_max = chosung_list.length();
+			while (cho_idx < cho_max && chosung_list[cho_idx] != chosung) cho_idx++;
 
 			int jung_idx = 0;
-			int jung_max = sizeof(jungsung_list) / sizeof(wchar_t);
-			while (jungsung_list[jung_idx] != jungsung && jung_idx < jung_max) jung_idx++;
+			int jung_max = jungsung_list.length();
+			while (jung_idx < jung_max && jungsung_list[jung_idx] != jungsung) jung_idx++;
 
 			int jong_idx = 0;
-			int jong_max = sizeof(jongsung_list) / sizeof(wchar_t);
-			while (jongsung_list[jong_idx] != jongsung && jong_idx < jong_max) jong_idx++;
+			int jong_max = jongsung_list.length();
+			while (jong_idx < jong_max && jongsung_list[jong_idx] != jongsung) jong_idx++;
 
 			if (cho_idx >= cho_max || jung_idx >= jung_max || jong_idx >= jong_max)
 			{
@@ -307,7 +363,7 @@ namespace dg
 			return character;
 		}
 
-		wchar_t* decompose(wchar_t c, int* jungsung_type = nullptr)
+		wchar_t* decompose(wchar_t c, wchar_t* jungsung_type = nullptr)
 		{
 			setlocale(LC_ALL, "KOREAN");
 
@@ -353,11 +409,11 @@ namespace dg
 			if (c1 == c2)
 				return 0.0;
 			
-			int type1 = 0;
-			int type2 = 0;
+			wchar_t type1 = 0;
+			wchar_t type2 = 0;
 			std::wstring s1(decompose(c1, &type1));
 			std::wstring s2(decompose(c2, &type2));
-			if(m_check_jungsung_type && type1*type2<0) return 1;
+			if(m_check_jungsung_type && type1!=type2) return 1;
 			
 			return levenshtein(s1, s2)/std::max({s1.length(), s2.length()});
 		}
@@ -447,11 +503,11 @@ namespace dg
 		{
 			if (c1 == c2) return 0.0;
 			
-			int type1 = 0;
-			int type2 = 0;
+			wchar_t type1 = 0;
+			wchar_t type2 = 0;
 			std::wstring s1(decompose(c1, &type1));
 			std::wstring s2(decompose(c2, &type2));
-			if(m_check_jungsung_type && type1*type2<0) return 1;
+			if(m_check_jungsung_type && type1!=type2) return 1;
 
 			int n_min = (s1.length() < s2.length()) ? (int)s1.length() : (int)s2.length();
 			int n_max = (s1.length() > s2.length()) ? (int)s1.length() : (int)s2.length();

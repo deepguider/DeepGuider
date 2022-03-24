@@ -1,4 +1,14 @@
-# C1, C2, Similiraty
+# Korean Phoneme Table
+P1_chosung,ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ
+P2_jungsung,ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ
+P3_jongsung, ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ
+P4_jaum,ㄱㄲㄳㄴㄵㄶㄷㄸㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅃㅄㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ
+P5_moum,ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ
+
+# Jungsung Type (r: right, b: bottom, m: mixed(bottom-right))
+T1_jungsung_type, rrrrrrrrbmmmbbmmmbbmr
+
+# Phoneme Similiraty Table
 jaum, ㄱ, ㅋ, 0.75
 jaum, ㄴ, ㄷ, 0.15
 jaum, ㄷ, ㅌ, 0.25

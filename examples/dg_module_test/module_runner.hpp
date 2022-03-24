@@ -60,6 +60,10 @@ public:
             if (m_roadtheta_localizer) VVS_CHECK_TRUE(m_roadtheta_localizer->initialize(this));
         }
 
+        // Module-specific configurations
+        if(m_ocr_localizer) m_ocr_localizer->setParamValue("poi_match_thresh", 2.0);
+        if(m_ocr_localizer) m_ocr_localizer->setParamValue("enable_debugging_display", true);
+
         // Prepare the video for recording
         cx::VideoWriter out_video;
         if (!rec_video_name.empty())
@@ -437,6 +441,12 @@ public:
                 {
                     while ((key = cv::waitKey(0)) != cx::KEY_SPACE && key != cx::KEY_ESC);
                 }
+                if (key == cx::KEY_ESC) break;
+                if (key == '1') m_viewport.setZoom(1);
+                if (key == '2') m_viewport.setZoom(2);
+                if (key == '3') m_viewport.setZoom(3);
+                if (key == '4') m_viewport.setZoom(4);
+                if (key == '0') m_viewport.setZoom(0.1);
                 if (key == cx::KEY_ESC) break;
             }
         }
