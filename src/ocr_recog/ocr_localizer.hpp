@@ -14,9 +14,9 @@ using namespace std;
 namespace dg
 {	
 	// <ocr_index, poi_index, levenshtein_distance, match_score>
-	bool compare_score(std::tuple<int, int, double, double> a, std::tuple<int, int, double, double> b)
+	bool compare_score(std::tuple<int, POI*, double, double> a, std::tuple<int, POI*, double, double> b)
 	{
-		if(std::get<3>(a) == std::get<3>(b)) return std::get<0>(a) < std::get<0>(b);
+		if(std::get<3>(a) == std::get<3>(b)) return std::get<2>(a) < std::get<2>(b);
 
 		return std::get<3>(a) > std::get<3>(b);
 	}
@@ -40,7 +40,7 @@ namespace dg
 		double m_poi_match_thresh = 2.0;	// POI matching threshold
 		bool m_check_jungsung_type = true;	// distinguish bottom-side jungsung and right-side jungsung
 		bool m_fixed_template_match = true;	// use substring template match instead of Levenshtein distance
-	    bool m_enable_debugging_display = true;
+	    bool m_enable_debugging_display = false;
 		int m_w = 2; // minimum string length
 
         /** Read parameters from cv::FileNode - Inherited from cx::Algorithm */
@@ -102,7 +102,6 @@ namespace dg
 			cv::AutoLock lock(m_localizer_mutex);
 			std::vector<OCRResult> ocrs = get();
 			if (ocrs.empty()) return false;
-			OCRRecognizer::print();
 
 			// retrieve nearby POIs from the server
             if (m_shared == nullptr) return false;
@@ -112,20 +111,20 @@ namespace dg
 			std::vector<dg::POI*> pois_near = map->getNearPOIs(pose, m_poi_search_radius);
 			if(pois_near.empty()) return false;
 
-			// match OCR detections with nearby POIs: <ocr_index, poi_index, levenshtein_distance, match_score>
-			std::vector<std::tuple<int, int, double, double>> matches = matchPOI(ocrs, pois_near);
-			if(matches.empty()) return false;
+			// match OCR detections with nearby POIs: <ocr_index, POI*, levenshtein_distance, match_score>
+			m_matches = matchPOI(ocrs, pois_near);
+			if(m_matches.empty()) return false;
 
 			// estimate relative pose of the matched POIs
-			for (size_t k = 0; k < matches.size(); k++)
+			for (size_t k = 0; k < m_matches.size(); k++)
             {
-				int ocr_i = std::get<0>(matches[k]);
-				int poi_i = std::get<1>(matches[k]);
-				double match_score = std::get<3>(matches[k]);
-				pois.push_back(pois_near[poi_i]);
-				Polar2 relative = computeRelative(ocrs[ocr_i].xmin, ocrs[ocr_i].ymin, ocrs[ocr_i].xmax, ocrs[ocr_i].ymax);
+				int ocr_idx = std::get<0>(m_matches[k]);
+				POI* poi = std::get<1>(m_matches[k]);
+				double match_score = std::get<3>(m_matches[k]);
+				pois.push_back(poi);
+				Polar2 relative = computeRelative(ocrs[ocr_idx].xmin, ocrs[ocr_idx].ymin, ocrs[ocr_idx].xmax, ocrs[ocr_idx].ymax);
 				relatives.push_back(relative);
-				double conf = match_score * ocrs[ocr_i].confidence;
+				double conf = match_score * ocrs[ocr_idx].confidence;
 				poi_confidences.push_back(conf);
             }
             return true;
@@ -154,14 +153,14 @@ namespace dg
 			if(pois.empty()) return false;
 
 			// match OCR detections with nearby POIs: <ocr_index, poi_index, levenshtein_distance, match_score>
-			std::vector<std::tuple<int, int, double, double>> matches = matchPOI(ocrs, pois);
-			if(matches.empty()) return false;
+			m_matches = matchPOI(ocrs, pois);
+			if(m_matches.empty()) return false;
 
 			// estimate relative pose of the matched POIs
-			int ocr_i = std::get<0>(matches[0]);
-			int poi_i = std::get<1>(matches[0]);
-			double match_score = std::get<3>(matches[0]);
-			poi_xy = *(pois[poi_i]);
+			int ocr_idx = std::get<0>(m_matches[0]);
+			POI* poi = std::get<1>(m_matches[0]);
+			double match_score = std::get<3>(m_matches[0]);
+			poi_xy = *poi;
 			relative = computeRelative(xmin, ymin, xmax, ymax);
 			poi_confidence = match_score * conf;
 			return true;
@@ -305,6 +304,36 @@ namespace dg
 			}
 		}
 
+        void print() const
+        {
+			OCRRecognizer::print();
+
+	        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+            cv::AutoLock lock(m_mutex);
+			if(m_enable_debugging_display)
+			{
+				for(size_t k = 0; k < m_candidates.size(); k++)
+				{
+					int ocr_idx = std::get<0>(m_candidates[k]);
+					std::string poi_name = converter.to_bytes(std::get<1>(m_candidates[k])->name);
+					double leven_dist = std::get<2>(m_candidates[k]);
+					double match_score = std::get<3>(m_candidates[k]);
+					printf("\t%s - %s: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
+				}
+			}
+			else
+			{
+				for(size_t k = 0; k < m_matches.size(); k++)
+				{
+					int ocr_idx = std::get<0>(m_matches[k]);
+					std::string poi_name = converter.to_bytes(std::get<1>(m_matches[k])->name);
+					double leven_dist = std::get<2>(m_matches[k]);
+					double match_score = std::get<3>(m_matches[k]);
+					printf("\t%s - %s: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
+				}
+			}
+        }
+
     protected:
 		// hangeul parameters
 		int kor_begin = 44032;
@@ -329,6 +358,8 @@ namespace dg
 
 		/** A hash table for finding similarity weight between characters */
 		std::map<std::pair<wchar_t, wchar_t>, double> weights;
+		std::vector<std::tuple<int, POI*, double, double>> m_matches;    // <ocr_index, POI*, levenshtein_distance, match_score>
+		std::vector<std::tuple<int, POI*, double, double>> m_candidates; // <ocr_index, POI*, levenshtein_distance, match_score>
 
 		bool character_is_korean(wchar_t c)
 		{
@@ -555,30 +586,27 @@ namespace dg
 		 * @param jamo_mode A given levenshtein function mode
 		 * @return A list of matches <OCR index, POI index, Levenshtein_distance, match_score> (empty list if no POI matched)
 		 */
-		std::vector<std::tuple<int, int, double, double>> matchPOI(const std::vector<OCRResult>& ocrs, const std::vector<dg::POI*>& pois, bool jamo_mode = true)
+		std::vector<std::tuple<int, POI*, double, double>> matchPOI(const std::vector<OCRResult>& ocrs, const std::vector<dg::POI*>& pois, bool jamo_mode = true)
 		{
-			// preprocessing: remove spaces from POI names, remove duplications
+			// preprocessing: remove spaces from POI names
 			std::vector<std::wstring> poi_names;
 			for (int k = 0; k < (int)pois.size(); k++)
             {
-				// remove spaces
 				std::wstring poi_name = pois[k]->name;
 				poi_name.erase(std::remove(poi_name.begin(), poi_name.end(), ' '), poi_name.end());
 				poi_names.push_back(poi_name);
-
-				// remove farther POIs in case of duplicated POI names
-				// TBD ...
 			}
 
-			// match <ocr_index, poi_index, levenshtein_distance, match_score>
-			std::vector<std::tuple<int, int, double, double>> matches;
+			// match <ocr_index, POI*, levenshtein_distance, match_score>
+			std::vector<std::tuple<int, POI*, double, double>> matches;
 	        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			m_candidates.clear();
 			for (int i = 0; i < (int)ocrs.size(); i++)
             {
                 std::wstring ocr_result = converter.from_bytes(ocrs[i].label.c_str());
 				ocr_result.erase(std::remove(ocr_result.begin(), ocr_result.end(), ' '), ocr_result.end()); // remove spaces
 
-				std::vector<std::tuple<int, int, double, double>> candidates;
+				std::vector<std::tuple<int, POI*, double, double>> candidates;
 				for(int j = 0; j < poi_names.size(); j++)
 				{
 					double leven_dist = 0.0;
@@ -593,25 +621,14 @@ namespace dg
 					double match_score = norm_score + count_score/m_w;
 
 					if(match_score >= m_poi_match_thresh)
-						candidates.push_back(std::make_tuple(i, j, leven_dist, match_score));
+						candidates.push_back(std::make_tuple(i, pois[j], leven_dist, match_score));
 				}
 				if(candidates.size() > 0)
 				{
 					std::sort(candidates.begin(), candidates.end(), compare_score);
 					matches.push_back(candidates[0]);
 				}
-
-				if(m_enable_debugging_display)
-				{
-					std::string ocr_name = ocrs[i].label;
-					for(size_t k = 0; k < candidates.size(); k++)
-					{
-						std::string poi_name = converter.to_bytes(pois[std::get<1>(candidates[k])]->name);
-						double leven_dist = std::get<2>(candidates[k]);
-						double match_score = std::get<3>(candidates[k]);
-						printf("\t%s - %s: dist = %.2lf, score = %.2lf\n", ocr_name.c_str(), poi_name.c_str(), leven_dist, match_score);
-					}
-				}
+				m_candidates.insert(m_candidates.begin() + (int)m_candidates.size(), candidates.begin(), candidates.end());
             }
 
 			return matches;

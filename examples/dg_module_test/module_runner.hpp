@@ -61,7 +61,7 @@ public:
         }
 
         // Module-specific configurations
-        if(m_ocr_localizer) m_ocr_localizer->setParamValue("poi_match_thresh", 2.0);
+        if(m_ocr_localizer) m_ocr_localizer->setParamValue("poi_match_thresh", 1.0);
         if(m_ocr_localizer) m_ocr_localizer->setParamValue("enable_debugging_display", true);
 
         // Prepare the video for recording
