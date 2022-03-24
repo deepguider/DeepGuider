@@ -168,9 +168,9 @@ def GetTopic_OMNI(bag, string_topic, verbose=True):
     Title = "OMNI360Camera"
     topic_ret = GetTopicByName(bag, string_topic)
     if topic_ret == 'NotFound':
-        topic_ret = GetTopicByName(bag, 'theta360z1_image')
-    if topic_ret == 'NotFound':
         topic_ret = GetTopicByName(bag, 'theta360z1_raw')  # default
+    if topic_ret == 'NotFound':
+        topic_ret = GetTopicByName(bag, 'theta360z1_image')
     if topic_ret == 'NotFound':
         topic_ret = GetTopicByName(bag, 'theta360z1_compressed')
     if topic_ret == 'NotFound':
@@ -204,13 +204,13 @@ def GetTopic_GPS(bag, string_topic, verbose=True):
     Title = "GPS"
     topic_ret = GetTopicByName(bag, string_topic)
     if topic_ret == 'NotFound':
+        topic_ret = GetTopicByName(bag, 'andro2linux_gps')
+    if topic_ret == 'NotFound':
         topic_ret = GetTopicByName(bag, 'gps')
     if topic_ret == 'NotFound':
         topic_ret = GetTopicByName(bag, 'ascen')
-    #if topic_ret == 'NotFound':
-    #    topic_ret = GetTopicByName(bag, 'novatel')
     if topic_ret == 'NotFound':
-        topic_ret = GetTopicByName(bag, 'andro2linux_gps')
+        topic_ret = GetTopicByName(bag, 'novatel')
     if topic_ret == 'NotFound':
         if verbose == True:
             print "[X] Not Detected ros topic of [{}] : Check line {} in {}".format(Title, __line__(), os.path.basename(__filename__()))
@@ -277,6 +277,10 @@ def parse_and_save_gps_message(bag, gps_topic, pose_only, init_skip_meter):
             lat = msg.latitude
             lon = msg.longitude
             alt = msg.altitude
+        else:
+            lat = 0.0
+            lon = 0.0
+            alt = 0.0
 
         if np.isnan(lat):
             lat = 0.0  # 36.38011018428967
@@ -340,6 +344,10 @@ def parse_and_save_camera_message(bag, output_dir, pose_latlon_file, pose_utm_fi
     state_print_msg = 0
     prev_sec = 0
     bridge = CvBridge()
+    if len(utmArray) == 0:
+        print("No gps information.")
+        return count
+
     for topic, msg, t in bag.read_messages(topics=[camera_topic]):
         iTime = t.to_sec()
         idx = np.argmin(np.abs(utmArray[:,0] - iTime))
@@ -462,7 +470,7 @@ def main():
     #parser.add_argument("--uvc_topic", type=str, default='/uvc_image_raw/compressed',
     #parser.add_argument("--uvc_topic", type=str, default='/uvc_image_raw/compressed',
     parser.add_argument("--uvc_topic", type=str, default='/uvc_camera/image_raw/compressed', help="A part of string included in Image topic. You can know this string using : rosbag info some.bag")
-    parser.add_argument("--gps_topic", type=str, default='/ascen_gps/fix', help="A part of string included in GPS topic. You can know this string using : rosbag info some.bag")
+    parser.add_argument("--gps_topic", type=str, default='/andro2linux_gps', help="A part of string included in GPS topic. You can know this string using : rosbag info some.bag")
     parser.add_argument("--imu_topic", type=str, default='/imu/data', help="A part of string included in IMU topic. You can know this string using : rosbag info some.bag")
     parser.add_argument("--omni_topic", type=str, default='/theta360z1_raw', help="A part of string included in Omni camera topic. You can know this string using : rosbag info some.bag")
     parser.add_argument("--pose_latlon_file", type=str, default='poses_latlon_robot.txt')

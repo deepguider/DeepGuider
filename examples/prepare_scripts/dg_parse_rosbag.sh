@@ -43,6 +43,7 @@ function run_parse(){
 #		--unique_jpgname \
 #		--gps_topic=/ascen_gps/fix
 #		--gps_topic=/ascen_fix
+#		--gps_topic=/antro2linux_gps
 #		--gps_topic=/novatel_fix
 #		--gps_topic=/gps/fix
 	python ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
@@ -50,7 +51,8 @@ function run_parse(){
 		--init_skip_meter=0 \
 		--sec_per_frame=0.1 \
 		--uvc_topic=/uvc_camera/image_raw/compressed \
-		--gps_topic=/ascen_gps/fix \
+		--omni_topic=/theta360z1_raw \
+		--gps_topic=/antro2linux_gps \
 		--imu_topic=/imu/data \
 		--pose_latlon_file=poses_latlon_robot.txt 
 }
