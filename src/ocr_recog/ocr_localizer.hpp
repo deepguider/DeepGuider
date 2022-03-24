@@ -372,15 +372,15 @@ namespace dg
 			setlocale(LC_ALL, "KOREAN");
 
 			int cho_idx = 0;
-			int cho_max = chosung_list.length();
+			int cho_max = (int)chosung_list.length();
 			while (cho_idx < cho_max && chosung_list[cho_idx] != chosung) cho_idx++;
 
 			int jung_idx = 0;
-			int jung_max = jungsung_list.length();
+			int jung_max = (int)jungsung_list.length();
 			while (jung_idx < jung_max && jungsung_list[jung_idx] != jungsung) jung_idx++;
 
 			int jong_idx = 0;
-			int jong_max = jongsung_list.length();
+			int jong_max = (int)jongsung_list.length();
 			while (jong_idx < jong_max && jongsung_list[jong_idx] != jongsung) jong_idx++;
 
 			if (cho_idx >= cho_max || jung_idx >= jung_max || jong_idx >= jong_max)
