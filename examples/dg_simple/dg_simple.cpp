@@ -63,8 +63,8 @@ protected:
     int m_gui_robot_trj_radius = 1;
 
 	// 0.0 means "Not using", 1.0 means "Using"
-	double m_vps_load_dbfeat = 0.0;
-	double m_vps_save_dbfeat = 0.0;
+	int m_vps_load_dbfeat = 0;
+	int m_vps_save_dbfeat = 0;
 	double m_vps_gps_accuracy = 0.9;  // Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
 	int m_vps_use_custom_image_server = 0;  // use custom image dataset instead of naver roadview to avoid wide baseline problem
 
