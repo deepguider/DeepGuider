@@ -184,6 +184,7 @@ protected:
 
     cv::Mutex m_vps_mutex;
     cv::Mat m_vps_image;            // top-1 matched streetview image
+	dg::ID m_vps_id;
     dg::Point2 m_vps_xy;            // top-1 matched streetview's position (x,y)
     dg::Polar2 m_vps_relative;      // top-1 matched streetview's relative position (pan, tz) or (theta_z, delta_z)
 
