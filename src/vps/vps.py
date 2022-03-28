@@ -871,7 +871,7 @@ class vps:
                 R0, t0 = self.get_relativePose('normal')
                 pan, tilt = self.mod_rPose.get_pan_tilt(R0)
                 query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R0, t0)
-                if self.mod_rPose.check_cam2_pose(pan, tilt, query_cam2_pos, self.Tx) == True:
+                if self.mod_rPose.check_cam2_pose(pan, tilt, query_cam2_pos) == True:
                     R, t = R0, t0
 
         query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R, t)

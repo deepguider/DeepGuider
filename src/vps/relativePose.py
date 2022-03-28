@@ -98,7 +98,7 @@ class relativePose:
 
         return P1_cam2origin
 
-    def check_cam2_pose(self, pan=0.0, tilt=0.0, cam2_pose=[1, 0, 0], Tx=1.0):
+    def check_cam2_pose(self, pan=0.0, tilt=0.0, cam2_pose=[1, 0, 0]):
         '''
         All are hyper-parameter here to be tuned.
         C1: centre of cam1, C2: centre of cam2, t (tx,ty,tz) is tralslation from C1 to C2
@@ -117,13 +117,13 @@ class relativePose:
         tilt_deg = np.rad2deg(tilt)
         # Check validation of R|t with simple constraint.
         valid = False
-        (x, y, z) = cam2_pose
-        (X, Y, Z) = cam2_pose*Tx
-        if np.abs(pan_deg) < 90:
+        (X, Y, Z) = cam2_pose
+        if np.abs(pan_deg) <= 90 or np.abs(pan_deg) >= (360-90) :
             if np.abs(tilt_deg) < 60:
                 if np.abs(Y) < np.abs(X):  # Altitude is smaller than X. We assume that planar road.
                     if np.sqrt(X*X + Y*Y + Z*Z) < 50:  # absolute scale < 50 meters between db and q
-                        valid = True
+                        if X >= 0:
+                            valid = True
         return valid
 
     @staticmethod
@@ -333,14 +333,18 @@ class relativePose:
         self.pts2 = []
         self.kps1 = []
         self.kps2 = []
+        self.ransac_mask = []
         if (self.img1 is not None) and (self.img2 is not None):
             #self.F, self.mask, self.pts1, self.pts2, self.kps1, self.kps2 = self.estimate_fundamental_matrix(self.img0, self.img1)
             self.pts1, self.pts2, self.kps1, self.kps2 = self.detect_matching_points(self.img1, self.img2, check_ratio=self.check_ratio, check_roi=self.check_roi)
-            if len(self.pts1) > 10:
+            if len(self.pts1) >= 10:
                 self.ransac_mask, self.R, self.t = self.estimate_relative_pose_from_correspondence(self.pts1, self.pts2, self.camera_matrix_1, self.camera_matrix_2, self.distCoeffs_1, self.distCoeffs_2)
                 #_, self.R, self.t = self.estimate_relative_pose_from_correspondence(self.pts1, self.pts2, self.camera_matrix_1, self.camera_matrix_2, self.distCoeffs_1)
             else:
                 self.R, self.t = self.get_zero_Rt()
+
+        if len(self.ransac_mask) < len(self.good_matches) :
+            self.ransac_mask = np.zeros_like(self.good_matches)
 
         return self.R, self.t.squeeze()
 
@@ -724,7 +728,7 @@ def run_usbcam(video_src=0, feature_mode='normal', Tx=1.0, skip_frame=0, interla
         pan, tilt = mod_rPose.get_pan_tilt(R)
         cam2_pos = mod_rPose.get_cam2origin_on_cam1coordinate(R, t)
 
-        if mod_rPose.check_cam2_pose(pan, tilt, cam2_pos, Tx) is False:
+        if mod_rPose.check_cam2_pose(pan, tilt, cam2_pos) is False:
             print("\033[F", end='') # put the cursor to the previous line
             print("\033[F", end='') # put the cursor to the previous line
             continue
@@ -867,10 +871,10 @@ if __name__ == "__main__":
     #video_src = "./test_relativePose_outdoor.avi"; Tx=6.0; feature_mode = "test"; interlaced = False; check_ratio=True; check_roi=False
 
     ## When Naver roadview is used.
-    #video_src = "../../bin/data_vps/matched_image"; Tx=6.0; feature_mode = "normal"; interlaced = True; check_ratio=True; check_roi=True
+    video_src = "../../bin/data_vps/matched_image"; Tx=6.0; feature_mode = "normal"; interlaced = True; check_ratio=True; check_roi=True
     
     ## When custom roadview is used captured near sideway. So Tx is smaller than Naver. mode = 'test' because same camera is used for db and q.
-    video_src = "../../bin/data_vps/matched_image"; Tx=1.0; feature_mode = "test"; interlaced = True; check_ratio=True; check_roi=True; use_same_camera_model = True
+    #video_src = "../../bin/data_vps/matched_image"; Tx=1.0; feature_mode = "test"; interlaced = True; check_ratio=True; check_roi=True; use_same_camera_model = True
     ############################
 
     ## Run
