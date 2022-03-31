@@ -61,7 +61,8 @@ public:
         }
 
         // Module-specific configurations
-        if(m_ocr_localizer) m_ocr_localizer->setParamValue("poi_match_thresh", 1.0);
+        if(m_ocr_localizer) m_ocr_localizer->setParamValue("poi_match_thresh", 2.0);
+        if(m_ocr_localizer) m_ocr_localizer->setParamValue("poi_search_radius", 100);
         if(m_ocr_localizer) m_ocr_localizer->setParamValue("enable_debugging_display", true);
 
         // Prepare the video for recording
@@ -149,13 +150,15 @@ public:
                     double ymin = vdata[3];
                     double xmax = vdata[4];
                     double ymax = vdata[5];
-                    dg::Point2 clue_xy;
+                    dg::POI* poi;
                     dg::Polar2 relative;
                     double confidence;
-                    if (m_ocr_localizer->applyPreprocessed(name, xmin, ymin, xmax, ymax, conf, data_time, clue_xy, relative, confidence))
+                    if (m_ocr_localizer->applyPreprocessed(name, xmin, ymin, xmax, ymax, conf, data_time, poi, relative, confidence))
                     {
-                        bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
+                        bool success = localizer->applyPOI(*poi, relative, data_time, confidence);
                         if (!success) fprintf(stderr, "applyOCR() was failed.\n");
+                        pois.push_back(poi);
+                        poi_relatives.push_back(relative);
                     }
                     if (show_gui)
                     {
@@ -277,7 +280,9 @@ public:
                 }
                 else if (module_sel == DG_OCR || module_sel == DG_POI)
                 {
-                    if (m_ocr_localizer->apply(video_image, capture_time, pois, poi_relatives, poi_confidences))
+                    bool ok = m_ocr_localizer->apply(video_image, capture_time, pois, poi_relatives, poi_confidences);
+                    m_ocr_localizer->print();
+                    if(ok)
                     {
                         dg::Pose2 pose = localizer->getPose();
                         printf("\tlocalizer: x = %.2lf, y = %.2lf, theta = %.1lf\n", pose.x, pose.y, cx::cvtRad2Deg(pose.theta));
@@ -294,7 +299,6 @@ public:
                     {
                         result_image = video_image.clone();
                         m_ocr_localizer->draw(result_image);
-                        //m_ocr_localizer->print();
                     }
                 }
                 else if (module_sel == DG_VPS)

@@ -130,7 +130,7 @@ namespace dg
             return true;
         }
 
-		bool applyPreprocessed(std::string recog_name, double xmin, double ymin, double xmax, double ymax, double conf, const dg::Timestamp data_time, dg::Point2& poi_xy, dg::Polar2& relative, double& poi_confidence)
+		bool applyPreprocessed(std::string recog_name, double xmin, double ymin, double xmax, double ymax, double conf, const dg::Timestamp data_time, dg::POI*& poi, dg::Polar2& relative, double& poi_confidence)
 		{
 			std::vector<OCRResult> ocrs;
 			OCRResult ocr;
@@ -158,10 +158,9 @@ namespace dg
 
 			// estimate relative pose of the matched POIs
 			int ocr_idx = std::get<0>(m_matches[0]);
-			POI* poi = std::get<1>(m_matches[0]);
-			double match_score = std::get<3>(m_matches[0]);
-			poi_xy = *poi;
+			poi = std::get<1>(m_matches[0]);
 			relative = computeRelative(xmin, ymin, xmax, ymax);
+			double match_score = std::get<3>(m_matches[0]);
 			poi_confidence = match_score * conf;
 			return true;
 		}
@@ -318,7 +317,7 @@ namespace dg
 					std::string poi_name = converter.to_bytes(std::get<1>(m_candidates[k])->name);
 					double leven_dist = std::get<2>(m_candidates[k]);
 					double match_score = std::get<3>(m_candidates[k]);
-					printf("\t%s - %s: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
+					printf("\t\b*%s - %s: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
 				}
 			}
 			else
@@ -329,7 +328,7 @@ namespace dg
 					std::string poi_name = converter.to_bytes(std::get<1>(m_matches[k])->name);
 					double leven_dist = std::get<2>(m_matches[k]);
 					double match_score = std::get<3>(m_matches[k]);
-					printf("\t%s - %s: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
+					printf("\t\b*%s - %s: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
 				}
 			}
         }

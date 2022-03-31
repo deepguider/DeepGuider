@@ -165,10 +165,12 @@ int runModule()
     //module_sel = DG_POI;
     //module_sel = DG_RoadTheta;
 
-    int data_sel = 1;
+    int data_sel = 0;
     double start_time = 0;     // time skip (seconds)
-    start_time = 1180;     // time skip (seconds)
-    //rec_video_file = "result.mkv";
+    start_time = 1360;     // time skip (seconds), testset 1 우리은행
+    //start_time = 1180;     // time skip (seconds), testset 2 상가 초입
+    //start_time = 1440;     // time skip (seconds), testset 2 횡단보도 진입시점
+    //rec_video_file = "module_test.avi";
     std::vector<std::string> data_head[] = {
         {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
         {"data/ETRI/200219_150153", "1.6244"},  // 1, 23911 frames, 3884 sec, video_scale = 1.6244
