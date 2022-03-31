@@ -8,59 +8,84 @@ import time
 from ipdb import set_trace as bp
 import argparse
 
-def get_latlon_center_from_utm(lines):
-    latList = []
-    lonList = []
-    for line in lines:
-        lat, lon = get_latlon_from_utm(line)
-        latList.append(lat)
-        lonList.append(lon)
-    latArray = np.array(latList)
-    lonArray = np.array(lonList)
-    return latArray.mean(), lonArray.mean()
+class parse_postion_from_txt():
+    def __init__(self, color_idx=0):
+        self.colors=['blue', 'green', 'red']
+        self.circle_color = self.colors[color_idx]
 
+    def get_latlon_center_from_utm(self, lines):
+        latList = []
+        lonList = []
+        for line in lines:
+            lat, lon = self.get_latlon_from_utm(line, check_color=False)
+            if (lat is not None) and (lon is not None):
+                latList.append(lat)
+                lonList.append(lon)
+        latArray = np.array(latList)
+        lonArray = np.array(lonList)
+        return latArray.mean(), lonArray.mean()
+    
+    
+    def get_latlon_center_from_latlon(self, lines):
+        latList = []
+        lonList = []
+        for line in lines:
+            lat, lon = self.get_latlon_from_latlon(line, check_color=False)
+            if (lat is not None) and (lon is not None):
+                latList.append(lat)
+                lonList.append(lon)
+        latArray = np.array(latList)
+        lonArray = np.array(lonList)
+        try:
+            lat_mean = latArray.mean()
+            lon_mean = lonArray.mean()
+        except:
+            pass
+        return lat_mean, lon_mean
+    
+    def get_latlon_from_utm(self, line, check_color=True):
+        # line : 
+        # 000000 354559.16244695638 4028082.80969046941 52 S
+        if "color" in line:
+            lat, lon = None, None
+            if check_color == True:
+                line = line.split(' ')
+                for color in self.colors:
+                    if color in line[1].lower():
+                        self.circle_color = color
+        else:
+            line = line.split(' ')
+            utm_x = float(line[1])
+            utm_y = float(line[2])
+            utm_zone = int(line[3])
+            utm_compass = 'N'
+            lat, lon = utm.to_latlon(utm_x, utm_y, utm_zone, utm_compass)
+        return lat, lon
+    
+    
+    def get_latlon_from_latlon(self, line, check_color=True):
+        # line : 
+        # 000000 36.3798158583 127.367339298
+        if "color" in line:
+            lat, lon = None, None
+            if check_color == True:
+                line = line.split(' ')
+                for color in self.colors:
+                    if color in line[1].lower():
+                        self.circle_color = color
+        else:
+            line = line.split(' ')
+            lat = float(line[1])
+            lon = float(line[2])
+        return lat, lon
 
-def get_latlon_center_from_latlon(lines):
-    latList = []
-    lonList = []
-    for line in lines:
-        lat, lon = get_latlon_from_latlon(line)
-        latList.append(lat)
-        lonList.append(lon)
-    latArray = np.array(latList)
-    lonArray = np.array(lonList)
-    try:
-        lat_mean = latArray.mean()
-        lon_mean = lonArray.mean()
-    except:
-        pass
-    return lat_mean, lon_mean
+    def get_color(self):
+        return self.circle_color
 
 def makedir(fdir):
     if not os.path.exists(fdir):
         if fdir != '':
             os.makedirs(fdir)
-
-def get_latlon_from_utm(line):
-    # line : 
-    # 000000 354559.16244695638 4028082.80969046941 52 S
-    line = line.split(' ')
-    utm_x = float(line[1])
-    utm_y = float(line[2])
-    utm_zone = int(line[3])
-    utm_compass = 'N'
-    lat, lon = utm.to_latlon(utm_x, utm_y, utm_zone, utm_compass)
-    return lat, lon
-
-
-def get_latlon_from_latlon(line):
-    # line : 
-    # 000000 36.3798158583 127.367339298
-    line = line.split(' ')
-    lat = float(line[1])
-    lon = float(line[2])
-    return lat, lon
-
 
 if __name__ == '__main__':
 
@@ -90,10 +115,13 @@ if __name__ == '__main__':
     # ...
 
     # Get center position of all points 
+
+    mParser = parse_postion_from_txt()
+
     if poseMode == 'utm':
-        lat, lon = get_latlon_center_from_utm(txt_lines)
+        lat, lon = mParser.get_latlon_center_from_utm(txt_lines)
     else: # latlon
-        lat, lon = get_latlon_center_from_latlon(txt_lines)
+        lat, lon = mParser.get_latlon_center_from_latlon(txt_lines)
 
     if np.isnan(lat) or np.isnan(lon):
         print("[draw_point_on_map.py] Invalid lat, lon file : {}".format(poseFile))
@@ -110,6 +138,8 @@ if __name__ == '__main__':
     skip = int(1.0/opt.dispratio)
     skip_cnt = 0
 
+
+    
     # Display all points
     for line in txt_lines:
         if skip_cnt < skip:
@@ -119,22 +149,23 @@ if __name__ == '__main__':
             skip_cnt = 0
 
         if poseMode == 'utm':
-            lat, lon = get_latlon_from_utm(line)
+            lat, lon = mParser.get_latlon_from_utm(line)
         else: # latlon
-            lat, lon = get_latlon_from_latlon(line)
+            lat, lon = mParser.get_latlon_from_latlon(line)
 
-        folium.CircleMarker(
-                location = [lat, lon],
-                radius = 1,
-                color = 'blue',
-                fill = True
-                ).add_to(myMap)
-        if False:
-            folium.Marker(
+        if (lat is not None) and (lon is not None):
+            folium.CircleMarker(
                     location = [lat, lon],
-                    popup ="{}".format(line.split(' ')[0]),
-                    icon = folium.Icon(color='red', icon='star')
+                    radius = 1,
+                    color = mParser.get_color(),
+                    fill = True
                     ).add_to(myMap)
+            if False:
+                folium.Marker(
+                        location = [lat, lon],
+                        popup ="{}".format(line.split(' ')[0]),
+                        icon = folium.Icon(color='red', icon='star')
+                        ).add_to(myMap)
 
     outdir=os.path.dirname(mapFile)
     makedir(outdir)

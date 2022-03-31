@@ -871,10 +871,10 @@ if __name__ == "__main__":
     #video_src = "./test_relativePose_outdoor.avi"; Tx=6.0; feature_mode = "test"; interlaced = False; check_ratio=True; check_roi=False
 
     ## When Naver roadview is used.
-    video_src = "../../bin/data_vps/matched_image"; Tx=6.0; feature_mode = "normal"; interlaced = True; check_ratio=True; check_roi=True
+    #video_src = "../../bin/data_vps/matched_image"; Tx=6.0; feature_mode = "normal"; interlaced = True; check_ratio=True; check_roi=True
     
     ## When custom roadview is used captured near sideway. So Tx is smaller than Naver. mode = 'test' because same camera is used for db and q.
-    #video_src = "../../bin/data_vps/matched_image"; Tx=1.0; feature_mode = "test"; interlaced = True; check_ratio=True; check_roi=True; use_same_camera_model = True
+    video_src = "../../bin/data_vps/matched_image"; Tx=1.0; feature_mode = "test"; interlaced = True; check_ratio=True; check_roi=True; use_same_camera_model = True
     ############################
 
     ## Run

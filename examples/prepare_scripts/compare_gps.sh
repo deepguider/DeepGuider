@@ -36,33 +36,41 @@ SRCPATH=`pwd`
 echo "$SRCPATH is $0's parents directory"
 cd $CWD
 
-function run_parse(){
+function run_parse_ascengps(){
 	local IF=$1
 	local OD=$2
-#		--pose_only \
-#		--unique_jpgname \
-#		--gps_topic=/ascen_gps/fix \
-#		--gps_topic=/ascen_fix \
-#		--gps_topic=/antro2linux_gps \
-#		--gps_topic=/novatel_fix \
-#		--gps_topic=/gps/fix \
 	python ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
 		--pose_only \
-		--output_dir=$OD --pose_utm_file=poses_utm_robot.txt \
+		--output_dir=$OD --pose_utm_file=poses_utm_robot_ascengps.txt \
+		--init_skip_meter=0 \
+		--sec_per_frame=0.1 \
+		--uvc_topic=/uvc_camera/image_raw/compressed \
+		--omni_topic=/theta360z1_raw \
+		--gps_topic=/ascen_gps/fix \
+		--imu_topic=/imu/data \
+		--pose_latlon_file=poses_latlon_robot_ascengps.txt 
+}
+
+function run_parse_androidgps(){
+	local IF=$1
+	local OD=$2
+	python ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
+		--pose_only \
+		--output_dir=$OD --pose_utm_file=poses_utm_robot_androidgps.txt \
 		--init_skip_meter=0 \
 		--sec_per_frame=0.1 \
 		--uvc_topic=/uvc_camera/image_raw/compressed \
 		--omni_topic=/theta360z1_raw \
 		--gps_topic=/antro2linux_gps \
 		--imu_topic=/imu/data \
-		--pose_latlon_file=poses_latlon_robot.txt 
+		--pose_latlon_file=poses_latlon_robot_androidgps.txt 
 }
 
 function run_draw_map(){
 	local IF=$1
 	local OF=$2
 	python ${SRCPATH}/draw_point_on_map.py --coord=latlon \
-		--ifname=$IF/poses_latlon_robot.txt \
+		--ifname=$IF/poses_latlon_robot_to_compare.txt \
 		--ofname=$OF \
 		--dispratio=1.0 \
 		--zoom=16
@@ -81,15 +89,22 @@ ofdir=`basename -s ".bag" $rosbag_file`
 output_dir="extracted/$ofdir"
 
 ## Parse rosbag_file to extrace gps and images
-run_parse "$rosbag_file" "$output_dir"
+
+run_parse_androidgps "$rosbag_file" "$output_dir"
+run_parse_ascengps "$rosbag_file" "$output_dir"
+extracted_dir="$output_dir/uvc_image"
+echo "color blue" > ${extracted_dir}/poses_latlon_robot_to_compare.txt
+cat ${extracted_dir}/poses_latlon_robot_androidgps.txt >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
+echo "color red" >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
+cat ${extracted_dir}/poses_latlon_robot_ascengps.txt >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
 
 source ~/.virtualenvs/dg_venv3.6/bin/activate
 echo "Draw map from $rosbag_file"
 
+## Draw map
 extracted_dir="$output_dir/uvc_image"
 map_name="map/$ofdir"
 
-## Draw map
 run_draw_map "$extracted_dir" "$map_name"
 
 videopath="${extracted_dir}/${ofdir}.avi"
