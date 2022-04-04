@@ -9,6 +9,8 @@
 #endif
 #include <fstream>
 #include <chrono>
+#include <locale>
+#include <codecvt>
 
 using namespace std;
 
@@ -178,11 +180,13 @@ namespace dg
 
         void print() const
         {
+            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             cv::AutoLock lock(m_mutex);
             printf("[%s] proctime = %.3lf, timestamp = %.3lf\n", name(), m_processing_time, m_timestamp);
             for (int k = 0; k < m_result.size(); k++)
             {
-                printf("\t%s, %.2lf, x1=%d, y1=%d, x2=%d, y2=%d\n", m_result[k].label.c_str(), m_result[k].confidence, m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
+                std::wstring wlabel = converter.from_bytes(m_result[k].label);
+                wprintf(L"\t%ls, %.2lf, x1=%d, y1=%d, x2=%d, y2=%d\n", wlabel.c_str(), m_result[k].confidence, m_result[k].xmin, m_result[k].ymin, m_result[k].xmax, m_result[k].ymax);
             }
         }
 

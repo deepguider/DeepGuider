@@ -314,10 +314,12 @@ namespace dg
 				for(size_t k = 0; k < m_candidates.size(); k++)
 				{
 					int ocr_idx = std::get<0>(m_candidates[k]);
-					std::string poi_name = converter.to_bytes(std::get<1>(m_candidates[k])->name);
+					std::wstring ocr_name = converter.from_bytes(m_result[ocr_idx].label);
+					std::wstring poi_name = std::get<1>(m_candidates[k])->name;
 					double leven_dist = std::get<2>(m_candidates[k]);
 					double match_score = std::get<3>(m_candidates[k]);
-					printf("\t\b*%s - %s: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
+					//wprintf(L"\t\b*%ls - %ls: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
+					wprintf(L"\t\b*%ls - %ls: dist = %.2lf, score = %.2lf\n", ocr_name.c_str(), poi_name.c_str(), leven_dist, match_score);
 				}
 			}
 			else
