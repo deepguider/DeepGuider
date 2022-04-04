@@ -38,6 +38,7 @@ namespace dg
 		double m_poi_height = 3.8;			// Height of POI from ground plane, Unit: [m]
 		double m_poi_search_radius = 50;	// POI search range, Unit: [m]
 		double m_poi_match_thresh = 2.0;	// POI matching threshold
+		double m_best_to_second_match_ratio = 2;	// POI match ratio threshold (best_score/second_score > ratio threshod)
 		bool m_check_jungsung_type = true;	// distinguish bottom-side jungsung and right-side jungsung
 		bool m_fixed_template_match = true;	// use substring template match instead of Levenshtein distance
 	    bool m_enable_debugging_display = false;
@@ -318,20 +319,17 @@ namespace dg
 					std::wstring poi_name = std::get<1>(m_candidates[k])->name;
 					double leven_dist = std::get<2>(m_candidates[k]);
 					double match_score = std::get<3>(m_candidates[k]);
-					//wprintf(L"\t\b*%ls - %ls: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
-					wprintf(L"\t\b*%ls - %ls: dist = %.2lf, score = %.2lf\n", ocr_name.c_str(), poi_name.c_str(), leven_dist, match_score);
+					wprintf(L"\t%ls - %ls: dist = %.2lf, score = %.2lf\n", ocr_name.c_str(), poi_name.c_str(), leven_dist, match_score);
 				}
 			}
-			else
+			for(size_t k = 0; k < m_matches.size(); k++)
 			{
-				for(size_t k = 0; k < m_matches.size(); k++)
-				{
-					int ocr_idx = std::get<0>(m_matches[k]);
-					std::string poi_name = converter.to_bytes(std::get<1>(m_matches[k])->name);
-					double leven_dist = std::get<2>(m_matches[k]);
-					double match_score = std::get<3>(m_matches[k]);
-					printf("\t\b*%s - %s: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
-				}
+				int ocr_idx = std::get<0>(m_matches[k]);
+				std::wstring ocr_name = converter.from_bytes(m_result[ocr_idx].label);
+				std::wstring poi_name = std::get<1>(m_matches[k])->name;
+				double leven_dist = std::get<2>(m_matches[k]);
+				double match_score = std::get<3>(m_matches[k]);
+				wprintf(L"\t\b*%ls - %ls: dist = %.2lf, score = %.2lf\n", ocr_name.c_str(), poi_name.c_str(), leven_dist, match_score);
 			}
         }
 
@@ -608,6 +606,11 @@ namespace dg
 				ocr_result.erase(std::remove(ocr_result.begin(), ocr_result.end(), ' '), ocr_result.end()); // remove spaces
 
 				std::vector<std::tuple<int, POI*, double, double>> candidates;
+				double best_score = -1;
+				double second_best_score = -1;
+				std::tuple<int, POI*, double, double> best;
+				std::tuple<int, POI*, double, double> second_best;
+
 				for(int j = 0; j < poi_names.size(); j++)
 				{
 					double leven_dist = 0.0;
@@ -621,15 +624,33 @@ namespace dg
 					double count_score = std::max({ocr_result.length(), poi_names[j].length()}) - leven_dist;
 					double match_score = norm_score + count_score/m_w;
 
+					if (match_score > best_score)
+					{
+						second_best_score = best_score;
+						second_best = best;
+						best_score = match_score;
+						best = std::make_tuple(i, pois[j], leven_dist, match_score);
+					}
+					else if (match_score > second_best_score)
+					{
+						second_best_score = match_score;
+						second_best = std::make_tuple(i, pois[j], leven_dist, match_score);
+					}
+
 					if(match_score >= m_poi_match_thresh)
 						candidates.push_back(std::make_tuple(i, pois[j], leven_dist, match_score));
 				}
 				if(candidates.size() > 0)
 				{
 					std::sort(candidates.begin(), candidates.end(), compare_score);
-					matches.push_back(candidates[0]);
+					m_candidates.insert(m_candidates.begin() + (int)m_candidates.size(), candidates.begin(), candidates.end());
+
+					double ratio_score = (second_best_score >= 0) ? best_score / second_best_score : m_best_to_second_match_ratio;
+					if (ratio_score >= m_best_to_second_match_ratio)
+					{
+						matches.push_back(best);
+					}
 				}
-				m_candidates.insert(m_candidates.begin() + (int)m_candidates.size(), candidates.begin(), candidates.end());
             }
 
 			return matches;
