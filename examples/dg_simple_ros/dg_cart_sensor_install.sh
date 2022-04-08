@@ -6,6 +6,11 @@
 ## Git clone sensor ros file
 git clone https://github.com/deepguider/dg_cart_ros.git src/dg_cart_ros
 
+# symbolic link for door detect weight file
+cd src/dg_cart_ros/src/door_detect
+ln -sf ../../../../data_door_detect/checkpoints .
+cd ../../../..
+
 ## Build and install dg_cart_ros
 source /opt/ros/melodic/setup.bash
 catkin_make install
