@@ -1,19 +1,13 @@
 #!/bin/bash
 
-#if [ -n "$VIRTUAL_ENV" ];then
-#	echo "You need to run $0 after deactivate virtual environment"
-#	echo "Run following"
-#	echo "deactivate; $0"
-#	exit 0
-#fi
-
-source /opt/ros/melodic/setup.bash  # It is necessary to run catkin_make
-
-if [ ! -n "$VIRTUAL_ENV" ];then
-	echo "You need to run $0 after entering virtualenv"
+if [ -n "$VIRTUAL_ENV" ];then
+	echo "You need to run $0 after deactivate virtual environment"
+	echo "Run following"
+	echo "deactivate; $0"
 	exit 0
 fi
 
+source /opt/ros/melodic/setup.bash  # It is necessary to run catkin_make
 catkin_make
 source devel/setup.bash
 
@@ -24,7 +18,12 @@ if [ ! -n "${pid}" ];then  # If process is not running.
     sleep 2s    # wait until roscore is ready
 fi
 
-gnome-terminal --tab --title="door_detect" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/door_detect && python door_detect_rospublisher.py'
+# Run door detect in python 3 environment
+pid=`pgrep -f door_detect_rospublisher`
+if [ -n "${pid}" ];then  # If process is running.
+    kill -9 ${pid}
+fi
+gnome-terminal --tab --title="door_detect" -- bash -c 'source ~/.virtualenvs/dg_venv3.6/bin/activate && cd ~/catkin_ws/src/dg_cart_ros/src/door_detect && python door_detect_rospublisher.py'
 
 ## Run theta360z1 publish
 pid=`pgrep main_ros_python27`
