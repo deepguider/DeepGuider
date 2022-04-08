@@ -74,6 +74,9 @@ if [ -e ${TARGET} ]; then
 
 	## Misc.
 
+        ## Door detect
+        ln -sf ${SRCPATH}/data_door_detect /home/${USER}/catkin_ws/data_door_detect
+
 	## Check error on return value of above commands
 	if [ $? -eq 1 ]; then # Error
 		echo "Some error have occured. Did you run ./setup_all.sh in examples directory before running ${0}."
