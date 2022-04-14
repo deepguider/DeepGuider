@@ -84,6 +84,7 @@ protected:
     // interactive edit
     enum {G_NODE, G_POI, G_STREETVIEW};
     cv::Point       m_mouse_pt;
+    cv::Point2d     m_mouse_xy;
     bool            m_mouse_drag = false;
     dg::ID          m_gobj_id;                  // selected object for drag or edit
     int             m_gobj_type;                // type of selected object

@@ -61,11 +61,11 @@ MapEditorDlg::MapEditorDlg(CWnd* pParent /*=nullptr*/)
 
 void MapEditorDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
-	DDX_Check(pDX, IDC_CHECK_POI, m_show_poi);
-	DDX_Check(pDX, IDC_CHECK_STREETVIEW, m_show_streetview);
-	DDX_Check(pDX, IDC_CHECK_SHOW_ERROR, m_show_error);
-	DDX_Check(pDX, IDC_CHECK_LRPose, m_show_lrside);
+    CDialogEx::DoDataExchange(pDX);
+    DDX_Check(pDX, IDC_CHECK_POI, m_show_poi);
+    DDX_Check(pDX, IDC_CHECK_STREETVIEW, m_show_streetview);
+    DDX_Check(pDX, IDC_CHECK_SHOW_ERROR, m_show_error);
+    DDX_Check(pDX, IDC_CHECK_LRPose, m_show_lrside);
 }
 
 BEGIN_MESSAGE_MAP(MapEditorDlg, CDialogEx)

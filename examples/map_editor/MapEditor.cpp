@@ -152,6 +152,8 @@ int MapEditor::run()
             int pt_thickness = (int)(ln_thickness + 0.5);
             m_painter.drawNode(view_image, *node, pt_radius, 0, cv::Vec3b(0, 255, 255), m_viewport.offset(), zoom, pt_thickness);
         }
+        cv::putText(view_image, cv::format("(%.2lf, %.2lf)", m_mouse_xy.x, m_mouse_xy.y), cv::Point(10, 35), cv::FONT_HERSHEY_DUPLEX, 1.0, cv::Scalar(0, 0, 0), 3);
+        cv::putText(view_image, cv::format("(%.2lf, %.2lf)", m_mouse_xy.x, m_mouse_xy.y), cv::Point(10, 35), cv::FONT_HERSHEY_DUPLEX, 1.0, cv::Scalar(0, 255, 0), 1);
         cv::imshow(m_winname, view_image);
         int key = cv::waitKey(10);
     }
@@ -180,6 +182,15 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
     int pt_thickness = (int)(ln_thickness + 0.5);
     double dist_thr = (zoom >= 4) ? (2 + 24 / zoom) : 10;   // meter
 
+    if (evt == cv::EVENT_MOUSEMOVE)
+    {
+        if (x != m_mouse_pt.x || y != m_mouse_pt.y)
+        {
+            cv::AutoLock lock(m_mutex_data);
+            cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            m_mouse_xy = m_painter.cvtPixel2Value(px);
+        }
+    }
     if (evt == cv::EVENT_MOUSEMOVE && m_mouse_drag)
     {
         if (x != m_mouse_pt.x || y != m_mouse_pt.y)
