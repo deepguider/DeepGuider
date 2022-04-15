@@ -61,6 +61,7 @@ protected:
     cv::Vec3b m_gui_vps_rpose_color = cv::Vec3b(127, 0, 255);  // pink
     int m_gui_gps_trj_radius = 2;
     int m_gui_robot_trj_radius = 1;
+    bool m_gui_auto_scroll = true;
 
 	// 0.0 means "Not using", 1.0 means "Using"
 	int m_vps_load_dbfeat = 0;
@@ -668,7 +669,7 @@ int DeepGuider::run()
 
             // draw GUI display
             dg::Pose2 px = m_painter.cvtValue2Pixel(pose_m);
-            if (m_localizer.isPoseStabilized()) m_viewport.centerizeViewportTo(px);
+            if (m_gui_auto_scroll && m_localizer.isPoseStabilized()) m_viewport.centerizeViewportTo(px);
             m_viewport.getViewportImage(gui_image);
             drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
 
@@ -687,7 +688,9 @@ int DeepGuider::run()
             if (key == '2') m_viewport.setZoom(2);
             if (key == '3') m_viewport.setZoom(3);
             if (key == '4') m_viewport.setZoom(4);
-            if (key == '0') m_exploration_state_count = 0;  // terminate active view
+            if (key == '0') m_viewport.setZoom(0.1);
+            if (key == 'a') m_gui_auto_scroll = !m_gui_auto_scroll;  // toggle auto scroll of the map view
+            if (key == 'e') m_exploration_state_count = 0;  // terminate exploration (active view)
             if (key == 83) itr += 30;   // Right Key
 
             // update iteration
@@ -1026,6 +1029,23 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     std::string info_confidence = cv::format("Confidence: %.2lf", pose_confidence);
     cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
     cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+
+    // draw status message (Auto Scroll & Sensor Connections)
+    cv::Point gui_xy(10, 120);
+    cv::Scalar gui_bg(255, 255, 255);
+    cv::Scalar gui_fg(200, 0, 0);
+    double gui_fscale = 0.8;
+    std::string gui_msg = cv::format("Zoom: %.1lfx", m_viewport.zoom());
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
+    gui_xy.y += 40;
+
+    gui_msg = (m_gui_auto_scroll) ? "Auto: On" : "Auto: Off";
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (m_gui_auto_scroll) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, cv::Scalar(128, 128, 128), 2);
+    gui_xy.y += 40;
+
 
     // print status message (localization)
     printf("[Localizer]\n");
