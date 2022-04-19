@@ -165,9 +165,12 @@ namespace dg
 #ifdef HAVE_OPENCV_FREETYPE
                 if(m_ft2)
                 {
-                    m_ft2->putText(image, msg, pt, font_sz * drawing_scale, cv::Scalar(255, 0, 0), 2, cv::LINE_AA, true);
-                    m_ft2->putText(image, msg, pt, font_sz * drawing_scale, cv::Scalar(0, 255, 255), 1, cv::LINE_AA, true);
-                    m_ft2->putText(image, msg, pt, font_sz * drawing_scale, cv::Scalar(0, 255, 255), -1, cv::LINE_AA, true);
+                    int font_height = (int)(font_sz * drawing_scale + 0.5);
+                    if (pt.y - font_height < 0) pt.y = font_height;
+                    if (pt.y >= image.rows) pt.y = image.rows - 1;
+                    m_ft2->putText(image, msg, pt, font_height, cv::Scalar(255, 0, 0), 2, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, font_height, cv::Scalar(0, 255, 255), 1, cv::LINE_AA, true);
+                    m_ft2->putText(image, msg, pt, font_height, cv::Scalar(0, 255, 255), -1, cv::LINE_AA, true);
                 }
                 else
 #endif
