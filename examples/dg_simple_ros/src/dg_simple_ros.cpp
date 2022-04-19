@@ -227,7 +227,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     // draw GUI display
     cv::Mat gui_image;
     dg::Pose2 px = m_painter.cvtValue2Pixel(getPose());
-    if (m_localizer.isPoseStabilized()) m_viewport.centerizeViewportTo(px);
+    if (m_gui_auto_scroll && m_localizer.isPoseStabilized()) m_viewport.centerizeViewportTo(px);
 
     m_viewport.getViewportImage(gui_image);
     drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
@@ -238,12 +238,13 @@ bool DeepGuiderROS::runOnce(double timestamp)
     cv::imshow(m_winname, gui_image);
     int key = cv::waitKey(1);
     if (key == cx::KEY_SPACE) key = cv::waitKey(0);
-    if (key == '1') m_viewport.setZoom(0.5);
-    if (key == '2') m_viewport.setZoom(1);
-    if (key == '3') m_viewport.setZoom(2);
-    if (key == '4') m_viewport.setZoom(3);
-    if (key == '5') m_viewport.setZoom(4);    
-    if (key == '0') m_exploration_state_count = 0;  // terminate active view
+    if (key == '1') m_viewport.setZoom(1);
+    if (key == '2') m_viewport.setZoom(2);
+    if (key == '3') m_viewport.setZoom(3);
+    if (key == '4') m_viewport.setZoom(4);
+    if (key == '0') m_viewport.setZoom(0.1);
+    if (key == 'a') m_gui_auto_scroll = !m_gui_auto_scroll;  // toggle auto scroll of the map view
+    if (key == 'e') m_exploration_state_count = 0;  // terminate exploration (active view)
     if (key == cx::KEY_ESC) return false;
 
     return true;
