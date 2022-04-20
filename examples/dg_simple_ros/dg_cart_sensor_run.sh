@@ -12,7 +12,7 @@ catkin_make
 source devel/setup.bash
 
 ## Start roscore
-pid=`pgrep roscore`
+pid=`pgrep -f roscore`
 if [ ! -n "${pid}" ];then  # If process is not running.
     gnome-terminal --tab -- roscore
     sleep 2s    # wait until roscore is ready
@@ -26,7 +26,7 @@ fi
 gnome-terminal --tab --title="door_detect" -- bash -c 'source ~/.virtualenvs/dg_venv3.6/bin/activate && cd ~/catkin_ws/src/dg_cart_ros/src/door_detect && python door_detect_rospublisher.py'
 
 ## Run theta360z1 publish
-pid=`pgrep main_ros_python27`
+pid=`pgrep -f "python2 main_ros_python27.py"`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi

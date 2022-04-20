@@ -10,14 +10,14 @@ catkin_make  # It's necessary to makedevel directory
 source devel/setup.bash
 
 ## Start roscore
-pid=`pgrep roscore`
+pid=`pgrep -f roscore`
 if [ ! -n "${pid}" ];then  # If process is not running.
     gnome-terminal --tab -- roscore
     sleep 2s    # wait until roscore is ready
 fi
 
 ## Start rosbag play
-pid=`pgrep rosbag`
+pid=`pgrep -f rosbag`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi

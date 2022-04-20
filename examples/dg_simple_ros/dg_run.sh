@@ -10,20 +10,20 @@ catkin_make  # It's necessary to makedevel directory
 source devel/setup.bash
 
 ## Start roscore
-pid=`pgrep roscore`
+pid=`pgrep -f roscore`
 if [ ! -n "${pid}" ];then  # If process is not running.
     gnome-terminal --tab -- roscore
     sleep 2s    # wait until roscore is ready
 fi
 
 ## Stop rosbag play
-pid=`pgrep rosbag`
+pid=`pgrep -f rosbag`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
 
 ## Start dg_simple_ros package (working directory: devel/lib/dg_simple_ros/)
-pid=`pgrep dg_simple_ros`
+pid=`pgrep -f dg_simple_ros`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
