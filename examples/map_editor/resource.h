@@ -11,6 +11,7 @@
 #define IDD_EDGE                        131
 #define IDD_POI                         132
 #define IDD_VIEW                        133
+#define IDD_MAP_ALIGN                   134
 #define IDC_BUTTON_ETRI                 1000
 #define IDC_BUTTON_COEX                 1001
 #define IDC_BUTTON_BUCHEON              1002
@@ -47,15 +48,20 @@
 #define IDC_BUTTON_EXPORT_TO_JSON       1028
 #define IDC_BUTTON_FIX_MAP_ERROR2       1029
 #define IDC_BUTTON_UPDATE_LR            1029
-#define IDC_EDIT_XY                     1030
+#define IDC_BTN_ADJUST_MAP_ALIGN        1031
+#define IDC_EDIT_IMAGE_REF_X            1032
+#define IDC_EDIT_IMAGE_REF_Y            1033
+#define IDC_EDIT_PIXEL_PER_METER        1034
+#define IDC_EDIT_IMAGE_ROTATION         1035
+#define IDC_BTN_APPLY                   1036
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        133
+#define _APS_NEXT_RESOURCE_VALUE        136
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1031
+#define _APS_NEXT_CONTROL_VALUE         1037
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

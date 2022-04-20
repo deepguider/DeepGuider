@@ -89,6 +89,7 @@ BEGIN_MESSAGE_MAP(MapEditorDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_FIX_MAP_ERROR, &MapEditorDlg::OnBnClickedButtonFixMapError)
 	ON_BN_CLICKED(IDC_CHECK_LRPose, &MapEditorDlg::OnBnClickedCheckLrpose)
 	ON_BN_CLICKED(IDC_BUTTON_UPDATE_LR, &MapEditorDlg::OnBnClickedButtonUpdateLr)
+	ON_BN_CLICKED(IDC_BTN_ADJUST_MAP_ALIGN, &MapEditorDlg::OnBnClickedBtnAdjustMapAlign)
 END_MESSAGE_MAP()
 
 
@@ -329,3 +330,8 @@ void MapEditorDlg::OnBnClickedButtonExportToJson()
 	EndWaitCursor();
 }
 
+
+void MapEditorDlg::OnBnClickedBtnAdjustMapAlign()
+{
+	if (m_editor) m_editor->adjustMapAlign();
+}

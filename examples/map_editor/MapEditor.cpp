@@ -4,6 +4,7 @@
 #include "DlgEdge.h"
 #include "DlgPOI.h"
 #include "DlgView.h"
+#include "DlgMapAlign.h"
 #include "afxdialogex.h"
 #include "MapEditor.h"
 #include "map_manager/map_manager.hpp"
@@ -27,67 +28,67 @@ int MapEditor::configure(std::string site)
     ETRI.server_port = "10000";
     ETRI.image_file = "data/ETRI/NaverMap_ETRI(Satellite).png";
     ETRI.map_file = "data/ETRI/TopoMap_ETRI.csv";
-    ETRI.origin_latlon = dg::LatLon(36.379208, 127.364585);
-    ETRI.origin_px = cv::Point2d(1344, 1371);
-    ETRI.image_scale = cv::Point2d(1.2474, 1.2474);
-    ETRI.image_rotation = cx::cvtDeg2Rad(0.95);
+    ETRI.map_ref_point_latlon = dg::LatLon(36.379208, 127.364585);
+    ETRI.map_ref_point_pixel = cv::Point2d(1344, 1371);
+    ETRI.map_pixel_per_meter = 1.2474;
+    ETRI.map_image_rotation = cx::cvtDeg2Rad(0.95);
     ETRI.map_view_offset = cv::Point(1289, 371);
     ETRI.map_radius = 1500; // meter
     ETRI.grid_unit_pos = cv::Point(-215, -6);
-    ETRI.video_resize = 0.2;
-    ETRI.video_offset = cv::Point(350, 840);
-    ETRI.result_resize = 0.5;
+
+    MapGUIProp ETRI2;
+    ETRI2.server_port = "10000";
+    ETRI2.image_file = "data/ETRI/NaverMap_ETRI(Satellite)_large.png";
+    ETRI2.map_file = "data/ETRI/TopoMap_ETRI.csv";
+    ETRI2.map_ref_point_latlon = dg::LatLon(36.379208, 127.364585);
+    ETRI2.map_ref_point_pixel = cv::Point2d(3791, 3408);
+    ETRI2.map_pixel_per_meter = 2.081;
+    ETRI2.map_image_rotation = cx::cvtDeg2Rad(0.96);
+    ETRI2.map_view_offset = cv::Point(3705, 1745);
+    ETRI2.map_radius = 1500; // meter
+    ETRI2.grid_unit_pos = cv::Point(-215, -6);
 
     MapGUIProp COEX;
     COEX.server_port = "10001";
     COEX.image_file = "data/NaverMap_COEX(Satellite)_200929.png";
-    COEX.image_scale = cv::Point2d(1.055, 1.055);
-    COEX.image_rotation = cx::cvtDeg2Rad(1.2);
-    COEX.origin_latlon = dg::LatLon(37.506207, 127.05482);
-    COEX.origin_px = cv::Point2d(1090, 1018);
+    COEX.map_pixel_per_meter = 1.055;
+    COEX.map_image_rotation = cx::cvtDeg2Rad(1.2);
+    COEX.map_ref_point_latlon = dg::LatLon(37.506207, 127.05482);
+    COEX.map_ref_point_pixel = cv::Point2d(1090, 1018);
     COEX.map_radius = 2000; // meter
     COEX.grid_unit_pos = cv::Point(-230, -16);
     COEX.map_file = "data/COEX/TopoMap_COEX.csv";
-    COEX.video_resize = 0.4;
-    COEX.video_offset = cv::Point(10, 50);
-    COEX.result_resize = 0.6;
 
     MapGUIProp COEX2;
     COEX2.server_port = "10001";
     COEX2.image_file = "data/COEX/NaverMap_COEX(Satellite).png";
-    COEX2.image_scale = cv::Point2d(2.536, 2.536);
-    COEX2.image_rotation = cx::cvtDeg2Rad(1.0);
-    COEX2.origin_latlon = dg::LatLon(37.506994, 127.056676);
-    COEX2.origin_px = cv::Point2d(1373, 2484);
+    COEX2.map_pixel_per_meter = 2.536;
+    COEX2.map_image_rotation = cx::cvtDeg2Rad(1.0);
+    COEX2.map_ref_point_latlon = dg::LatLon(37.506994, 127.056676);
+    COEX2.map_ref_point_pixel = cv::Point2d(1373, 2484);
     COEX2.map_view_offset = cv::Point(1010, 300);
     COEX2.map_radius = 2000; // meter
     COEX2.grid_unit_pos = cv::Point(-230, -16);
     COEX2.map_file = "data/COEX/TopoMap_COEX.csv";
-    COEX2.video_resize = 0.4;
-    COEX2.video_offset = cv::Point(10, 50);
-    COEX2.result_resize = 0.6;
 
     MapGUIProp Bucheon;
     Bucheon.server_port = "10002";
     Bucheon.image_file = "data/NaverMap_Bucheon(Satellite).png";
-    Bucheon.image_scale = cv::Point2d(1.056, 1.056);
-    Bucheon.image_rotation = cx::cvtDeg2Rad(0);
-    Bucheon.origin_latlon = dg::LatLon(37.510928, 126.764344);
-    Bucheon.origin_px = cv::Point2d(1535, 1157);
+    Bucheon.map_pixel_per_meter = 1.056;
+    Bucheon.map_image_rotation = cx::cvtDeg2Rad(0);
+    Bucheon.map_ref_point_latlon = dg::LatLon(37.510928, 126.764344);
+    Bucheon.map_ref_point_pixel = cv::Point2d(1535, 1157);
     Bucheon.map_radius = 2000; // meter
     Bucheon.grid_unit_pos = cv::Point(-215, -6);
     Bucheon.map_file = "data/Bucheon/TopoMap_Bucheon.csv";
-    Bucheon.video_resize = 0.25;
-    Bucheon.video_offset = cv::Point(270, 638);
-    Bucheon.result_resize = 0.4;
 
-    MapGUIProp guiprop = (site == "coex") ? COEX2 : (site == "bucheon") ? Bucheon : ETRI;
+    MapGUIProp guiprop = (site == "coex") ? COEX2 : (site == "bucheon") ? Bucheon : ETRI2;
     m_guiprop = guiprop;
     m_site = site;
 
     // Prepare a map if given
     m_fpath = guiprop.map_file;
-    m_map.setReference(guiprop.origin_latlon);
+    m_map.setReference(guiprop.map_ref_point_latlon);
     if (!guiprop.map_file.empty())
     {
         m_map.load(guiprop.map_file.c_str());
@@ -101,8 +102,9 @@ int MapEditor::configure(std::string site)
     m_bg_image_original = m_bg_image.clone();
 
     // Prepare a painter for visualization
-    m_painter.configCanvas(guiprop.origin_px, guiprop.image_scale, m_bg_image.size(), 0, 0);
-    m_painter.setImageRotation(guiprop.image_rotation);
+    cv::Point2d ppm(guiprop.map_pixel_per_meter, guiprop.map_pixel_per_meter);
+    m_painter.configCanvas(guiprop.map_ref_point_pixel, ppm, m_bg_image.size(), 0, 0);
+    m_painter.setImageRotation(guiprop.map_image_rotation);
     m_painter.drawGrid(m_bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, guiprop.grid_unit_pos);
     m_painter.drawOrigin(m_bg_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
     m_painter.setParamValue("node_radius", m_node_radius);
@@ -708,7 +710,7 @@ void MapEditor::download()
     cv::AutoLock lock(m_mutex_data);
     dg::MapManager manager;
     if (!manager.initialize("129.254.81.204")) return;
-    dg::LatLon ll = m_guiprop.origin_latlon;
+    dg::LatLon ll = m_guiprop.map_ref_point_latlon;
     manager.setReference(ll);
     double radius = 5000;  // 5 km
     manager.getMapAll(ll.lat, ll.lon, radius, m_map);
@@ -967,4 +969,31 @@ void MapEditor::computeLRSide(dg::Map& map)
 void MapEditor::exportToJson()
 {
     // TBD
+}
+
+
+void MapEditor::adjustMapAlign()
+{
+    if (m_map.isEmpty()) return;
+
+    DlgMapAlign* dlg = new DlgMapAlign();
+    dlg->m_mapEditor = this;
+    dlg->m_map_ref_pixel_x = m_guiprop.map_ref_point_pixel.x;
+    dlg->m_map_ref_pixel_y = m_guiprop.map_ref_point_pixel.y;
+    dlg->m_map_pixel_per_meter = m_guiprop.map_pixel_per_meter;
+    dlg->m_map_image_rotation_deg = cx::cvtRad2Deg(m_guiprop.map_image_rotation);
+    dlg->Create(IDD_MAP_ALIGN, NULL);
+}
+
+
+void MapEditor::applyMapAlign(double px, double py, double map_pixel_per_meter, double rotation_deg)
+{
+    m_guiprop.map_ref_point_pixel.x = px;
+    m_guiprop.map_ref_point_pixel.y = py;
+    m_guiprop.map_pixel_per_meter = map_pixel_per_meter;
+    m_guiprop.map_image_rotation = cx::cvtDeg2Rad(rotation_deg);
+
+    cv::Point2d ppm(m_guiprop.map_pixel_per_meter, m_guiprop.map_pixel_per_meter);
+    m_painter.configCanvas(m_guiprop.map_ref_point_pixel, ppm, m_bg_image.size(), 0, 0);
+    m_painter.setImageRotation(m_guiprop.map_image_rotation);
 }

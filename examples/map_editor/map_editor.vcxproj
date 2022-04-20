@@ -124,6 +124,7 @@
     <ClInclude Include="..\..\src\core\map.hpp" />
     <ClInclude Include="..\..\src\map_manager\map_manager.hpp" />
     <ClInclude Include="DlgEdge.h" />
+    <ClInclude Include="DlgMapAlign.h" />
     <ClInclude Include="DlgNode.h" />
     <ClInclude Include="DlgPOI.h" />
     <ClInclude Include="DlgView.h" />
@@ -139,6 +140,7 @@
     <ClCompile Include="..\..\src\core\map.cpp" />
     <ClCompile Include="..\..\src\map_manager\map_manager.cpp" />
     <ClCompile Include="DlgEdge.cpp" />
+    <ClCompile Include="DlgMapAlign.cpp" />
     <ClCompile Include="DlgNode.cpp" />
     <ClCompile Include="DlgPOI.cpp" />
     <ClCompile Include="DlgView.cpp" />

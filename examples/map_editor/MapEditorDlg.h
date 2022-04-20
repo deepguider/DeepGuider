@@ -57,4 +57,5 @@ public:
     afx_msg void OnBnClickedCheckLrpose();
     BOOL m_show_lrside;
     afx_msg void OnBnClickedButtonUpdateLr();
+    afx_msg void OnBnClickedBtnAdjustMapAlign();
 };

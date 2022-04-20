@@ -17,12 +17,12 @@ public:
     std::string server_port = "10000";
     std::string image_file;
     std::string map_file;
-    dg::LatLon  origin_latlon;      // origin of UTM
-    cv::Point2d origin_px;          // pixel coordinte of UTM origin at map image
-    cv::Point2d image_scale;
-    double      image_rotation = 0; // radian
+    dg::LatLon  map_ref_point_latlon;       // origin of UTM
+    cv::Point2d map_ref_point_pixel;        // pixel coordinte of UTM origin at map image
+    double      map_pixel_per_meter;
+    double      map_image_rotation = 0;     // radian
     cv::Point   map_view_offset = cv::Point(0, 0);
-    cv::Size    map_view_size = cv::Size(1800, 1012);
+    cv::Size    map_view_size = cv::Size(1920, 1080);
     double      map_radius;         // topomap coverage from the origin (unit: meter)
     cv::Point   grid_unit_pos;
     double      video_resize = 0;
@@ -51,6 +51,8 @@ public:
     void updateLRSide();
     void computeLRSide(dg::Map& map);
     void exportToJson();
+    void adjustMapAlign();
+    void applyMapAlign(double px, double py, double map_pixel_per_meter, double rotation);
 
 protected:
     void drawMap(cv::Mat view_image, cv::Point2d offset, double zoom);
