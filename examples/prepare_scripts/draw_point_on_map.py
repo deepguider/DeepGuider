@@ -135,23 +135,23 @@ if __name__ == '__main__':
     lcnt = 0
 
     linecnt = len(txt_lines)
-    skip = int(1.0/opt.dispratio)
+    skip = int(1.0/opt.dispratio - 1)
     skip_cnt = 0
 
 
     
     # Display all points
     for line in txt_lines:
-        if skip_cnt < skip:
-            skip_cnt += 1
-            continue
-        else:
-            skip_cnt = 0
-
         if poseMode == 'utm':
             lat, lon = mParser.get_latlon_from_utm(line)
         else: # latlon
             lat, lon = mParser.get_latlon_from_latlon(line)
+
+        if skip_cnt < skip:  # This code shoud located after mParser.get_latlon_from_[](line) which check color change command
+            skip_cnt += 1
+            continue
+        else:
+            skip_cnt = 0
 
         if (lat is not None) and (lon is not None):
             folium.CircleMarker(

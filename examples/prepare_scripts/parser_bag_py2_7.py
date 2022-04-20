@@ -251,18 +251,20 @@ def sensors_to_csv(bag_file, output_dir, uvc_topic, gps_topic, imu_topic):
 
     bag.close()
 
-def parse_and_save_gps_message(bag, gps_topic, pose_only, init_skip_meter):
+def parse_and_save_gps_message(bag, gps_topic, pose_only, output_dir, pose_latlon_file, pose_utm_file, init_skip_meter):
     '''
     Save GPS topic and time stamp at temporary files to use them in synchronization between latlon.txt file and image file name.
     We compare iTime of utmArray and iTime of image to sync. time.
     '''
-    debug_write_tempory_posefile = False
+    debug_write_tempory_posefile = True
     utmLists = []
     latlonLists = []
     if debug_write_tempory_posefile == True:
         # Following two files are not used. For debugging.
-        fpl = open('/tmp/pose_latlon_tmp.txt', 'w', buffering = 255)  # Save data at all time stamp
-        fpu = open('/tmp/pose_utm_tmp.txt', 'w', buffering = 255)   # Save data at all time stamp
+        fnamel = os.path.join(output_dir, os.path.splitext(pose_latlon_file)[0] + "_raw" + os.path.splitext(pose_latlon_file)[1])
+        fnameu = os.path.join(output_dir, os.path.splitext(pose_utm_file)[0] + "_raw" + os.path.splitext(pose_utm_file)[1])
+        fpl = open(fnamel, 'w', buffering = 255)  # Save data at all time stamp
+        fpu = open(fnameu, 'w', buffering = 255)  # Save data at all time stamp
     init_sw = True
     normal_state = False
     distance = 0 
@@ -433,11 +435,12 @@ def parse_single_bag(bag_file, output_dir, uvc_topic, gps_topic, imu_topic, omni
     imu_topic = GetTopic_IMU(bag, imu_topic)
     omni_topic = GetTopic_OMNI(bag, omni_topic)
 
-    if gps_topic is None or uvc_topic is None:  # If there are no gps and camera topic, then the rosbag file is useless.
+    #if gps_topic is None or uvc_topic is None:  # If there are no gps and camera topic, then the rosbag file is useless.
+    if gps_topic is None:  # If there are no gps and camera topic, then the rosbag file is useless.
         bag.close()
         return 0  # count = 0 
 
-    utmArray, latlonArray = parse_and_save_gps_message(bag, gps_topic, pose_only, init_skip_meter)
+    utmArray, latlonArray = parse_and_save_gps_message(bag, gps_topic, pose_only, output_dir, pose_latlon_file, pose_utm_file, init_skip_meter)
 
     count_uvc = startIdx_uvc
     count_omni = startIdx_omni

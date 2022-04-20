@@ -93,23 +93,20 @@ output_dir="extracted/$ofdir"
 run_parse_androidgps "$rosbag_file" "$output_dir"
 run_parse_ascengps "$rosbag_file" "$output_dir"
 
-extracted_dir="$output_dir/uvc_image"
-if [ ! -x ${extracted_dir} ];then
-	extracted_dir="$output_dir/omni_image"
-fi
+extracted_dir="$output_dir"
 
 echo " >>> Blue color points are for 1st detected [GPS] topic"
 echo "color blue" > ${extracted_dir}/poses_latlon_robot_to_compare.txt
-cat ${extracted_dir}/poses_latlon_robot_androidgps.txt >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
+cat ${extracted_dir}/poses_latlon_robot_androidgps_raw.txt >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
 
 echo " >>> Red color points are for 2nd detected [GPS] topic"
 echo "color red" >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
-cat ${extracted_dir}/poses_latlon_robot_ascengps.txt >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
+cat ${extracted_dir}/poses_latlon_robot_ascengps_raw.txt >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
 
 source ~/.virtualenvs/dg_venv3.6/bin/activate
 echo "Draw map from $rosbag_file"
 
 ## Draw map
-map_name="map/${ofdir}_compareImgSyncedGPS"
+map_name="map/${ofdir}_compareRawGPS"
 
 run_draw_map "$extracted_dir" "$map_name"
