@@ -103,25 +103,6 @@ echo "Draw map from $rosbag_file"
 
 ## Draw map
 extracted_dir="$output_dir/uvc_image"
-map_name="map/$ofdir"
+map_name="map/${ofdir}_compareGPS"
 
 run_draw_map "$extracted_dir" "$map_name"
-
-videopath="${extracted_dir}/${ofdir}.avi"
-#	--no_display
-#    --watermark=ETRI_Building12_Floor7
-python ${SRCPATH}/imgs2video.py \
-	--no_display \
-    --in_imgpath=${extracted_dir} \
-    --ext=jpg \
-    --out_videopath=${videopath} \
-    --fps=15
-
-extracted_dir="$output_dir/omni_image"
-videopath="${extracted_dir}/${ofdir}.avi"
-python ${SRCPATH}/imgs2video.py \
-	--no_display \
-    --in_imgpath=${extracted_dir} \
-    --ext=jpg \
-    --out_videopath=${videopath} \
-    --fps=15

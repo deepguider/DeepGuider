@@ -47,7 +47,6 @@ function run_parse(){
 #		--gps_topic=/novatel_fix \
 #		--gps_topic=/gps/fix \
 	python ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
-		--pose_only \
 		--output_dir=$OD --pose_utm_file=poses_utm_robot.txt \
 		--init_skip_meter=0 \
 		--sec_per_frame=0.1 \
