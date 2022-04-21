@@ -48,7 +48,7 @@ function run_parse_ascengps(){
 		--sec_per_frame=0.1 \
 		--uvc_topic=/uvc_camera/image_raw/compressed \
 		--omni_topic=/theta360z1_raw \
-		--gps_topic=/ascen_gps/fix \
+		--gps_topic=/ascen_gps/fix --exact_gps_topic \
 		--imu_topic=/imu/data \
 		--pose_latlon_file=poses_latlon_robot_ascengps.txt 
 }
@@ -63,7 +63,7 @@ function run_parse_androidgps(){
 		--sec_per_frame=0.1 \
 		--uvc_topic=/uvc_camera/image_raw/compressed \
 		--omni_topic=/theta360z1_raw \
-		--gps_topic=/antro2linux_gps \
+		--gps_topic=/andro2linux_gps --exact_gps_topic \
 		--imu_topic=/imu/data \
 		--pose_latlon_file=poses_latlon_robot_androidgps.txt 
 }
@@ -91,24 +91,28 @@ ofdir=`basename -s ".bag" $rosbag_file`
 output_dir="extracted/$ofdir"
 
 ## Parse rosbag_file to extrace gps and images
-
 run_parse_androidgps "$rosbag_file" "$output_dir"
 run_parse_ascengps "$rosbag_file" "$output_dir"
 
+## Save gps to ${poses_latlon_compare_file}
 extracted_dir="$output_dir"
 
+echo " >>> Save raw gps into ${extracted_dir}/${poses_latlon_compare_file}"
 echo " >>> Blue color points are for 1st detected [GPS] topic"
 echo "color blue" > ${extracted_dir}/${poses_latlon_compare_file}
-cat ${extracted_dir}/poses_latlon_robot_androidgps_raw.txt >> ${extracted_dir}/${poses_latlon_compare_file}
+if [ -e ${extracted_dir}/poses_latlon_robot_androidgps_raw.txt ];then
+	cat ${extracted_dir}/poses_latlon_robot_androidgps_raw.txt >> ${extracted_dir}/${poses_latlon_compare_file}
+fi
 
 echo " >>> Red color points are for 2nd detected [GPS] topic"
-echo "color red" >> ${extracted_dir}/${poses_latlon_compare_file}
-cat ${extracted_dir}/poses_latlon_robot_ascengps_raw.txt >> ${extracted_dir}/${poses_latlon_compare_file}
+if [ -e ${extracted_dir}/poses_latlon_robot_ascengps_raw.txt ];then
+	echo "color red" >> ${extracted_dir}/${poses_latlon_compare_file}
+	cat ${extracted_dir}/poses_latlon_robot_ascengps_raw.txt >> ${extracted_dir}/${poses_latlon_compare_file}
+fi
 
 source ~/.virtualenvs/dg_venv3.6/bin/activate
 echo "Draw map from $rosbag_file"
 
 ## Draw map
 map_name="map/${ofdir}_compareRawGPS"
-
 run_draw_map "$extracted_dir" "$map_name"

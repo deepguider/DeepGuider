@@ -47,7 +47,7 @@ def rmfiles(path='./download_jpg/*.jpg'):
     for f in glob.glob(path):
         os.remove(f)
 
-def parse_bags_withSubDir(bag_dir, output_dir, uvc_topic, gps_topic, imu_topic, omni_topic, pose_latlon_file, pose_utm_file, pose_only, init_skip_meter=10, startIdx_uvc=0, startIdx_omni=0, unique_jpgname=False, sec_per_frame=0):
+def parse_bags_withSubDir(bag_dir, output_dir, uvc_topic, gps_topic, exact_gps_topic, imu_topic, omni_topic, pose_latlon_file, pose_utm_file, pose_only, init_skip_meter=10, startIdx_uvc=0, startIdx_omni=0, unique_jpgname=False, sec_per_frame=0):
     total_count_uvc = startIdx_uvc
     total_count_omni = startIdx_omni
     if os.path.isfile(os.path.join(output_dir, pose_latlon_file)):
@@ -68,7 +68,7 @@ def parse_bags_withSubDir(bag_dir, output_dir, uvc_topic, gps_topic, imu_topic, 
             if name.endswith((".bag".lower(), ".Bag")):
                 bag_path = os.path.join(curr_path, name)
                 if os.path.isfile(bag_path):
-                    curr_count_uvc, curr_count_omni = parse_single_bag(bag_path, output_dir, uvc_topic, gps_topic, imu_topic, omni_topic,
+                    curr_count_uvc, curr_count_omni = parse_single_bag(bag_path, output_dir, uvc_topic, gps_topic, exact_gps_topic, imu_topic, omni_topic,
                             pose_latlon_file, pose_utm_file, pose_only, init_skip_meter, total_count_uvc, total_count_omni, unique_jpgname, sec_per_frame)
                     total_count_uvc += curr_count_uvc
                     total_count_moni += curr_count_moni
@@ -175,11 +175,11 @@ def GetTopic_OMNI(bag, string_topic, verbose=True):
         topic_ret = GetTopicByName(bag, 'theta360z1_compressed')
     if topic_ret == 'NotFound':
         if verbose == True:
-            print "[X] Not Detected ros topic of [{}] : Check line {} in {}".format(Title, __line__(), os.path.basename(__filename__()))
+            print "[X] Not Detected ros topic of [{}] : {} ==> [X], Check line {} in {}".format(Title, string_topic, __line__(), os.path.basename(__filename__()))
         return None
     else:
         if verbose == True:
-            print "[O]     Detected ros topic of [{}] : {}".format(Title, topic_ret)
+            print "[O]     Detected ros topic of [{}] : {} ==> {}".format(Title, string_topic, topic_ret)
         return topic_ret
 
 def GetTopic_UVC(bag, string_topic, verbose=True):
@@ -193,31 +193,33 @@ def GetTopic_UVC(bag, string_topic, verbose=True):
         topic_ret = GetTopicByName(bag, 'image')
     if topic_ret == 'NotFound':
         if verbose == True:
-            print "[X] Not Detected ros topic of [{}] : Check line {} in {}".format(Title, __line__(), os.path.basename(__filename__()))
+            print "[X] Not Detected ros topic of [{}] : {} ==> [X], Check line {} in {}".format(Title, string_topic, __line__(), os.path.basename(__filename__()))
         return None
     else:
         if verbose == True:
-            print "[O]     Detected ros topic of [{}] : {}".format(Title, topic_ret)
+            print "[O]     Detected ros topic of [{}] : {} ==> {}".format(Title, string_topic, topic_ret)
         return topic_ret
 
-def GetTopic_GPS(bag, string_topic, verbose=True):
+def GetTopic_GPS(bag, string_topic, exact_gps_topic=False, verbose=True):
     Title = "GPS"
     topic_ret = GetTopicByName(bag, string_topic)
-    if topic_ret == 'NotFound':
-        topic_ret = GetTopicByName(bag, 'andro2linux_gps')
-    if topic_ret == 'NotFound':
-        topic_ret = GetTopicByName(bag, 'gps')
-    if topic_ret == 'NotFound':
-        topic_ret = GetTopicByName(bag, 'ascen')
-    if topic_ret == 'NotFound':
-        topic_ret = GetTopicByName(bag, 'novatel')
+    if exact_gps_topic == False:
+        if topic_ret == 'NotFound':
+            topic_ret = GetTopicByName(bag, 'andro2linux_gps')
+        if topic_ret == 'NotFound':
+            topic_ret = GetTopicByName(bag, 'gps')
+        if topic_ret == 'NotFound':
+            topic_ret = GetTopicByName(bag, 'ascen')
+        if topic_ret == 'NotFound':
+            topic_ret = GetTopicByName(bag, 'novatel')
+            
     if topic_ret == 'NotFound':
         if verbose == True:
-            print "[X] Not Detected ros topic of [{}] : Check line {} in {}".format(Title, __line__(), os.path.basename(__filename__()))
+            print "[X] Not Detected ros topic of [{}] : {} ==> [X], Check line {} in {}".format(Title, string_topic, __line__(), os.path.basename(__filename__()))
         return None
     else:
         if verbose == True:
-            print "[O]     Detected ros topic of [{}] : {}".format(Title, topic_ret)
+            print "[O]     Detected ros topic of [{}] : {} ==> {}".format(Title, string_topic, topic_ret)
         return topic_ret
 
 def GetTopic_IMU(bag, string_topic, verbose=True):
@@ -227,18 +229,18 @@ def GetTopic_IMU(bag, string_topic, verbose=True):
         topic_ret = GetTopicByName(bag, 'imu')
     if topic_ret == 'NotFound':
         if verbose == True:
-            print "[X] Not Detected ros topic of [{}] : Check line {} in {}".format(Title, __line__(), os.path.basename(__filename__()))
+            print "[X] Not Detected ros topic of [{}] : {} ==> [X], Check line {} in {}".format(Title, string_topic, __line__(), os.path.basename(__filename__()))
         return None
     else:
         if verbose == True:
-            print "[O]     Detected ros topic of [{}] : {}".format(Title, topic_ret)
+            print "[O]     Detected ros topic of [{}] : {} ==> {}".format(Title, string_topic, topic_ret)
         return topic_ret
 
-def sensors_to_csv(bag_file, output_dir, uvc_topic, gps_topic, imu_topic):
+def sensors_to_csv(bag_file, output_dir, uvc_topic, gps_topic, exact_gps_topic, imu_topic):
     bag = rosbag.Bag(bag_file, "r")
 
     ## Get correct topic_name
-    gps_topic = GetTopic_GPS(bag, gps_topic, verbose=False)
+    gps_topic = GetTopic_GPS(bag, gps_topic, exact_gps_topic, verbose=False)
     imu_topic = GetTopic_IMU(bag, imu_topic, verbose=False)
 
     makedir(output_dir)
@@ -421,7 +423,7 @@ def parse_and_save_camera_message(bag, output_dir, pose_latlon_file, pose_utm_fi
     fpu.close()
     return count
 
-def parse_single_bag(bag_file, output_dir, uvc_topic, gps_topic, imu_topic, omni_topic, pose_latlon_file, pose_utm_file, pose_only, init_skip_meter=10,  startIdx_uvc=0, startIdx_omni=0, unique_jpgname=False, sec_per_frame=0):
+def parse_single_bag(bag_file, output_dir, uvc_topic, gps_topic, exact_gps_topic, imu_topic, omni_topic, pose_latlon_file, pose_utm_file, pose_only, init_skip_meter=10,  startIdx_uvc=0, startIdx_omni=0, unique_jpgname=False, sec_per_frame=0):
     print "In  : %s.\nOut : %s" % (bag_file, output_dir)
     bag = rosbag.Bag(bag_file, "r")
 
@@ -431,7 +433,7 @@ def parse_single_bag(bag_file, output_dir, uvc_topic, gps_topic, imu_topic, omni
     print "Searching topics from ", GetTopicList(bag)
     print "-----------------------------------------------------------------------"
     uvc_topic = GetTopic_UVC(bag, uvc_topic)
-    gps_topic = GetTopic_GPS(bag, gps_topic)
+    gps_topic = GetTopic_GPS(bag, gps_topic, exact_gps_topic)
     imu_topic = GetTopic_IMU(bag, imu_topic)
     omni_topic = GetTopic_OMNI(bag, omni_topic)
 
@@ -474,6 +476,7 @@ def main():
     #parser.add_argument("--uvc_topic", type=str, default='/uvc_image_raw/compressed',
     parser.add_argument("--uvc_topic", type=str, default='/uvc_camera/image_raw/compressed', help="A part of string included in Image topic. You can know this string using : rosbag info some.bag")
     parser.add_argument("--gps_topic", type=str, default='/andro2linux_gps', help="A part of string included in GPS topic. You can know this string using : rosbag info some.bag")
+    parser.add_argument('--exact_gps_topic', action='store_true', help='Only topic names for gps that match exactly are used.')
     parser.add_argument("--imu_topic", type=str, default='/imu/data', help="A part of string included in IMU topic. You can know this string using : rosbag info some.bag")
     parser.add_argument("--omni_topic", type=str, default='/theta360z1_raw', help="A part of string included in Omni camera topic. You can know this string using : rosbag info some.bag")
     parser.add_argument("--pose_latlon_file", type=str, default='poses_latlon_robot.txt')
@@ -483,16 +486,15 @@ def main():
     parser.add_argument("--startIdx", type=int, default=0, help="Start index of filename.")
     parser.add_argument("--init_skip_meter", type=int, default=10, help="Skip parking state in which movement is in 10 meters.")
     parser.add_argument("--sec_per_frame", type=float, default=0.0, help="Save image every sec_per_frame seconds. 0.1 means 100ms, 1sec/0.1 (or 10) fps. 0 means all images.")
-
     opts = parser.parse_args()
 
     if os.path.isfile(opts.bag_file):
-        sensors_to_csv(opts.bag_file, opts.output_dir, opts.uvc_topic, opts.gps_topic, opts.imu_topic)
-        parse_single_bag(opts.bag_file, opts.output_dir, opts.uvc_topic, opts.gps_topic, opts.imu_topic, opts.omni_topic,
+        sensors_to_csv(opts.bag_file, opts.output_dir, opts.uvc_topic, opts.gps_topic, opts.exact_gps_topic, opts.imu_topic)
+        parse_single_bag(opts.bag_file, opts.output_dir, opts.uvc_topic, opts.gps_topic, opts.exact_gps_topic, opts.imu_topic, opts.omni_topic,
                 opts.pose_latlon_file, opts.pose_utm_file, opts.pose_only, opts.init_skip_meter, opts.startIdx, opts.startIdx, opts.unique_jpgname, opts.sec_per_frame)
 
     if os.path.isdir(opts.bag_file):
-        parse_bags_withSubDir(opts.bag_file, opts.output_dir, opts.uvc_topic, opts.gps_topic, opts.imu_topic, opts.omni_topic,
+        parse_bags_withSubDir(opts.bag_file, opts.output_dir, opts.uvc_topic, opts.gps_topic, opts.exact_gps_topic, opts.imu_topic, opts.omni_topic,
                 opts.pose_latlon_file, opts.pose_utm_file, opts.pose_only, opts.init_skip_meter, opts.startIdx, opts.startIdx, opts.unique_jpgname, opts.sec_per_frame)
 
 

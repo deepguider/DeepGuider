@@ -16,6 +16,8 @@ class parse_postion_from_txt():
     def get_latlon_center_from_utm(self, lines):
         latList = []
         lonList = []
+        lat_mean = np.nan
+        lon_mean = np.nan
         for line in lines:
             lat, lon = self.get_latlon_from_utm(line, check_color=False)
             if (lat is not None) and (lon is not None):
@@ -23,12 +25,20 @@ class parse_postion_from_txt():
                 lonList.append(lon)
         latArray = np.array(latList)
         lonArray = np.array(lonList)
-        return latArray.mean(), lonArray.mean()
-    
-    
+        try:
+            if len(latArray) > 0:
+                lat_mean = latArray.mean()
+            if len(lonArray) > 0:
+                lon_mean = lonArray.mean()
+        except:
+            pass
+        return lat_mean, lon_mean
+
     def get_latlon_center_from_latlon(self, lines):
         latList = []
         lonList = []
+        lat_mean = np.nan
+        lon_mean = np.nan
         for line in lines:
             lat, lon = self.get_latlon_from_latlon(line, check_color=False)
             if (lat is not None) and (lon is not None):
@@ -37,8 +47,10 @@ class parse_postion_from_txt():
         latArray = np.array(latList)
         lonArray = np.array(lonList)
         try:
-            lat_mean = latArray.mean()
-            lon_mean = lonArray.mean()
+            if len(latArray) > 0:
+                lat_mean = latArray.mean()
+            if len(lonArray) > 0:
+                lon_mean = lonArray.mean()
         except:
             pass
         return lat_mean, lon_mean
