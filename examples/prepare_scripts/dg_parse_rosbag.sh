@@ -50,6 +50,7 @@ function run_parse(){
 #		--gps_topic=/novatel_fix \
 #		--gps_topic=/gps/fix \
 	python2 ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
+		--pose_only \
 		--output_dir=$OD --pose_utm_file=${pose_utm_file}\
 		--init_skip_meter=0 \
 		--sec_per_frame=0.1 \
@@ -93,7 +94,7 @@ extracted_dir="$output_dir/uvc_image"
 if [ ! -x ${extracted_dir}/${pose_latlon_file} ];then
     extracted_dir="$output_dir/omni_image"
 fi
-map_name="map/$ofdir_ImgSyncedGPS"
+map_name="map/${ofdir}_ImgSyncedGPS"
 run_draw_map "$extracted_dir" "$map_name"
 
 
