@@ -102,7 +102,7 @@ echo "color blue" > ${extracted_dir}/${poses_latlon_compare_file}
 cat ${extracted_dir}/poses_latlon_robot_androidgps_raw.txt >> ${extracted_dir}/${poses_latlon_compare_file}
 
 echo " >>> Red color points are for 2nd detected [GPS] topic"
-echo "color red" >> ${extracted_dir}${poses_latlon_compare_file}
+echo "color red" >> ${extracted_dir}/${poses_latlon_compare_file}
 cat ${extracted_dir}/poses_latlon_robot_ascengps_raw.txt >> ${extracted_dir}/${poses_latlon_compare_file}
 
 source ~/.virtualenvs/dg_venv3.6/bin/activate
