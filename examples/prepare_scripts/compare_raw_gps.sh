@@ -36,10 +36,12 @@ SRCPATH=`pwd`
 echo "$SRCPATH is $0's parents directory"
 cd $CWD
 
+poses_latlon_compare_file="poses_latlon_robot_to_compare.txt"
+
 function run_parse_ascengps(){
 	local IF=$1
 	local OD=$2
-	python ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
+	python2 ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
 		--pose_only \
 		--output_dir=$OD --pose_utm_file=poses_utm_robot_ascengps.txt \
 		--init_skip_meter=0 \
@@ -54,7 +56,7 @@ function run_parse_ascengps(){
 function run_parse_androidgps(){
 	local IF=$1
 	local OD=$2
-	python ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
+	python2 ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
 		--pose_only \
 		--output_dir=$OD --pose_utm_file=poses_utm_robot_androidgps.txt \
 		--init_skip_meter=0 \
@@ -69,8 +71,8 @@ function run_parse_androidgps(){
 function run_draw_map(){
 	local IF=$1
 	local OF=$2
-	python ${SRCPATH}/draw_point_on_map.py --coord=latlon \
-		--ifname=$IF/poses_latlon_robot_to_compare.txt \
+	python3 ${SRCPATH}/draw_point_on_map.py --coord=latlon \
+        --ifname=$IF/${poses_latlon_compare_file} \
 		--ofname=$OF \
 		--dispratio=1.0 \
 		--zoom=16
@@ -96,12 +98,12 @@ run_parse_ascengps "$rosbag_file" "$output_dir"
 extracted_dir="$output_dir"
 
 echo " >>> Blue color points are for 1st detected [GPS] topic"
-echo "color blue" > ${extracted_dir}/poses_latlon_robot_to_compare.txt
-cat ${extracted_dir}/poses_latlon_robot_androidgps_raw.txt >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
+echo "color blue" > ${extracted_dir}/${poses_latlon_compare_file}
+cat ${extracted_dir}/poses_latlon_robot_androidgps_raw.txt >> ${extracted_dir}/${poses_latlon_compare_file}
 
 echo " >>> Red color points are for 2nd detected [GPS] topic"
-echo "color red" >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
-cat ${extracted_dir}/poses_latlon_robot_ascengps_raw.txt >> ${extracted_dir}/poses_latlon_robot_to_compare.txt
+echo "color red" >> ${extracted_dir}${poses_latlon_compare_file}
+cat ${extracted_dir}/poses_latlon_robot_ascengps_raw.txt >> ${extracted_dir}/${poses_latlon_compare_file}
 
 source ~/.virtualenvs/dg_venv3.6/bin/activate
 echo "Draw map from $rosbag_file"

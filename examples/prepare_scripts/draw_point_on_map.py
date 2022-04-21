@@ -138,8 +138,6 @@ if __name__ == '__main__':
     skip = int(1.0/opt.dispratio - 1)
     skip_cnt = 0
 
-
-    
     # Display all points
     for line in txt_lines:
         if poseMode == 'utm':

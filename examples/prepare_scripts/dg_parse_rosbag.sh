@@ -36,6 +36,9 @@ SRCPATH=`pwd`
 echo "$SRCPATH is $0's parents directory"
 cd $CWD
 
+pose_latlon_file="poses_latlon_robot.txt"
+pose_utm_file="poses_utm_robot.txt"
+
 function run_parse(){
 	local IF=$1
 	local OD=$2
@@ -46,22 +49,22 @@ function run_parse(){
 #		--gps_topic=/antro2linux_gps \
 #		--gps_topic=/novatel_fix \
 #		--gps_topic=/gps/fix \
-	python ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
-		--output_dir=$OD --pose_utm_file=poses_utm_robot.txt \
+	python2 ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
+		--output_dir=$OD --pose_utm_file=${pose_utm_file}\
 		--init_skip_meter=0 \
 		--sec_per_frame=0.1 \
 		--uvc_topic=/uvc_camera/image_raw/compressed \
 		--omni_topic=/theta360z1_raw \
 		--gps_topic=/antro2linux_gps \
 		--imu_topic=/imu/data \
-		--pose_latlon_file=poses_latlon_robot.txt 
+		--pose_latlon_file=${pose_latlon_file}
 }
 
 function run_draw_map(){
 	local IF=$1
 	local OF=$2
-	python ${SRCPATH}/draw_point_on_map.py --coord=latlon \
-		--ifname=$IF/poses_latlon_robot.txt \
+	python3 ${SRCPATH}/draw_point_on_map.py --coord=latlon \
+		--ifname=$IF/${pose_latlon_file} \
 		--ofname=$OF \
 		--dispratio=1.0 \
 		--zoom=16
@@ -83,29 +86,39 @@ output_dir="extracted/$ofdir"
 run_parse "$rosbag_file" "$output_dir"
 
 source ~/.virtualenvs/dg_venv3.6/bin/activate
-echo "Draw map from $rosbag_file"
-
-extracted_dir="$output_dir/uvc_image"
-map_name="map/$ofdir"
 
 ## Draw map
+echo "Draw map from $rosbag_file"
+extracted_dir="$output_dir/uvc_image"
+if [ ! -x ${extracted_dir}/${pose_latlon_file} ];then
+    extracted_dir="$output_dir/omni_image"
+fi
+map_name="map/$ofdir_ImgSyncedGPS"
 run_draw_map "$extracted_dir" "$map_name"
 
-videopath="${extracted_dir}/${ofdir}.avi"
-#	--no_display
-#    --watermark=ETRI_Building12_Floor7
-python ${SRCPATH}/imgs2video.py \
-	--no_display \
-    --in_imgpath=${extracted_dir} \
-    --ext=jpg \
-    --out_videopath=${videopath} \
-    --fps=15
 
+## Convert uvc_images to video files
+extracted_dir="$output_dir/uvc_image"
+if [ -x ${extracted_dir} ];then
+	videopath="${extracted_dir}/${ofdir}.avi"
+	#	--no_display
+	#    --watermark=ETRI_Building12_Floor7
+	python ${SRCPATH}/imgs2video.py \
+		--no_display \
+	    --in_imgpath=${extracted_dir} \
+	    --ext=jpg \
+	    --out_videopath=${videopath} \
+	    --fps=15
+fi
+
+## Convert omni-directional images to video file
 extracted_dir="$output_dir/omni_image"
-videopath="${extracted_dir}/${ofdir}.avi"
-python ${SRCPATH}/imgs2video.py \
-	--no_display \
-    --in_imgpath=${extracted_dir} \
-    --ext=jpg \
-    --out_videopath=${videopath} \
-    --fps=15
+if [ -x ${extracted_dir} ];then
+	videopath="${extracted_dir}/${ofdir}.avi"
+	python ${SRCPATH}/imgs2video.py \
+		--no_display \
+	    --in_imgpath=${extracted_dir} \
+	    --ext=jpg \
+	    --out_videopath=${videopath} \
+	    --fps=15
+fi
