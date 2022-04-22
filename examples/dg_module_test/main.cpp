@@ -3,14 +3,16 @@
 struct MapGUIProp
 {
 public:
+    std::string server_ip = "129.254.81.204";
+    std::string server_port = "10000";
     std::string image_file;
     std::string map_file;
-    dg::LatLon  origin_latlon;      // origin of UTM
-    cv::Point2d origin_px;          // pixel coordinte of UTM origin at map image
-    cv::Point2d image_scale;
-    double      image_rotation = 0; // radian
+    dg::LatLon  map_ref_point_latlon;       // origin of UTM
+    cv::Point2d map_ref_point_pixel;        // pixel coordinte of UTM origin at map image
+    double      map_pixel_per_meter;
+    double      map_image_rotation = 0;     // radian
     cv::Point   map_view_offset = cv::Point(0, 0);
-    cv::Size    map_view_size = cv::Size(1800, 1012);
+    cv::Size    map_view_size = cv::Size(1920, 1080);
     double      map_radius;         // topomap coverage from the origin (unit: meter)
     cv::Point   grid_unit_pos;
     double      video_resize = 0;
@@ -22,12 +24,13 @@ int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_s
 {
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
+    ETRI.server_port = "10000";
     ETRI.image_file = "data/ETRI/NaverMap_ETRI(Satellite).png";
     ETRI.map_file = "data/ETRI/TopoMap_ETRI.csv";
-    ETRI.origin_latlon = dg::LatLon(36.379208, 127.364585);
-    ETRI.origin_px = cv::Point2d(1344, 1371);
-    ETRI.image_scale = cv::Point2d(1.2474, 1.2474);
-    ETRI.image_rotation = cx::cvtDeg2Rad(0.95);
+    ETRI.map_ref_point_latlon = dg::LatLon(36.379208, 127.364585);
+    ETRI.map_ref_point_pixel = cv::Point2d(1344, 1371);
+    ETRI.map_pixel_per_meter = 1.2474;
+    ETRI.map_image_rotation = cx::cvtDeg2Rad(0.95);
     ETRI.map_view_offset = cv::Point(1289, 371);
     ETRI.map_radius = 1500; // meter
     ETRI.grid_unit_pos = cv::Point(-215, -6);
@@ -35,13 +38,29 @@ int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_s
     ETRI.video_offset = cv::Point(50, 840);
     ETRI.result_resize = 0.8;
 
+    MapGUIProp ETRI2;
+    ETRI2.server_port = "10000";
+    ETRI2.image_file = "data/ETRI/NaverMap_ETRI(Satellite)_large.png";
+    ETRI2.map_file = "data/ETRI/TopoMap_ETRI.csv";
+    ETRI2.map_ref_point_latlon = dg::LatLon(36.379208, 127.364585);
+    ETRI2.map_ref_point_pixel = cv::Point2d(3790, 3409);
+    ETRI2.map_pixel_per_meter = 2.081;
+    ETRI2.map_image_rotation = cx::cvtDeg2Rad(0.96);
+    ETRI2.map_view_offset = cv::Point(3705, 1745);
+    ETRI2.map_radius = 1500; // meter
+    ETRI2.grid_unit_pos = cv::Point(-215, -6);
+    ETRI2.video_resize = 0.2;
+    ETRI2.video_offset = cv::Point(20, 920);
+    ETRI2.result_resize = 0.8;
+
     MapGUIProp COEX;
+    COEX.server_port = "10001";
     COEX.image_file = "data/NaverMap_COEX(Satellite)_200929.png";
-    COEX.image_scale = cv::Point2d(1.055, 1.055);
-    COEX.image_rotation = cx::cvtDeg2Rad(1.2);
-    COEX.origin_latlon = dg::LatLon(37.506207, 127.05482);
-    COEX.origin_px = cv::Point2d(1090, 1018);
-    COEX.map_radius = 1500; // meter
+    COEX.map_pixel_per_meter = 1.055;
+    COEX.map_image_rotation = cx::cvtDeg2Rad(1.2);
+    COEX.map_ref_point_latlon = dg::LatLon(37.506207, 127.05482);
+    COEX.map_ref_point_pixel = cv::Point2d(1090, 1018);
+    COEX.map_radius = 2000; // meter
     COEX.grid_unit_pos = cv::Point(-230, -16);
     COEX.map_file = "data/COEX/TopoMap_COEX.csv";
     COEX.video_resize = 0.2;
@@ -49,11 +68,12 @@ int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_s
     COEX.result_resize = 0.5;
 
     MapGUIProp COEX2;
+    COEX2.server_port = "10001";
     COEX2.image_file = "data/COEX/NaverMap_COEX(Satellite).png";
-    COEX2.image_scale = cv::Point2d(2.536, 2.536);
-    COEX2.image_rotation = cx::cvtDeg2Rad(1.0);
-    COEX2.origin_latlon = dg::LatLon(37.506994, 127.056676);
-    COEX2.origin_px = cv::Point2d(1373, 2484);
+    COEX2.map_pixel_per_meter = 2.536;
+    COEX2.map_image_rotation = cx::cvtDeg2Rad(1.0);
+    COEX2.map_ref_point_latlon = dg::LatLon(37.506994, 127.056676);
+    COEX2.map_ref_point_pixel = cv::Point2d(1373, 2484);
     COEX2.map_view_offset = cv::Point(1010, 300);
     COEX2.map_radius = 2000; // meter
     COEX2.grid_unit_pos = cv::Point(-230, -16);
@@ -63,23 +83,24 @@ int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_s
     COEX2.result_resize = 0.4;
 
     MapGUIProp Bucheon;
+    Bucheon.server_port = "10002";
     Bucheon.image_file = "data/NaverMap_Bucheon(Satellite).png";
-    Bucheon.image_scale = cv::Point2d(1.056, 1.056);
-    Bucheon.image_rotation = cx::cvtDeg2Rad(0);
-    Bucheon.origin_latlon = dg::LatLon(37.510928, 126.764344);
-    Bucheon.origin_px = cv::Point2d(1535, 1157);
-    Bucheon.map_radius = 1500; // meter
+    Bucheon.map_pixel_per_meter = 1.056;
+    Bucheon.map_image_rotation = cx::cvtDeg2Rad(0);
+    Bucheon.map_ref_point_latlon = dg::LatLon(37.510928, 126.764344);
+    Bucheon.map_ref_point_pixel = cv::Point2d(1535, 1157);
+    Bucheon.map_radius = 2000; // meter
     Bucheon.grid_unit_pos = cv::Point(-215, -6);
     Bucheon.map_file = "data/Bucheon/TopoMap_Bucheon.csv";
     Bucheon.video_resize = 0.25;
     Bucheon.video_offset = cv::Point(270, 638);
     Bucheon.result_resize = 0.4;
 
-    MapGUIProp guiprop = (cx::toLowerCase(site) == "coex") ? COEX2 : (cx::toLowerCase(site) == "bucheon") ? Bucheon : ETRI;
+    MapGUIProp guiprop = (cx::toLowerCase(site) == "coex") ? COEX2 : (cx::toLowerCase(site) == "bucheon") ? Bucheon : ETRI2;
 
     // Prepare a map if given
     dg::Map map;
-    map.setReference(guiprop.origin_latlon);
+    map.setReference(guiprop.map_ref_point_latlon);
     if (!guiprop.map_file.empty())
     {
         VVS_CHECK_TRUE(map.load(guiprop.map_file.c_str()));
@@ -92,8 +113,9 @@ int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_s
 
     // Prepare a painter for visualization
     dg::MapPainter painter;
-    painter.configCanvas(guiprop.origin_px, guiprop.image_scale, bg_image.size(), 0, 0);
-    painter.setImageRotation(guiprop.image_rotation);
+    cv::Point2d ppm(guiprop.map_pixel_per_meter, guiprop.map_pixel_per_meter);
+    painter.configCanvas(guiprop.map_ref_point_pixel, ppm, bg_image.size(), 0, 0);
+    painter.setImageRotation(guiprop.map_image_rotation);
     painter.drawGrid(bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, guiprop.grid_unit_pos);
     painter.drawOrigin(bg_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
     painter.setParamValue("node_radius", 3);
@@ -167,9 +189,9 @@ int runModule()
 
     int data_sel = 1;
     double start_time = 0;     // time skip (seconds)
-    //start_time = 1360;     // time skip (seconds), testset 1 ?∞Î¶¨?Ä??
-    start_time = 1180;     // time skip (seconds), testset 2 ?ÅÍ? Ï¥àÏûÖ
-    //start_time = 1440;     // time skip (seconds), testset 2 ?°Îã®Î≥¥ÎèÑ ÏßÑÏûÖ?úÏ†ê
+    //start_time = 1360;     // time skip (seconds), testset 1, øÏ∏Æ¿∫«‡
+    start_time = 1000;// 1180;     // time skip (seconds), testset 2, ªÛ∞°
+    //start_time = 1440;     // time skip (seconds), testset 2, »æ¥‹∫∏µµ
     //rec_video_file = "module_test.avi";
     std::vector<std::string> data_head[] = {
         {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75

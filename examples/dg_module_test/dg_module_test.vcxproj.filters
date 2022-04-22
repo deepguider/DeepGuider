@@ -98,5 +98,8 @@
     <ClInclude Include="..\..\src\roadlr\roadlr_localizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\localizer\localizer_ekf.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

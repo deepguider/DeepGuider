@@ -62,7 +62,6 @@ protected:
 
     dg::MapPainter  m_painter;
     cv::Mat         m_bg_image;
-    cv::Mat         m_bg_image_original;
     dg::Map         m_map;
     bool            m_running = false;
     bool            m_stop_running = false;

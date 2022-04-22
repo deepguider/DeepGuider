@@ -76,11 +76,11 @@ ETRI_EXTENDED:
   map_image_path: "data/ETRI/NaverMap_ETRI(Satellite)_large.png"
   map_data_path: "data/ETRI/TopoMap_ETRI.csv"
   map_ref_point_latlon: [36.379208, 127.364585]
-  map_ref_point_pixel: [3794, 3400]
-  map_pixel_per_meter: 2.0865
+  map_ref_point_pixel: [3790, 3409]
+  map_pixel_per_meter: 2.081
   map_image_rotation: 0.96
   map_view_offset: [3705, 1745]
-  map_view_size: [1800, 1012]
+  map_view_size: [1920, 1080]
   image_server_port: "10000"
   gps_input_path: "data/ETRI/191115_151140_ascen_fix.csv"
   video_input_path: "data/ETRI/191115_151140_images.avi"

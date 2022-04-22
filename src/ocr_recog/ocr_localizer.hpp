@@ -310,6 +310,15 @@ namespace dg
 
 	        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             cv::AutoLock lock(m_mutex);
+			for (size_t k = 0; k < m_matches.size(); k++)
+			{
+				int ocr_idx = std::get<0>(m_matches[k]);
+				std::wstring ocr_name = converter.from_bytes(m_result[ocr_idx].label);
+				std::wstring poi_name = std::get<1>(m_matches[k])->name;
+				double leven_dist = std::get<2>(m_matches[k]);
+				double match_score = std::get<3>(m_matches[k]);
+				wprintf(L"\t\b*%ls - %ls: dist = %.2lf, score = %.2lf\n", ocr_name.c_str(), poi_name.c_str(), leven_dist, match_score);
+			}
 			if(m_enable_debugging_display)
 			{
 				for(size_t k = 0; k < m_candidates.size(); k++)
@@ -319,17 +328,8 @@ namespace dg
 					std::wstring poi_name = std::get<1>(m_candidates[k])->name;
 					double leven_dist = std::get<2>(m_candidates[k]);
 					double match_score = std::get<3>(m_candidates[k]);
-					wprintf(L"\t%ls - %ls: dist = %.2lf, score = %.2lf\n", ocr_name.c_str(), poi_name.c_str(), leven_dist, match_score);
+					wprintf(L"\t>%ls - %ls: dist = %.2lf, score = %.2lf\n", ocr_name.c_str(), poi_name.c_str(), leven_dist, match_score);
 				}
-			}
-			for(size_t k = 0; k < m_matches.size(); k++)
-			{
-				int ocr_idx = std::get<0>(m_matches[k]);
-				std::wstring ocr_name = converter.from_bytes(m_result[ocr_idx].label);
-				std::wstring poi_name = std::get<1>(m_matches[k])->name;
-				double leven_dist = std::get<2>(m_matches[k]);
-				double match_score = std::get<3>(m_matches[k]);
-				wprintf(L"\t\b*%ls - %ls: dist = %.2lf, score = %.2lf\n", ocr_name.c_str(), poi_name.c_str(), leven_dist, match_score);
 			}
         }
 
@@ -349,11 +349,6 @@ namespace dg
 		std::wstring jaum_list;
 		std::wstring moum_list;
 		std::wstring jungsung_type_list;	// r: right, b: bottom, m: mixed(bottom-right)
-		//wchar_t chosung_list[19] = { L'ㄱ', L'ㄲ', L'ㄴ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅅ', L'ㅆ', L'ㅇ' , L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
-		//wchar_t jungsung_list[21] = { L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ' };
-		//wchar_t jongsung_list[28] = { L' ', L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
-		//wchar_t jaum_list[30] = { L'ㄱ', L'ㄲ', L'ㄳ', L'ㄴ', L'ㄵ', L'ㄶ', L'ㄷ', L'ㄸ', L'ㄹ', L'ㄺ', L'ㄻ', L'ㄼ', L'ㄽ', L'ㄾ', L'ㄿ', L'ㅀ', L'ㅁ', L'ㅂ', L'ㅃ', L'ㅄ', L'ㅅ', L'ㅆ', L'ㅇ', L'ㅈ', L'ㅉ', L'ㅊ', L'ㅋ', L'ㅌ', L'ㅍ', L'ㅎ' };
-		//wchar_t moum_list[21] = { L'ㅏ', L'ㅐ', L'ㅑ', L'ㅒ', L'ㅓ', L'ㅔ', L'ㅕ', L'ㅖ', L'ㅗ', L'ㅘ', L'ㅙ', L'ㅚ', L'ㅛ', L'ㅜ', L'ㅝ', L'ㅞ', L'ㅟ', L'ㅠ', L'ㅡ', L'ㅢ', L'ㅣ' };
 
 		/** A hash table for finding similarity weight between characters */
 		std::map<std::pair<wchar_t, wchar_t>, double> weights;
@@ -642,8 +637,11 @@ namespace dg
 				}
 				if(candidates.size() > 0)
 				{
-					std::sort(candidates.begin(), candidates.end(), compare_score);
-					m_candidates.insert(m_candidates.begin() + (int)m_candidates.size(), candidates.begin(), candidates.end());
+					if (m_enable_debugging_display)
+					{
+						std::sort(candidates.begin(), candidates.end(), compare_score);
+						m_candidates.insert(m_candidates.begin() + (int)m_candidates.size(), candidates.begin(), candidates.end());
+					}
 
 					double ratio_score = (second_best_score >= 0) ? best_score / second_best_score : m_best_to_second_match_ratio;
 					if (ratio_score >= m_best_to_second_match_ratio)

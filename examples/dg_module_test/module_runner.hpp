@@ -76,6 +76,7 @@ public:
         bool show_gui = gui_wnd_wait_msec >= 0 && gui_painter != nullptr && !gui_background.empty();
         cv::Mat bg_image = gui_background.clone();
         m_viewport.initialize(bg_image, m_view_size, m_view_offset);
+        m_viewport.setZoom(1);
 
         // Run localization with GPS and other sensors
         if (show_gui)

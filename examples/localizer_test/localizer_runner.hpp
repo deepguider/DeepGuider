@@ -142,12 +142,12 @@ public:
                 double ymin = vdata[3];
                 double xmax = vdata[4];
                 double ymax = vdata[5];
-                dg::Point2 clue_xy;
+                dg::POI* poi;
                 dg::Polar2 relative;
                 double confidence;
-                if (m_ocr_localizer.applyPreprocessed(name, xmin, ymin, xmax, ymax, conf, data_time, clue_xy, relative, confidence))
+                if (m_ocr_localizer.applyPreprocessed(name, xmin, ymin, xmax, ymax, conf, data_time, poi, relative, confidence))
                 {
-                    bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
+                    bool success = localizer->applyPOI(*poi, relative, data_time, confidence);
                     if (!success) fprintf(stderr, "applyOCR() was failed.\n");
                 }
             }

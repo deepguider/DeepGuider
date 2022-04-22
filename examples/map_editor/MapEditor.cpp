@@ -41,9 +41,10 @@ int MapEditor::configure(std::string site)
     ETRI2.image_file = "data/ETRI/NaverMap_ETRI(Satellite)_large.png";
     ETRI2.map_file = "data/ETRI/TopoMap_ETRI.csv";
     ETRI2.map_ref_point_latlon = dg::LatLon(36.379208, 127.364585);
-    ETRI2.map_ref_point_pixel = cv::Point2d(3791, 3408);
+    ETRI2.map_ref_point_pixel = cv::Point2d(3790, 3409);
     ETRI2.map_pixel_per_meter = 2.081;
     ETRI2.map_image_rotation = cx::cvtDeg2Rad(0.96);
+    ETRI2.map_view_size = cv::Size(1920, 1080);
     ETRI2.map_view_offset = cv::Point(3705, 1745);
     ETRI2.map_radius = 1500; // meter
     ETRI2.grid_unit_pos = cv::Point(-215, -6);
@@ -99,7 +100,6 @@ int MapEditor::configure(std::string site)
     // Read the given background image
     m_bg_image = cv::imread(guiprop.image_file, cv::ImreadModes::IMREAD_COLOR);
     if (m_bg_image.empty()) return -1;
-    m_bg_image_original = m_bg_image.clone();
 
     // Prepare a painter for visualization
     cv::Point2d ppm(guiprop.map_pixel_per_meter, guiprop.map_pixel_per_meter);
@@ -133,6 +133,7 @@ int MapEditor::run()
 
     m_viewport.initialize(m_bg_image, m_view_size, m_view_offset);
     m_viewport.setZoomRange(0.5, 8);
+    m_viewport.setZoom(1);
     cv::namedWindow(m_winname, cv::WindowFlags::WINDOW_NORMAL);
     cv::setWindowTitle(m_winname, m_site);
     cv::resizeWindow(m_winname, m_viewport.size());

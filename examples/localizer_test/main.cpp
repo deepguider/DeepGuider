@@ -11,10 +11,10 @@ struct MapGUIProp
 {
 public:
     std::string image_file;
-    cv::Point2d image_scale;
-    double      image_rotation = 0; // radian
-    dg::LatLon  origin_latlon;      // origin of UTM
-    cv::Point2d origin_px;          // pixel coordinte of UTM origin at map image
+    cv::Point2d map_pixel_per_meter;
+    double      map_image_rotation = 0; // radian
+    dg::LatLon  map_ref_point_latlon;      // origin of UTM
+    cv::Point2d map_ref_point_pixel;          // pixel coordinte of UTM origin at map image
     double      map_radius;         // topomap coverage from the origin (unit: meter)
     cv::Point   grid_unit_pos;
     std::string map_file;
@@ -64,8 +64,8 @@ int drawGPSData(const MapGUIProp& gui, const std::string& gps_file, const cv::Ve
     cv::Mat image = cv::imread(gui.image_file);
     if (image.empty()) return -1;
     dg::MapPainter painter;
-    painter.configCanvas(gui.origin_px, gui.image_scale, image.size(), 0, 0);
-    painter.setImageRotation(gui.image_rotation);
+    painter.configCanvas(gui.map_ref_point_pixel, gui.map_pixel_per_meter, image.size(), 0, 0);
+    painter.setImageRotation(gui.map_image_rotation);
     painter.drawGrid(image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, gui.grid_unit_pos);
     painter.drawOrigin(image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
     painter.setParamValue("node_radius", 3);
@@ -80,7 +80,7 @@ int drawGPSData(const MapGUIProp& gui, const std::string& gps_file, const cv::Ve
     }
 
     // Read and draw GPS data
-    std::vector<std::vector<double>> gps_data = readROSGPSFix(gps_file, gui.origin_latlon);
+    std::vector<std::vector<double>> gps_data = readROSGPSFix(gps_file, gui.map_ref_point_latlon);
     if (gps_data.empty()) return -1;
     if (!LocalizerRunner::drawGPSData(image, &painter, gps_data, color, radius)) return -1;
 
@@ -120,8 +120,8 @@ int drawGPSData(const MapGUIProp& gui, const std::vector<std::string>& gps_files
     cv::Mat image = cv::imread(gui.image_file);
     if (image.empty()) return -1;
     dg::MapPainter painter;
-    painter.configCanvas(gui.origin_px, gui.image_scale, image.size(), 0, 0);
-    painter.setImageRotation(gui.image_rotation);
+    painter.configCanvas(gui.map_ref_point_pixel, gui.map_pixel_per_meter, image.size(), 0, 0);
+    painter.setImageRotation(gui.map_image_rotation);
     painter.drawGrid(image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, gui.grid_unit_pos);
     painter.drawOrigin(image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
     painter.setParamValue("node_radius", 3);
@@ -138,7 +138,7 @@ int drawGPSData(const MapGUIProp& gui, const std::vector<std::string>& gps_files
     // Read and draw GPS data
     for (size_t i = 0; i < gps_files.size(); i++)
     {
-        std::vector<std::vector<double>> gps_data = readROSGPSFix(gps_files[i], gui.origin_latlon);
+        std::vector<std::vector<double>> gps_data = readROSGPSFix(gps_files[i], gui.map_ref_point_latlon);
         if (gps_data.empty()) return -1;
         if (!LocalizerRunner::drawGPSData(image, &painter, gps_data, colors[i], radius)) return -1;
     }
@@ -156,7 +156,7 @@ int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer
 
     // Prepare a map if given
     dg::Map map;
-    map.setReference(gui.origin_latlon);
+    map.setReference(gui.map_ref_point_latlon);
     if (!gui.map_file.empty())
     {
         if (!map.load(gui.map_file.c_str())) return -1;
@@ -170,8 +170,8 @@ int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer
 
     // Prepare a painter for visualization
     dg::MapPainter painter;
-    painter.configCanvas(gui.origin_px, gui.image_scale, bg_image.size(), 0, 0);
-    painter.setImageRotation(gui.image_rotation);
+    painter.configCanvas(gui.map_ref_point_pixel, gui.map_pixel_per_meter, bg_image.size(), 0, 0);
+    painter.setImageRotation(gui.map_image_rotation);
     painter.drawGrid(bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 1, 0.5, cx::COLOR_BLACK, gui.grid_unit_pos);
     painter.drawOrigin(bg_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
     painter.setParamValue("node_radius", 3);
@@ -188,8 +188,8 @@ int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer
     dg::MapPainter zoom_painter;
     if (gui.zoom_level > 0)
     {
-        zoom_painter.configCanvas(gui.origin_px * gui.zoom_level, gui.image_scale * gui.zoom_level, zoom_bg_image.size(), 0, 0);
-        zoom_painter.setImageRotation(gui.image_rotation);
+        zoom_painter.configCanvas(gui.map_ref_point_pixel * gui.zoom_level, gui.map_pixel_per_meter * gui.zoom_level, zoom_bg_image.size(), 0, 0);
+        zoom_painter.setImageRotation(gui.map_image_rotation);
         zoom_painter.drawGrid(zoom_bg_image, cv::Point2d(10, 10), cv::Vec3b(200, 200, 200), 1, 0);
         zoom_painter.drawGrid(zoom_bg_image, cv::Point2d(100, 100), cv::Vec3b(200, 200, 200), 3, 0);
         zoom_painter.drawOrigin(zoom_bg_image, 20, cx::COLOR_RED, cx::COLOR_BLUE, 2);
@@ -312,10 +312,10 @@ int runLocalizer()
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
     ETRI.image_file = "data/NaverMap_ETRI(Satellite)_191127.png";
-    ETRI.image_scale = cv::Point2d(1.039, 1.039);
-    ETRI.image_rotation = cx::cvtDeg2Rad(1.);
-    ETRI.origin_latlon = dg::LatLon(36.383837659737, 127.367880828442);
-    ETRI.origin_px = cv::Point2d(347, 297);
+    ETRI.map_pixel_per_meter = cv::Point2d(1.039, 1.039);
+    ETRI.map_image_rotation = cx::cvtDeg2Rad(1.);
+    ETRI.map_ref_point_latlon = dg::LatLon(36.383837659737, 127.367880828442);
+    ETRI.map_ref_point_pixel = cv::Point2d(347, 297);
     ETRI.map_radius = 1500; // meter
     ETRI.grid_unit_pos = cv::Point(-215, -6);
     ETRI.map_file = "data/ETRI/TopoMap_ETRI.csv";
@@ -326,12 +326,28 @@ int runLocalizer()
     ETRI.zoom_radius = 40;
     ETRI.zoom_offset = cv::Point(620, 400);
 
+    MapGUIProp ETRI2;
+    ETRI2.image_file = "data/ETRI/NaverMap_ETRI(Satellite)_large.png";
+    ETRI2.map_pixel_per_meter = cv::Point2d(2.081, 2.081);
+    ETRI2.map_image_rotation = cx::cvtDeg2Rad(0.96);
+    ETRI2.map_ref_point_latlon = dg::LatLon(36.379208, 127.364585);
+    ETRI2.map_ref_point_pixel = cv::Point2d(3790, 3409);
+    ETRI2.map_radius = 1500; // meter
+    ETRI2.grid_unit_pos = cv::Point(-215, -6);
+    ETRI2.map_file = "data/ETRI/TopoMap_ETRI.csv";
+    ETRI2.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
+    ETRI2.video_resize = 0.25;
+    ETRI2.video_offset = cv::Point(270, 638);
+    ETRI2.zoom_level = 5;
+    ETRI2.zoom_radius = 40;
+    ETRI2.zoom_offset = cv::Point(620, 400);
+
     MapGUIProp COEX;
     COEX.image_file = "data/NaverMap_COEX(Satellite)_200929.png";
-    COEX.image_scale = cv::Point2d(1.055, 1.055);
-    COEX.image_rotation = cx::cvtDeg2Rad(1.2);
-    COEX.origin_latlon = dg::LatLon(37.506207, 127.05482);
-    COEX.origin_px = cv::Point2d(1090, 1018);
+    COEX.map_pixel_per_meter = cv::Point2d(1.055, 1.055);
+    COEX.map_image_rotation = cx::cvtDeg2Rad(1.2);
+    COEX.map_ref_point_latlon = dg::LatLon(37.506207, 127.05482);
+    COEX.map_ref_point_pixel = cv::Point2d(1090, 1018);
     COEX.map_radius = 1500; // meter
     COEX.grid_unit_pos = cv::Point(-230, -16);
     COEX.map_file = "data/COEX/TopoMap_COEX.csv";

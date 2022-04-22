@@ -109,6 +109,7 @@
     <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\data_loader.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_ekf.hpp" />
     <ClInclude Include="..\..\src\localizer\path_projector.hpp" />
     <ClInclude Include="..\..\src\roadlr\roadlr_localizer.hpp" />
     <ClInclude Include="..\..\src\roadlr\roadlr.hpp" />
