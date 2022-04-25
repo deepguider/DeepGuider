@@ -1474,186 +1474,281 @@ public:
         }
 
         // compute lrpose
-        std::vector<ID> finished_edges;
-        for (auto e = getHeadEdgeConst(); e != getTailEdgeConst(); e++)
+        for (auto e = getHeadEdge(); e != getTailEdge(); e++)
         {
-            if (e->type == Edge::EDGE_CROSSWALK)
+            if (e->type != dg::Edge::EDGE_SIDEWALK || e->lr_side != dg::Edge::LR_NONE) continue;
+
+            int lr_side = dg::Edge::LR_NONE;
+            bool lr_consistent = true;
+            std::map<ID, Edge*> lookup_visited;    // <ID, Edge*>
+
+            // initial edge
+            std::vector<dg::ID> node_list;
+            node_list.push_back(e->node_id1);
+            node_list.push_back(e->node_id2);
+            lookup_visited.insert(std::make_pair(e->id, &(*e)));
+
+            // backward search
+            dg::Node* from = getNode(e->node_id1);
+            dg::Node* to = getNode(e->node_id2);
+            dg::ID eid = e->id;
+            while (1)
             {
-                ID cross_edge1_id = e->id;
-                Node * node1 = nullptr, * node2 = nullptr, * node3 = nullptr;
-                for (int i = 0; i < 2; i++)
+                if (from->type == dg::Node::NODE_JUNCTION || from->edge_ids.size() != 2)
                 {
-                    //searching the other node of the crosswalk
-                    if (i != 0)
+                    // check crosswalk
+                    bool crosswalk = false;
+                    for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
                     {
-                        node1 = getNode(e->node_id2);
-                        node2 = getNode(e->node_id1);
+                        if (*it == eid) continue;
+                        dg::Edge* edge = getEdge(*it);
+                        if (edge && edge->type == dg::Edge::EDGE_CROSSWALK && from->edge_ids.size() > 2)
+                        {
+                            crosswalk = true;
+                            break;
+                        }
+                    }
+
+                    // check lr
+                    if (crosswalk)
+                    {
+                        dg::Point2 ev = *to - *from;
+                        double min_theta = 2 * CV_PI;
+                        double max_theta = 0;
+                        dg::Edge* min_theta_edge = nullptr;
+                        dg::Edge* max_theta_edge = nullptr;
+                        for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
+                        {
+                            if (*it == eid) continue;
+                            dg::Edge* edge = getEdge(*it);
+                            dg::Node* n = getConnectedNode(from, *it);
+                            dg::Point2 v = *n - *from;
+                            double theta = acos(ev.ddot(v) / (norm(ev) * norm(v))); // 0 ~ pi
+                            if (ev.cross(v) < 0) theta = 2 * CV_PI - theta;
+                            if (theta < min_theta)
+                            {
+                                min_theta = theta;
+                                min_theta_edge = edge;
+                            }
+                            if (theta > max_theta)
+                            {
+                                max_theta = theta;
+                                max_theta_edge = edge;
+                            }
+                        }
+                        if (min_theta_edge && min_theta_edge->type == dg::Edge::EDGE_CROSSWALK)
+                        {
+                            if (lr_side == dg::Edge::LR_LEFT) lr_consistent = false;
+                            lr_side = dg::Edge::LR_RIGHT;
+                        }
+                        else if (max_theta_edge && max_theta_edge->type == dg::Edge::EDGE_CROSSWALK)
+                        {
+                            if (lr_side == dg::Edge::LR_RIGHT) lr_consistent = false;
+                            lr_side = dg::Edge::LR_LEFT;
+                        }
+                        break;
                     }
                     else
                     {
-                        node1 = getNode(e->node_id1);
-                        node2 = getNode(e->node_id2);
-                    }
-                    if (node1 == nullptr || node2 == nullptr) continue;
-                    Node* node1_original = node1;
-                    Node* node2_original = node2;
-
-                    ID node3_id;
-                    Edge* edge1, * edge2;
-                    std::vector<ID> candidate_edges;
-
-                    //search first sidewalk connected to the crosswalk
-                    std::vector<ID> cross_conn_edges = node2->edge_ids;
-                    for (std::vector<ID>::iterator side1id = cross_conn_edges.begin(); side1id != cross_conn_edges.end(); side1id++)
-                    {
-                        node1 = node1_original;
-                        node2 = node2_original;
-
-                        if (*side1id != cross_edge1_id)
+                        dg::Point2 ev = *to - *from;
+                        double max_theta = 0;
+                        dg::Edge* max_theta_edge = nullptr;
+                        for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
                         {
-                            //get second edge
-                            edge2 = getEdge(*side1id);
-                            if (findID(finished_edges, edge2->id))
-                                continue;
-
-                            //get third node
-                            node3_id = (edge2->node_id1 == node2->id) ? edge2->node_id2 : edge2->node_id1;
-                            node3 = getNode(node3_id);
-                            int edges_deg = getDegree(Point2(node1->x, node1->y), Point2(node2->x, node2->y), Point2(node3->x, node3->y));
-
-                            //check degree
-                            if (edges_deg > 30 && edges_deg < 150)    //I'm on the right of the road
+                            if (*it == eid) continue;
+                            dg::Edge* edge = getEdge(*it);
+                            dg::Node* n = getConnectedNode(from, *it);
+                            dg::Point2 v = *n - *from;
+                            double theta = acos(ev.ddot(v) / (norm(ev) * norm(v))); // 0 ~ pi
+                            if (theta > max_theta)
                             {
-                                //save direction
-                                if (edge2->type == Edge::EDGE_SIDEWALK)
-                                {
-                                    //save direction
-                                    int lr_side;
-                                    if (edge2->node_id1 == node2->id)
-                                        lr_side = Edge::LR_RIGHT;
-                                    else
-                                        lr_side = Edge::LR_LEFT;
-                                    setEdgeLR(edge2, lr_side);
-                                    finished_edges.push_back(edge2->id);
-                                }
+                                max_theta = theta;
+                                max_theta_edge = edge;
+                            }
+                        }
+                        if (max_theta_edge && max_theta_edge->lr_side != dg::Edge::LR_NONE)
+                        {
+                            if (lr_side != dg::Edge::LR_NONE && lr_side != max_theta_edge->lr_side) lr_consistent = false;
+                            if (lr_side == dg::Edge::LR_NONE) lr_side = max_theta_edge->lr_side;
+                            break;
+                        }
+                        if (max_theta_edge && max_theta_edge->type == dg::Edge::EDGE_SIDEWALK)
+                        {
+                            eid = max_theta_edge->id;
+                            if (eid == e->id) break;
+                            auto found = lookup_visited.find(eid);
+                            if (found != lookup_visited.end()) break;
+                            lookup_visited.insert(std::make_pair(eid, max_theta_edge));
+                            to = from;
+                            from = getConnectedNode(to, eid);
+                            if (from == nullptr) break;
+                            node_list.insert(node_list.begin(), from->id);
+                            continue;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+                if (!lr_consistent) break;
 
-                                //continue to next sidewalk
-                                node1 = node2;
-                                node2 = node3;
-                                edge1 = edge2;
-                                bool bFlag = true; int count = 0;
-                                while (bFlag && count < 20)
-                                {
-                                    bFlag = false; count++;
-                                    candidate_edges = node2->edge_ids;
-                                    for (std::vector<ID>::iterator side2 = candidate_edges.begin(); side2 != candidate_edges.end(); side2++)
-                                    {
-                                        if (*side2 == edge1->id)//pass edge1
-                                            continue;
+                eid = (from->edge_ids[0] == eid) ? from->edge_ids[1] : from->edge_ids[0];
+                if (eid == e->id) break;
+                dg::Edge* edge = getEdge(eid);
+                if (edge == nullptr || edge->type != dg::Edge::EDGE_SIDEWALK) break;
+                if (edge->lr_side != dg::Edge::LR_NONE)
+                {
+                    if (lr_side != dg::Edge::LR_NONE && lr_side != edge->lr_side) lr_consistent = false;
+                    if (lr_side == dg::Edge::LR_NONE) lr_side = edge->lr_side;
+                    break;
+                }
+                auto found = lookup_visited.find(eid);
+                if (found != lookup_visited.end()) break;
+                lookup_visited.insert(std::make_pair(eid, edge));
+                to = from;
+                from = getConnectedNode(to, eid);
+                if (from == nullptr) break;
+                node_list.insert(node_list.begin(), from->id);
+            }
 
-                                        edge2 = getEdge(*side2);
-                                        if (findID(finished_edges, edge2->id))//pass already done
-                                            continue;
+            // forward search
+            from = getNode(e->node_id1);
+            to = getNode(e->node_id2);
+            eid = e->id;
+            while (1)
+            {
+                if (to->type == dg::Node::NODE_JUNCTION || to->edge_ids.size() != 2)
+                {
+                    // check crosswalk
+                    bool crosswalk = false;
+                    for (auto it = to->edge_ids.begin(); it != to->edge_ids.end(); it++)
+                    {
+                        if (*it == eid) continue;
+                        dg::Edge* edge = getEdge(*it);
+                        if (edge && edge->type == dg::Edge::EDGE_CROSSWALK && to->edge_ids.size() > 2)
+                        {
+                            crosswalk = true;
+                            break;
+                        }
+                    }
 
-                                        node3_id = (edge2->node_id1 == node2->id) ? edge2->node_id2 : edge2->node_id1;
-                                        node3 = getNode(node3_id);
-                                        int edges_deg = getDegree(Point2(node1->x, node1->y), Point2(node2->x, node2->y), Point2(node3->x, node3->y));
-
-                                        //the sidewalk is connected to straight
-                                        if (edges_deg > -30 && edges_deg < 30)  //straight line
-                                        {
-                                            //save direction
-                                            if (edge2->type == Edge::EDGE_SIDEWALK)
-                                            {
-                                                int lr_side;
-                                                if (edge2->node_id1 == node2->id)
-                                                    lr_side = Edge::LR_RIGHT;
-                                                else
-                                                    lr_side = Edge::LR_LEFT;
-                                                setEdgeLR(edge2, lr_side);
-                                                finished_edges.push_back(edge2->id);
-                                            }
-
-                                            node1 = node2;
-                                            node2 = node3;
-                                            edge1 = edge2;
-                                            bFlag = true;
-
-                                            break;  //end for{}
-                                        }
-                                        else
-                                            bFlag = false;
-                                    }
-                                } //end while()
-                            }//end if (edges_deg > 30 && edges_deg < 150)  //I'm on the right of the road
-
-                            else if (edges_deg > -150 && edges_deg < -30) //I'm on the left side of the road
+                    // check lr
+                    if (crosswalk)
+                    {
+                        dg::Point2 ev = *from - *to;
+                        double min_theta = 2 * CV_PI;
+                        double max_theta = 0;
+                        dg::Edge* min_theta_edge = nullptr;
+                        dg::Edge* max_theta_edge = nullptr;
+                        for (auto it = to->edge_ids.begin(); it != to->edge_ids.end(); it++)
+                        {
+                            if (*it == eid) continue;
+                            dg::Edge* edge = getEdge(*it);
+                            dg::Node* n = getConnectedNode(to, *it);
+                            dg::Point2 v = *n - *to;
+                            double theta = acos(ev.ddot(v) / (norm(ev) * norm(v)));
+                            if (ev.cross(v) < 0) theta = 2 * CV_PI - theta;
+                            if (theta < min_theta)
                             {
-                                //save direction
-                                if (edge2->type == Edge::EDGE_SIDEWALK)
-                                {
-                                    int lr_side;
-                                    if (edge2->node_id1 == node2->id)
-                                        lr_side = Edge::LR_LEFT;
-                                    else
-                                        lr_side = Edge::LR_RIGHT;
-                                    setEdgeLR(edge2, lr_side);
-                                    finished_edges.push_back(edge2->id);
-                                }
+                                min_theta = theta;
+                                min_theta_edge = edge;
+                            }
+                            if (theta > max_theta)
+                            {
+                                max_theta = theta;
+                                max_theta_edge = edge;
+                            }
+                        }
+                        if (min_theta_edge && min_theta_edge->type == dg::Edge::EDGE_CROSSWALK)
+                        {
+                            if (lr_side == dg::Edge::LR_RIGHT) lr_consistent = false;
+                            lr_side = dg::Edge::LR_LEFT;
+                        }
+                        else if (max_theta_edge && max_theta_edge->type == dg::Edge::EDGE_CROSSWALK)
+                        {
+                            if (lr_side == dg::Edge::LR_LEFT) lr_consistent = false;
+                            lr_side = dg::Edge::LR_RIGHT;
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        dg::Point2 ev = *from - *to;
+                        double max_theta = 0;
+                        dg::Edge* max_theta_edge = nullptr;
+                        for (auto it = to->edge_ids.begin(); it != to->edge_ids.end(); it++)
+                        {
+                            if (*it == eid) continue;
+                            dg::Edge* edge = getEdge(*it);
+                            dg::Node* n = getConnectedNode(to, *it);
+                            dg::Point2 v = *n - *to;
+                            double theta = acos(ev.ddot(v) / (norm(ev) * norm(v)));
+                            if (theta > max_theta)
+                            {
+                                max_theta = theta;
+                                max_theta_edge = edge;
+                            }
+                        }
+                        if (max_theta_edge && max_theta_edge->lr_side != dg::Edge::LR_NONE)
+                        {
+                            if (lr_side != dg::Edge::LR_NONE && lr_side != max_theta_edge->lr_side) lr_consistent = false;
+                            if (lr_side == dg::Edge::LR_NONE) lr_side = max_theta_edge->lr_side;
+                            break;
+                        }
+                        if (max_theta_edge && max_theta_edge->type == dg::Edge::EDGE_SIDEWALK)
+                        {
+                            eid = max_theta_edge->id;
+                            if (eid == e->id) break;
+                            auto found = lookup_visited.find(eid);
+                            if (found != lookup_visited.end()) break;
+                            lookup_visited.insert(std::make_pair(eid, max_theta_edge));
+                            from = to;
+                            to = getConnectedNode(to, eid);
+                            if (to == nullptr) break;
+                            node_list.push_back(to->id);
+                            continue;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+                if (!lr_consistent) break;
 
-                                //continue to next sidewalk
-                                node1 = node2;
-                                node2 = node3;
-                                edge1 = edge2;
-                                bool bFlag = true; int count = 0;
-                                while (bFlag && count < 20)
-                                {
-                                    bFlag = false; count++;
-                                    candidate_edges = node2->edge_ids;
-                                    for (std::vector<ID>::iterator side2 = candidate_edges.begin(); side2 != candidate_edges.end(); side2++)
-                                    {
-                                        if (*side2 == edge1->id)//pass edge1
-                                            continue;
+                eid = (to->edge_ids[0] == eid) ? to->edge_ids[1] : to->edge_ids[0];
+                if (eid == e->id) break;
+                dg::Edge* edge = getEdge(eid);
+                if (edge == nullptr || edge->type != dg::Edge::EDGE_SIDEWALK) break;
+                if (edge->lr_side != dg::Edge::LR_NONE)
+                {
+                    if (lr_side != dg::Edge::LR_NONE && lr_side != edge->lr_side) lr_consistent = false;
+                    if (lr_side == dg::Edge::LR_NONE) lr_side = edge->lr_side;
+                    break;
+                }
+                auto found = lookup_visited.find(eid);
+                if (found != lookup_visited.end()) break;
+                lookup_visited.insert(std::make_pair(eid, edge));
+                from = to;
+                to = getConnectedNode(to, eid);
+                if (to == nullptr) break;
+                node_list.push_back(to->id);
+            }
 
-                                        edge2 = getEdge(*side2);
-                                        if (findID(finished_edges, edge2->id))//pass already done
-                                            continue;
-
-                                        node3_id = (edge2->node_id1 == node2->id) ? edge2->node_id2 : edge2->node_id1;
-                                        node3 = getNode(node3_id);
-                                        int edges_deg = getDegree(Point2(node1->x, node1->y), Point2(node2->x, node2->y), Point2(node3->x, node3->y));
-
-                                        //the sidewalk is connected to straight
-                                        if (edges_deg > -30 && edges_deg < 30)  //straight line
-                                        {
-                                            //save direction
-                                            if (edge2->type == Edge::EDGE_SIDEWALK)
-                                            {
-                                                //save direction
-                                                int lr_side;
-                                                if (edge2->node_id1 == node2->id)
-                                                    lr_side = Edge::LR_LEFT;
-                                                else
-                                                    lr_side = Edge::LR_RIGHT;
-                                                setEdgeLR(edge2, lr_side);
-                                                finished_edges.push_back(edge2->id);
-                                            }
-                                            node1 = node2;
-                                            node2 = node3;
-                                            edge1 = edge2;
-                                            bFlag = true;
-                                            break;  //end for{}
-                                        }
-                                        else
-                                            bFlag = false;
-                                    }
-                                } //end while()
-                            }//end else if(edges_deg > -150 && edges_deg < -30) //I'm on the left of the road
-                        }//end of if (*iter != edge1_id)
-                    }//end of for (vector<ID>::iterator iter = candidate_edges.begin(); iter != candidate_edges.end(); iter++)
-                }//end for (int i = 0; i < 2; i++)
-            }//end if (e->type == Edge::EDGE_CROSSWALK)
-        }//end for (auto e = map.getHeadEdgeConst(); e != map.getTailEdgeConst(); e++)
+            // update lr
+            if (lr_consistent && lr_side != dg::Edge::LR_NONE)
+            {
+                for (size_t i = 1; i < node_list.size(); i++)
+                {
+                    dg::ID n1 = node_list[i - 1];
+                    dg::ID n2 = node_list[i];
+                    dg::Edge* edge = getEdge(n1, n2);
+                    if (edge && edge->node_id1 == n1) edge->lr_side = lr_side;
+                    if (edge && edge->node_id2 == n1) edge->lr_side = (lr_side == dg::Edge::LR_LEFT) ? dg::Edge::LR_RIGHT : dg::Edge::LR_LEFT;
+                }
+            }
+        }
     }
 
 	/**
