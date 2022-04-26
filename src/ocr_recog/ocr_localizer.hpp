@@ -123,7 +123,7 @@ namespace dg
 				POI* poi = std::get<1>(m_matches[k]);
 				double match_score = std::get<3>(m_matches[k]);
 				pois.push_back(poi);
-				Polar2 relative = computeRelative(ocrs[ocr_idx].xmin, ocrs[ocr_idx].ymin, ocrs[ocr_idx].xmax, ocrs[ocr_idx].ymax);
+				Polar2 relative = computeRelative(ocrs[ocr_idx].xmin, ocrs[ocr_idx].ymin, ocrs[ocr_idx].xmax, ocrs[ocr_idx].ymax, poi->floor);
 				relatives.push_back(relative);
 				double conf = match_score * ocrs[ocr_idx].confidence;
 				poi_confidences.push_back(conf);
@@ -160,7 +160,7 @@ namespace dg
 			// estimate relative pose of the matched POIs
 			int ocr_idx = std::get<0>(m_matches[0]);
 			poi = std::get<1>(m_matches[0]);
-			relative = computeRelative(xmin, ymin, xmax, ymax);
+			relative = computeRelative(xmin, ymin, xmax, ymax, poi->floor);
 			double match_score = std::get<3>(m_matches[0]);
 			poi_confidence = match_score * conf;
 			return true;
@@ -185,7 +185,7 @@ namespace dg
 				{
 					POI* poi = pois[0];
 					poi_xys.push_back(*poi);
-					Polar2 relative = computeRelative(ocrs[k].xmin, ocrs[k].ymin, ocrs[k].xmax, ocrs[k].ymax);
+					Polar2 relative = computeRelative(ocrs[k].xmin, ocrs[k].ymin, ocrs[k].xmax, ocrs[k].ymax, poi->floor);
 					relatives.push_back(relative);
 					poi_confidences.push_back(ocrs[k].confidence);
 				}
@@ -654,7 +654,7 @@ namespace dg
 			return matches;
 		}
 
-        dg::Polar2 computeRelative(double x1, double y1, double x2, double y2)
+        dg::Polar2 computeRelative(double x1, double y1, double x2, double y2, int floor)
         {
             dg::Polar2 relative = dg::Polar2(-1, CV_PI);
 
@@ -687,7 +687,8 @@ namespace dg
 			double poi_tilt = atan2(zw, sqrt(xw * xw + yw * yw));
 
 			// ground distance from camera to poi
-			double D = (m_poi_height - m_camera_height) / tan(poi_tilt);
+			if (floor <= 0) floor = 1;
+			double D = (m_poi_height * floor - m_camera_height) / tan(poi_tilt);
 
 			// result
 			relative.lin = D;
