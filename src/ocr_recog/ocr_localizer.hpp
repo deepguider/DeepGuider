@@ -41,6 +41,7 @@ namespace dg
 		double m_best_to_second_match_ratio = 2;	// POI match ratio threshold (best_score/second_score > ratio threshod)
 		bool m_check_jungsung_type = true;	// distinguish bottom-side jungsung and right-side jungsung
 		bool m_fixed_template_match = true;	// use substring template match instead of Levenshtein distance
+		bool m_enable_vanishing_filter = true;	// filter out detections detected under vanishing line
 	    bool m_enable_debugging_display = false;
 		int m_w = 2; // minimum string length
 
@@ -104,6 +105,18 @@ namespace dg
 			std::vector<OCRResult> ocrs = get();
 			if (ocrs.empty()) return false;
 
+			// filter out non-POI detections
+			if (m_enable_vanishing_filter)
+			{
+				std::vector<OCRResult> valid_ocrs;
+				for (auto it = ocrs.begin(); it != ocrs.end(); it++)
+				{
+					if (it->ymax <= m_vanishing_y) valid_ocrs.push_back(*it);
+				}
+				if (valid_ocrs.empty()) return false;
+				ocrs = valid_ocrs;
+			}
+
 			// retrieve nearby POIs from the server
             if (m_shared == nullptr) return false;
 			Pose2 pose = m_shared->getPose();
@@ -133,6 +146,8 @@ namespace dg
 
 		bool applyPreprocessed(std::string recog_name, double xmin, double ymin, double xmax, double ymax, double conf, const dg::Timestamp data_time, dg::POI*& poi, dg::Polar2& relative, double& poi_confidence)
 		{
+			if (m_enable_vanishing_filter && ymax > m_vanishing_y) return false;
+
 			std::vector<OCRResult> ocrs;
 			OCRResult ocr;
 			ocr.label = recog_name;
