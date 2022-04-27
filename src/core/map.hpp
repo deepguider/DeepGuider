@@ -908,7 +908,7 @@ public:
      * @param pose_m A given metric pose
      * @return The found map pose
      */
-    Pose2 getNearestMapPose(const Pose2& pose_m) const;
+    Pose2 getNearestMapPose(const Pose2& pose_m, double turn_weight = 0) const;
 
     /**
      * Find a nearest path-projected pose for a given pose and path (time complexity: O(|E|))

@@ -51,7 +51,8 @@ namespace dg
             // map-based orientation if no path
             Map* map = m_shared->getMap();
             if (map == nullptr || map->isEmpty()) return false;
-            Pose2 map_pose = map->getNearestMapPose(pose);
+            double turn_weight = 1.0;
+            Pose2 map_pose = map->getNearestMapPose(pose, turn_weight);
             theta_absolute = cx::trimRad(map_pose.theta + theta_relative);
             return true;
         }

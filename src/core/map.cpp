@@ -553,16 +553,29 @@ const Edge* Map::getNearestEdge(const Point2& p, Point2& nearest_edge_point) con
     return min_edge;
 }
 
-Pose2 Map::getNearestMapPose(const Pose2& pose_m) const
+Pose2 Map::getNearestMapPose(const Pose2& pose_m, double turn_weight) const
 {
-    // Find the nearest edge
-    Point2 ep;
-    const Edge* edge = getNearestEdge(pose_m, ep);
-    if (edge == nullptr) return pose_m;
+    std::pair<double, Point2> min_dist2 = std::make_pair(DBL_MAX, Point2());
+    const Edge* min_edge = nullptr;
+    for (auto edge = edges.begin(); edge != edges.end(); edge++)
+    {
+        const Node* node1 = getNode(edge->node_id1);
+        const Node* node2 = getNode(edge->node_id2);
+        if (node1 == nullptr || node2 == nullptr) continue;
+
+        auto dist2 = calcDist2FromLineSeg(*node1, *node2, pose_m, turn_weight);
+        if (dist2.first < min_dist2.first)
+        {
+            min_dist2 = dist2;
+            min_edge = &(*edge);
+        }
+    }
+    Point2 nearest_edge_point = min_dist2.second;
+    if (min_edge == nullptr) return pose_m;
 
     // determine edge direction
-    const Node* node1 = getNode(edge->node_id1);
-    const Node* node2 = getNode(edge->node_id2);
+    const Node* node1 = getNode(min_edge->node_id1);
+    const Node* node2 = getNode(min_edge->node_id2);
     if (node1 == nullptr || node2 == nullptr) return pose_m;
     Point2 v1 = *node2 - *node1;
     Point2 v2 = *node1 - *node2;
@@ -570,7 +583,7 @@ Pose2 Map::getNearestMapPose(const Pose2& pose_m) const
     double dtheta2 = fabs(cx::trimRad(pose_m.theta - atan2(v2.y, v2.x)));
     double theta = (dtheta1 <= dtheta2) ? atan2(v1.y, v1.x) : atan2(v2.y, v2.x);
 
-    Pose2 pose = ep;
+    Pose2 pose = nearest_edge_point;
     pose.theta = theta;
     return pose;
 }
@@ -933,8 +946,13 @@ std::pair<double, Point2> calcDist2FromLineSeg(const Point2& from, const Point2&
     double dist2 = dp.x * dp.x + dp.y * dp.y;
     if (turn_weight > 0)
     {
-        double dh = cx::trimRad(p.theta - atan2(delta.y, delta.x));
-        dist2 += turn_weight * dh * dh;
+        double seg_theta = atan2(delta.y, delta.x);
+        double dh1 = cx::trimRad(p.theta - seg_theta);  // from -> to
+        double dh2 = cx::trimRad(p.theta + seg_theta);  // to -> from
+        if (dh1 < 0) dh1 = -dh1;
+        if (dh2 < 0) dh2 = -dh2;
+        if (dh1 < dh2) dist2 += turn_weight * dh1 * dh1;
+        else dist2 += turn_weight * dh2 * dh2;
     }
     return std::make_pair(dist2, projection);
 }
