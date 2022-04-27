@@ -182,6 +182,12 @@ namespace dg
             m_pose = pose;
         }
 
+        Pose2 getEkfPose()
+        {
+            if (m_ekf) return m_ekf->getPose();
+            else return Pose2();
+        }
+
         virtual bool setParamMotionNoise(double sigma_linear_velocity, double sigma_angular_velocity_deg, double cov_lin_ang = 0)
         {
             cv::AutoLock lock(m_mutex);
@@ -322,6 +328,14 @@ namespace dg
 
         virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false)
         {
+            // recover pose
+            Pose2 pose = getPose();
+            double poi_theta = pose.theta + relative.ang;
+            double rx = clue_xy.x - relative.lin * cos(poi_theta);
+            double ry = clue_xy.y - relative.lin * sin(poi_theta);
+            pose.x = rx;
+            pose.y = ry;
+
             cv::AutoLock lock(m_mutex);
             if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
             {
@@ -329,7 +343,8 @@ namespace dg
                 return applyPathLocalizer(m_ekf->getPose(), time);
             }
             else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
-            if (!m_ekf->applyPOI(clue_xy, relative, time, confidence, use_relative_model)) return false;
+            if (use_relative_model && !m_ekf->applyPOI(clue_xy, relative, time, confidence, use_relative_model)) return false;
+            if (!use_relative_model && !m_ekf->applyPOI(pose, time, confidence)) return false;
             saveObservation(ObsData::OBS_POI, clue_xy, relative, time, confidence);
             saveEKFState(m_ekf, time);
             return applyPathLocalizer(m_ekf->getPose(), time);

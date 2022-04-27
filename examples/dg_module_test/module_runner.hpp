@@ -25,11 +25,32 @@ class ModuleRunner : public dg::SharedInterface
     cv::Ptr<dg::RoadLRLocalizer> m_lr_localizer;
 
 public:
-    int run(int module_sel, bool use_saved_testset, cv::Ptr<dg::DGLocalizer> localizer, dg::DataLoader& data_loader)
+    int run(int module_sel, bool use_saved_testset, dg::DataLoader& data_loader)
     {
         // initialize localizer
-        m_localizer = localizer;
+        m_localizer = cv::makePtr<dg::DGLocalizer>();
         m_localizer->initialize(this, "EKFLocalizerHyperTan");
+        if (!m_localizer->setParamMotionNoise(1, 10)) return -1;      // linear_velocity(m), angular_velocity(deg)
+        if (!m_localizer->setParamMotionBounds(1, 10)) return -1;     // max_linear_velocity(m), max_angular_velocity(deg)
+        if (!m_localizer->setParamGPSNoise(10)) return -1;            // position error(m)
+        if (!m_localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
+        if (!m_localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
+        if (!m_localizer->setParamPOINoise(5, 20)) return -1;         // position error(m), orientation error(deg)
+        if (!m_localizer->setParamVPSNoise(5, 20)) return -1;         // position error(m), orientation error(deg)
+        if (!m_localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
+        if (!m_localizer->setParamRoadThetaNoise(50)) return -1;      // angle arror(deg)
+        if (!m_localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
+        m_localizer->setParamValue("gps_reverse_vel", -0.5);
+        m_localizer->setParamValue("enable_path_projection", true);
+        m_localizer->setParamValue("enable_map_projection", false);
+        m_localizer->setParamValue("enable_backtracking_ekf", true);
+        m_localizer->setParamValue("enable_gps_smoothing", true);
+        m_localizer->setParamValue("enable_debugging_display", false);
+        m_localizer->setParamValue("lr_mismatch_cost", 50);
+        m_localizer->setParamValue("enable_lr_reject", false);
+        m_localizer->setParamValue("lr_reject_cost", 20);             // 20
+        m_localizer->setParamValue("enable_discontinuity_cost", true);
+        m_localizer->setParamValue("discontinuity_weight", 0.5);      // 0.5
 
         // initialize module localizers
         if (module_sel == DG_VPS) m_vps_localizer = cv::makePtr<dg::VPSLocalizer>();
@@ -111,14 +132,14 @@ public:
                 if (type == dg::DATA_IMU)
                 {
                     auto euler = cx::cvtQuat2EulerAng(vdata[1], vdata[2], vdata[3], vdata[4]);
-                    bool success = localizer->applyIMUCompass(euler.z, data_time, 1);
+                    bool success = m_localizer->applyIMUCompass(euler.z, data_time, 1);
                     if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
                 }
                 else if (type == dg::DATA_GPS)
                 {
                     dg::LatLon gps_datum(vdata[1], vdata[2]);
                     dg::Point2 gps_xy = toMetric(gps_datum);
-                    bool success = localizer->applyGPS(gps_xy, data_time, 1);
+                    bool success = m_localizer->applyGPS(gps_xy, data_time, 1);
                     if (!success) fprintf(stderr, "applyGPS() was failed.\n");
                     if (show_gui && gui_gps_radius > 0) gui_painter->drawPoint(bg_image, gps_xy, gui_gps_radius, gui_gps_color);
                     if(module_sel < 0) update_gui = true;
@@ -132,7 +153,7 @@ public:
                     bool xy_valid = false;
                     if (m_intersection_localizer->applyPreprocessed(cls, cls_conf, data_time, xy, xy_confidence, xy_valid) && xy_valid)
                     {
-                        bool success = localizer->applyIntersectCls(xy, data_time, xy_confidence);
+                        bool success = m_localizer->applyIntersectCls(xy, data_time, xy_confidence);
                         if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
                     }
                     if (show_gui)
@@ -156,7 +177,7 @@ public:
                     double confidence;
                     if (m_ocr_localizer->applyPreprocessed(name, xmin, ymin, xmax, ymax, conf, data_time, poi, relative, confidence))
                     {
-                        bool success = localizer->applyPOI(*poi, relative, data_time, confidence);
+                        bool success = m_localizer->applyPOI(*poi, relative, data_time, confidence);
                         if (!success) fprintf(stderr, "applyOCR() was failed.\n");
                         pois.push_back(poi);
                         poi_relatives.push_back(relative);
@@ -175,7 +196,7 @@ public:
                     dg::Point2 clue_xy(vdata[2], vdata[3]);
                     dg::Polar2 relative(vdata[4], vdata[5]);
                     double confidence = vdata[6];
-                    bool success = localizer->applyPOI(clue_xy, relative, data_time, confidence);
+                    bool success = m_localizer->applyPOI(clue_xy, relative, data_time, confidence);
                     if (!success) fprintf(stderr, "applyPOI() was failed.\n");
                     if (show_gui)
                     {
@@ -191,7 +212,7 @@ public:
                     dg::Point2 clue_xy = toMetric(dg::LatLon(vdata[3], vdata[4]));
                     dg::Polar2 relative(vdata[5], vdata[6]);
                     double confidence = vdata[7];
-                    bool success = localizer->applyVPS(clue_xy, relative, data_time, confidence);
+                    bool success = m_localizer->applyVPS(clue_xy, relative, data_time, confidence);
                     if (!success) fprintf(stderr, "applyVPS() was failed.\n");
                     if (show_gui)
                     {
@@ -212,7 +233,7 @@ public:
                     double lr_confidence;
                     if (m_lr_localizer->applyPreprocessed(cls, cls_conf, data_time, lr_cls, lr_confidence))
                     {
-                        bool success = localizer->applyRoadLR(lr_cls, data_time, lr_confidence);
+                        bool success = m_localizer->applyRoadLR(lr_cls, data_time, lr_confidence);
                         if (!success) fprintf(stderr, "applyRoadLR() was failed.\n");
                     }
                     if (show_gui)
@@ -227,7 +248,7 @@ public:
                 {
                     double theta = vdata[3];
                     double confidence = vdata[4];
-                    bool success = localizer->applyRoadTheta(theta, data_time, confidence);
+                    bool success = m_localizer->applyRoadTheta(theta, data_time, confidence);
                     if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
                     if (show_gui)
                     {
@@ -250,14 +271,14 @@ public:
                     if (type == dg::DATA_IMU)
                     {
                         auto euler = cx::cvtQuat2EulerAng(vdata[1], vdata[2], vdata[3], vdata[4]);
-                        bool success = localizer->applyIMUCompass(euler.z, data_time, 1);
+                        bool success = m_localizer->applyIMUCompass(euler.z, data_time, 1);
                         if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
                     }
                     else if (type == dg::DATA_GPS)
                     {
                         dg::LatLon gps_datum(vdata[1], vdata[2]);
                         dg::Point2 gps_xy = toMetric(gps_datum);
-                        bool success = localizer->applyGPS(gps_xy, data_time, 1);
+                        bool success = m_localizer->applyGPS(gps_xy, data_time, 1);
                         if (!success) fprintf(stderr, "applyGPS() was failed.\n");
                         if (show_gui && gui_gps_radius > 0) gui_painter->drawPoint(bg_image, gps_xy, gui_gps_radius, gui_gps_color);
                     }
@@ -270,7 +291,7 @@ public:
                     bool xy_valid = false;
                     if (m_intersection_localizer->apply(video_image, capture_time, xy, xy_confidence, xy_valid) && xy_valid)
                     {
-                        bool success = localizer->applyIntersectCls(xy, data_time, xy_confidence);
+                        bool success = m_localizer->applyIntersectCls(xy, data_time, xy_confidence);
                         if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
                     }
                     if (show_gui)
@@ -285,14 +306,14 @@ public:
                     m_ocr_localizer->print();
                     if(ok)
                     {
-                        dg::Pose2 pose = localizer->getPose();
+                        dg::Pose2 pose = m_localizer->getPose();
                         printf("\tlocalizer: x = %.2lf, y = %.2lf, theta = %.1lf\n", pose.x, pose.y, cx::cvtRad2Deg(pose.theta));
     
                         for (size_t i = 0; i < pois.size(); i++)
                         {
-                            bool success = localizer->applyPOI(*(pois[i]), poi_relatives[i], data_time, poi_confidences[i]);
+                            bool success = m_localizer->applyPOI(*(pois[i]), poi_relatives[i], data_time, poi_confidences[i]);
                             if (!success) fprintf(stderr, "applyPOI() was failed.\n");
-                            pose = localizer->getPose();
+                            pose = m_localizer->getPose();
                             printf("\t[%d] x = %.2lf, y = %.2lf, theta = %.1lf\n", (int)i, pose.x, pose.y, cx::cvtRad2Deg(pose.theta));
                         }
                     }
@@ -312,7 +333,7 @@ public:
                     int save_dbfeat = 0;
                     if (m_vps_localizer->apply(video_image, capture_time, streetview_xy, relative, streetview_confidence, manual_gps_accuracy, load_dbfeat, save_dbfeat))
                     {
-                        bool success = localizer->applyVPS(streetview_xy, relative, data_time, streetview_confidence);
+                        bool success = m_localizer->applyVPS(streetview_xy, relative, data_time, streetview_confidence);
                         if (!success) fprintf(stderr, "applyVPS() was failed.\n");
                     }
                     if (show_gui)
@@ -330,7 +351,7 @@ public:
                     double lr_confidence;
                     if (m_lr_localizer->apply(video_image, capture_time, lr_cls, lr_confidence))
                     {
-                        bool success = localizer->applyRoadLR(lr_cls, data_time, lr_confidence);
+                        bool success = m_localizer->applyRoadLR(lr_cls, data_time, lr_confidence);
                         if (!success) fprintf(stderr, "applyRoadLR() was failed.\n");
                     }
                     if (show_gui)
@@ -345,7 +366,7 @@ public:
                     double confidence;
                     if (m_roadtheta_localizer->apply(video_image, capture_time, theta, confidence))
                     {
-                        bool success = localizer->applyRoadTheta(theta, data_time, confidence);
+                        bool success = m_localizer->applyRoadTheta(theta, data_time, confidence);
                         if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
                     }
                     if (show_gui)
@@ -359,20 +380,56 @@ public:
             // Visualize and show the current state as an image
             if (show_gui && update_gui)
             {
-                // draw robot trajectory
-                dg::Pose2 pose = localizer->getPose();
-                if (robot_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, robot_traj_radius, gui_robot_color);
-
-                // shift viewport to keep robot visible in viewport
-                dg::Pose2 px = gui_painter->cvtValue2Pixel(pose);
-                if(localizer->isPoseStabilized()) m_viewport.centerizeViewportTo(px);
+                dg::Pose2 pose = m_localizer->getPose();
 
                 // get viewport image
                 m_viewport.getViewportImage(out_image);
 
+                // shift viewport to keep robot visible in viewport
+                dg::Pose2 px = gui_painter->cvtValue2Pixel(pose);
+                if (m_localizer->isPoseStabilized()) m_viewport.centerizeViewportTo(px);
+
+                // Draw the image given from the camera
+                cv::Rect video_rect;
+                if (!video_image.empty() && video_resize > 0)
+                {
+                    cv::Mat resized;
+                    cv::resize(video_image, resized, cv::Size(), video_resize, video_resize);
+                    cx::Painter::pasteImage(out_image, resized, video_offset);
+                    video_rect = cv::Rect(video_offset, resized.size());
+                }
+
+                // Draw the result image of recognizer module
+                if (!result_image.empty() && result_resize > 0)
+                {
+                    cv::Mat resized;
+                    cv::resize(result_image, resized, cv::Size(), result_resize, result_resize);
+                    std::string fn = cv::format("#%d", fnumber);
+                    cv::putText(resized, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
+                    cv::putText(resized, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
+                    cv::Point offset = video_rect.br() + cv::Point(10, -resized.rows);
+                    cx::Painter::pasteImage(out_image, resized, offset);
+                    video_rect = cv::Rect(offset, resized.size());
+                }
+
+                // draw robot trajectory
+                if (robot_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, robot_traj_radius, gui_robot_color);
+
                 // Draw path
                 dg::Path path = getPath();
                 gui_painter->drawPath(out_image, getMap(), &path, m_viewport.offset(), m_viewport.zoom());
+
+                // Draw ekf robot position
+                if (gui_robot_radius > 0)
+                {
+                    dg::Pose2 ekf_pose = m_localizer->getEkfPose();
+                    double scaled_radius = (m_viewport.zoom() >= 2) ? gui_robot_radius * 2 / m_viewport.zoom() : gui_robot_radius;
+                    int scaled_thickness = (m_viewport.zoom() >= 4) ? 1 : 2;
+                    gui_painter->drawPoint(out_image, ekf_pose, scaled_radius, cv::Vec3b(255, 0, 0), m_viewport.offset(), m_viewport.zoom());                                         // Robot body
+                    cv::Point2d pose_px = (gui_painter->cvtValue2Pixel(ekf_pose) - cv::Point2d(m_viewport.offset())) * m_viewport.zoom();
+                    cv::Point2d head_px(scaled_radius * m_viewport.zoom() * cos(ekf_pose.theta), -scaled_radius * m_viewport.zoom() * sin(ekf_pose.theta));
+                    cv::line(out_image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, (int)(scaled_thickness * m_viewport.zoom())); // Robot heading
+                }
 
                 // Draw robot position
                 if (gui_robot_radius > 0)
@@ -403,36 +460,13 @@ public:
                     gui_painter->drawLine(out_image, *(pois[k]), cv::Point2d(rx,ry), cv::Vec3b(0, 0, 255), m_viewport.offset(), m_viewport.zoom(), scaled_thickness);
                 }
 
-                // Draw debugging info (localizer)
-                std::vector<dg::Point2> eval_path = localizer->getEvalPath();
+                // Draw debugging info (m_localizer)
+                std::vector<dg::Point2> eval_path = m_localizer->getEvalPath();
                 for (auto it = eval_path.begin(); it != eval_path.end(); it++)
                     gui_painter->drawPoint(out_image, *it, 1, cx::COLOR_BLUE, m_viewport.offset(), m_viewport.zoom());
-                std::vector<dg::Point2> eval_pose_history = localizer->getEvalPoseHistory();
+                std::vector<dg::Point2> eval_pose_history = m_localizer->getEvalPoseHistory();
                 for (auto it = eval_pose_history.begin(); it != eval_pose_history.end(); it++)
                     gui_painter->drawPoint(out_image, *it, 1, cx::COLOR_BLACK, m_viewport.offset(), m_viewport.zoom());
-
-                // Draw the image given from the camera
-                cv::Rect video_rect;
-                if (!video_image.empty() && video_resize > 0)
-                {
-                    cv::Mat resized;
-                    cv::resize(video_image, resized, cv::Size(), video_resize, video_resize);
-                    cx::Painter::pasteImage(out_image, resized, video_offset);
-                    video_rect = cv::Rect(video_offset, resized.size());
-                }
-
-                // Draw the result image of recognizer module
-                if (!result_image.empty() && result_resize > 0)
-                {
-                    cv::Mat resized;
-                    cv::resize(result_image, resized, cv::Size(), result_resize, result_resize);
-                    std::string fn = cv::format("#%d", fnumber);
-                    cv::putText(resized, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
-                    cv::putText(resized, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
-                    cv::Point offset = video_rect.br() + cv::Point(10, -resized.rows);
-                    cx::Painter::pasteImage(out_image, resized, offset);
-                    video_rect = cv::Rect(offset, resized.size());
-                }
 
                 // Record the current visualization on the AVI file
                 if (out_video.isConfigured())
@@ -442,6 +476,7 @@ public:
 
                 cv::imshow("ModuleRunner::run()", out_image);
                 int key = cv::waitKey(gui_wnd_wait_msec);
+                //int key = (pois.empty()) ? cv::waitKey(gui_wnd_wait_msec) : cv::waitKey(0);
                 if (key == cx::KEY_SPACE)
                 {
                     while ((key = cv::waitKey(0)) != cx::KEY_SPACE && key != cx::KEY_ESC);

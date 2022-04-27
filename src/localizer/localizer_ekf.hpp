@@ -286,6 +286,13 @@ namespace dg
             return applyPose(pose, time, confidence);
         }
 
+        virtual bool applyPOI(const Pose2& pose, Timestamp time = -1, double confidence = -1)
+        {
+            m_observation_noise = m_poi_noise;
+            m_sensor_offset = m_camera_offset;
+            return applyPose(pose, time, confidence);
+        }
+
         virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false)
         {
             if (use_relative_model)
@@ -548,6 +555,7 @@ namespace dg
             if (correct(theta, true, 0))
             {
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
+                m_state_vec.at<double>(4) = 0;
                 m_time_last_update = time;
                 return true;
             }

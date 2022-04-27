@@ -20,7 +20,7 @@ public:
     double      result_resize = 0;
 };
 
-int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_saved_testset, const std::string& site, dg::DataLoader& data_loader, const std::string& rec_video_file = "")
+int runModuleReal(int module_sel, bool use_saved_testset, const std::string& site, dg::DataLoader& data_loader, const std::string& rec_video_file = "")
 {
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
@@ -46,7 +46,7 @@ int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_s
     ETRI2.map_ref_point_pixel = cv::Point2d(3790, 3409);
     ETRI2.map_pixel_per_meter = 2.081;
     ETRI2.map_image_rotation = cx::cvtDeg2Rad(0.96);
-    ETRI2.map_view_offset = cv::Point(3705, 1745);
+    ETRI2.map_view_offset = cv::Point(4705, 1745);
     ETRI2.map_radius = 1500; // meter
     ETRI2.grid_unit_pos = cv::Point(-215, -6);
     ETRI2.video_resize = 0.2;
@@ -140,39 +140,13 @@ int runModuleReal(cv::Ptr<dg::DGLocalizer> localizer, int module_sel, bool use_s
     runner.rec_video_name = rec_video_file;
     runner.m_view_offset = guiprop.map_view_offset;
     runner.m_view_size = guiprop.map_view_size;
-    return runner.run(module_sel, use_saved_testset, localizer, data_loader);
+    return runner.run(module_sel, use_saved_testset, data_loader);
 }
 
 int runModule()
 {
     std::string rec_video_file = "";
     std::string gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file;
-
-    // Configure localizer
-    cv::Ptr<dg::DGLocalizer> localizer = cv::makePtr<dg::DGLocalizer>();
-    if (!localizer->setParamMotionNoise(1, 10)) return -1;      // linear_velocity(m), angular_velocity(deg)
-    if (!localizer->setParamMotionBounds(1, 10)) return -1;     // max_linear_velocity(m), max_angular_velocity(deg)
-    if (!localizer->setParamGPSNoise(10)) return -1;            // position error(m)
-    if (!localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
-    if (!localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
-    if (!localizer->setParamPOINoise(1, 10)) return -1;         // position error(m), orientation error(deg)
-    if (!localizer->setParamVPSNoise(1, 10)) return -1;         // position error(m), orientation error(deg)
-    if (!localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
-    if (!localizer->setParamRoadThetaNoise(50)) return -1;      // angle arror(deg)
-    if (!localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
-    localizer->setParamValue("gps_reverse_vel", -0.5);
-    localizer->setParamValue("search_turn_weight", 100);
-    localizer->setParamValue("track_near_radius", 20);
-    localizer->setParamValue("enable_path_projection", true);
-    localizer->setParamValue("enable_map_projection", false);
-    localizer->setParamValue("enable_backtracking_ekf", true);
-    localizer->setParamValue("enable_gps_smoothing", true);
-    localizer->setParamValue("enable_debugging_display", false);
-    localizer->setParamValue("lr_mismatch_cost", 50);
-    localizer->setParamValue("enable_lr_reject", false);
-    localizer->setParamValue("lr_reject_cost", 20);             // 20
-    localizer->setParamValue("enable_discontinuity_cost", true);
-    localizer->setParamValue("discontinuity_weight", 0.5);      // 0.5
 
     bool enable_gps = true;
     bool use_novatel = false;
@@ -190,7 +164,7 @@ int runModule()
     int data_sel = 1;
     double start_time = 0;     // time skip (seconds)
     //start_time = 1360;     // time skip (seconds), testset 1, 우리은행
-    start_time = 1000;// 1180;     // time skip (seconds), testset 2, 상가
+    start_time = 970;// 1180;     // time skip (seconds), testset 2, 상가
     //start_time = 1440;     // time skip (seconds), testset 2, 횡단보도
     //rec_video_file = "module_test.avi";
     std::vector<std::string> data_head[] = {
@@ -226,7 +200,7 @@ int runModule()
     }
     data_loader.setStartSkipTime(start_time);
 
-    return runModuleReal(localizer, module_sel, use_saved_testset, site, data_loader, rec_video_file);
+    return runModuleReal(module_sel, use_saved_testset, site, data_loader, rec_video_file);
 }
 
 int main()
