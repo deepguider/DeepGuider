@@ -41,7 +41,7 @@ namespace dg
 		double m_best_to_second_match_ratio = 2;	// POI match ratio threshold (best_score/second_score > ratio threshod)
 		bool m_check_jungsung_type = true;	// distinguish bottom-side jungsung and right-side jungsung
 		bool m_fixed_template_match = true;	// use substring template match instead of Levenshtein distance
-		bool m_enable_vanishing_filter = true;	// filter out detections detected under vanishing line
+		bool m_enable_false_filter = true;	// filter out detections detected under vanishing line
 	    bool m_enable_debugging_display = false;
 		int m_w = 2; // minimum string length
 
@@ -52,7 +52,8 @@ namespace dg
             CX_LOAD_PARAM_COUNT(fn, "poi_height", m_poi_height, n_read);
             CX_LOAD_PARAM_COUNT(fn, "poi_search_radius", m_poi_search_radius, n_read);
             CX_LOAD_PARAM_COUNT(fn, "poi_match_thresh", m_poi_match_thresh, n_read);
-            CX_LOAD_PARAM_COUNT(fn, "enable_debugging_display", m_enable_debugging_display, n_read);
+			CX_LOAD_PARAM_COUNT(fn, "enable_false_filter", m_enable_false_filter, n_read);
+			CX_LOAD_PARAM_COUNT(fn, "enable_debugging_display", m_enable_debugging_display, n_read);
 
             return n_read;
         }
@@ -106,12 +107,16 @@ namespace dg
 			if (ocrs.empty()) return false;
 
 			// filter out non-POI detections
-			if (m_enable_vanishing_filter)
+			if (m_enable_false_filter)
 			{
 				std::vector<OCRResult> valid_ocrs;
 				for (auto it = ocrs.begin(); it != ocrs.end(); it++)
 				{
-					if (it->ymax <= m_vanishing_y) valid_ocrs.push_back(*it);
+					bool valid = true;
+					if (it->ymax > m_vanishing_y) valid = false;								// ground POI
+					if (valid && (it->ymax - it->ymin > it->xmax - it->xmin)) valid = false;	// vertical POI
+					if (valid && it->label.length() <= 1) valid = false;						// 1-character POI
+					if (valid) valid_ocrs.push_back(*it);
 				}
 				if (valid_ocrs.empty()) return false;
 				ocrs = valid_ocrs;
@@ -146,7 +151,7 @@ namespace dg
 
 		bool applyPreprocessed(std::string recog_name, double xmin, double ymin, double xmax, double ymax, double conf, const dg::Timestamp data_time, dg::POI*& poi, dg::Polar2& relative, double& poi_confidence)
 		{
-			if (m_enable_vanishing_filter && ymax > m_vanishing_y) return false;
+			if (m_enable_false_filter && (ymax > m_vanishing_y || ymax - ymin > xmax - xmin || recog_name.length() <= 1)) return false;
 
 			std::vector<OCRResult> ocrs;
 			OCRResult ocr;
