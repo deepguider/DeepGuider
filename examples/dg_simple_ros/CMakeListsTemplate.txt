@@ -97,7 +97,25 @@ target_link_libraries(
   ${JSONCPP_LIBRARIES}
 )
 
-install(TARGETS ${PROJECT_NAME} dg_ocr dg_vps
+#dg_encoder
+add_executable(dg_encoder src/dg_encoder.cpp)
+add_dependencies(dg_ocr ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(
+  dg_encoder
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+#dg_odometry
+add_executable(dg_odometry src/dg_odometry.cpp)
+add_dependencies(dg_ocr ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(
+  dg_odometry
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+install(TARGETS ${PROJECT_NAME} dg_ocr dg_vps dg_encoder dg_odometry
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
