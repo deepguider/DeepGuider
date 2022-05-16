@@ -1,10 +1,14 @@
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
-#include <std_msgs/Int32.h>
+#include <std_msgs/Float32.h>
 #include <nav_msgs/Odometry.h>
+#include "opencv2/highgui.hpp"
 
 #define LOAD_PARAM_VALUE(fn, name_cfg, name_var) \
     if (!(fn)[name_cfg].empty()) (fn)[name_cfg] >> name_var;
+
+#define RAD2DEG(x)         ((x) * 180.0 / CV_PI)
+#define DEG2RAD(x)         ((x) * CV_PI / 180.0)
 
 struct Pose2
 {
@@ -33,12 +37,17 @@ public:
 protected:
     bool loadConfig(std::string config_file);
     bool m_enable_module = true;
+    bool m_print_trajectory = false;
+    bool m_display_trajectory = false;
+    cv::Mat m_traj_map;
 
     double m_pulse_left = 0;
     double m_pulse_right = 0;
     double m_prev_pulse_left = 0;
     double m_prev_pulse_right = 0;
-    double m_prev_timestamp = 0;
+    double m_prev_timestamp = -1;
+    bool m_left_initialized = false;
+    bool m_right_initialized = false;
     Pose2 m_pose;
     Pose2 m_pose_prev;
     cv::Mutex m_mutex_left;
@@ -47,8 +56,8 @@ protected:
     // Topic subscribers
     ros::Subscriber sub_encoder_left;
     ros::Subscriber sub_encoder_right;
-    void callbackEncoderLeft(const std_msgs::Int32& msg);
-    void callbackEncoderRight(const std_msgs::Int32& msg);
+    void callbackEncoderLeft(const std_msgs::Float32& msg);
+    void callbackEncoderRight(const std_msgs::Float32& msg);
 
     // Topic publishers
     ros::Publisher m_publisher_odometry;
@@ -76,6 +85,8 @@ bool DGNodeOdometry::loadConfig(std::string config_file)
     cv::FileNode fn = fs.root();
     LOAD_PARAM_VALUE(fn, "enable_odometry", m_enable_module);
     LOAD_PARAM_VALUE(fn, "odometry_update_hz", m_update_hz);
+    LOAD_PARAM_VALUE(fn, "odometry_debug_print", m_print_trajectory);
+    LOAD_PARAM_VALUE(fn, "odometry_debug_window", m_display_trajectory);
 
     return true;
 }
@@ -107,6 +118,7 @@ int DGNodeOdometry::run()
     printf("Run dg_odometry...\n");
 
     ros::Rate loop(m_update_hz);
+    m_prev_timestamp = ros::Time::now().toSec();
     while (ros::ok())
     {
         double timestamp = ros::Time::now().toSec();
@@ -127,17 +139,19 @@ bool DGNodeOdometry::runOnce(double timestamp)
     double wL = 1;                  // compensation factor for left wheel
     double wR = 1;                  // compensation factor for right wheel
 
-    double pulse_left, pulse_right;    
+    double pulse_left, pulse_right;
+    bool left_initialized, right_initialized;
     m_mutex_left.lock();
     pulse_left = m_pulse_left;
+    left_initialized = m_left_initialized;
     m_mutex_left.unlock();
     m_mutex_right.lock();
     pulse_right = m_pulse_right;
+    right_initialized = m_right_initialized;
     m_mutex_right.unlock();
 
-    double dt = timestamp - m_prev_timestamp;
-    double dpL = pulse_left - m_prev_pulse_left;
-    double dpR = pulse_right - m_prev_pulse_right;
+    double dpL = (left_initialized) ? pulse_left - m_prev_pulse_left : 0;
+    double dpR = (right_initialized) ? pulse_right - m_prev_pulse_right : 0;
 
     double dL = wL * dpL * 0.99 / 3800;
     double dR = wR * dpR * 0.99 / 3809;
@@ -153,8 +167,10 @@ bool DGNodeOdometry::runOnce(double timestamp)
     odo.pose.pose.position.x = m_pose.x;
     odo.pose.pose.position.y = m_pose.y;
     odo.pose.pose.orientation.z = m_pose.theta;
-    odo.twist.twist.linear.x = D/dt;
-    odo.twist.twist.angular.z = dtheta/dt;
+
+    double dt = timestamp - m_prev_timestamp;
+    if(dt>0) odo.twist.twist.linear.x = D/dt;
+    if(dt>0) odo.twist.twist.angular.z = dtheta/dt;
 
     m_publisher_odometry.publish(odo);
 
@@ -163,15 +179,65 @@ bool DGNodeOdometry::runOnce(double timestamp)
     m_prev_pulse_left = pulse_left;
     m_prev_pulse_right = pulse_right;
 
+    if(m_print_trajectory)
+    {
+        printf("odo:x=%.2lf, y=%.2lf, theta=%.1lf\n", m_pose.x, m_pose.y, RAD2DEG(m_pose.theta));
+        printf("    v=%.2lf, w=%.1lf\n", D/dt, RAD2DEG(dtheta/dt));
+    }
+
+    if(m_display_trajectory)
+    {
+        int delta = 12;  // meter
+        int scale = 50;
+        int sz = (int)(delta*scale*2 + 1);
+        cv::Scalar grid_color(50, 50, 50);
+        if(m_traj_map.empty()) m_traj_map = cv::Mat::zeros(sz, sz, CV_8UC3);
+        else m_traj_map = 0;
+
+        int w = m_traj_map.cols;
+        int h = m_traj_map.rows;
+        int cx = m_traj_map.cols/2;
+        int cy = m_traj_map.rows/2;
+        for(int i=-delta; i<=delta; i++)
+        {
+            int x = cx + (int)(i*scale);
+            line(m_traj_map, cv::Point(x,0), cv::Point(x, h), grid_color);
+            int y = cy + (int)(i*scale);
+            line(m_traj_map, cv::Point(0,y), cv::Point(w, y), grid_color);
+        }
+        line(m_traj_map, cv::Point(cx,0), cv::Point(cx, h), cv::Scalar(100,100,100));
+        line(m_traj_map, cv::Point(0,cy), cv::Point(w, cy), cv::Scalar(100,100,100));
+
+        double ix = cy - scale*m_pose.y;      // odometry to image point
+        double iy = cx - scale*m_pose.x;      // odometry to image point
+        cv::Point center = cv::Point2d(ix, iy) + cv::Point2d(0.5, 0.5);
+        int hr = 15;               // heading arrow length
+        int heading_x = (int)(ix - hr*sin(m_pose.theta) + 0.5);
+        int heading_y = (int)(iy - hr*cos(m_pose.theta) + 0.5);
+        int robot_radius = 10;
+        cv::Scalar robot_color(0,255,0);
+
+        cv::circle(m_traj_map, center, robot_radius, robot_color, 1);
+        cv::line(m_traj_map, center, cv::Point(heading_x, heading_y), robot_color, 1);
+        cv::imshow("odometry", m_traj_map);
+        int key = cv::waitKey(1);
+        if(key == 27) return false;
+    }
+
     return true;
 }
 
-void DGNodeOdometry::callbackEncoderLeft(const std_msgs::Int32& msg)
+void DGNodeOdometry::callbackEncoderLeft(const std_msgs::Float32& msg)
 {
     try
     {
         m_mutex_left.lock();
         m_pulse_left = msg.data;
+        if(!m_left_initialized)
+        {
+            m_prev_pulse_left = m_pulse_left;
+            m_left_initialized = true;
+        }
         m_mutex_left.unlock();
     }
     catch (cv_bridge::Exception& e)
@@ -181,12 +247,17 @@ void DGNodeOdometry::callbackEncoderLeft(const std_msgs::Int32& msg)
     }
 }
 
-void DGNodeOdometry::callbackEncoderRight(const std_msgs::Int32& msg)
+void DGNodeOdometry::callbackEncoderRight(const std_msgs::Float32& msg)
 {
     try
     {
         m_mutex_right.lock();
         m_pulse_right = msg.data;
+        if(!m_right_initialized)
+        {
+            m_prev_pulse_right = m_pulse_right;
+            m_right_initialized = true;
+        }
         m_mutex_right.unlock();
     }
     catch (cv_bridge::Exception& e)

@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
-#include <std_msgs/Int32.h>
+#include <std_msgs/Float32.h>
 
 #define LOAD_PARAM_VALUE(fn, name_cfg, name_var) \
     if (!(fn)[name_cfg].empty()) (fn)[name_cfg] >> name_var;
@@ -20,12 +20,12 @@ protected:
     bool loadConfig(std::string config_file);
     bool m_enable_module = true;
 
-    std_msgs::Int32 right_tick_msg;
-    std_msgs::Int32 left_tick_msg;
+    std_msgs::Float32 right_tick_msg;
+    std_msgs::Float32 left_tick_msg;
     double m_left_count = 0;
     double m_right_count = 0;
     double m_initial_time = 0;
-    double m_max_timeout = 100;
+    double m_max_timeout = 110;
     void generateSimulationData(double dt);
 
     // Topic publishers
@@ -34,7 +34,7 @@ protected:
 
     // A node handler
     ros::NodeHandle& nh_dg;
-    double m_update_hz = 10;
+    double m_update_hz = 20;
 };
 
 dg_encoder::dg_encoder(ros::NodeHandle& nh) : nh_dg(nh)
@@ -50,15 +50,15 @@ void dg_encoder::generateSimulationData(double elapsed_total)
     double baseline = 0.588;    // wheel baseline distance
     double interval = 10;       // seconds
 
-    int max_idx = 7;
-    double lin_velocity[8] = {1, -1, 0, 0, 1, 1, 1, 1};
-    double ang_velocity[8] = {0, 0, CV_PI/4, -CV_PI/2, 0, CV_PI/5, -CV_PI/5, 0};
+    int max_idx = 9;
+    double lin_velocity[10] = {0, 1, -1, 0, 0, 1, -1, 1, 1, 1};
+    double ang_velocity[10] = {0, 0, 0, CV_PI/4, -CV_PI/2, 0, 0, CV_PI/5, -CV_PI/5, 0};
 
     int idx = (int)(elapsed_total/10);
     if (idx>max_idx) idx = max_idx;
 
-    m_left_count = 0;
-    m_right_count = 0;
+    double left_count = 0;
+    double right_count = 0;
     for(int i=0; i<=idx; i++)
     {
         double dt = (i<idx) ? interval : (elapsed_total - interval*i);
@@ -67,9 +67,12 @@ void dg_encoder::generateSimulationData(double elapsed_total)
         double L = (2*D - baseline * th) / 2;
         double R = (2*D + baseline * th) / 2;
 
-        m_left_count += L * 3800 / 0.99;
-        m_right_count += R * 3809 / 0.99;
+        left_count += L * 3800 / 0.99;
+        right_count += R * 3809 / 0.99;
     }
+
+    m_left_count = (int)(left_count + 0.5);
+    m_right_count = (int)(right_count + 0.5);
 }
 
 bool dg_encoder::loadConfig(std::string config_file)
@@ -80,7 +83,7 @@ bool dg_encoder::loadConfig(std::string config_file)
     if (!fs.isOpened()) return false;
 
     cv::FileNode fn = fs.root();
-    LOAD_PARAM_VALUE(fn, "enable_encoder", m_enable_module);
+    LOAD_PARAM_VALUE(fn, "enable_simulated_encoder", m_enable_module);
     LOAD_PARAM_VALUE(fn, "encoder_update_hz", m_update_hz);
 
     return true;
@@ -100,8 +103,8 @@ bool dg_encoder::initialize(std::string config_file)
     }
 
     // Initialize publishers
-    m_publisher_left = nh_dg.advertise<std_msgs::Int32>("left_tick_data", 1, true);
-    m_publisher_right = nh_dg.advertise<std_msgs::Int32>("right_tick_data", 1, true);
+    m_publisher_left = nh_dg.advertise<std_msgs::Float32>("left_tick_data", 1, true);
+    m_publisher_right = nh_dg.advertise<std_msgs::Float32>("right_tick_data", 1, true);
 
     return true;
 }
@@ -132,11 +135,11 @@ bool dg_encoder::runOnce(double timestamp)
     double elapsed_total = timestamp - m_initial_time;
     generateSimulationData(elapsed_total);
 
-    left_tick_msg.data = (int)(m_left_count + 0.5);
-    right_tick_msg.data = (int)(m_right_count + 0.5);
+    left_tick_msg.data = (float)m_left_count;
+    right_tick_msg.data = (float)m_right_count;
 
     m_publisher_left.publish(left_tick_msg);
-    m_publisher_right.publish(right_tick_msg); 
+    m_publisher_right.publish(right_tick_msg);
 
     return true;
 }

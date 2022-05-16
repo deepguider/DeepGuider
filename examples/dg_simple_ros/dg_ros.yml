@@ -9,6 +9,7 @@ enable_roadtheta: 0
 enable_exploration: 0
 enable_logo: 0
 enable_imu: 0
+enable_odometry: 1
 enable_mapserver: 0    # 0: use saved offline map, 1: online mapserver
 
 ## Main Options
@@ -36,6 +37,13 @@ vps_load_dbfeat: 0
 vps_save_dbfeat: 0
 vps_use_custom_image_server: 0   # 0 (default) to use naver roadview, 1 to use custom images for database images
 vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
+
+## Odometry Specific Options
+enable_simulated_encoder: 0
+encoder_update_hz: 20
+odometry_update_hz: 10
+odometry_debug_print: 0
+odometry_debug_window: 0
 
 ## Topic Names Set
 ETRI_CART_VER2_ANDROIDGPS:
