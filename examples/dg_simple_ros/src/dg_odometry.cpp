@@ -39,6 +39,7 @@ protected:
     bool m_enable_module = true;
     bool m_print_trajectory = false;
     bool m_display_trajectory = false;
+    bool m_simulated_encoder = false;
     cv::Mat m_traj_map;
 
     double m_pulse_left = 0;
@@ -87,6 +88,7 @@ bool DGNodeOdometry::loadConfig(std::string config_file)
     LOAD_PARAM_VALUE(fn, "odometry_update_hz", m_update_hz);
     LOAD_PARAM_VALUE(fn, "odometry_debug_print", m_print_trajectory);
     LOAD_PARAM_VALUE(fn, "odometry_debug_window", m_display_trajectory);
+    LOAD_PARAM_VALUE(fn, "enable_simulated_encoder", m_simulated_encoder);
 
     return true;
 }
@@ -104,8 +106,16 @@ bool DGNodeOdometry::initialize(std::string config_file)
     }
 
     // Initialize subscribers
-    sub_encoder_left = nh_dg.subscribe("/dg_encoder/left_tick_data", 1, &DGNodeOdometry::callbackEncoderLeft, this);
-    sub_encoder_right = nh_dg.subscribe("/dg_encoder/right_tick_data", 1, &DGNodeOdometry::callbackEncoderRight, this);
+    if(m_simulated_encoder)
+    {
+        sub_encoder_left = nh_dg.subscribe("/dg_encoder/left_tick_data", 1, &DGNodeOdometry::callbackEncoderLeft, this);
+        sub_encoder_right = nh_dg.subscribe("/dg_encoder/right_tick_data", 1, &DGNodeOdometry::callbackEncoderRight, this);
+    }
+    else
+    {
+        sub_encoder_left = nh_dg.subscribe("/left_tick_data", 1, &DGNodeOdometry::callbackEncoderLeft, this);
+        sub_encoder_right = nh_dg.subscribe("/right_tick_data", 1, &DGNodeOdometry::callbackEncoderRight, this);
+    }
 
     // Initialize publishers
     m_publisher_odometry = nh_dg.advertise<nav_msgs::Odometry>("pose", 1, true);
@@ -135,8 +145,8 @@ int DGNodeOdometry::run()
 bool DGNodeOdometry::runOnce(double timestamp)
 {
     double wheelbase = 0.588;       // distance between left and right wheel
-    double wL = 1;                  // compensation factor for left wheel
-    double wR = 1;                  // compensation factor for right wheel
+    double wL = 17.53/17.6122;      // compensation factor for left wheel
+    double wR = 17.53/17.3484;      // compensation factor for right wheel
 
     double pulse_left, pulse_right;
     bool left_initialized, right_initialized;
