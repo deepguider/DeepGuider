@@ -33,6 +33,7 @@ protected:
     int m_enable_exploration = 0;
     int m_enable_logo = 0;
     int m_enable_imu = 0;
+    int m_enable_odometry = 0;
     int m_enable_mapserver = 1;
 
     std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
@@ -99,6 +100,7 @@ protected:
     void drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide, cv::Rect rect);
     void procGpsData(dg::LatLon gps_datum, dg::Timestamp ts);
     void procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts);
+    void procOdometryData(double x, double y, double theta, dg::Timestamp ts);
     void procGuidance(dg::Timestamp ts);
     bool procIntersectionClassifier();
     bool procExploration();
@@ -253,6 +255,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "enable_exploration", m_enable_exploration, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_logo", m_enable_logo, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_imu", m_enable_imu, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_odometry", m_enable_odometry, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_mapserver", m_enable_mapserver, n_read);
 
     // Read Main Options
@@ -745,6 +748,11 @@ void DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double or
 {
     auto euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
     VVS_CHECK_TRUE(m_localizer.applyIMUCompass(euler.z, ts));
+}
+
+void DeepGuider::procOdometryData(double x, double y, double theta, dg::Timestamp ts)
+{
+
 }
 
 void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)

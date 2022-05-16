@@ -121,8 +121,7 @@ int DGNodeOdometry::run()
     m_prev_timestamp = ros::Time::now().toSec();
     while (ros::ok())
     {
-        double timestamp = ros::Time::now().toSec();
-        if (!runOnce(timestamp)) break;
+        if (!runOnce(ros::Time::now().toSec())) break;
         ros::spinOnce();
         loop.sleep();
     }
@@ -164,6 +163,7 @@ bool DGNodeOdometry::runOnce(double timestamp)
     m_pose.theta = trimRad(m_pose_prev.theta + dtheta);
 
     nav_msgs::Odometry odo;
+    odo.header.stamp.fromSec(timestamp);
     odo.pose.pose.position.x = m_pose.x;
     odo.pose.pose.position.y = m_pose.y;
     odo.pose.pose.orientation.z = m_pose.theta;

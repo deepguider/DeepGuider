@@ -5,6 +5,7 @@
 #include <sensor_msgs/Imu.h>
 #include <std_msgs/String.h>
 #include <nav_msgs/Path.h>
+#include <nav_msgs/Odometry.h>
 #include <cv_bridge/cv_bridge.h>
 #include <thread>
 #include "dg_simple.cpp"
@@ -34,6 +35,7 @@ protected:
     std::string m_topic_gps;
     std::string m_topic_dgps;
     std::string m_topic_imu;
+    std::string m_topic_odo;
     std::string m_topic_rgbd_image;
     std::string m_topic_rgbd_depth;
 
@@ -44,6 +46,7 @@ protected:
     ros::Subscriber sub_gps_asen;
     ros::Subscriber sub_gps_novatel;
     ros::Subscriber sub_imu_xsense;
+    ros::Subscriber sub_odometry;
     ros::Subscriber sub_robot_status;
     void callbackImage(const sensor_msgs::Image::ConstPtr& msg);
     void callbackImageCompressed(const sensor_msgs::CompressedImageConstPtr& msg);
@@ -52,6 +55,7 @@ protected:
     void callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix);
     void callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix);
     void callbackIMU(const sensor_msgs::Imu::ConstPtr& msg);
+    void callbackOdometry(const nav_msgs::Odometry::ConstPtr& msg);
     void callbackRobotStatus(const std_msgs::String::ConstPtr& msg);
 
     // Topic publishers (sensor data)
@@ -145,6 +149,7 @@ bool DeepGuiderROS::initialize(std::string config_file)
     if(!m_topic_gps.empty()) sub_gps_asen = nh_dg.subscribe(m_topic_gps, 1, &DeepGuiderROS::callbackGPSAsen, this);
     if(!m_topic_dgps.empty()) sub_gps_novatel = nh_dg.subscribe(m_topic_dgps, 1, &DeepGuiderROS::callbackGPSNovatel, this);
     if(!m_topic_imu.empty()) sub_imu_xsense = nh_dg.subscribe(m_topic_imu, 1, &DeepGuiderROS::callbackIMU, this);
+    if(!m_topic_odo.empty()) sub_odometry = nh_dg.subscribe(m_topic_odo, 1, &DeepGuiderROS::callbackOdometry, this);
     if(!m_topic_rgbd_image.empty()) sub_image_realsense_image = nh_dg.subscribe(m_topic_rgbd_image, 1, &DeepGuiderROS::callbackRealsenseImage, this);
     if(!m_topic_rgbd_depth.empty()) sub_image_realsense_depth = nh_dg.subscribe(m_topic_rgbd_depth, 1, &DeepGuiderROS::callbackRealsenseDepth, this);
 
@@ -386,6 +391,26 @@ void DeepGuiderROS::callbackIMU(const sensor_msgs::Imu::ConstPtr& msg)
     if (m_enable_imu)
     {
         procImuData(ori_w, ori_x, ori_y, ori_z, imu_time);
+    }
+}
+
+// A callback function for subscribing Odometry
+void DeepGuiderROS::callbackOdometry(const nav_msgs::Odometry::ConstPtr& msg)
+{
+    if (msg->header.stamp == ros::Time(0)) {
+        return;
+    }
+
+    nav_msgs::Odometry odo;
+    double x = msg->pose.pose.position.x;
+    double y = msg->pose.pose.position.y;
+    double theta = msg->pose.pose.orientation.z;
+    ROS_INFO_THROTTLE(1.0, "ODO: x=%.2lf, y=%.2lf, theta=%.1lf", x, y, theta);
+
+    const dg::Timestamp odo_time = msg->header.stamp.toSec();
+    if (m_enable_odometry)
+    {
+        procOdometryData(x, y, theta, odo_time);
     }
 }
 

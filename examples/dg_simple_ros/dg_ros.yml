@@ -49,6 +49,7 @@ odometry_debug_window: 0
 ETRI_CART_VER2_ANDROIDGPS:
   topic_cam: "/uvc_camera/image_raw/compressed"
   topic_gps: "/andro2linux_gps"
+  topic_odo: "/dg_odometry/pose"
   #topic_dgps: "/gps/fix"
   #topic_imu: "/imu/data"
   #topic_rgbd_image: "/camera/color/image_raw/compressed"
@@ -57,6 +58,7 @@ ETRI_CART_VER2_ANDROIDGPS:
 ETRI_CART_VER2:
   topic_cam: "/uvc_camera/image_raw/compressed"
   topic_gps: "/ascen_gps/fix"
+  topic_odo: "/dg_odometry/pose"
   #topic_dgps: "/gps/fix"
   #topic_imu: "/imu/data"
   #topic_rgbd_image: "/camera/color/image_raw/compressed"
