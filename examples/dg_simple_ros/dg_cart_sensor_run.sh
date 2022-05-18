@@ -39,6 +39,38 @@ if [ -n "${pid}" ];then  # If process is running.
 fi
 gnome-terminal --tab --title="andro2linux_gps_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/andro2linux_gps/publish && python andro2linux_gps_rospublisher.py'
 
+
+## odometry USBserial
+pid=`pgrep -f "rosserial_python/serial_node.py _port:=/dev/ttyUSB0"`
+if [ -n "${pid}" ];then  # If process is running.
+    kill -9 ${pid}
+fi
+
+pid=`pgrep -f "rostopic echo /left_tick_data"`
+if [ -n "${pid}" ];then  # If process is running.
+    kill -9 ${pid}
+fi
+gnome-terminal --tab --title="/left_tick_data" -- bash -c 'rostopic echo /left_tick_data'
+
+pid=`pgrep -f "rostopic echo /right_tick_data"`
+if [ -n "${pid}" ];then  # If process is running.
+    kill -9 ${pid}
+fi
+gnome-terminal --tab --title="/right_tick_data" -- bash -c 'rostopic echo /right_tick_data'
+
+## Odometry end
+gnome-terminal --tab -- rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=115200 
+
+## Run dg odometry
+## Start dg_simple_ros package (working directory: devel/lib/dg_simple_ros/)
+pid=`pgrep -f dg_odometry`
+if [ -n "${pid}" ];then  # If process is running.
+    kill -9 ${pid}
+fi
+
+gnome-terminal --tab -- rosrun dg_simple_ros dg_odometry
+
+
 ## Start recording cart sensor
 pid=`pgrep roslaunch`
 if [ -n "${pid}" ];then  # If process is running.
