@@ -24,6 +24,8 @@ protected:
     std_msgs::Float32 left_tick_msg;
     double m_left_count = 0;
     double m_right_count = 0;
+    double m_left_prev = 0;
+    double m_right_prev = 0;
     double m_initial_time = 0;
     double m_max_timeout = 110;
     void generateSimulationData(double dt);
@@ -71,8 +73,8 @@ void dg_encoder::generateSimulationData(double elapsed_total)
         right_count += R * 3809 / 0.99;
     }
 
-    m_left_count = (int)(left_count + 0.5);
-    m_right_count = (int)(right_count + 0.5);
+    m_left_count = (left_count + 0.5);
+    m_right_count = (right_count + 0.5);
 }
 
 bool dg_encoder::loadConfig(std::string config_file)
@@ -135,11 +137,17 @@ bool dg_encoder::runOnce(double timestamp)
     double elapsed_total = timestamp - m_initial_time;
     generateSimulationData(elapsed_total);
 
-    left_tick_msg.data = (float)m_left_count;
-    right_tick_msg.data = (float)m_right_count;
+    double delta_left = m_left_count - m_left_prev;
+    double delta_right = m_right_count - m_right_prev;
+
+    left_tick_msg.data = (float)delta_left;
+    right_tick_msg.data = (float)delta_right;
 
     m_publisher_left.publish(left_tick_msg);
     m_publisher_right.publish(right_tick_msg);
+
+    m_left_prev = m_left_count;
+    m_right_prev = m_right_count;
 
     return true;
 }

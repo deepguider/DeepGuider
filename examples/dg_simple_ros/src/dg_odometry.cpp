@@ -108,13 +108,13 @@ bool DGNodeOdometry::initialize(std::string config_file)
     // Initialize subscribers
     if(m_simulated_encoder)
     {
-        sub_encoder_left = nh_dg.subscribe("/dg_encoder/left_tick_data", 1, &DGNodeOdometry::callbackEncoderLeft, this);
-        sub_encoder_right = nh_dg.subscribe("/dg_encoder/right_tick_data", 1, &DGNodeOdometry::callbackEncoderRight, this);
+        sub_encoder_left = nh_dg.subscribe("/dg_encoder/left_tick_data", 10, &DGNodeOdometry::callbackEncoderLeft, this);
+        sub_encoder_right = nh_dg.subscribe("/dg_encoder/right_tick_data", 10, &DGNodeOdometry::callbackEncoderRight, this);
     }
     else
     {
-        sub_encoder_left = nh_dg.subscribe("/left_tick_data", 1, &DGNodeOdometry::callbackEncoderLeft, this);
-        sub_encoder_right = nh_dg.subscribe("/right_tick_data", 1, &DGNodeOdometry::callbackEncoderRight, this);
+        sub_encoder_left = nh_dg.subscribe("/left_tick_data", 10, &DGNodeOdometry::callbackEncoderLeft, this);
+        sub_encoder_right = nh_dg.subscribe("/right_tick_data", 10, &DGNodeOdometry::callbackEncoderRight, this);
     }
 
     // Initialize publishers
@@ -127,12 +127,14 @@ int DGNodeOdometry::run()
 {
     printf("Run dg_odometry...\n");
 
+    ros::AsyncSpinner spinner(2);
+    spinner.start();    
+
     ros::Rate loop(m_update_hz);
     m_prev_timestamp = ros::Time::now().toSec();
     while (ros::ok())
     {
         if (!runOnce(ros::Time::now().toSec())) break;
-        ros::spinOnce();
         loop.sleep();
     }
 
@@ -242,7 +244,7 @@ void DGNodeOdometry::callbackEncoderLeft(const std_msgs::Float32& msg)
     try
     {
         m_mutex_left.lock();
-        m_pulse_left = msg.data;
+        m_pulse_left += msg.data;
         if(!m_left_initialized)
         {
             m_prev_pulse_left = m_pulse_left;
@@ -262,7 +264,7 @@ void DGNodeOdometry::callbackEncoderRight(const std_msgs::Float32& msg)
     try
     {
         m_mutex_right.lock();
-        m_pulse_right = msg.data;
+        m_pulse_right += msg.data;
         if(!m_right_initialized)
         {
             m_prev_pulse_right = m_pulse_right;
