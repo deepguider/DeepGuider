@@ -155,7 +155,7 @@ namespace dg
 
 			std::vector<OCRResult> ocrs;
 			OCRResult ocr;
-			ocr.label = recog_name;
+			ocr.label = cx::toLowerCase(recog_name); // convert to lowercase
 			ocr.xmin = (int)(xmin + 0.5);
 			ocr.ymin = (int)(ymin + 0.5);
 			ocr.xmax = (int)(xmax + 0.5);

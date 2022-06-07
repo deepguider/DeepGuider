@@ -73,28 +73,24 @@ public:
     {
         // Configure localizer
         cv::Ptr<dg::DGLocalizer> localizer = cv::makePtr<dg::DGLocalizer>();
+        
         if (!localizer->setParamMotionNoise(1, 10)) return -1;      // linear_velocity(m), angular_velocity(deg)
-        if (!localizer->setParamGPSNoise(1)) return -1;             // position error(m)
+        if (!localizer->setParamMotionBounds(1, 10)) return -1;     // max. linear_velocity(m), max. angular_velocity(deg)
+        if (!localizer->setParamGPSNoise(10)) return -1;            // position error(m)
         if (!localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
         if (!localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
-        if (!localizer->setParamPOINoise(1, 10, 1)) return -1;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
-        if (!localizer->setParamVPSNoise(1, 10, 1)) return -1;      // rel. distance error(m), rel. orientation error(deg), position error of poi info (m)
+        if (!localizer->setParamPOINoise(1, 10)) return -1;         // distance error(m), orientation error(deg)
+        if (!localizer->setParamVPSNoise(1, 10)) return -1;         // distance error(m), orientation error(deg)
         if (!localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
-        if (!localizer->setParamRoadThetaNoise(10, 0)) return -1;   // angle arror(deg), angle offset(deg)
+        if (!localizer->setParamRoadThetaNoise(50)) return -1;      // angle arror(deg)
         if (!localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
         localizer->setParamValue("gps_reverse_vel", -0.5);
         localizer->setParamValue("search_turn_weight", 100);
         localizer->setParamValue("track_near_radius", 20);
         localizer->setParamValue("enable_path_projection", true);
-        localizer->setParamValue("enable_map_projection", true);
+        localizer->setParamValue("enable_map_projection", false);
         localizer->setParamValue("enable_backtracking_ekf", true);
         localizer->setParamValue("enable_gps_smoothing", true);
-        localizer->setParamValue("enable_debugging_display", true);
-        localizer->setParamValue("lr_mismatch_cost", 50);
-        localizer->setParamValue("enable_lr_reject", false);
-        localizer->setParamValue("lr_reject_cost", 20);             // 20
-        localizer->setParamValue("enable_discontinuity_cost", true);
-        localizer->setParamValue("discontinuity_weight", 0.5);      // 0.5
 
         // initialize localizer
         m_localizer = localizer;
@@ -102,7 +98,7 @@ public:
         // initialize module localizers
         m_ocr_localizer = cv::makePtr<dg::OCRLocalizer>();
         VVS_CHECK_TRUE(m_ocr_localizer->initialize_without_python(this));
-        m_ocr_localizer->setWeights("dg_hangeul_weights.csv");
+        m_ocr_localizer->loadHangeulWeights("dg_hangeul_weights.csv");
 
         // Prepare the result trajectory
         FILE* out_traj = nullptr;
@@ -140,8 +136,8 @@ public:
             dg::Point2 gps_xy = toMetric(gps_datum);
             m_localizer->setPose(gps_xy);
 
-            dg::Point2 poi_xy;
-            //std::vector<POI> pois;
+            //dg::Point2 poi_xy;
+            dg::POI* pois;
             Polar2 relatives;
             double poi_confidences;
 
@@ -152,15 +148,15 @@ public:
             // double h = ymax - ymin;
 
             // bool ok = localizer.applyLoc(data, pois, relatives, poi_confidences);        
-            bool ok = m_ocr_localizer->applyPreprocessed(dname, xmin, ymin, xmax, ymax, conf, timestamp, poi_xy, relatives, poi_confidences);
+            bool ok = m_ocr_localizer->applyPreprocessed(dname, xmin, ymin, xmax, ymax, conf, timestamp, pois, relatives, poi_confidences);
             
             // Record the current state on the CSV file
             if (out_traj != nullptr)
             {
                 if(ok) //pois.empty())
                 {
-                    printf("%d,%.3lf,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,poi_xy.x,poi_xy.y,relatives.lin,relatives.ang,poi_confidences);
-                    fprintf(out_traj, "%d,%.3lf,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,poi_xy.x,poi_xy.y,relatives.lin,relatives.ang,poi_confidences);       
+                    printf("%d,%.3lf,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,pois->x,pois->y,relatives.lin,relatives.ang,poi_confidences);
+                    fprintf(out_traj, "%d,%.3lf,%.2lf,%.2lf,%.2lf,%.2lf,%.2lf\n", fnumber,timestamp,pois->x,pois->y,relatives.lin,relatives.ang,poi_confidences);       
                     // printf("%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
                     // fprintf(out_traj, "%d,%.3lf,%s,%.2lf,%.2lf,%.2lf,%.2lf,%d,%s,%.2lf,%.2lf,%d,%.2lf,%.2lf,%.2lf,%.7lf,%.7lf\n", fnumber,timestamp,dname.c_str(),x,y,w,h,(int)poi->id,(converter.to_bytes(poi->name)).c_str(),poi->x,poi->y,poi->floor,relatives.lin,relatives.ang,poi_confidences,cam_lat,cam_lon);
                 }

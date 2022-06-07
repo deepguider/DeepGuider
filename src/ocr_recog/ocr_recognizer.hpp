@@ -4,6 +4,7 @@
 #include "dg_core.hpp"
 #include "utils/python_embedding.hpp"
 #include "utils/utility.hpp"
+#include "utils/opencx.hpp"
 #ifdef HAVE_OPENCV_FREETYPE
 #include "opencv2/freetype.hpp"
 #endif
@@ -102,7 +103,7 @@ namespace dg
                                 ocr.ymax = (int)PyFloat_AsDouble(pValue);
                             }
                             pValue = PyList_GetItem(pList, idx++);
-                            ocr.label = PyUnicode_AsUTF8(pValue);
+                            ocr.label = cx::toLowerCase(PyUnicode_AsUTF8(pValue)); // convert to lowercase
                             pValue = PyList_GetItem(pList, idx++);
                             ocr.confidence = PyFloat_AsDouble(pValue);
                             m_result.push_back(ocr);

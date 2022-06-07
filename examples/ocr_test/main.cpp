@@ -149,7 +149,7 @@ int runOCRLocalizer()
 
     int video_sel = 0;
     const char* video_path[] = {
-        "video/191115_ETRI.avi",
+        "data/191115_ETRI.avi",
         "video/etri_cart_200219_15h01m_2fps.avi",
         "video/201007_taeheran1.avi",
         "video/street-GOTOMall.mp4",
