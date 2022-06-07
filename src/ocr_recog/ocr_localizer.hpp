@@ -116,6 +116,7 @@ namespace dg
 					if (it->ymax > m_vanishing_y) valid = false;								// ground POI
 					if (valid && (it->ymax - it->ymin > it->xmax - it->xmin)) valid = false;	// vertical POI
 					if (valid && it->label.length() <= 1) valid = false;						// 1-character POI
+					if (valid && skipAlphanumeric(it->label)) valid = false;					// alphanumeric POI
 					if (valid) valid_ocrs.push_back(*it);
 				}
 				if (valid_ocrs.empty()) return false;
@@ -153,9 +154,12 @@ namespace dg
 		{
 			if (m_enable_false_filter && (ymax > m_vanishing_y || ymax - ymin > xmax - xmin || recog_name.length() <= 1)) return false;
 
+			if(skipAlphanumeric(recog_name)) return false; // skip the alphanumeric POI
+
 			std::vector<OCRResult> ocrs;
 			OCRResult ocr;
-			ocr.label = cx::toLowerCase(recog_name); // convert to lowercase
+			//ocr.label = cx::toLowerCase(recog_name); // convert to lowercase
+			ocr.label = recog_name;
 			ocr.xmin = (int)(xmin + 0.5);
 			ocr.ymin = (int)(ymin + 0.5);
 			ocr.xmax = (int)(xmax + 0.5);
@@ -212,6 +216,18 @@ namespace dg
 			}
 			return true;
 		}
+
+		bool skipAlphanumeric(std::string str)
+        {
+            for(int i = 0; i < str.length(); i++)
+            {
+				char alphabet = str[i];
+				if(('A' <= alphabet && alphabet <= 'Z' ) || ('a' <= alphabet && alphabet <= 'z' ) || ('0' <= alphabet && alphabet <= '9' ))
+					return true;
+			}
+
+            return false;
+        }
 
 	    void clear()
 		{

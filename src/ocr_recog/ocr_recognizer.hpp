@@ -103,7 +103,8 @@ namespace dg
                                 ocr.ymax = (int)PyFloat_AsDouble(pValue);
                             }
                             pValue = PyList_GetItem(pList, idx++);
-                            ocr.label = cx::toLowerCase(PyUnicode_AsUTF8(pValue)); // convert to lowercase
+                            //ocr.label = cx::toLowerCase(PyUnicode_AsUTF8(pValue)); // convert to lowercase
+                            ocr.label = PyUnicode_AsUTF8(pValue);
                             pValue = PyList_GetItem(pList, idx++);
                             ocr.confidence = PyFloat_AsDouble(pValue);
                             m_result.push_back(ocr);
