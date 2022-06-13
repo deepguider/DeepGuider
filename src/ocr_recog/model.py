@@ -17,14 +17,14 @@ limitations under the License.
 import torch.nn as nn
 
 from modules.transformation import TPS_SpatialTransformerNetwork
-from modules.feature_extraction import ResNet_FeatureExtractor
+from modules.feature_extraction import ResNet_FeatureExtractor, VGG_FeatureExtractor
 from modules.sequence_modeling import BidirectionalLSTM
 from modules.prediction import Attention
 
 
 class Model(nn.Module):
 
-    def __init__(self ,opt,num_class):
+    def __init__(self, opt, num_class):
         super(Model, self).__init__()
         self.opt = opt
 
@@ -32,7 +32,8 @@ class Model(nn.Module):
         self.Transformation = TPS_SpatialTransformerNetwork(
             F=opt.num_fiducial, I_size=(opt.imgH, opt.imgW), I_r_size=(opt.imgH, opt.imgW), I_channel_num=opt.input_channel)
 
-        """ FeatureExtraction ResNet"""
+        """ FeatureExtraction VGG"""
+        #self.FeatureExtraction = VGG_FeatureExtractor(opt.input_channel, opt.output_channel)
         self.FeatureExtraction = ResNet_FeatureExtractor(opt.input_channel, opt.output_channel)
         self.FeatureExtraction_output = opt.output_channel  # int(imgH/16-1) * 512
         self.AdaptiveAvgPool = nn.AdaptiveAvgPool2d((None, 1))  # Transform final (imgH/16-1) -> 1
@@ -61,6 +62,7 @@ class Model(nn.Module):
         contextual_feature = self.SequenceModeling(visual_feature)
 
         """ Prediction stage """
-        prediction = self.Prediction(contextual_feature.contiguous(), text, is_train, batch_max_length=self.opt.batch_max_length)
+        prediction = self.Prediction(contextual_feature.contiguous(), 
+                                     text, is_train, batch_max_length=self.opt.batch_max_length)
 
         return prediction
