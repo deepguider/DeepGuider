@@ -38,8 +38,8 @@ protected:
     bool loadConfig(std::string config_file);
     bool m_enable_module = true;
     bool m_print_trajectory = false;
-    bool m_display_trajectory = false;
     bool m_simulated_encoder = false;
+    bool m_display_trajectory = false;
     cv::Mat m_traj_map;
 
     double m_pulse_left = 0;
@@ -120,6 +120,15 @@ bool DGNodeOdometry::initialize(std::string config_file)
     // Initialize publishers
     m_publisher_odometry = nh_dg.advertise<nav_msgs::Odometry>("pose", 1, true);
 
+    // Initialize trajectory map
+    if(m_display_trajectory)
+    {
+        int delta = 12;  // meter
+        int scale = 50;
+        int sz = (int)(delta*scale*2 + 1);
+        m_traj_map = cv::Mat::zeros(sz, sz, CV_8UC3);        
+    }
+
     return true;
 }
 
@@ -128,7 +137,13 @@ int DGNodeOdometry::run()
     printf("Run dg_odometry...\n");
 
     ros::AsyncSpinner spinner(2);
-    spinner.start();    
+    spinner.start();
+
+    if(m_display_trajectory)
+    {
+        cv::namedWindow("odometry", 0);
+        cv::resizeWindow("odometry", m_traj_map.cols, m_traj_map.rows);
+    }
 
     ros::Rate loop(m_update_hz);
     m_prev_timestamp = ros::Time::now().toSec();
@@ -136,6 +151,11 @@ int DGNodeOdometry::run()
     {
         if (!runOnce(ros::Time::now().toSec())) break;
         loop.sleep();
+    }
+
+    if(m_display_trajectory)
+    {
+        cv::destroyAllWindows();
     }
 
     printf("End dg_odometry...\n");
@@ -147,8 +167,8 @@ int DGNodeOdometry::run()
 bool DGNodeOdometry::runOnce(double timestamp)
 {
     double wheelbase = 0.588;       // distance between left and right wheel
-    double wL = 1.0416826;      // compensation factor for left wheel
-    double wR = 1.0575224;      // compensation factor for right wheel
+    double wL = 1.0;                // compensation factor for left wheel
+    double wR = 1.0;                // compensation factor for right wheel
 
     double pulse_left, pulse_right;
     bool left_initialized, right_initialized;
