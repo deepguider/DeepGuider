@@ -185,7 +185,7 @@ bool DGNodeOdometry::runOnce(double timestamp)
     double dpR = (right_initialized) ? pulse_right - m_prev_pulse_right : 0;
 
     double dL = wL * dpL * 0.99 / 3800;
-    double dR = wR * dpR * 0.99 / 3809;
+    double dR = wR * dpR * 0.99 / 3800;
 
     double D = (dL + dR) / 2;
     double dtheta = (dR - dL) / wheelbase;
@@ -213,8 +213,8 @@ bool DGNodeOdometry::runOnce(double timestamp)
 
     if(m_print_trajectory)
     {
-        printf("odo:x=%.2lf, y=%.2lf, theta=%.1lf\n", m_pose.x, m_pose.y, RAD2DEG(m_pose.theta));
-        printf("    v=%.2lf, w=%.1lf\n", D/dt, RAD2DEG(dtheta/dt));
+        printf("odo:x=%.3lf, y=%.3lf, theta=%.2lf\n", m_pose.x, m_pose.y, RAD2DEG(m_pose.theta));
+        printf("    v=%.3lf, w=%.2lf\n", D/dt, RAD2DEG(dtheta/dt));
     }
 
     if(m_display_trajectory)

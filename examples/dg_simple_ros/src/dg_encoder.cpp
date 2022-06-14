@@ -70,7 +70,7 @@ void dg_encoder::generateSimulationData(double elapsed_total)
         double R = (2*D + baseline * th) / 2;
 
         left_count += L * 3800 / 0.99;
-        right_count += R * 3809 / 0.99;
+        right_count += R * 3800 / 0.99;
     }
 
     m_left_count = (left_count + 0.5);
