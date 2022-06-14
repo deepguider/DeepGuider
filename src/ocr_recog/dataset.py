@@ -13,7 +13,7 @@ from torch.utils.data import Dataset, ConcatDataset, Subset
 from torch._utils import _accumulate
 import torchvision.transforms as transforms
 
-save_dir = '/home_hongdo/sungeun.kim/checkpoints/ocr'
+save_dir = 'checkpoints/'
 
 class Batch_Balanced_Dataset(object):
 

@@ -4,14 +4,14 @@ import glob
 from ocr_recognizer import OCRRecognizer
 from tqdm import tqdm
 
-imagepath = 'demo_data'
+imagepath = 'demo_image'
 
 start = time.time()
 
 test = OCRRecognizer()
 test.initialize()
 
-imgs = glob.glob(os.path.join(imagepath, '*.jpg'))
+imgs = glob.glob(os.path.join(imagepath, '*.png'))
 imgs.sort()
 
 with open('pred_list.txt', 'w') as f:
