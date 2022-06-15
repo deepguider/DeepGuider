@@ -138,7 +138,7 @@ public:
                 else if (type == dg::DATA_GPS)
                 {
                     dg::LatLon gps_datum(vdata[1], vdata[2]);
-                    dg::Point2 gps_xy = toMetric(gps_datum);
+                    dg::Point2 gps_xy = toMetric(gps_datum) + gps_offset;
                     bool success = m_localizer->applyGPS(gps_xy, data_time, 1);
                     if (!success) fprintf(stderr, "applyGPS() was failed.\n");
                     if (show_gui && gui_gps_radius > 0) gui_painter->drawPoint(bg_image, gps_xy, gui_gps_radius, gui_gps_color);
@@ -277,7 +277,7 @@ public:
                     else if (type == dg::DATA_GPS)
                     {
                         dg::LatLon gps_datum(vdata[1], vdata[2]);
-                        dg::Point2 gps_xy = toMetric(gps_datum);
+                        dg::Point2 gps_xy = toMetric(gps_datum) + gps_offset;
                         bool success = m_localizer->applyGPS(gps_xy, data_time, 1);
                         if (!success) fprintf(stderr, "applyGPS() was failed.\n");
                         if (show_gui && gui_gps_radius > 0) gui_painter->drawPoint(bg_image, gps_xy, gui_gps_radius, gui_gps_color);
@@ -578,6 +578,7 @@ public:
 
     bool         m_dest_defined = false;
     dg::Point2   m_dest_xy;
+    dg::Point2   gps_offset = dg::Point2(0, 0);
 
     dg::MapPainter* gui_painter = nullptr;
     cv::Mat      gui_background;

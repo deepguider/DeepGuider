@@ -20,7 +20,7 @@ public:
     double      result_resize = 0;
 };
 
-int runModuleReal(int module_sel, bool use_saved_testset, const std::string& site, dg::DataLoader& data_loader, const std::string& rec_video_file = "")
+int runModuleReal(int module_sel, bool use_saved_testset, const std::string& site, dg::DataLoader& data_loader, const std::string& rec_video_file = "", const dg::Point2 gps_offset = dg::Point2(0,0))
 {
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
@@ -140,6 +140,7 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     runner.rec_video_name = rec_video_file;
     runner.m_view_offset = guiprop.map_view_offset;
     runner.m_view_size = guiprop.map_view_size;
+    runner.gps_offset = gps_offset;
     return runner.run(module_sel, use_saved_testset, data_loader);
 }
 
@@ -152,6 +153,8 @@ int runModule()
     bool use_novatel = false;
     bool enable_imu = false;
     bool use_saved_testset = true;
+    dg::Point2 gps_offset;
+    gps_offset = dg::Point2(0, 0);
 
     int module_sel = -1;
     //module_sel = DG_Intersection;
@@ -164,7 +167,7 @@ int runModule()
     int data_sel = 1;
     double start_time = 0;     // time skip (seconds)
     //start_time = 1360;     // time skip (seconds), testset 1, 우리은행
-    start_time = 970;// 1180;     // time skip (seconds), testset 2, 상가
+    start_time = 970; // 1180;     // time skip (seconds), testset 2, 상가
     //start_time = 1440;     // time skip (seconds), testset 2, 횡단보도
     //rec_video_file = "module_test.avi";
     std::vector<std::string> data_head[] = {
@@ -200,7 +203,7 @@ int runModule()
     }
     data_loader.setStartSkipTime(start_time);
 
-    return runModuleReal(module_sel, use_saved_testset, site, data_loader, rec_video_file);
+    return runModuleReal(module_sel, use_saved_testset, site, data_loader, rec_video_file, gps_offset);
 }
 
 int main()
