@@ -34,7 +34,7 @@ protected:
     double m_branchmap_search_radius = 100;     // Unit: [m]
     double m_projection_search_radius = 100;    // Unit: [m]
     double m_min_alignscore_gap = 20;           // Unit: [m]
-    double m_max_align_displacement = 2.0;      // Unit: [m]
+    double m_max_position_change = 2.0;         // Unit: [m]
     double m_length_align_weight = 0.5;
     double m_error_tolerance = 0.01;            // Unit: [m]
     bool m_enable_debugging_display = false;
@@ -54,7 +54,7 @@ public:
         CX_LOAD_PARAM_COUNT(fn, "branchmap_search_radius", m_branchmap_search_radius, n_read);
         CX_LOAD_PARAM_COUNT(fn, "projection_search_radius", m_projection_search_radius, n_read);
         CX_LOAD_PARAM_COUNT(fn, "min_alignscore_gap", m_min_alignscore_gap, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "max_align_displacement", m_max_align_displacement, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "m_max_position_change", m_max_position_change, n_read);
         CX_LOAD_PARAM_COUNT(fn, "length_align_weight", m_length_align_weight, n_read);
         CX_LOAD_PARAM_COUNT(fn, "error_tolerance", m_error_tolerance, n_read);
         CX_LOAD_PARAM_COUNT(fn, "enable_debugging_display", m_enable_debugging_display, n_read);
@@ -516,7 +516,7 @@ protected:
         for (int k = pose_idx1 + 1; k <= pose_idx2; k++)
         {
             double displacement = norm(pose_history[k] - pose_history[k - 1]);
-            if (displacement > m_max_align_displacement) displacement = m_max_align_displacement;
+            if (displacement > m_max_position_change) displacement = m_max_position_change;
             pose_len_total += displacement;
         }
 
@@ -544,7 +544,7 @@ protected:
         for (int k = pose_idx1 + 1; k <= pose_idx2; k++)
         {
             double displacement = norm(pose_history[k] - pose_history[k - 1]);
-            if (displacement > m_max_align_displacement) displacement = m_max_align_displacement;
+            if (displacement > m_max_position_change) displacement = m_max_position_change;
             pose_len_upto += displacement;
             double len_ratio_upto = pose_len_upto / pose_len_total;
             double target_path_len = path_len_total * len_ratio_upto;
