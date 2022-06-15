@@ -37,13 +37,17 @@ namespace dg
 		// configuable parameters
 		double m_poi_height = 3.8;			// Height of POI from ground plane, Unit: [m]
 		double m_poi_search_radius = 50;	// POI search range, Unit: [m]
-		double m_poi_match_thresh = 2.0;	// POI matching threshold
-		double m_best_to_second_match_ratio = 2;	// POI match ratio threshold (best_score/second_score > ratio threshod)
 		bool m_check_jungsung_type = true;	// distinguish bottom-side jungsung and right-side jungsung
 		bool m_fixed_template_match = true;	// use substring template match instead of Levenshtein distance
 		bool m_enable_false_filter = true;	// filter out detections detected under vanishing line
 	    bool m_enable_debugging_display = false;
-		int m_w = 2; // minimum string length
+
+		double m_poi_match_thresh = 2.0;			// POI matching threshold (ratio_score + length_score)
+		double m_best_to_second_match_ratio = 2;	// POI match ratio threshold (best_score/second_score > ratio threshod)
+		double m_poi_match_ratio = 0.5;				// mimimum ratio of matched part for korean poi
+		double m_poi_match_ratio_alphabet = 0.7;	// mimimum ratio of matched part for alphanumeric poi
+		int m_poi_match_length_normalizer = 2; 			// minimum matched string length for korean poi
+		int m_poi_match_length_normalizer_alphabet = 4;	// minimum matched string length for alphanumeric poi
 
         /** Read parameters from cv::FileNode - Inherited from cx::Algorithm */
         virtual int readParam(const cv::FileNode& fn)
@@ -116,7 +120,7 @@ namespace dg
 					if (it->ymax > m_vanishing_y) valid = false;								// ground POI
 					if (valid && (it->ymax - it->ymin > it->xmax - it->xmin)) valid = false;	// vertical POI
 					if (valid && it->label.length() <= 1) valid = false;						// 1-character POI
-					if (valid && skipAlphanumeric(it->label)) valid = false;					// alphanumeric POI
+					if (valid && isNumeric(it->label)) valid = false;					        // numeric POI
 					if (valid) valid_ocrs.push_back(*it);
 				}
 				if (valid_ocrs.empty()) return false;
@@ -152,9 +156,7 @@ namespace dg
 
 		bool applyPreprocessed(std::string recog_name, double xmin, double ymin, double xmax, double ymax, double conf, const dg::Timestamp data_time, dg::POI*& poi, dg::Polar2& relative, double& poi_confidence)
 		{
-			if (m_enable_false_filter && (ymax > m_vanishing_y || ymax - ymin > xmax - xmin || recog_name.length() <= 1)) return false;
-
-			if(skipAlphanumeric(recog_name)) return false; // skip the alphanumeric POI
+			if (m_enable_false_filter && (ymax > m_vanishing_y || ymax - ymin > xmax - xmin || recog_name.length() <= 1 || isNumeric(recog_name))) return false;
 
 			std::vector<OCRResult> ocrs;
 			OCRResult ocr;
@@ -216,18 +218,6 @@ namespace dg
 			}
 			return true;
 		}
-
-		bool skipAlphanumeric(std::string str)
-        {
-            for(int i = 0; i < str.length(); i++)
-            {
-				char alphabet = str[i];
-				if(('A' <= alphabet && alphabet <= 'Z' ) || ('a' <= alphabet && alphabet <= 'z' ) || ('0' <= alphabet && alphabet <= '9' ))
-					return true;
-			}
-
-            return false;
-        }
 
 	    void clear()
 		{
@@ -396,6 +386,28 @@ namespace dg
 			int i = (int)c;
 			return ((kor_begin <= i && i <= kor_end) || (jaum_begin <= i && i <= jaum_end) || (moum_begin <= i && i <= moum_end));
 		}
+
+		bool isAlphanumeric(std::string str)
+        {
+            for(int i = 0; i < str.length(); i++)
+            {
+				char c = str[i];
+				if(!('A' <= c && c <= 'Z' ) && !('a' <= c && c <= 'z' ) && !('0' <= c && c <= '9' )) return false;
+			}
+
+            return true;
+        }
+
+		bool isNumeric(std::string str)
+        {
+            for(int i = 0; i < str.length(); i++)
+            {
+				char c = str[i];
+				if(!('0' <= c && c <= '9' )) return false;
+			}
+
+            return true;
+        }
 
 		wchar_t compose(wchar_t chosung, wchar_t jungsung, wchar_t jongsung)
 		{
@@ -642,6 +654,7 @@ namespace dg
 				std::tuple<int, POI*, double, double> best;
 				std::tuple<int, POI*, double, double> second_best;
 
+				bool alphanumeric = isAlphanumeric(ocrs[i].label);
 				for(int j = 0; j < poi_names.size(); j++)
 				{
 					double leven_dist = 0.0;
@@ -651,9 +664,14 @@ namespace dg
 						leven_dist = levenshtein_jamo(poi_names[j], ocr_result);
 					else
 						leven_dist = levenshtein(poi_names[j], ocr_result);
-					double norm_score = 1.0 - (leven_dist / std::max({ocr_result.length(), poi_names[j].length()}));
-					double count_score = std::max({ocr_result.length(), poi_names[j].length()}) - leven_dist;
-					double match_score = norm_score + count_score/m_w;
+					
+					double matched_length = std::max({ocr_result.length(), poi_names[j].length()}) - leven_dist;
+					double matched_ratio1 = matched_length / ocr_result.length();
+					double matched_ratio2 = matched_length / poi_names[j].length();
+					double ratio_score = (matched_ratio1 + matched_ratio2) / 2;
+					int length_normalizer = (alphanumeric) ? m_poi_match_length_normalizer_alphabet : m_poi_match_length_normalizer;
+					double length_score = matched_length / length_normalizer;
+					double match_score = ratio_score + length_score;
 
 					if (match_score > best_score)
 					{
@@ -668,7 +686,8 @@ namespace dg
 						second_best = std::make_tuple(i, pois[j], leven_dist, match_score);
 					}
 
-					if(match_score >= m_poi_match_thresh)
+					double ratio_thr = (alphanumeric) ? m_poi_match_ratio_alphabet : m_poi_match_ratio;
+					if(match_score >= m_poi_match_thresh && matched_ratio1 >= ratio_thr)
 						candidates.push_back(std::make_tuple(i, pois[j], leven_dist, match_score));
 				}
 				if(candidates.size() > 0)
