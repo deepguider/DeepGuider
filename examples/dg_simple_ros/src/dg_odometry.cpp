@@ -167,8 +167,8 @@ int DGNodeOdometry::run()
 bool DGNodeOdometry::runOnce(double timestamp)
 {
     double wheelbase = 0.588;       // distance between left and right wheel
-    double wL = 1.0;                // compensation factor for left wheel
-    double wR = 1.0;                // compensation factor for right wheel
+    double wL = 0.9932548*0.98366*1.00330*0.99973;                // compensation factor for left wheel
+    double wR = 0.99849*0.98976*1.00078*1.00229;                // compensation factor for right wheel
 
     double pulse_left, pulse_right;
     bool left_initialized, right_initialized;
@@ -184,8 +184,8 @@ bool DGNodeOdometry::runOnce(double timestamp)
     double dpL = (left_initialized) ? pulse_left - m_prev_pulse_left : 0;
     double dpR = (right_initialized) ? pulse_right - m_prev_pulse_right : 0;
 
-    double dL = wL * dpL * 0.99 / 3800;
-    double dR = wR * dpR * 0.99 / 3800;
+    double dL = wL * dpL * 0.99 / 3523;
+    double dR = wR * dpR * 0.99 / 3461;
 
     double D = (dL + dR) / 2;
     double dtheta = (dR - dL) / wheelbase;
