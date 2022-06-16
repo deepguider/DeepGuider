@@ -20,6 +20,9 @@ namespace dg
         std::vector<cv::Rect2d> m_gps_dead_zones;
         Polar2 m_gps_offset;
         double m_gps_reverse_vel;
+        cv::Mat m_odometry_noise;
+        Pose2 m_odometry_prev_pose;
+        double m_odometry_prev_time;
         cv::Mat m_imu_compass_noise;
         double m_imu_compass_offset;
         double m_imu_compass_prev_angle;
@@ -55,6 +58,8 @@ namespace dg
             m_gps_noise = m_gps_noise_normal;
             m_gps_offset = Polar2(0, 0);
             m_gps_reverse_vel = 0;
+            m_odometry_noise = cv::Mat::eye(3, 3, CV_64F);
+            m_odometry_prev_time = -1;
             m_imu_compass_noise = (cv::Mat_<double>(1, 1) << cx::cvtDeg2Rad(1));
             m_imu_compass_offset = 0;
             m_imu_compass_prev_angle = 0;
@@ -152,6 +157,16 @@ namespace dg
             return true;
         }
 
+        virtual bool setParamOdometryNoise(double sigma_position, double sigma_theta_deg)
+        {
+            cv::AutoLock lock(m_mutex);
+            m_odometry_noise = cv::Mat::zeros(3, 3, CV_64F);
+            m_odometry_noise.at<double>(0, 0) = sigma_position * sigma_position;
+            m_odometry_noise.at<double>(1, 1) = sigma_position * sigma_position;
+            m_odometry_noise.at<double>(2, 2) = cx::cvtDeg2Rad(sigma_theta_deg) * cx::cvtDeg2Rad(sigma_theta_deg);
+            return true;
+        }
+
         virtual bool setParamIMUCompassNoise(double sigma_theta_deg, double offset = 0)
         {
             cv::AutoLock lock(m_mutex);
@@ -240,6 +255,17 @@ namespace dg
             return applyPosition(xy, time, confidence);
         }
 
+        virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)
+        {
+            Pose2 odometry_pose_prev = m_odometry_prev_pose;
+            double time_prev = m_odometry_prev_time;
+            m_odometry_prev_pose = odometry_pose;
+            m_odometry_prev_time = time;
+            if (time_prev < 0) return false;
+            m_observation_noise = m_odometry_noise;
+            return applyOdometry(odometry_pose, odometry_pose_prev, time, time_prev, confidence);
+        }
+
         virtual bool applyIMUCompass(double odometry_theta, Timestamp time = -1, double confidence = -1)
         {
             double odometry_theta_prev = m_imu_compass_prev_angle;
@@ -247,6 +273,7 @@ namespace dg
             m_imu_compass_prev_angle = odometry_theta;
             m_imu_compass_prev_time = time;
             if (time_prev < 0) return false;
+            m_observation_noise = m_imu_compass_noise;
             return applyOdometry(odometry_theta, odometry_theta_prev, time, time_prev, confidence);
         }
 

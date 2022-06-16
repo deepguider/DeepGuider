@@ -48,23 +48,26 @@ namespace dg
             /** GPS data (v1: utm x, v2: utm y) */
             OBS_GPS = 0,
 
+            /** Odometry data (v1: odometry x, v2: odometry y, v3: odometry theta) */
+            OBS_ODO = 1,
+
             /** IMU data (v1: odometry theta) */
-            OBS_IMU = 1,
+            OBS_IMU = 2,
 
             /** POI data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
-            OBS_POI = 2,
+            OBS_POI = 3,
 
             /** VPS data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
-            OBS_VPS = 3,
+            OBS_VPS = 4,
 
             /** Intersection classifier data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
-            OBS_IntersectCls = 4,
+            OBS_IntersectCls = 5,
 
             /** RoadLR data (v1 = 0: uncertain, v1 = 1: road is left, v1 = 2: road is right) */
-            OBS_RoadLR = 5,
+            OBS_RoadLR = 6,
 
             /** RoadTheta data (v1: theta) */
-            OBS_RoadTheta = 6
+            OBS_RoadTheta = 7
         };
 
         /**
@@ -97,6 +100,9 @@ namespace dg
 
         /** Constructor */
         ObsData(int _type, Point2 xy, Timestamp time, double conf) : type(_type), v1(xy.x), v2(xy.y), timestamp(time), confidence(conf) { v3 = v4 = 0; }
+
+        /** Constructor */
+        ObsData(int _type, Pose2 pose, Timestamp time, double conf) : type(_type), v1(pose.x), v2(pose.y), v3(pose.theta), timestamp(time), confidence(conf) { v4 = 0; }
 
         /** Constructor */
         ObsData(int _type, Point2 xy, Polar2 relative, Timestamp time, double conf) : type(_type), v1(xy.x), v2(xy.y), v3(relative.lin), v4(relative.ang), timestamp(time), confidence(conf) {}
@@ -216,6 +222,13 @@ namespace dg
             return false;
         }
 
+        virtual bool setParamOdometryNoise(double sigma_position, double sigma_theta_deg)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (m_ekf) return m_ekf->setParamOdometryNoise(sigma_position, sigma_theta_deg);
+            return false;
+        }
+
         virtual bool setParamIMUCompassNoise(double sigma_theta_deg, double offset = 0)
         {
             cv::AutoLock lock(m_mutex);
@@ -282,14 +295,19 @@ namespace dg
             cv::AutoLock lock(m_mutex);
             Point2 smoothed_xy = xy;
             if (m_enable_gps_smoothing) smoothed_xy = getSmoothedGPS(xy, time);
-            if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
-            {
-                if (!backtrackingEKF(time, ObsData(ObsData::OBS_GPS, smoothed_xy, time, confidence))) return false;
-                return applyPathLocalizer(m_ekf->getPose(), time);
-            }
-            else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
+            if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
             if (!m_ekf->applyGPS(smoothed_xy, time, confidence)) return false;
             saveObservation(ObsData::OBS_GPS, smoothed_xy, time, confidence);
+            saveEKFState(m_ekf, time);
+            return applyPathLocalizer(m_ekf->getPose(), time);
+        }
+
+        virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (m_pose_history.empty()) return false;
+            if (!m_ekf->applyOdometry(odometry_pose, time, confidence)) return false;
+            saveObservation(ObsData::OBS_ODO, odometry_pose, time, confidence);
             saveEKFState(m_ekf, time);
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
@@ -298,12 +316,6 @@ namespace dg
         {
             cv::AutoLock lock(m_mutex);
             if (m_pose_history.empty()) return false;
-            if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
-            {
-                if (!backtrackingEKF(time, ObsData(ObsData::OBS_IMU, odometry_theta, time, confidence))) return false;
-                return applyPathLocalizer(m_ekf->getPose(), time);
-            }
-            else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
             if (!m_ekf->applyIMUCompass(odometry_theta, time, confidence)) return false;
             saveObservation(ObsData::OBS_IMU, odometry_theta, time, confidence);
             saveEKFState(m_ekf, time);
@@ -527,6 +539,10 @@ namespace dg
             {
                 return m_ekf->applyGPS(Point2(obs.v1, obs.v2), obs.timestamp, obs.confidence);
             }
+            else if (obs.type == ObsData::OBS_ODO)
+            {
+                return m_ekf->applyOdometry(Pose2(obs.v1, obs.v2, obs.v3), obs.timestamp, obs.confidence);
+            }
             else if (obs.type == ObsData::OBS_IMU)
             {
                 return m_ekf->applyIMUCompass(obs.v1, obs.timestamp, obs.confidence);
@@ -562,6 +578,11 @@ namespace dg
         void saveObservation(int type, Point2 xy, Timestamp time, double conf)
         {
             m_observation_history.push_back(ObsData(type, xy, time, conf));
+        }
+
+        void saveObservation(int type, Pose2 pose, Timestamp time, double conf)
+        {
+            m_observation_history.push_back(ObsData(type, pose, time, conf));
         }
 
         void saveObservation(int type, Point2 xy, Polar2 lin_ang, Timestamp time, double conf)

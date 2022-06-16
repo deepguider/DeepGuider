@@ -387,6 +387,7 @@ bool DeepGuider::initialize(std::string config_file)
     if (!m_localizer.setParamMotionBounds(1, 10)) return false;     // max_linear_velocity(m/sec), max_angular_velocity(deg/sec)
     if (!m_localizer.setParamGPSNoise(10)) return false;            // position error(m)
     if (!m_localizer.setParamGPSOffset(1, 0)) return false;         // displacement(lin,ang) from robot origin
+    if (!m_localizer.setParamOdometryNoise(0.01, 1)) return false;  // position error(m), orientation error(deg)
     if (!m_localizer.setParamIMUCompassNoise(1, 0)) return false;   // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamPOINoise(5, 20)) return false;         // position error(m), orientation error(deg)
     if (!m_localizer.setParamVPSNoise(5, 20)) return false;         // position error(m), orientation error(deg)
@@ -752,7 +753,7 @@ void DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double or
 
 void DeepGuider::procOdometryData(double x, double y, double theta, dg::Timestamp ts)
 {
-
+    VVS_CHECK_TRUE(m_localizer.applyOdometry(Pose2(x,y,theta), ts));
 }
 
 void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)

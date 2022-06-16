@@ -81,6 +81,7 @@ protected:
     // A node handler
     ros::NodeHandle& nh_dg;
     double m_update_hz;
+    double m_timestamp_offset = -1;
 };
 
 DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
@@ -114,6 +115,7 @@ int DeepGuiderROS::readRosParam(const cv::FileNode& fn)
     // topic names configuration
     CX_LOAD_PARAM_COUNT(fn, "topic_cam", m_topic_cam, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_gps", m_topic_gps, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "topic_odo", m_topic_odo, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_dgps", m_topic_dgps, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_imu", m_topic_imu, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_rgbd_image", m_topic_rgbd_image, n_read);
@@ -328,6 +330,7 @@ void DeepGuiderROS::callbackRealsenseDepth(const sensor_msgs::CompressedImageCon
 // A callback function for subscribing GPS Asen
 void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
 {
+    double timestamp = ros::Time::now().toSec();
     if (fix->header.stamp == ros::Time(0)) return;
 
     if (fix->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) {
@@ -342,6 +345,8 @@ void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
     // apply & draw gps
     const dg::LatLon gps_datum(lat, lon);
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
+    double timestamp_offset = timestamp - gps_time;
+    if (timestamp_offset > 60) m_timestamp_offset = timestamp_offset;
     if (!m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
     m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_color);
 }
@@ -365,6 +370,27 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
     if (m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
     m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_novatel_color);
+}
+
+// A callback function for subscribing Odometry
+void DeepGuiderROS::callbackOdometry(const nav_msgs::Odometry::ConstPtr& msg)
+{
+    if (msg->header.stamp == ros::Time(0)) {
+        return;
+    }
+
+    nav_msgs::Odometry odo;
+    double x = msg->pose.pose.position.x;
+    double y = msg->pose.pose.position.y;
+    double theta = msg->pose.pose.orientation.z;
+    ROS_INFO_THROTTLE(1.0, "ODO: x=%.2lf, y=%.2lf, theta=%.1lf", x, y, theta);
+
+    dg::Timestamp odo_time = msg->header.stamp.toSec();
+    if (m_timestamp_offset>0) odo_time = odo_time - m_timestamp_offset;
+    if (m_enable_odometry)
+    {
+        procOdometryData(x, y, theta, odo_time);
+    }
 }
 
 // A callback function for subscribing IMU
@@ -391,26 +417,6 @@ void DeepGuiderROS::callbackIMU(const sensor_msgs::Imu::ConstPtr& msg)
     if (m_enable_imu)
     {
         procImuData(ori_w, ori_x, ori_y, ori_z, imu_time);
-    }
-}
-
-// A callback function for subscribing Odometry
-void DeepGuiderROS::callbackOdometry(const nav_msgs::Odometry::ConstPtr& msg)
-{
-    if (msg->header.stamp == ros::Time(0)) {
-        return;
-    }
-
-    nav_msgs::Odometry odo;
-    double x = msg->pose.pose.position.x;
-    double y = msg->pose.pose.position.y;
-    double theta = msg->pose.pose.orientation.z;
-    ROS_INFO_THROTTLE(1.0, "ODO: x=%.2lf, y=%.2lf, theta=%.1lf", x, y, theta);
-
-    const dg::Timestamp odo_time = msg->header.stamp.toSec();
-    if (m_enable_odometry)
-    {
-        procOdometryData(x, y, theta, odo_time);
     }
 }
 
