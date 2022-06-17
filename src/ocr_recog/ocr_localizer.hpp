@@ -42,7 +42,7 @@ namespace dg
 		bool m_enable_false_filter = true;	// filter out detections detected under vanishing line
 	    bool m_enable_debugging_display = false;
 
-		double m_poi_match_thresh = 2.0;			// POI matching threshold (ratio_score + length_score)
+		double m_poi_match_thresh = 2.5;			// POI matching threshold (ratio_score + length_score)
 		double m_best_to_second_match_ratio = 2;	// POI match ratio threshold (best_score/second_score > ratio threshod)
 		double m_poi_match_ratio = 0.5;				// mimimum ratio of matched part for korean poi
 		double m_poi_match_ratio_alphabet = 0.7;	// mimimum ratio of matched part for alphanumeric poi
@@ -660,7 +660,7 @@ namespace dg
 			for (int k = 0; k < (int)pois.size(); k++)
             {
 				std::wstring poi_name = pois[k]->name;
-				poi_name.erase(std::remove(poi_name.begin(), poi_name.end(), ' '), poi_name.end());
+				poi_name.erase(std::remove(poi_name.begin(), poi_name.end(), ' '), poi_name.end()); // remove spaces
 				poi_names.push_back(poi_name);
 			}
 
@@ -680,8 +680,12 @@ namespace dg
 				std::tuple<int, POI*, double, double> second_best;
 
 				bool alphanumeric = isAlphanumeric(ocrs[i].label);
+				size_t ocr_length = ocr_result.length();
 				for(int j = 0; j < poi_names.size(); j++)
 				{
+					// reject detections longer than poi name
+					if(poi_names[j].length() < ocr_length) continue;
+
 					double leven_dist = 0.0;
 					if(m_fixed_template_match)
 						leven_dist = fixed_levenshtein_jamo(poi_names[j], ocr_result);
@@ -690,13 +694,13 @@ namespace dg
 					else
 						leven_dist = levenshtein(poi_names[j], ocr_result);
 					
-					double matched_length = std::max({ocr_result.length(), poi_names[j].length()}) - leven_dist;
-					double matched_ratio1 = matched_length / ocr_result.length();
+					double matched_length = std::max({ocr_length, poi_names[j].length()}) - leven_dist;
+					double matched_ratio1 = matched_length / ocr_length;
 					double matched_ratio2 = matched_length / poi_names[j].length();
-					double ratio_score = (matched_ratio1 + matched_ratio2) / 2;
+					double ratio_score = matched_ratio2;
 					int length_normalizer = (alphanumeric) ? m_poi_match_length_normalizer_alphabet : m_poi_match_length_normalizer;
-					double length_score = matched_length / length_normalizer;
-					double match_score = ratio_score + length_score;
+					double length_score = (matched_length - (ocr_length - matched_length)) / length_normalizer;
+					double match_score = 2 * ratio_score + length_score;
 
 					if (match_score > best_score)
 					{
