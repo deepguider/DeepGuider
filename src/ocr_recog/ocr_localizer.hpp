@@ -136,6 +136,7 @@ namespace dg
 			if(pois_near.empty()) return false;
 
 			// match OCR detections with nearby POIs: <ocr_index, POI*, levenshtein_distance, match_score>
+			m_match_ocrs = ocrs;
 			m_matches = matchPOI(ocrs, pois_near);
 			if(m_matches.empty()) return false;
 
@@ -180,6 +181,7 @@ namespace dg
 			if(pois.empty()) return false;
 
 			// match OCR detections with nearby POIs: <ocr_index, poi_index, levenshtein_distance, match_score>
+			m_match_ocrs = ocrs;
 			m_matches = matchPOI(ocrs, pois);
 			if(m_matches.empty()) return false;
 
@@ -340,7 +342,7 @@ namespace dg
 			for (size_t k = 0; k < m_matches.size(); k++)
 			{
 				int ocr_idx = std::get<0>(m_matches[k]);
-				std::wstring ocr_name = converter.from_bytes(m_result[ocr_idx].label);
+				std::wstring ocr_name = converter.from_bytes(m_match_ocrs[ocr_idx].label);
 				std::wstring poi_name = std::get<1>(m_matches[k])->name;
 				double leven_dist = std::get<2>(m_matches[k]);
 				double match_score = std::get<3>(m_matches[k]);
@@ -351,7 +353,7 @@ namespace dg
 				for(size_t k = 0; k < m_candidates.size(); k++)
 				{
 					int ocr_idx = std::get<0>(m_candidates[k]);
-					std::wstring ocr_name = converter.from_bytes(m_result[ocr_idx].label);
+					std::wstring ocr_name = converter.from_bytes(m_match_ocrs[ocr_idx].label);
 					std::wstring poi_name = std::get<1>(m_candidates[k])->name;
 					double leven_dist = std::get<2>(m_candidates[k]);
 					double match_score = std::get<3>(m_candidates[k]);
@@ -365,7 +367,7 @@ namespace dg
 				std::string poi_name = converter.to_bytes(std::get<1>(m_matches[k])->name);
 				double leven_dist = std::get<2>(m_matches[k]);
 				double match_score = std::get<3>(m_matches[k]);
-				printf("\t\b*%s - %s: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
+				printf("\t\b*%s - %s: dist = %.2lf, score = %.2lf\n", m_match_ocrs[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
 			}
 			if(m_enable_debugging_display)
 			{
@@ -375,7 +377,7 @@ namespace dg
 					std::string poi_name = converter.to_bytes(std::get<1>(m_candidates[k])->name);
 					double leven_dist = std::get<2>(m_candidates[k]);
 					double match_score = std::get<3>(m_candidates[k]);
-					printf("\t>%s - %s: dist = %.2lf, score = %.2lf\n", m_result[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
+					printf("\t>%s - %s: dist = %.2lf, score = %.2lf\n", m_match_ocrs[ocr_idx].label.c_str(), poi_name.c_str(), leven_dist, match_score);
 				}
 			}
 #endif
@@ -402,6 +404,7 @@ namespace dg
 		std::map<std::pair<wchar_t, wchar_t>, double> weights;
 		std::vector<std::tuple<int, POI*, double, double>> m_matches;    // <ocr_index, POI*, levenshtein_distance, match_score>
 		std::vector<std::tuple<int, POI*, double, double>> m_candidates; // <ocr_index, POI*, levenshtein_distance, match_score>
+        std::vector<OCRResult> m_match_ocrs;
 
 		bool character_is_korean(wchar_t c)
 		{
