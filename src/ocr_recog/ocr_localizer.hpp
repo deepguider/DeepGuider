@@ -65,7 +65,7 @@ namespace dg
     public:
 		OCRLocalizer()
 		{
-			if (!loadHangeulWeights("dg_hangeul_weights.csv"))
+			if (!loadHangeulWeights("data/dg_hangeul_weights.csv"))
 			{
 				printf("[ocr_localizer] fail to load weights file\n");
 			}
