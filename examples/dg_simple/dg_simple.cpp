@@ -1345,15 +1345,32 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
 
 bool DeepGuider::procIntersectionClassifier()
 {
-    m_cam_mutex.lock();
-    dg::Timestamp capture_time = m_cam_capture_time;
-    if(m_cam_image.empty() || capture_time <= m_intersection.timestamp())
-    {
-        m_cam_mutex.unlock();
-        return false;
-    }
-    cv::Mat cam_image = m_cam_image.clone();
-    m_cam_mutex.unlock();
+	cv::Mat cam_image;
+	dg::Timestamp capture_time;
+	if (m_enable_360cam_crop)
+	{
+    	m_360cam_crop_mutex.lock();
+		capture_time = m_cam_capture_time;
+	    if(m_360cam_crop_image.empty() || capture_time <= m_intersection.timestamp())
+	    {
+	        m_360cam_crop_mutex.unlock();
+	        return false;
+	    }
+	    cam_image = m_360cam_crop_image.clone();
+    	m_360cam_crop_mutex.unlock();
+	}
+	else
+	{
+    	m_cam_mutex.lock();
+	    m_cam_capture_time;
+	    if(m_cam_image.empty() || capture_time <= m_intersection.timestamp())
+	    {
+	        m_cam_mutex.unlock();
+	        return false;
+	    }
+	    cam_image = m_cam_image.clone();
+	    m_cam_mutex.unlock();
+	}
 
     dg::Point2 xy;
     double confidence;
@@ -1526,15 +1543,32 @@ bool DeepGuider::procVps()
 
 bool DeepGuider::procRoadLR()
 {
-    m_cam_mutex.lock();
-    dg::Timestamp capture_time = m_cam_capture_time;
-    if (m_cam_image.empty() || capture_time <= m_roadlr.timestamp())
-    {
-        m_cam_mutex.unlock();
-        return false;
-    }
-    cv::Mat cam_image = m_cam_image.clone();
-    m_cam_mutex.unlock();
+	cv::Mat cam_image;
+	dg::Timestamp capture_time;
+	if (m_enable_360cam_crop)
+	{
+    	m_360cam_crop_mutex.lock();
+		capture_time = m_cam_capture_time;
+	    if(m_360cam_crop_image.empty() || capture_time <= m_roadlr.timestamp())
+	    {
+	        m_360cam_crop_mutex.unlock();
+	        return false;
+	    }
+	    cam_image = m_360cam_crop_image.clone();
+    	m_360cam_crop_mutex.unlock();
+	}
+	else
+	{
+    	m_cam_mutex.lock();
+	    m_cam_capture_time;
+	    if(m_cam_image.empty() || capture_time <= m_roadlr.timestamp())
+	    {
+	        m_cam_mutex.unlock();
+	        return false;
+	    }
+	    cam_image = m_cam_image.clone();
+	    m_cam_mutex.unlock();
+	}
 
     int lr_pose;
     double lr_confidence;

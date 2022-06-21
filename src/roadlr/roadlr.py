@@ -63,8 +63,21 @@ class roadlr_recognizer:  # pose recognition
 
         return 1  # Returning non-zero value means success
 
+    def crop_image(self, img, size=3):
+        h,w,c = img.shape
+        h1 = int(h/size)
+        w1 = int(w/size)
+        imgs = []
+        for i in range(size):
+            crop = img[:, i*w1:(i+1)*w1, :] 
+            imgs.append(crop)
+        return imgs  # list of cropped image
+
     def apply(self, img_cv2, ts=0.0):
-        pred, conf = self._apply(img_cv2)
+        img = self.crop_image(img_cv2)[1]  # frontal
+        #cv2.imshow("input", img_cv2)
+        #cv2.imshow("crop", img)
+        pred, conf = self._apply(img)
         return pred, np.max(conf)
 
     def _apply(self, img_cv2):  # for single test image
