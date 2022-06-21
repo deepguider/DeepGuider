@@ -5,6 +5,7 @@
 
 ## Git clone sensor ros file
 git clone https://github.com/deepguider/dg_cart_ros.git src/dg_cart_ros
+cd src/dg_cart_ros;git pull;cd ../../
 
 # symbolic link for door detect weight file
 cd src/dg_cart_ros/src/door_detect
