@@ -31,6 +31,8 @@ protected:
     int readRosParam(const cv::FileNode& fn);
 
     // Topic names
+    std::string m_topic_360cam;
+    std::string m_topic_360cam_crop;
     std::string m_topic_cam;
     std::string m_topic_gps;
     std::string m_topic_dgps;
@@ -40,6 +42,8 @@ protected:
     std::string m_topic_rgbd_depth;
 
     // Topic subscribers (sensor data)
+    ros::Subscriber sub_image_360cam;
+    ros::Subscriber sub_image_360cam_crop;
     ros::Subscriber sub_image_webcam;
     ros::Subscriber sub_image_realsense_image;
     ros::Subscriber sub_image_realsense_depth;
@@ -48,6 +52,8 @@ protected:
     ros::Subscriber sub_imu_xsense;
     ros::Subscriber sub_odometry;
     ros::Subscriber sub_robot_status;
+    void callbackThetaZ1360Image(const sensor_msgs::Image::ConstPtr& msg);
+    void callbackThetaZ1360Crop(const sensor_msgs::Image::ConstPtr& msg);
     void callbackImage(const sensor_msgs::Image::ConstPtr& msg);
     void callbackImageCompressed(const sensor_msgs::CompressedImageConstPtr& msg);
     void callbackRealsenseImage(const sensor_msgs::CompressedImageConstPtr& msg);
@@ -113,6 +119,8 @@ int DeepGuiderROS::readRosParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "ros_update_hz", m_update_hz, n_read);
 
     // topic names configuration
+    CX_LOAD_PARAM_COUNT(fn, "topic_360cam", m_topic_360cam, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "topic_360cam_crop", m_topic_360cam_crop, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_cam", m_topic_cam, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_gps", m_topic_gps, n_read);
     CX_LOAD_PARAM_COUNT(fn, "topic_odo", m_topic_odo, n_read);
@@ -147,6 +155,8 @@ bool DeepGuiderROS::initialize(std::string config_file)
     if(!ok) return false;
 
     // Initialize sensor subscribers
+    if(!m_topic_360cam.empty()) sub_image_360cam = nh_dg.subscribe(m_topic_360cam, 1, &DeepGuiderROS::callbackThetaZ1360Image, this);
+    if(!m_topic_360cam_crop.empty()) sub_image_360cam_crop = nh_dg.subscribe(m_topic_360cam_crop, 1, &DeepGuiderROS::callbackThetaZ1360Crop, this);
     if(!m_topic_cam.empty()) sub_image_webcam = nh_dg.subscribe(m_topic_cam, 1, &DeepGuiderROS::callbackImageCompressed, this);
     if(!m_topic_gps.empty()) sub_gps_asen = nh_dg.subscribe(m_topic_gps, 1, &DeepGuiderROS::callbackGPSAsen, this);
     if(!m_topic_dgps.empty()) sub_gps_novatel = nh_dg.subscribe(m_topic_dgps, 1, &DeepGuiderROS::callbackGPSNovatel, this);
@@ -271,6 +281,47 @@ void DeepGuiderROS::callbackImage(const sensor_msgs::Image::ConstPtr& msg)
     catch (cv_bridge::Exception& e)
     {
         ROS_ERROR("cv_bridge exception @ callbackImage(): %s", e.what());
+        return;
+    }
+}
+
+// A callback function for subscribing a RicohThetaZ1 360 image
+void DeepGuiderROS::callbackThetaZ1360Image(const sensor_msgs::Image::ConstPtr& msg)
+{
+    ROS_INFO_THROTTLE(1.0, "ThetaZ1 360 RGB image (timestamp: %f [sec]).", msg->header.stamp.toSec());
+    try
+    {
+        m_360cam_mutex.lock();
+    	cv_bridge::CvImagePtr image_ptr;
+        image_ptr = cv_bridge::toCvCopy(msg);
+		m_360cam_image = image_ptr->image.clone();
+		//cv::cvtColor(image_ptr->image, m_360cam_image, cv::COLOR_RGB2BGR);
+        m_360cam_capture_time = msg->header.stamp.toSec();
+        m_360cam_mutex.unlock();
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception @ callbackThetaZ1360Image(): %s", e.what());
+        return;
+    }
+}
+
+// A callback function for subscribing a RicohThetaZ1 360 image
+void DeepGuiderROS::callbackThetaZ1360Crop(const sensor_msgs::Image::ConstPtr& msg)
+{
+    ROS_INFO_THROTTLE(1.0, "ThetaZ1 360 Crop image (timestamp: %f [sec]).", msg->header.stamp.toSec());
+    try
+    {
+        m_360cam_crop_mutex.lock();
+    	cv_bridge::CvImagePtr image_ptr;
+        image_ptr = cv_bridge::toCvCopy(msg);
+		m_360cam_crop_image = image_ptr->image.clone();
+		//cv::cvtColor(image_ptr->image, m_360cam_crop_image, cv::COLOR_RGB2BGR);
+        m_360cam_crop_mutex.unlock();
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception @ callbackThetaZ1360Crop(): %s", e.what());
         return;
     }
 }

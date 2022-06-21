@@ -1,6 +1,8 @@
 %YAML:1.0
 ---
 ## Activate/deactivate submodules
+enable_360cam: 0
+enable_360cam_crop: 0
 enable_intersection: 0
 enable_ocr: 0
 enable_vps: 0

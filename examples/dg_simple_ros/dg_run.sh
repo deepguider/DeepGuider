@@ -16,6 +16,13 @@ if [ ! -n "${pid}" ];then  # If process is not running.
     sleep 2s    # wait until roscore is ready
 fi
 
+## Run theta360z1 crop publish
+pid=`pgrep -f "python2 crop360cam_python27.py"`
+if [ -n "${pid}" ];then  # If process is running.
+    kill -9 ${pid}
+fi
+gnome-terminal --tab --title="theta360z1_crop_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/theta360z1/publish && python2 crop360cam_python27.py'
+
 ## Stop rosbag play
 pid=`pgrep -f rosbag`
 if [ -n "${pid}" ];then  # If process is running.
@@ -27,7 +34,6 @@ pid=`pgrep -f dg_simple_ros`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
-
 
 CWD=`pwd`
 LIBDIR="devel/lib/dg_simple_ros"

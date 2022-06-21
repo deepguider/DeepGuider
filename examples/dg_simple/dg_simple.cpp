@@ -25,6 +25,8 @@ class DeepGuider : public SharedInterface, public cx::Algorithm
 {
 protected:
     // configuable parameters
+    int m_enable_360cam = 0;
+    int m_enable_360cam_crop = 0;
     int m_enable_intersection = 0;
     int m_enable_ocr = 0;
     int m_enable_vps = 0;
@@ -185,6 +187,12 @@ protected:
     cv::Mat m_cam_image;
     dg::Timestamp m_cam_capture_time;
 
+    cv::Mutex m_360cam_mutex;
+    cv::Mutex m_360cam_crop_mutex;
+    cv::Mat m_360cam_image;
+    cv::Mat m_360cam_crop_image;
+    dg::Timestamp m_360cam_capture_time;
+
     cv::Mutex m_vps_mutex;
     cv::Mat m_vps_image;            // top-1 matched streetview image
 	dg::ID m_vps_id;
@@ -247,6 +255,8 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     int n_read = cx::Algorithm::readParam(fn);
 
     // Read Activate/deactivate Options
+    CX_LOAD_PARAM_COUNT(fn, "enable_360cam", m_enable_360cam, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_360cam_crop", m_enable_360cam_crop, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_intersection", m_enable_intersection, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_ocr", m_enable_ocr, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_vps", m_enable_vps, n_read);
@@ -868,7 +878,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_painter.drawPath(image, &m_map, &path, view_offset, view_zoom);
     }
 
-    // draw cam image on the GUI map
+    // draw cam image on the GUI map (image is a map Mat)
     cv::Mat video_image;
     cv::Point video_offset(m_video_win_margin, image.rows - m_video_win_margin - m_video_win_height);
     double video_resize_scale = (double)m_video_win_height / m_cam_image.rows;
@@ -878,6 +888,43 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::Rect win_rect = cv::Rect(video_offset, video_image.size()) & image_rc;
     video_image.copyTo(image(win_rect));
     cv::Rect video_rect = win_rect;
+
+    // draw 360cam image
+    if (m_enable_360cam)
+    {
+        cv::Mat result_image;
+        m_360cam_mutex.lock();
+        if(!m_360cam_image.empty())
+        {
+            cv::resize(m_360cam_image, result_image, cv::Size((int)(win_rect.height * 0.9), win_rect.height));
+        }
+        m_360cam_mutex.unlock();
+
+        if (!result_image.empty())
+        {
+            win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
+            if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
+        }
+    }
+
+    // draw 360cam_crop image
+    if (m_enable_360cam_crop)
+    {
+        cv::Mat result_image;
+        m_360cam_crop_mutex.lock();
+        if(!m_360cam_crop_image.empty())
+        {
+            cv::resize(m_360cam_crop_image, result_image, cv::Size((int)(win_rect.height * 0.9), win_rect.height));
+        }
+        m_360cam_crop_mutex.unlock();
+
+        if (!result_image.empty())
+        {
+            win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
+            if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
+        }
+    }
+
 
     // draw intersection result
     if (m_enable_intersection)

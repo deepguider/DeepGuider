@@ -23,21 +23,21 @@ pid=`pgrep -f door_detect_rospublisher`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
-gnome-terminal --tab --title="door_detect" -- bash -c 'source ~/.virtualenvs/dg_venv3.6/bin/activate && cd ~/catkin_ws/src/dg_cart_ros/src/door_detect && python door_detect_rospublisher.py'
+gnome-terminal --tab --title="door_detect" -- bash -c 'source ~/.virtualenvs/dg_venv3.6/bin/activate && cd ~/catkin_ws/src/dg_cart_ros/src/door_detect && python2 door_detect_rospublisher.py'
 
 ## Run theta360z1 publish
 pid=`pgrep -f "python2 main_ros_python27.py"`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
-gnome-terminal --tab --title="theta360z1_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/theta360z1/publish && python main_ros_python27.py --fps 2 --mode ros'
+gnome-terminal --tab --title="theta360z1_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/theta360z1/publish && python2 main_ros_python27.py --fps 2 --mode ros'
 
 # Run andro2linux_gps publish
 pid=`pgrep -f andro2linux_gps_rospublisher`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
-gnome-terminal --tab --title="andro2linux_gps_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/andro2linux_gps/publish && python andro2linux_gps_rospublisher.py'
+gnome-terminal --tab --title="andro2linux_gps_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/andro2linux_gps/publish && python2 andro2linux_gps_rospublisher.py'
 
 
 ## odometry USBserial

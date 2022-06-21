@@ -1,6 +1,8 @@
 %YAML:1.0
 ---
 ## Activate/deactivate submodules
+enable_360cam: 0
+enable_360cam_crop: 0
 enable_intersection: 0
 enable_ocr: 0    # 0: disable, 1: run as internal module, 2: run as external ros node 
 enable_vps: 0    # 0: disable, 1: run as internal module, 2: run as external ros node
@@ -47,6 +49,8 @@ odometry_debug_window: 0
 
 ## Topic Names Set
 ETRI_CART_VER2_ANDROIDGPS:
+  topic_360cam: "/theta360z1_raw"
+  topic_360cam_crop: "/theta360z1_crop"
   topic_cam: "/uvc_camera/image_raw/compressed"
   topic_gps: "/andro2linux_gps"
   topic_odo: "/dg_odometry/pose"
@@ -56,6 +60,8 @@ ETRI_CART_VER2_ANDROIDGPS:
   #topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
 
 ETRI_CART_VER2:
+  topic_360cam: "/theta360z1_raw"
+  topic_360cam_crop: "/theta360z1_crop"
   topic_cam: "/uvc_camera/image_raw/compressed"
   topic_gps: "/ascen_gps/fix"
   topic_odo: "/dg_odometry/pose"
@@ -65,6 +71,8 @@ ETRI_CART_VER2:
   #topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
 
 ETRI_CART_VER1:
+  topic_360cam: "/theta360z1_raw"
+  topic_360cam_crop: "/theta360z1_crop"
   topic_cam: "/uvc_image_raw/compressed"
   topic_gps: "/ascen_fix"
   #topic_dgps: "/novatel_fix"
@@ -73,6 +81,8 @@ ETRI_CART_VER1:
   #topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
 
 KETI_ROBOT:
+  topic_360cam: "/theta360z1_raw"
+  topic_360cam_crop: "/theta360z1_crop"
   topic_cam: "/usb_cam_1/image_raw/compressed"
   topic_gps: "/fix"
   #topic_dgps: ""
