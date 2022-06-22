@@ -236,7 +236,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     publishDGStatus();
 
     // process path generation
-    if(m_dest_defined && m_path_generation_pended && m_localizer.isPoseStabilized())
+    if(m_dest_defined && m_path_generation_pended && m_localizer.isPoseInitialized())
     {
         if(updateDeepGuiderPath(getPose(), m_dest)) m_path_generation_pended = false;        
     }
@@ -244,7 +244,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     // draw GUI display
     cv::Mat gui_image;
     dg::Pose2 px = m_painter.cvtValue2Pixel(getPose());
-    if (m_gui_auto_scroll && m_localizer.isPoseStabilized()) m_viewport.centerizeViewportTo(px);
+    if (m_gui_auto_scroll && m_localizer.isPoseInitialized()) m_viewport.centerizeViewportTo(px);
 
     m_viewport.getViewportImage(gui_image);
     drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());

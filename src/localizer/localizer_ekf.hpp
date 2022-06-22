@@ -42,7 +42,9 @@ namespace dg
         Polar2 m_sensor_offset;
 
         // Internal variables
-        bool m_pose_initialized;
+        std::vector<Point2> m_initial_xy_history;       // initial xy history is used to check if pose is stabilized
+        bool m_pose_initialized;        
+        bool m_pose_stabilized;
         double m_time_last_update;
 
     public:
@@ -80,6 +82,7 @@ namespace dg
 
             // Internal variables
             m_pose_initialized = false;
+            m_pose_stabilized = false;
             m_time_last_update = -1;
 
             initialize(cv::Mat::zeros(5, 1, CV_64F), cv::Mat::eye(5, 5, CV_64F));
@@ -119,7 +122,6 @@ namespace dg
             m_time_last_update = time;
             m_imu_compass_prev_angle = imu_angle;
             m_imu_compass_prev_time = imu_time;
-            m_pose_initialized = true;
             return true;
         }
 
@@ -299,8 +301,9 @@ namespace dg
                 m_sensor_offset = m_camera_offset;
                 return applyLocClue(clue_xy, relative, time, confidence);
             }
-
+            
             // robot pose estimated from relative pose
+            if(!isPoseStabilized()) return false;
             Pose2 pose = getPose();
             double poi_theta = pose.theta + relative.ang;
             double rx = clue_xy.x - relative.lin * cos(poi_theta);
@@ -337,6 +340,7 @@ namespace dg
             }
 
             // robot pose estimated from relative pose
+            if(!isPoseStabilized()) return false;
             Pose2 pose = getPose();
             double poi_theta = pose.theta + relative.ang;
             double rx = clue_xy.x - relative.lin * cos(poi_theta);
@@ -388,6 +392,7 @@ namespace dg
             if (reset_cov) m_state_cov = cv::Mat::eye(5, 5, m_state_vec.type());
             if (time >= 0) m_time_last_update = time;
             m_pose_initialized = true;
+            m_pose_stabilized = true;
         }
 
         virtual Pose2 getPose(Timestamp* timestamp = nullptr) const
@@ -491,6 +496,7 @@ namespace dg
                 m_state_vec.at<double>(2) = cx::trimRad(pose.theta);
                 m_time_last_update = time;
                 m_pose_initialized = true;
+                m_pose_stabilized = true;
                 return true;
             }
 
@@ -519,8 +525,22 @@ namespace dg
             {
                 m_state_vec.at<double>(0) = xy.x;
                 m_state_vec.at<double>(1) = xy.y;
+                m_initial_xy_history.push_back(xy);
                 m_time_last_update = time;
                 m_pose_initialized = true;
+                return true;
+            }
+            if (!m_pose_stabilized)
+            {
+                m_state_vec.at<double>(0) = xy.x;
+                m_state_vec.at<double>(1) = xy.y;
+                m_initial_xy_history.push_back(xy);
+                m_state_vec.at<double>(2) = atan2(xy.y - m_initial_xy_history[0].y, xy.x - m_initial_xy_history[0].x);
+                m_time_last_update = time;
+                if (m_initial_xy_history.size()>=5 && norm(xy - m_initial_xy_history[0]) > 0.5)
+                {
+                    m_pose_stabilized = true;
+                }
                 return true;
             }
 
@@ -634,6 +654,16 @@ namespace dg
                     if (!applyLocClue(clue_xy[i], obs[i], time)) return false;
             }
             return true;
+        }
+
+        bool isPoseInitialized()
+        {
+            return m_pose_initialized;            
+        }
+
+        bool isPoseStabilized()
+        {
+            return m_pose_stabilized;            
         }
 
     protected:
