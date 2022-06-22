@@ -334,6 +334,7 @@ class relativePose:
         self.kps1 = []
         self.kps2 = []
         self.ransac_mask = []
+        self.good_matches = []
         if (self.img1 is not None) and (self.img2 is not None):
             #self.F, self.mask, self.pts1, self.pts2, self.kps1, self.kps2 = self.estimate_fundamental_matrix(self.img0, self.img1)
             self.pts1, self.pts2, self.kps1, self.kps2 = self.detect_matching_points(self.img1, self.img2, check_ratio=self.check_ratio, check_roi=self.check_roi)
@@ -453,7 +454,6 @@ class relativePose:
         return pts1, pts2, kps1, kps2
 
     def get_very_good_matches(self):
-        good_matches = self.good_matches
         mask = self.ransac_mask
         very_good = []
         for i,m in enumerate(self.good_matches):
@@ -601,38 +601,38 @@ def run_kitti():
     camera_matrix_1 = data.calib.K_cam0
     camera_matrix_2 = data.calib.K_cam0
     
-    self = relativePose()
+    mod_rPose = relativePose()
     img_count = 0
 
-    self.display_init_pose()
+    mod_rPose.display_init_pose()
     for cam0_image in data.cam0:
         img1 = np.asarray(cam0_image)  # Get current image
         print(img_count)
         img_count+=1
         if True:  # no tracking
-            self.set_camera_matrix_1(camera_matrix_1)
-            self.set_camera_matrix_2(camera_matrix_1)
+            mod_rPose.set_camera_matrix_1(camera_matrix_1)
+            mod_rPose.set_camera_matrix_2(camera_matrix_1)
             if len(img0) == 0:
                 img0 = copy.deepcopy(img1)  # Update img0 with new one, img1
                 continue
     
-            R, t = self.get_relativePose(img0, img1)
-            self.display_update_pose(R, t)
+            R, t = mod_rPose.get_relativePose(img0, img1)
+            mod_rPose.display_update_pose(R, t)
             #print(R)
             #print(t)
     
-            img = cv2.drawKeypoints(img1, self.kps2, None)
+            img = cv2.drawKeypoints(img1, mod_rPose.kps2, None)
             cv2.imshow('feature', img)
             cv2.waitKey(1)
         
             img1 = copy.deepcopy(img1)  # Update img0 with new one, img1
         else:  # with tracking
-            self.set_camera_matrix_1(camera_matrix_1)
-            self.set_camera_matrix_2(camera_matrix_1)
-            R, t = self.visual_odometry(img1)
-            self.display_update_pose(R, t, True)
+            mod_rPose.set_camera_matrix_1(camera_matrix_1)
+            mod_rPose.set_camera_matrix_2(camera_matrix_1)
+            R, t = mod_rPose.visual_odometry(img1)
+            mod_rPose.display_update_pose(R, t, True)
 
-            img = cv2.drawKeypoints(img1, self.keypoint0, None)
+            img = cv2.drawKeypoints(img1, mod_rPose.keypoint0, None)
             cv2.imshow('feature', img)
             cv2.waitKey(1)
 

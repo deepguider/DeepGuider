@@ -47,6 +47,8 @@ from custom_image_server import WholeDatasetFromStruct
 
 from ipdb import set_trace as bp
 
+USE_LOCAL_DB = "0.0.0.0"
+
 def makedir(fdir):
     if not os.path.exists(fdir):
         os.makedirs(fdir)
@@ -84,6 +86,9 @@ class vps:
         self.use_custom_dataset = False
         self.is_custom_dataset_valid = False
         self.custom_dataset_abs_path = ""
+
+        ## Do not connect server. Use local db image in data_vps/netvlad_etri_datasets/dbImg/StreetView/*.jpg without server download, without flush.
+        self.use_local_db = False
 
         ## Relative Pose parameter
         self.use_same_camera_model = False  # When same camera model is used for db and q. This affects relativePose()
@@ -485,7 +490,11 @@ class vps:
                 vps_imgID = [np.int(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
                 vps_imgConf = [np.float(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
                 self.pred_utmDb = [-1.0, -1.0]  # utm_x, utm_y
-                if pred_confidence.squeeze() > 0.0:  # Check that network was initialized well.
+                if self.K > 1:
+                    pred_confidence0 = pred_confidence.squeeze()[0]
+                else:
+                    pred_confidence0 = pred_confidence.squeeze()
+                if pred_confidence0 > 0.0:  # Check that network was initialized well.
                     self.vps_IDandConf = [vps_imgID, vps_imgConf]
                     if (self.use_custom_dataset == True) and (self.is_custom_dataset_valid == True):
                         pred_utmDb = self.custom_dataset.db_name2utm(vps_imgID[i])
@@ -677,13 +686,18 @@ class vps:
             self.flush_db_dir()  # Remove downloaded roadview jpg files. getVpsResult() shoud be called before this.
         return [IDs, Confs, custom_sv_lat, custom_sv_lon, pan, t_scaled, self.custom_dataset_abs_path]
 
-    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr_port="127.0.0.1:10000", load_dbfeat=0.0, save_dbfeat=0.0, use_custom_image_server=0.0):
+    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr_port="0.0.0.0:10000", load_dbfeat=0.0, save_dbfeat=0.0, use_custom_image_server=0.0):
         '''
             It seems that the number of input parameters should not exceed 10.
             #print("image[0] = {0}, K = {1}, gps = lat = {2}, gps lon = {3}, gps acc. = {4}\nts = {5}, ip = {6}, port = {7}, load = {8}, save = {9}, custom = {10}".format(image[0][0], K , gps_lat, gps_lon, gps_accuracy, timestamp, ipaddr, port, load_dbfeat, save_dbfeat, use_custom_image_server))
         '''
         ipaddr = ipaddr_port.split(":")[0]
         port   = ipaddr_port.split(":")[1]
+
+        if ipaddr == USE_LOCAL_DB:
+            self.use_local_db = True
+        else:
+            self.use_local_db = False
 
         if use_custom_image_server > 0:
             self.use_custom_dataset = True
@@ -755,7 +769,7 @@ class vps:
         elif opt.dataset.lower() == 'deepguider':
             init_db_q_dir()
             from netvlad import etri_dbloader as dataset
-            if self.load_dbfeat == True:
+            if (self.load_dbfeat == True) or (self.use_local_db==True) :
                     print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
             else:
                 ## Get DB images from streetview image server            
@@ -978,15 +992,18 @@ class vps:
         lat,lon,degree2north = -1,-1,-1
         if type(imgID) is not str:
             imgID = imgID[0]
-        #'data_vps/netvlad_etri_datasets/poses.txt'
-        fname = os.path.join(self.dataset_root_dir,'poses.txt')
-        with open(fname, 'r') as searchfile:
-            for line in searchfile:
-                if imgID in line:
-                    sline = line.split('\n')[0].split(' ')
-                    lat = sline[1]
-                    lon = sline[2]
-                    degree2north = sline[3]
+        try:
+            #'data_vps/netvlad_etri_datasets/poses.txt'
+            fname = os.path.join(self.dataset_root_dir,'poses.txt')
+            with open(fname, 'r') as searchfile:
+                for line in searchfile:
+                    if imgID in line:
+                        sline = line.split('\n')[0].split(' ')
+                        lat = sline[1]
+                        lon = sline[2]
+                        degree2north = sline[3]
+        except:
+            lat,lon,degree2north = -1, -1, -1
         return lat,lon,degree2north
 
     def get_Img_pairs(self):
@@ -1016,11 +1033,11 @@ def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
     init_db_q_dir()
     from netvlad import etri_dbloader as dataset
     from PIL import Image
-    #streetview_server_ipaddr = "localhost"
-    streetview_server_ipaddr = "extract.feature.local.db"  # Instead of downloading db, local saved image file is used. For doing it, wrong ip address is used.
-    ## 10000:ETRI, 10001:COEX, 10002:Bucheon, 10003:Indoor
-    streetview_server_port = "10003";gps_lat, gps_lon = 36.380018, 127.368114
-    #streetview_server_port = "10000"; gps_lat, gps_lon = 36.3845257,127.3768796
+    ## port, 10000:ETRI, 10001:COEX, 10002:Bucheon, 10003:Indoor
+    ipaddr_port = USE_LOCAL_DB+":10001"  # 
+
+    gps_lat, gps_lon = 36.380018, 127.368114
+    #gps_lat, gps_lon = 36.3845257,127.3768796
 
     #qFlist = dataset.Generate_Flist('/home/ccsmm/Naverlabs/query_etri_cart/images_2019_11_15_12_45_11',".jpg")
     qFlist = dataset.Generate_Flist("data_vps/netvlad_etri_datasets/qImg/999_newquery",".jpg")
@@ -1054,9 +1071,9 @@ def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
             continue
         qimg = cv2.resize(qimg, (640,480))
         st = time.time()
+
         vps_IDandConf = mod_vps.apply(qimg, K=3, gps_lat=gps_lat, gps_lon=gps_lon, gps_accuracy=0.0,
-                timestamp=1.0, ipaddr=streetview_server_ipaddr, port=streetview_server_port,
-                load_dbfeat=load_dbfeat, save_dbfeat=save_dbfeat) # k=3 for knn
+                timestamp=1.0, ipaddr_port=ipaddr_port, load_dbfeat=load_dbfeat, save_dbfeat=save_dbfeat, use_custom_image_server=0.0) # k=3 for knn
         print('vps_IDandConf : {}\n{} sec. elapsed.'.format(vps_IDandConf, time.time() - st))
 
 def save_prebuild_dbfeat():
@@ -1066,5 +1083,11 @@ def load_prebuild_dbfeat():
     run_prebuilt_dbfeat(load_dbfeat=1, save_dbfeat=0)
 
 if __name__ == "__main__":
+    '''
+    To make prebuild_dbfeat and to use it
+    1) Before run this, copy or ln database jpg files into db_dir = "data_vps/netvlad_etri_datasets/dbImg/StreetView"
+       ex)$ln -sf /dg_bin/data_vps/dataset/ImageRetrievalDB/custom_dataset_seoul_dbRobot_qRobot_220418/rosImg/_2022-04-18-14-08-03/uvc_image/* data_vps/netvlad_etri_datasets/dbImg/StreetView
+    2) copy _2022-04-18-14-08-03/uvc_image/poses_latlon_robot.txt data_vps/netvlad_etri_datasets/poses.txt
+    '''
     #save_prebuild_dbfeat()
     load_prebuild_dbfeat()

@@ -191,13 +191,21 @@ class WholeDatasetFromStruct():
             ## Flush directory befor downloading jpg images.
             self.flush_db_dir()
             db_paths = self.db_idx2FullPath(db_idx)
-            srcs = ''
+            srcs = ""
+            link_cnt = 0
+            max_single_link_cnt = 200  # max num of ln -sf files : 548
             for f in db_paths:
                 '''
                     cp ./netvlad_v100_datasets_dg/././qImg/201007_seoul/000125.jpg /mnt/ramdisk/.vps_dataset/dbImg/StreetView/
                 '''
                 srcs = "{} {}".format(srcs, os.path.join(self.curr_path, f))
-            os.system("ln -sf {} {}/.".format(srcs, outdir))
+                link_cnt += 1
+                if link_cnt >= max_single_link_cnt:
+                    os.system("ln -sf {} {}/.".format(srcs, outdir))
+                    link_cnt = 0
+                    srcs = ""
+            if len(srcs) > 0 :
+                os.system("ln -sf {} {}/.".format(srcs, outdir))
             return 0
         else:
             return -1
