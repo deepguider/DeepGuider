@@ -87,6 +87,8 @@ public:
     virtual TopometricPose getPoseTopometric(Timestamp* timestamp = nullptr) const;
     virtual double getPoseConfidence(Timestamp* timestamp = nullptr) const;
     virtual bool procOutOfPath(const Point2& curr_pose);
+	cv::Mat crop_image(cv::Mat cam_image, int num, int idx); // num : number of h-stacked images, idx, 0: left, 1: front, 2:right
+	bool get_cam_image(cv::Mat& cam_image, cv::Mat& cam_image_for_draw, int idx_for_draw, double& txt_scale, dg::Timestamp& capture_time, dg::Timestamp capture_time_prev);
 
     void procMouseEvent(int evt, int x, int y, int flags);
     void procTTS();
@@ -1343,33 +1345,25 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     m_guidance_status = cur_status;
 }
 
+cv::Mat DeepGuider::crop_image(cv::Mat cam_image, int num, int idx) // idx, 0: left, 1: front, 2:right
+{
+	int w,h;
+	w = (int)(cam_image.cols/num);
+	h = cam_image.rows;
+	cv::Rect rect(idx*w, 0, w, h);  // (X,Y,W,H), crop front image (Left, Front, Right)
+	return cam_image(rect);
+}
+
 bool DeepGuider::procIntersectionClassifier()
 {
 	cv::Mat cam_image;
+	cv::Mat cam_image_for_draw;
 	dg::Timestamp capture_time;
-	if (m_enable_360cam_crop)
+	double txt_scale;
+
+	if(!get_cam_image(cam_image, cam_image_for_draw, 1, txt_scale, capture_time, m_intersection.timestamp()))
 	{
-    	m_360cam_crop_mutex.lock();
-		capture_time = m_cam_capture_time;
-	    if(m_360cam_crop_image.empty() || capture_time <= m_intersection.timestamp())
-	    {
-	        m_360cam_crop_mutex.unlock();
-	        return false;
-	    }
-	    cam_image = m_360cam_crop_image.clone();
-    	m_360cam_crop_mutex.unlock();
-	}
-	else
-	{
-    	m_cam_mutex.lock();
-	    m_cam_capture_time;
-	    if(m_cam_image.empty() || capture_time <= m_intersection.timestamp())
-	    {
-	        m_cam_mutex.unlock();
-	        return false;
-	    }
-	    cam_image = m_cam_image.clone();
-	    m_cam_mutex.unlock();
+	    return false;
 	}
 
     dg::Point2 xy;
@@ -1380,9 +1374,9 @@ bool DeepGuider::procIntersectionClassifier()
         if(valid_xy) m_localizer.applyIntersectCls(xy, capture_time, confidence);
         m_intersection.print();
 
-        m_intersection.draw(cam_image, 2);
+        m_intersection.draw(cam_image_for_draw, txt_scale);  // 2.0 when w is 1280(webcam), 1.0 when w is 640(360cam_crop)
         m_intersection_mutex.lock();
-        m_intersection_image = cam_image;
+        m_intersection_image = cam_image_for_draw;
         m_intersection_mutex.unlock();
         return true;
     }
@@ -1390,7 +1384,6 @@ bool DeepGuider::procIntersectionClassifier()
     {
         m_intersection.print();
     }
-
     return false;
 }
 
@@ -1541,45 +1534,72 @@ bool DeepGuider::procVps()
     return false;
 }
 
-bool DeepGuider::procRoadLR()
+bool DeepGuider::get_cam_image(cv::Mat& cam_image, cv::Mat& cam_image_for_draw, int idx_for_draw, double& txt_scale, dg::Timestamp& capture_time, dg::Timestamp capture_time_prev)
 {
-	cv::Mat cam_image;
-	dg::Timestamp capture_time;
-	if (m_enable_360cam_crop)
+	int num_of_hstack_image = 3;
+   	m_cam_mutex.lock();
+	capture_time = m_cam_capture_time;
+   	m_cam_mutex.unlock();
+
+	if (m_enable_360cam_crop)  // use 360cam
 	{
     	m_360cam_crop_mutex.lock();
-		capture_time = m_cam_capture_time;
-	    if(m_360cam_crop_image.empty() || capture_time <= m_roadlr.timestamp())
+	    if(m_360cam_crop_image.empty() || capture_time <= capture_time_prev)
 	    {
 	        m_360cam_crop_mutex.unlock();
 	        return false;
 	    }
 	    cam_image = m_360cam_crop_image.clone();
     	m_360cam_crop_mutex.unlock();
+		cam_image_for_draw = crop_image(cam_image, num_of_hstack_image, idx_for_draw); // num=3(l,f,r),  idx=0 (0:left, 1:front, 2:right)
 	}
-	else
+	else  // use webcam
 	{
     	m_cam_mutex.lock();
-	    m_cam_capture_time;
-	    if(m_cam_image.empty() || capture_time <= m_roadlr.timestamp())
+	    if(m_cam_image.empty() || capture_time <= capture_time_prev)
 	    {
 	        m_cam_mutex.unlock();
 	        return false;
 	    }
 	    cam_image = m_cam_image.clone();
 	    m_cam_mutex.unlock();
+		cam_image_for_draw = cam_image;
+	}
+
+	if(cam_image_for_draw.empty() || cam_image.empty())
+	{
+		return false;
+	}
+
+	txt_scale = 2.0*(((double)cam_image_for_draw.cols)/1280.0);  // 2.0 when w is 1280(webcam), 1.0 when w is 640(360cam_crop)
+
+	return true;
+}
+
+
+bool DeepGuider::procRoadLR()
+{
+	cv::Mat cam_image;
+	cv::Mat cam_image_for_draw;
+	dg::Timestamp capture_time;
+	double txt_scale;
+
+	if(!get_cam_image(cam_image, cam_image_for_draw, 1, txt_scale, capture_time, m_intersection.timestamp()))
+	{
+	    return false;
 	}
 
     int lr_pose;
     double lr_confidence;
+
     if (m_roadlr.apply(cam_image, capture_time, lr_pose, lr_confidence))
     {
         m_localizer.applyRoadLR(lr_pose, capture_time, lr_confidence);
         m_roadlr.print();
 
-        m_roadlr.draw(cam_image, 2);
+        m_roadlr.draw(cam_image_for_draw, txt_scale);  // 2.0 when w is 1280(webcam), 1.0 when w is 640(360cam_crop)
         m_roadlr_mutex.lock();
-        m_roadlr_image = cam_image;
+        m_roadlr_image = cam_image_for_draw;
         m_roadlr_mutex.unlock();
         return true;
     }
