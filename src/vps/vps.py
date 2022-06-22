@@ -490,15 +490,12 @@ class vps:
                 vps_imgID = [np.int(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
                 vps_imgConf = [np.float(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
                 self.pred_utmDb = [-1.0, -1.0]  # utm_x, utm_y
-                if self.K > 1:
-                    pred_confidence0 = pred_confidence.squeeze()[0]
-                else:
-                    pred_confidence0 = pred_confidence.squeeze()
+                pred_confidence0 = pred_confidence[i][0]
                 if pred_confidence0 > 0.0:  # Check that network was initialized well.
                     self.vps_IDandConf = [vps_imgID, vps_imgConf]
                     if (self.use_custom_dataset == True) and (self.is_custom_dataset_valid == True):
                         pred_utmDb = self.custom_dataset.db_name2utm(vps_imgID[i])
-                        self.pred_utmDb = [float(i) for i in pred_utmDb[0]]  # [327922.6661131374, 4153540.910004767]
+                        self.pred_utmDb = [float(i) for i in pred_utmDb]  # [327922.6661131374, 4153540.910004767]
                         #utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
                         #lat, lon = utm.to_latlon(utm_x, utm_y, 52, 'S')
  
