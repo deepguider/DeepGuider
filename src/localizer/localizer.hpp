@@ -304,6 +304,8 @@ namespace dg
 
         virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)
         {
+            if(!isPoseStabilized()) return false;
+
             cv::AutoLock lock(m_mutex);
             if (m_pose_history.empty()) return false;
             if (!m_ekf->applyOdometry(odometry_pose, time, confidence)) return false;
@@ -314,6 +316,8 @@ namespace dg
 
         virtual bool applyIMUCompass(double odometry_theta, Timestamp time = -1, double confidence = -1)
         {
+            if(!isPoseStabilized()) return false;
+
             cv::AutoLock lock(m_mutex);
             if (m_pose_history.empty()) return false;
             if (!m_ekf->applyIMUCompass(odometry_theta, time, confidence)) return false;
@@ -420,11 +424,16 @@ namespace dg
             return m_ekf->getPoseConfidence(timestamp);
         }
 
+        virtual bool isPoseInitialized()
+        {
+            cv::AutoLock lock(m_mutex);
+            return m_ekf->isPoseInitialized();
+        }
+
         virtual bool isPoseStabilized()
         {
             cv::AutoLock lock(m_mutex);
-            if (m_pose_history.data_count() > 10) return true;
-            else return false;
+            return m_ekf->isPoseStabilized();
         }
 
         virtual const cv::Mat getState() const

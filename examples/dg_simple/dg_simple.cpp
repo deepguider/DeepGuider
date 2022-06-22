@@ -410,7 +410,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("enable_path_projection", true);
     m_localizer.setParamValue("enable_map_projection", false);
     m_localizer.setParamValue("enable_backtracking_ekf", true); // default : true, for demo : false
-    m_localizer.setParamValue("enable_gps_smoothing)", true);
+    m_localizer.setParamValue("enable_gps_smoothing)", false);
     m_localizer.setParamValue("enable_debugging_display", false);
     m_localizer.setParamValue("lr_mismatch_cost", 50);
     m_localizer.setParamValue("enable_lr_reject", false);
@@ -649,7 +649,7 @@ int DeepGuider::run()
         }
 
         // process path generation
-        if(m_dest_defined && m_path_generation_pended && m_localizer.isPoseStabilized())
+        if(m_dest_defined && m_path_generation_pended && m_localizer.isPoseInitialized())
         {
             if(updateDeepGuiderPath(getPose(), m_dest)) m_path_generation_pended = false;
         }
@@ -683,7 +683,7 @@ int DeepGuider::run()
 
             // draw GUI display
             dg::Pose2 px = m_painter.cvtValue2Pixel(pose_m);
-            if (m_gui_auto_scroll && m_localizer.isPoseStabilized()) m_viewport.centerizeViewportTo(px);
+            if (m_gui_auto_scroll && m_localizer.isPoseInitialized()) m_viewport.centerizeViewportTo(px);
             m_viewport.getViewportImage(gui_image);
             drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
 
@@ -805,7 +805,7 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
 
 bool DeepGuider::setDeepGuiderDestination(dg::Point2F dest)
 {
-    if(!m_localizer.isPoseStabilized())
+    if(!m_localizer.isPoseInitialized())
     {
         m_dest = dest;
         m_dest_defined = true;

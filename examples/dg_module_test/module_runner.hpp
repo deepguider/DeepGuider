@@ -387,7 +387,7 @@ public:
 
                 // shift viewport to keep robot visible in viewport
                 dg::Pose2 px = gui_painter->cvtValue2Pixel(pose);
-                if (m_localizer->isPoseStabilized()) m_viewport.centerizeViewportTo(px);
+                if (m_localizer->isPoseInitialized()) m_viewport.centerizeViewportTo(px);
 
                 // Draw the image given from the camera
                 cv::Rect video_rect;
