@@ -24,7 +24,7 @@ fi
 gnome-terminal --tab --title="theta360z1_crop_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/theta360z1/publish && python2 crop360cam_python27.py'
 
 ## Stop rosbag play
-pid=`pgrep -f rosbag`
+pid=`pgrep -f "rosbag play"`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi

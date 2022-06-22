@@ -17,7 +17,7 @@ if [ ! -n "${pid}" ];then  # If process is not running.
 fi
 
 ## Start rosbag play
-pid=`pgrep -f rosbag`
+pid=`pgrep -f "rosbag play"`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
