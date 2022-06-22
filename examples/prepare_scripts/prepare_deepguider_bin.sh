@@ -48,7 +48,7 @@ if [ -e ${TARGET} ]; then
     #cp -rf ${SRCPATH}/data_vps/netvlad_etri_datasets_indoor_etri12b_1way/dbImg/StreetView/* ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/.
 
 	## VPS : Custom dataset instead of Naver image server
-	ln -sf ${SRCPATH}/data_vps/custom_dataset ${TARGET}/data_vps/.
+	ln -sf ${SRCPATH}/data_vps/dataset ${TARGET}/data_vps/.
 
     ## Intersection weight
     # ln -sf ${SRCPATH}/data_intersection_cls ${TARGET}/data_intersection_cls  ## This was done in examples/setup_intersection.sh

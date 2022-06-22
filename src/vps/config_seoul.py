@@ -1,6 +1,6 @@
 import os
 
-root_dir = './data_vps/custom_dataset/dataset_seoul'
+root_dir = "./data_vps/dataset/ImageRetrievalDB/custom_dataset_seoul_dbRobot_qRobot_220418"
 db_dir = os.path.join(root_dir, '.')
 queries_dir = os.path.join(root_dir, '.')
 
