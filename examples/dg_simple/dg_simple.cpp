@@ -412,7 +412,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("enable_path_projection", true);
     m_localizer.setParamValue("enable_map_projection", false);
     m_localizer.setParamValue("enable_backtracking_ekf", true); // default : true, for demo : false
-    m_localizer.setParamValue("enable_gps_smoothing)", false);
+    m_localizer.setParamValue("enable_gps_smoothing", false);
     m_localizer.setParamValue("enable_debugging_display", false);
     m_localizer.setParamValue("lr_mismatch_cost", 50);
     m_localizer.setParamValue("enable_lr_reject", false);
