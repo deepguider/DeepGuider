@@ -34,6 +34,7 @@ public:
         if (!m_localizer->setParamMotionBounds(1, 10)) return -1;     // max_linear_velocity(m), max_angular_velocity(deg)
         if (!m_localizer->setParamGPSNoise(10)) return -1;            // position error(m)
         if (!m_localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
+        if (!m_localizer->setParamOdometryNoise(0.01, 1)) return false;  // position error(m), orientation error(deg)
         if (!m_localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
         if (!m_localizer->setParamPOINoise(5, 20)) return -1;         // position error(m), orientation error(deg)
         if (!m_localizer->setParamVPSNoise(5, 20)) return -1;         // position error(m), orientation error(deg)
@@ -44,7 +45,7 @@ public:
         m_localizer->setParamValue("enable_path_projection", true);
         m_localizer->setParamValue("enable_map_projection", false);
         m_localizer->setParamValue("enable_backtracking_ekf", true);
-        m_localizer->setParamValue("enable_gps_smoothing", true);
+        m_localizer->setParamValue("enable_gps_smoothing", false);
         m_localizer->setParamValue("enable_debugging_display", false);
         m_localizer->setParamValue("lr_mismatch_cost", 50);
         m_localizer->setParamValue("enable_lr_reject", false);

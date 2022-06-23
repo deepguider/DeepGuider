@@ -121,7 +121,7 @@ namespace dg
         bool m_enable_path_projection = true;
         bool m_enable_map_projection = false;
         bool m_enable_backtracking_ekf = true;
-        bool m_enable_gps_smoothing = true;
+        bool m_enable_gps_smoothing = false;
         double m_smoothing_alpha = 0.1;
         double m_smoothing_beta = 0.01;
         double m_smoothing_velocity_decaying = 0.95;
