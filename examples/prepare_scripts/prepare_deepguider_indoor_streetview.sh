@@ -22,7 +22,8 @@ if [ -e ${TARGET} ]; then
 	rm -rf ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/*
     ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_indoor_etri12b_1way/dbImg/StreetView/* ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/.
     ln -sf ${SRCPATH}/data_vps/prebuilt_dbFeat_1way.mat ${TARGET}/data_vps/prebuilt_dbFeat.mat
-	
+
+	echo "If you got error, re-run this after running catkin_ws/init_vps_ramdisk.sh"
 	## Misc.
 
 	## Check error on return value of above commands

@@ -23,6 +23,8 @@ if [ -e ${TARGET} ]; then
     ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_dg_seoul_220418/dbImg/StreetView/* ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/.
     ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_dg_seoul_220418/prebuilt_dbFeat.mat ${TARGET}/data_vps/.
     ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_dg_seoul_220418/poses.txt ${TARGET}/data_vps/.
+
+	echo "If you got error, re-run this after running catkin_ws/init_vps_ramdisk.sh"
 	
 	## Misc.
 
