@@ -16,12 +16,10 @@ matplotlib.use('Agg')  # https://stackoverflow.com/questions/27147300/matplotlib
 import matplotlib.pyplot as plt
 
 from sklearn.neighbors import NearestNeighbors
-import h5py
 
 import faiss
 import cv2
 
-from tictoc import tic, toc
 from ipdb import set_trace as bp
 
 named_dbStruct = namedtuple('dbStruct', ['whichSet', 'dataset', 
