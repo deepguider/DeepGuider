@@ -170,7 +170,8 @@ bool DGNodeOdometry::runOnce(double timestamp)
     //double wL = 0.9799845;                // compensation factor for left wheel
     //double wR = 0.9913012;                // compensation factor for right wheel
 
-    double wL = 0.9757583432906607;                // compensation factor for left wheel
+	// Parameter obtained near NoBrand at Coex with error of 0.35m in x, 0.25m in y in 10 meters.
+    double wL = 0.9757583432906607;      // compensation factor for left wheel
     double wR = 0.9785017433324273;      // compensation factor for right wheel
 
     double pulse_left, pulse_right;
