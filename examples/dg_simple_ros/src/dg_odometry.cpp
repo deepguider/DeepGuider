@@ -167,8 +167,11 @@ int DGNodeOdometry::run()
 bool DGNodeOdometry::runOnce(double timestamp)
 {
     double wheelbase = 0.588;       // distance between left and right wheel
-    double wL = 0.9799845;                // compensation factor for left wheel
-    double wR = 0.9913012;                // compensation factor for right wheel
+    //double wL = 0.9799845;                // compensation factor for left wheel
+    //double wR = 0.9913012;                // compensation factor for right wheel
+
+    double wL = 0.9757583432906607;                // compensation factor for left wheel
+    double wR = 0.9785017433324273;      // compensation factor for right wheel
 
     double pulse_left, pulse_right;
     bool left_initialized, right_initialized;
@@ -184,8 +187,8 @@ bool DGNodeOdometry::runOnce(double timestamp)
     double dpL = (left_initialized) ? pulse_left - m_prev_pulse_left : 0;
     double dpR = (right_initialized) ? pulse_right - m_prev_pulse_right : 0;
 
-    double dL = wL * dpL * 0.99 / 3523;
-    double dR = wR * dpR * 0.99 / 3461;
+    double dL = wL * dpL * 0.99 / 3485;
+    double dR = wR * dpR * 0.99 / 3567;
 
     double D = (dL + dR) / 2;
     double dtheta = (dR - dL) / wheelbase;
@@ -236,7 +239,9 @@ bool DGNodeOdometry::runOnce(double timestamp)
             line(m_traj_map, cv::Point(x,0), cv::Point(x, h), grid_color);
             int y = cy + (int)(i*scale);
             line(m_traj_map, cv::Point(0,y), cv::Point(w, y), grid_color);
-        }
+        }    double wL = 0.9799845;                // compensation factor for left wheel
+    double wR = 0.9913012;                // compensation factor for right wheel
+
         line(m_traj_map, cv::Point(cx,0), cv::Point(cx, h), cv::Scalar(100,100,100));
         line(m_traj_map, cv::Point(0,cy), cv::Point(w, cy), cv::Scalar(100,100,100));
 

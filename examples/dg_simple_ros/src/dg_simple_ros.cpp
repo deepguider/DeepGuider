@@ -169,7 +169,7 @@ bool DeepGuiderROS::initialize(std::string config_file)
     sub_robot_status = nh_dg.subscribe("/keti_robot/status", 1, &DeepGuiderROS::callbackRobotStatus, this);
     sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
     sub_ocr_image = nh_dg.subscribe("/dg_ocr/image", 1, &DeepGuiderROS::callbackOCRImage, this);
-    sub_vps = nh_dg.subscribe("/dg_vps/output", 1, &DeepGuiderROS::callbackVPS, this);
+	if(m_enable_vps == 2)sub_vps = nh_dg.subscribe("/dg_vps/output", 1, &DeepGuiderROS::callbackVPS, this);
 
     // Initialize deepguider publishers
     pub_guide = nh_dg.advertise<dg_simple_ros::guidance>("dg_guide", 1, true);
@@ -511,7 +511,7 @@ void DeepGuiderROS::callbackOCRImage(const sensor_msgs::Image::ConstPtr& msg)
     }
 }
 
-// A callback function for subscribing VPS output
+// A callback function for subscribing VPS output topic
 void DeepGuiderROS::callbackVPS(const dg_simple_ros::vps::ConstPtr& msg)
 {
     dg::Point2 sv_xy(msg->x, msg->y);
@@ -523,7 +523,17 @@ void DeepGuiderROS::callbackVPS(const dg_simple_ros::vps::ConstPtr& msg)
 
     dg::ID sv_id = msg->id;
     cv::Mat sv_image;
-    if (MapManager::getStreetViewImage(sv_id, sv_image, m_server_ip, m_image_server_port, "f") && !sv_image.empty())
+	if (m_vps_use_custom_image_server == 1)
+	{
+		sv_image = m_vps.getViewImage();
+	}
+	else
+	{
+    	MapManager::getStreetViewImage(sv_id, sv_image, m_server_ip, m_image_server_port, "f");
+	}
+	printf("#####################Debug : VPS Ros Sub.\n");
+    //if (MapManager::getStreetViewImage(sv_id, sv_image, m_server_ip, m_image_server_port, "f") && !sv_image.empty())
+    if (!sv_image.empty())
     {
         m_vps.set(sv_id, sv_confidence, capture_time, proc_time);
         m_vps.draw(sv_image, 3.0);

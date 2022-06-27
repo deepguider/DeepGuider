@@ -1515,16 +1515,21 @@ bool DeepGuider::procVps()
         m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
 
-        cv::Mat sv_image = m_vps.getViewImage();
+	    cv::Mat sv_image = m_vps.getViewImage();  // I will return naver or custom db image according to m_vps_use_custom_image_server
         if(!sv_image.empty())
         {
             m_vps.draw(sv_image, 3.0);
             m_vps_mutex.lock();
             m_vps_image = sv_image;
             m_vps_xy = sv_xy;
+			m_vps_id = m_vps.getViewID();
             m_vps_relative = relative;
             m_vps_mutex.unlock();
         }
+		else
+		{
+			printf("[vps] empty sv_image : m_vps_id %ld\n", m_vps.getViewID());
+		}
         return true;
     }
     else
