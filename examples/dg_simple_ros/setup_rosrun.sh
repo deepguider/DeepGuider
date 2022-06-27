@@ -57,5 +57,7 @@ chmod a+x $ROSDIR/dg_run_saved_bag.sh
 chmod a+x $ROSDIR/dg_cart_sensor_install.sh
 chmod a+x $ROSDIR/dg_cart_sensor_run.sh
 
+cp $DGDIR/examples/dg_simple_ros/odo_cal.py $ROSDIR/
+
 echo "Run:"
 echo "     cd $ROSDIR;./dg_run.sh"
