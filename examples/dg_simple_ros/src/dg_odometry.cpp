@@ -166,7 +166,7 @@ int DGNodeOdometry::run()
 
 bool DGNodeOdometry::runOnce(double timestamp)
 {
-    double wheelbase = 0.588;       // distance between left and right wheel
+    double wheelbase = 0.596;       // distance between left and right wheel, 0.588
     //double wL = 0.9799845;                // compensation factor for left wheel
     //double wR = 0.9913012;                // compensation factor for right wheel
 
