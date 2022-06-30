@@ -20,6 +20,7 @@ if [ -e ${TARGET} ]; then
 	## Indoor streetview for VPS in prebuilt weight mode
 	echo "Flushing and copying indoor streetview images to ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/."
 	rm -rf ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/*
+	mkdir -p ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView
     ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_dg_seoul_220418/dbImg/StreetView/* ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/.
     ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_dg_seoul_220418/prebuilt_dbFeat.mat ${TARGET}/data_vps/.
     ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_dg_seoul_220418/poses.txt ${TARGET}/data_vps/.

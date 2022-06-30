@@ -73,7 +73,7 @@ class vps:
         self.K = int(3) # K for Top-K for best matching
         self.init_vps_IDandConf(self.K) < 0 #init_vps_IDandConf after setting self.K
         self.ToTensor = transforms.ToTensor()
-        self.verbose = False
+        self.verbose = True
         self.StreetViewServerAvaiable = True
         self.callcounter_gSV = 0 # N of call of getStreetView(), for debugging purpose
         device = 'cuda:{}'.format(which_gpu) if torch.cuda.is_available() else 'cpu'  #cuda:0
@@ -862,13 +862,14 @@ class vps:
         utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
 
         ## Filter out noisy result with median filter for top-1 for indoor test
-        if self.port == "10003":  # 10003 means indoor
+        if self.port == "10003":  # 10003 means etri indoor, 10004 means coex indoor
+        #if self.port == "10003" or self.port == "10004":  # 10003 means etri indoor, 10004 means coex indoor
             top1_id = IDs[0]
             _, lat, lon = GetStreetView_fromID(top1_id, roi_radius=1, ipaddr=self.ipaddr)
             if lat != -1:  # Image server is ready.
                 # When image server is not available, do not filter out because it cannot get current lat, lon information.
                 utm_x, utm_y, r_num, r_str = utm.from_latlon(lat, lon)  # (353618.4250711136, 4027830.874694569, 52, 'S')
-                self.mVps_filter.set_utm_distance_threshold(5)  # filter radius 5 meters for indoor
+                self.mVps_filter.set_utm_distance_threshold(5)  # filter radius 5 meters for etri indoor
                 #self.mVps_filter.set_utm_distance_threshold(self.get_radius())  # filter radius 50 meters for outdoor
                 if self.mVps_filter.check_valid(utm_x, utm_y) == False:   # Filter out noisy result with ransac of first-order line function
                     # Noisy result is changed to -1.

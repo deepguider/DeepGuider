@@ -15,8 +15,8 @@ enable_odometry: 1
 enable_mapserver: 0    # 0: use saved offline map, 1: online mapserver
 
 ## Main Options
-site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, 5:TEST_ETRI_INDOOR, 6:ETRI_EXTENDED, ...
-site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR", "ETRI_EXTENDED"]
+site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, 5:TEST_ETRI_INDOOR, 6:ETRI_EXTENDED, 7:TEST_COEX_INOUT ...
+site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR", "ETRI_EXTENDED", "TEST_COEX_INOUT"]
 server_ip_index: 1          # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
 image_server_port: "10000"  # etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
@@ -146,6 +146,22 @@ TEST_COEX:
   image_server_port: "10001"
   gps_input_path: "data/COEX/211005_130940_ascen_fix.csv"
   video_input_path: "data/COEX/211005_130940_images.avi"   
+
+TEST_COEX_INOUT:
+  map_image_path: "data/COEX/NaverMap_COEX(Satellite).png"
+  map_data_path: "data/COEX/TopoMap_COEX.csv"
+  map_ref_point_latlon: [37.506994, 127.056676]
+  map_ref_point_pixel: [1373, 2484]
+  map_pixel_per_meter: 2.536
+  map_image_rotation: 1.0
+  map_view_offset: [1010, 300]
+  map_view_size: [1920, 1080]
+  image_server_port: "10004"
+  gps_input_path: "data/COEX/211005_130940_ascen_fix.csv"
+  video_input_path: "data/COEX/211005_130940_images.avi"   
+  vps_load_dbfeat: 1
+  vps_save_dbfeat: 0
+  vps_use_custom_image_server: 1   # 0 (default) to use naver roadview, 1 to use custom images for database images
 
 ETRI:
   map_image_path: "data/NaverMap_ETRI(Satellite)_191127.png"
