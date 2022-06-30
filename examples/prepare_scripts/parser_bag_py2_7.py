@@ -222,7 +222,7 @@ def GetTopic_Encoder(bag, string_l_topic, string_r_topic, exact_l_topic=False, e
     if topic_ret == 'NotFound':
         if verbose == True:
             print "[X] Not Detected ros topic of [{}] : {} ==> [X], Check line {} in {}".format(Title, string_topic, __line__(), os.path.basename(__filename__()))
-        return None
+        topic_ret = None
     else:
         if verbose == True:
             print "[O]     Detected ros topic of [{}] : {} ==> {}".format(Title, string_topic, topic_ret)
@@ -241,7 +241,7 @@ def GetTopic_Encoder(bag, string_l_topic, string_r_topic, exact_l_topic=False, e
     if topic_ret == 'NotFound':
         if verbose == True:
             print "[X] Not Detected ros topic of [{}] : {} ==> [X], Check line {} in {}".format(Title, string_topic, __line__(), os.path.basename(__filename__()))
-        return None
+        topic_ret = None
     else:
         if verbose == True:
             print "[O]     Detected ros topic of [{}] : {} ==> {}".format(Title, string_topic, topic_ret)
@@ -293,7 +293,7 @@ def sensors_to_csv(opts, bag_file=None):
     bag = rosbag.Bag(bag_file, "r")
 
     ## Get correct topic_name
-    print("Saving raw sensor data to .csv ...")
+    print("Searching correct sensors topic names ...")
     gps_topic = GetTopic_GPS(bag, opts.gps_topic, opts.exact_gps_topic, verbose=True)
     imu_topic = GetTopic_IMU(bag, opts.imu_topic, verbose=True)
     enc_left_topic, enc_right_topic = GetTopic_Encoder(bag, opts.enc_left_topic, opts.enc_right_topic, verbose=True)
@@ -301,6 +301,7 @@ def sensors_to_csv(opts, bag_file=None):
     makedir(output_dir)
 
     ## Write gps and imu data to csv file
+    print("Saving raw sensor data to .csv ...")
     if gps_topic is not None:
         bag_to_csv(bag_file, gps_topic, output_dir)
     if imu_topic is not None:
