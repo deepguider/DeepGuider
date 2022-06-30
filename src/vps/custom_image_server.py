@@ -133,12 +133,14 @@ class WholeDatasetFromStruct():
         utmDb = self.get_utmDb()
         idx = self.db_name2idx(name)
         ret = utmDb[idx]  # array([array([[328528.83696172]]), array([[4153686.71236218]])]
-        try:
-            x = ret[0][0][0][0]
-            y = ret[0][1][0][0]
-        except:
-            x = ret[0]
-            y = ret[1]
+        x, y = -1, -1
+        if len(ret) > 0 :
+            try:
+                x = ret[0][0][0][0]
+                y = ret[0][1][0][0]
+            except:
+                x = ret[0]
+                y = ret[1]
         return [x,y]
 
     def db_idx2utm(self, idx):

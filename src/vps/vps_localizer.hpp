@@ -55,7 +55,8 @@ namespace dg
             m_sv_id = vpss[0].id;
             if (m_sv_id == 0) return false;  // no valid matching between query and streetveiw due to lack of db images around query.
             streetview_confidence = vpss[0].confidence;
-            m_custom_dataset_abs_path = vpss[0].custom_dataset_abs_path;
+            //m_custom_dataset_abs_path = vpss[0].custom_dataset_abs_path;  // /home/dg/catkin_ws/devel/lib/dg_simple_ros/./data_vps/dataset/ImageRetrievalDB/custom_dataset_seoul_dbRobot_qRobot_220418/././rosImg/_2022-04-18-14-08-03/uvc_image/006276.jpg
+            m_custom_dataset_abs_path = "./data_vps/netvlad_etri_datasets/dbImg/StreetView";
 
             // matched streetview xy
             if (m_use_custom_image_server)
@@ -72,7 +73,7 @@ namespace dg
             {
                 Map* map = m_shared->getMap();
                 if (map == nullptr) return false;
-                StreetView* sv = map->getView(m_sv_id);
+                StreetView* sv = map->getView(m_sv_id);  // It has .x, .y
                 if (sv == nullptr) return false;
                 streetview_xy = *sv;            
             }
@@ -106,7 +107,14 @@ namespace dg
             if (m_use_custom_image_server)
             {
                 std::string fpath = cv::format("%s/%06ld.jpg", m_custom_dataset_abs_path.c_str(), sv_id);
-                if (file_exists(fpath)) sv_image = cv::imread(fpath);
+                if (file_exists(fpath))
+				{
+					sv_image = cv::imread(fpath);
+				}
+				else
+				{
+					printf("[vps] custom streetview db image [%s] was not found.", fpath.c_str());
+				}
             }
             else  // default
             {

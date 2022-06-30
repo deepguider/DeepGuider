@@ -7,6 +7,7 @@ import glob, os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 #from noise_filter import noise_filter
+#pip install opencv-python==4.4.0.40
 
 class relativePose:
     def __init__(self, mode='normal', Tx=6.0, check_ratio=True, check_roi=False, swap_input=False, use_same_camera_model=False):
@@ -395,8 +396,11 @@ class relativePose:
             sift = cv2.SIFT_create()  # cv2.__version__ >= 4.4.0
 
         # find the keypoints and descriptors with SIFT
-        kp1, des1 = sift.detectAndCompute(img1,None)
-        kp2, des2 = sift.detectAndCompute(img2,None)
+        try:
+            kp1, des1 = sift.detectAndCompute(img1,None)
+            kp2, des2 = sift.detectAndCompute(img2,None)
+        except:
+            print("[vps]cv2 version error - try : $pip install opencv-python==4.4.0.40")
 
         # FLANN parameters
         FLANN_INDEX_KDTREE = 0
