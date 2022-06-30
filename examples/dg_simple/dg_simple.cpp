@@ -58,11 +58,11 @@ protected:
     std::string m_gps_input_path = "data/191115_ETRI_asen_fix.csv";
     std::string m_video_input_path = "data/ETRI/191115_151140_images.avi";
     cv::Vec3b m_gui_robot_color = cv::Vec3b(0, 0, 255);  // B,G,R
-    cv::Vec3b m_gui_gps_color = cv::Vec3b(80, 80, 80);
+    cv::Vec3b m_gui_gps_color = cv::Vec3b(0, 255, 0);
     cv::Vec3b m_gui_gps_novatel_color = cv::Vec3b(255, 0, 0);
     cv::Vec3b m_gui_vps_color = cv::Vec3b(229, 204, 255); // bright pink
     cv::Vec3b m_gui_vps_rpose_color = cv::Vec3b(127, 0, 255);  // pink
-    int m_gui_gps_trj_radius = 2;
+    int m_gui_gps_trj_radius = 3;
     int m_gui_robot_trj_radius = 1;
     bool m_gui_auto_scroll = true;
 
