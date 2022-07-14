@@ -1518,7 +1518,7 @@ bool DeepGuider::procVps()
 	    cv::Mat sv_image = m_vps.getViewImage();  // I will return naver or custom db image according to m_vps_use_custom_image_server
         if(!sv_image.empty())
         {
-            m_vps.draw(sv_image, 3.0);
+            m_vps.draw(sv_image, 2.0);
             m_vps_mutex.lock();
             m_vps_image = sv_image;
             m_vps_xy = sv_xy;

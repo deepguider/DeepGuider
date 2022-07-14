@@ -875,6 +875,9 @@ class vps:
                     # Noisy result is changed to -1.
                     IDs[0] = 0
                     Confs[0] = -1
+        else:
+            valid, mean_utm_xy = self.mVps_filter.check_valid(utm_x, utm_y)
+            utm_x, utm_y = mean_utm_xy[0], mean_utm_xy[1]
 
         R, t = self.get_relativePose('zero')
 

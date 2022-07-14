@@ -9,10 +9,10 @@ from skimage.measure import LineModelND, ransac
 class vps_filter:
     def __init__(self):
         self.n_sample_count = 0
-        self.n_samples = 40  # filter size of points for ransac
+        self.n_samples = 7  # filter size of points for ransac
         #self.n_mean_samples = 15  # filter size of points for average filter
         self.n_samples_max = 100  # maximum filter size of points for ransac
-        self.n_samples_min = 10   # minimum filter size of points for ransac
+        self.n_samples_min = 5   # minimum filter size of points for ransac
         self.dims = 2
         self.utm_xys = np.zeros((self.n_samples_max, self.dims))
         self.utm_xys[:,0] = np.arange(self.n_samples_max)
@@ -94,16 +94,16 @@ class vps_filter:
     def check_valid(self, new_x, new_y):
         self.update_samples(new_x, new_y)
         utm_xys = self.get_samples(self.n_samples)
-        if len(utm_xys) < self.n_samples_min:
-            return False
         mean_xys = np.median(utm_xys, axis=0)
+        if len(utm_xys) < self.n_samples_min:
+            return False, mean_xys
         utm_distance = np.sqrt(np.sum((mean_xys - [new_x, new_y])**2))  # meter
         ## Check 2 : distance average point and current point in the small window
         if utm_distance < self.utm_distance_threshold:  # Check new point is near to mean of previous point.
-            return True
+            return True, mean_xys
         else:
             #print("[vps] Filter out ==========================> distance to utm : {}".format(utm_distance))
-            return False
+            return False, mean_xys
 
     def check_valid_ori(self, new_x, new_y):
         self.update_samples(new_x, new_y)
@@ -154,12 +154,12 @@ if __name__ == "__main__":
     mVps_filter = vps_filter()
     if False:  # single value
         mVps_filter.get_samples_toy_example()
-        isValidVps = mVps_filter.check_valid(5, 30)
-        print(isValidVps)
+        isValidVps, filtered_xy = mVps_filter.check_valid(5, 30)
+        print(isValidVps, filtered_xy)
     else:
         for i in range(20):
             x = np.random.rand(1)*10
             y = np.random.rand(1)*100
-            isValidVps = mVps_filter.check_valid(x, y)
-            print(isValidVps)
+            isValidVps, filtered_xy = mVps_filter.check_valid(x, y)
+            print(isValidVps, filtered_xy)
 
