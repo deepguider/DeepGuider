@@ -173,15 +173,47 @@ namespace dg
     public:
         GuidanceManager() { }
 
+        bool m_dxrobot_usage = 0;
+        int m_site_name = 0;
+        ID m_robot_heading;
         bool initialize(dg::SharedInterface* shared);
         bool initiateNewGuidance();
         bool initiateNewGuidance(Point2F gps_start, Point2F gps_des);
         bool initiateNewGuidance(TopometricPose pose_topo, Point2F gps_des);
         bool update(TopometricPose pose);
         bool update(TopometricPose pose, Pose2 pose_metric);
+        bool updateWithRobot(TopometricPose pose, Pose2 pose_metric);
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
         Guidance getGuidance() const { return m_curguidance; };
-        void setRobotStatus(RobotStatus status) { m_robot_status = status; };
+        void setRobotStatus(RobotStatus status) 
+        { 
+                /*
+            if ((m_robot_status == RobotStatus::RUN_AUTO || m_robot_status == RobotStatus::RUN_MANUAL)
+            && status == RobotStatus::ARIVED_NODE)  
+                m_robot_change_node = true;
+            else if((status == RobotStatus::RUN_AUTO || status == RobotStatus::RUN_MANUAL)
+            && m_robot_status == RobotStatus::ARRIVED_NODE)
+                m_robot_change_node = false;
+            else
+                m_robot_change_node = false;
+             */ m_robot_status = status; 
+        };
+        void setRobotUsage(cv::String name) 
+        { 
+            cv::String robot = "KETI_ROBOT";
+	        if (name.compare(robot)==0) m_dxrobot_usage = true;
+            else m_dxrobot_usage = false; 
+        };
+        void setSiteName(cv::String name)
+        {
+            cv::String site = "Bucheon_KETI";
+            if (name.compare(site)==0)
+            {            
+                m_site_name = 1;
+            }
+        };
+        cv::Point2d cvtValue2Pixel4Guidance(cv::Point2d& val, double deg, cv::Point2d px_per_val, cv::Point2d offset);
+
 
     protected:
         SharedInterface* m_shared = nullptr;
@@ -197,6 +229,7 @@ namespace dg
         Guidance m_curguidance;
         RobotStatus m_robot_status;
         int m_guide_idx = -1;	//starts with -1 because its pointing current guide.
+        int m_robot_guide_idx;
         double m_remain_distance = 0.0;
         int m_last_announce_dist = -1;
         int m_guide_interval = 10; //m
@@ -205,6 +238,7 @@ namespace dg
         double m_arrived_threshold = 1.0;
         bool m_arrival = false;
         int m_arrival_cnt = 0;
+        bool m_use_robot_map = 0;
 
         std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
             "ESCALATOR", "UNKNOWN" };
@@ -252,9 +286,11 @@ namespace dg
         bool setEmptyGuide();
         Action setActionTurn(ID nid_cur, ID eid_cur, int degree);
         Action setActionGo(ID nid_next, ID eid_cur, int degree = 0);
+        bool setHeadingPoint();
 
         bool isNodeInPath(ID nodeid);
         bool isEdgeInPath(ID edgeid);
+        bool isNodeInPastGuides(ID nodeid);
         bool isForward(int degree)
         {
             return (degree >= -30 && degree <= 30) ? true : false;

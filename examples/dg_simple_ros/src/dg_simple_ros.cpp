@@ -52,6 +52,8 @@ protected:
     ros::Subscriber sub_imu_xsense;
     ros::Subscriber sub_odometry;
     ros::Subscriber sub_robot_status;
+    ros::Subscriber sub_robot_pose;
+    ros::Subscriber sub_robot_heading;
     void callbackThetaZ1360Image(const sensor_msgs::Image::ConstPtr& msg);
     void callbackThetaZ1360Crop(const sensor_msgs::Image::ConstPtr& msg);
     void callbackImage(const sensor_msgs::Image::ConstPtr& msg);
@@ -63,6 +65,8 @@ protected:
     void callbackIMU(const sensor_msgs::Imu::ConstPtr& msg);
     void callbackOdometry(const nav_msgs::Odometry::ConstPtr& msg);
     void callbackRobotStatus(const std_msgs::String::ConstPtr& msg);
+    void callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
+    void callbackRobotHeading(const std_msgs::String::ConstPtr& msg);
 
     // Topic publishers (sensor data)
     ros::Publisher pub_guide;
@@ -145,6 +149,10 @@ int DeepGuiderROS::readRosParam(const cv::FileNode& fn)
             n_read += readRosParam(fn_topic);
         }
     }
+
+    m_guider.setRobotUsage(topicset_tagname);
+	printf("topicset_tagname: %s\n", topicset_tagname.c_str());
+    
     return n_read;
 }
 
@@ -166,7 +174,9 @@ bool DeepGuiderROS::initialize(std::string config_file)
     if(!m_topic_rgbd_depth.empty()) sub_image_realsense_depth = nh_dg.subscribe(m_topic_rgbd_depth, 1, &DeepGuiderROS::callbackRealsenseDepth, this);
 
     // Initialize deepguider subscribers
-    sub_robot_status = nh_dg.subscribe("/keti_robot/status", 1, &DeepGuiderROS::callbackRobotStatus, this);
+    sub_robot_status = nh_dg.subscribe("/keti_robot/state", 1, &DeepGuiderROS::callbackRobotStatus, this);
+    sub_robot_heading = nh_dg.subscribe("/keti_robot/heading_node", 1, &DeepGuiderROS::callbackRobotHeading, this);
+    sub_robot_pose = nh_dg.subscribe("/mcl3d/current/pose", 1, &DeepGuiderROS::callbackRobotPose, this);
     sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
     sub_ocr_image = nh_dg.subscribe("/dg_ocr/image", 1, &DeepGuiderROS::callbackOCRImage, this);
 	if(m_enable_vps == 2)sub_vps = nh_dg.subscribe("/dg_vps/output", 1, &DeepGuiderROS::callbackVPS, this);
@@ -174,8 +184,8 @@ bool DeepGuiderROS::initialize(std::string config_file)
     // Initialize deepguider publishers
     pub_guide = nh_dg.advertise<dg_simple_ros::guidance>("dg_guide", 1, true);
     pub_path = nh_dg.advertise<nav_msgs::Path>("dg_path", 1, true);
-    pub_pose = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_", 1, true);
-    pub_subgoal = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_goal_utm", 1, true);
+    pub_pose = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_pose", 1, true);
+    pub_subgoal = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_subgoal", 1, true);
     pub_status = nh_dg.advertise<dg_simple_ros::dg_status>("dg_status", 1, true);
 
     return true;
@@ -547,6 +557,7 @@ void DeepGuiderROS::callbackVPS(const dg_simple_ros::vps::ConstPtr& msg)
 void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
 {
     const char* str = msg->data.c_str();
+    ROS_INFO_THROTTLE(1.0, "%s", str);
     if (!strcmp(str, "ready"))
     {
         m_guider.setRobotStatus(GuidanceManager::RobotStatus::READY);
@@ -559,7 +570,7 @@ void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
     {
         m_guider.setRobotStatus(GuidanceManager::RobotStatus::RUN_AUTO);
     } 
-    else if (!strcmp(str, "arrived_node"))   
+    else if (!strcmp(str, "arrived_point"))   
     {
         m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_NODE);
     } 
@@ -568,6 +579,79 @@ void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
         m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_GOAL);
     } 
 }
+
+
+void DeepGuiderROS::callbackRobotHeading(const std_msgs::String::ConstPtr& msg)
+{
+    const char* str = msg->data.c_str();
+    ROS_INFO_THROTTLE(1.0, "%s", str);
+
+    m_guider.m_robot_heading = stoi(str);
+
+}
+
+
+void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+    dg::Pose2 robot_pose;
+    robot_pose.x = msg->pose.position.x;
+    robot_pose.y = msg->pose.position.y;
+    //ROS_INFO_THROTTLE(1.0, "Robot: %f,%f", robot_pose.x, robot_pose.y);
+
+    dg::Timestamp capture_time = msg->header.stamp.toSec();
+
+    
+    //ROS_INFO_THROTTLE(1.0, "m_site_tagname: %s", m_site_tagname.c_str());
+    
+    //Align robot pose to image point
+    //Aligned to "bucheon_robotmap(flipudlr).png"
+	if(m_guider.m_site_name == 1) // 1:"Bucheon_KETI"
+    {    //Aligned to "bucheon_robotmap(flipudlr).png"
+    
+        double img_deg_dx = -90;
+        cv::Point2d img_scale_dx = cv::Point2d(10.0, 10.0);
+        cv::Point2d img_offset_dx = cv::Point2d(2576, 3110);
+        cv::Point2d img_pt_dx = m_guider.cvtValue2Pixel4Guidance(robot_pose, img_deg_dx, img_scale_dx, img_offset_dx);
+        //ROS_INFO_THROTTLE(1.0, "dx_pose on Image: %f,%f", img_pt_dx.x, img_pt_dx.y);
+
+        cv::circle(m_map_image, img_pt_dx, 10, cv::Vec3b(0, 255, 0));
+
+        /*
+        //check arrived_node 
+        //transfer dg_pose to img_pt    
+        GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
+        ID nid = cur_guide.heading_node_id;
+        Node* hNode = m_map.getNode(nid);
+        if(hNode == nullptr) return;        
+        Pose2 node_pt = Pose2(hNode->x, hNode->y);
+        double img_deg_nd = 1.4;
+        cv::Point2d img_scale_nd = cv::Point2d(10.2, 10.2);
+        cv::Point2d img_offset_nd = cv::Point2d(2400, 5142);
+        cv::Point2d img_pt_nd = m_guider.cvtValue2Pixel4Guidance(node_pt, img_deg_nd, img_scale_nd, img_offset_nd);
+        //ROS_INFO_THROTTLE(1.0, "node_pose on Image: %f,%f", img_pt_nd.x, img_pt_nd.y);
+
+        //calculate distance
+        double node_dist = norm(img_pt_dx - img_pt_nd);
+        //ROS_INFO_THROTTLE(1.0, "Distance: %f", node_dist);
+
+        if (node_dist*0.1 < 2.0)
+        {
+            //if (m_guider.m_guide_idx >= m_extendedPath.size() - 2)
+                m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_GOAL);
+            else
+                m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_NODE);
+                ROS_INFO_THROTTLE(1.0, "ARRIVED_NODE");
+        }
+        else
+        {
+            m_guider.setRobotStatus(GuidanceManager::RobotStatus::RUN_AUTO);
+        }
+        */
+
+    }
+        
+}
+
 
 void DeepGuiderROS::publishGuidance()
 {  
@@ -615,20 +699,50 @@ void DeepGuiderROS::publishDGPose()
 
 void DeepGuiderROS::publishSubGoal()
 {
+    geometry_msgs::PoseStamped rosps;
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
     ID nid = cur_guide.heading_node_id;
     Node* hNode = m_map.getNode(nid);
     if(hNode == nullptr) return;
-    Pose2 metric = Pose2(hNode->x, hNode->y);
+    cv::Point2d pt;
 
-    dg::Point2UTM node_utm = cvtLatLon2UTM(toLatLon(metric));
-    //printf("node_utm.x: %f, node_utm.y: %f\n", node_utm.x, node_utm.y); 
+    //Align KAIST's Bucheon map 2022-03-10 to DG map
+	if(m_guider.m_site_name == 1) // 1:"Bucheon_KETI"
+    {    //Aligned to "bucheon_robotmap(flipudlr).png"
+        double img_deg = 1.4;
+        cv::Point2d img_scale = cv::Point2d(10.2, 10.2);
+        cv::Point2d img_offset = cv::Point2d(2400, 5142);
 
-    geometry_msgs::PoseStamped rosps;
-    rosps.pose.position.x = node_utm.x;
-    rosps.pose.position.y = node_utm.y;
-    rosps.pose.position.z = nid;
-    
+        Pose2 node_pt = Pose2(hNode->x, hNode->y);
+
+        ROS_INFO_THROTTLE(1.0, "heading_node_id: %zd<==============", nid);
+        cv::Point2d img_pt = m_guider.cvtValue2Pixel4Guidance(node_pt, img_deg, img_scale, img_offset);
+
+        //translation to image to robot's coordintate
+        double r_deg = -90;
+        cv::Point2d r_scale = cv::Point2d(0.1, 0.1);
+        cv::Point2d r_offset = cv::Point2d(-311, -257.6);
+        cv::Point2d pt = m_guider.cvtValue2Pixel4Guidance(img_pt, r_deg, r_scale, r_offset);
+  
+    }
+    else
+    {
+        Pose2 metric = Pose2(hNode->x, hNode->y);
+        pt = cvtLatLon2UTM(toLatLon(metric));
+
+    }
+
+    dg::Timestamp  timestamp;
+    dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&timestamp);
+    if (timestamp < 0) return;
+    rosps.header.stamp.fromSec(timestamp);
+
+    rosps.pose.position.x = pt.x;
+    rosps.pose.position.y = pt.y;
+    rosps.pose.position.z = 0;
+    rosps.header.frame_id = "sub_goal";
+    ROS_INFO_THROTTLE(1.0, "r_pt: %f, %f", pt.x, pt.y);
+	 
     pub_subgoal.publish(rosps);  
 }
 

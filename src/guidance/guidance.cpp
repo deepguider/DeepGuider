@@ -230,7 +230,8 @@ bool GuidanceManager::buildGuides()
 	}
 
 	m_guide_idx = 0;
-
+	m_robot_guide_idx = 0;
+	
 	//for (size_t i = 0; i < m_extendedPath.size(); i++)
 	//{
 	//	if (m_extendedPath[i].is_junction)
@@ -380,6 +381,169 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	return true;
 }
 
+bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
+{
+	//check pose validation
+	ID curnid = pose.node_id;	//current robot's pose
+	Node* curNode = getMap()->getNode(curnid);
+	if (curNode == nullptr)
+	{
+		printf("[Error] GuidanceManager::update - curNode: %zu == nullptr!\n", curnid);
+		return false;
+	}
+	ID cureid = curNode->edge_ids[pose.edge_idx];
+	Edge* curEdge = getMap()->getEdge(cureid);
+	if (curEdge == nullptr)
+	{
+		printf("[Error] GuidanceManager::update - curEdge: %zu == nullptr!\n", cureid);
+		return false;
+	}
+
+	//after arrival, continuously moving.
+	if (m_arrival)
+	{
+		if (m_arrival_cnt > 20)
+		{
+			m_extendedPath.clear();
+			m_arrival = false;
+			m_arrival_cnt = 0;
+			m_gstatus = GuideStatus::GUIDE_NOPATH;
+			setEmptyGuide();
+			return true;
+		}
+		m_arrival_cnt++;
+	}
+
+	//finally arrived
+	double goal_dist = norm(m_extendedPath.back() - pose_metric);
+	if(m_robot_status == RobotStatus::ARRIVED_GOAL && (m_guide_idx >= m_extendedPath.size() - 2))
+	//if (m_guide_idx >= m_extendedPath.size() - 2 && goal_dist < m_arrived_threshold)
+	{
+		m_gstatus = GuideStatus::GUIDE_ARRIVED;
+		m_arrival = true;
+		setArrivalGuide();
+		m_curguidance.announce = true;
+		m_curguidance.distance_to_remain = goal_dist;
+		m_arrival_cnt++;
+		m_guide_idx = -1;
+		m_robot_guide_idx = -1;
+		m_last_announce_dist = -1;	//reset m_last_announce_dist
+		return true;
+	}
+
+	//if robot is not on-path
+	int gidx = getGuideIdxFromPose(pose);
+	if (gidx == -1)
+	{
+		printf("[Error] GuidanceManager::update - Pose not found on path!\n");
+		m_gstatus = GuideStatus::GUIDE_UNKNOWN;
+		setEmptyGuide();
+		return false;
+	}
+
+	//from here gidx > 0
+	//if robot has arrived at the node, update m_guide_idx 	
+	//printf("[GUIDANCE] gidx: %d, m_guide_idx: %d\n", gidx, m_guide_idx);
+	//printf("[GUIDANCE] updateWithRobot: %d, %zd\n", isNodeInPastGuides(m_curguidance.heading_node_id), m_curguidance.heading_node_id);
+	printf("[GUIDANCE] m_robot_guide_idx: %d\n", m_robot_guide_idx);
+	if (m_robot_status == RobotStatus::ARRIVED_NODE)
+	//if((m_robot_status == RobotStatus::ARRIVED_NODE) && !isNodeInPastGuides(m_curguidance.heading_node_id))
+	{
+		printf("[GUIDANCE] updateWithRobot::ARRIVED_NODE, gidx: %d, m_guide_idx: %d\n", gidx, m_guide_idx);
+		m_past_guides.push_back(m_curguidance); //save past guidances
+		m_last_announce_dist = -1;	//reset m_last_announce_dist
+		m_guide_idx = m_robot_guide_idx + 1 ;
+		//m_robot_change_node = 0;
+	}
+	
+	if (gidx > m_guide_idx)
+	{
+		printf("[GUIDANCE] gidx > m_guide_idx, gidx: %d, m_guide_idx: %d\n", gidx, m_guide_idx);
+		m_past_guides.push_back(m_curguidance); //save past guidances
+		m_last_announce_dist = -1;	//reset m_last_announce_dist
+		m_guide_idx = gidx;
+	}
+
+	if (m_robot_status == RobotStatus::RUN_MANUAL || m_robot_status == RobotStatus::RUN_AUTO)
+	{
+		printf("[GUIDANCE] RobotStatus::RUN_\n");
+		m_robot_guide_idx = m_guide_idx;
+	}
+	
+
+	//check remain distance
+	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
+	double passsed_dist = pose.dist;
+	double junction_dist = curEP.remain_distance_to_next_junction;
+	double remain_dist = junction_dist - passsed_dist; // + curedge->length;
+	m_remain_distance = remain_dist;
+
+	//check finishing condition
+	if (m_guide_idx >= m_extendedPath.size() - 2 && goal_dist < m_start_exploration_dist)
+	{
+		//Optimal view sequence
+		m_gstatus = GuideStatus::GUIDE_OPTIMAL_VIEW;	
+		setEmptyGuide();
+		m_curguidance.msg = "[GUIDANCE] NEAR_ARRIVAL. Optimal view started!";
+		m_curguidance.announce = true;
+		m_curguidance.distance_to_remain = m_remain_distance;
+		return true;
+	}
+
+	//check announce
+	int announce_dist = ((int) (remain_dist - 1 ) / m_guide_interval) * m_guide_interval;
+	bool announce = false;
+
+	m_gstatus = GuideStatus::GUIDE_NORMAL;
+	//near junction
+	if (remain_dist <= m_uncertain_dist)// || (curNode->type == Node::NODE_JUNCTION && passsed_dist < m_uncertain_dist))
+	{
+		//if the edge is shorter than 2*m_uncertain_dist
+		if (junction_dist <= 2 * m_uncertain_dist)
+		{
+			//	printf("m_last_announce_dist: %d, %d, %d\n", m_last_announce_dist, announce_dist, announce);
+			if ((m_last_announce_dist != announce_dist) && !announce)
+			{
+				announce = true;
+				m_last_announce_dist = announce_dist;
+				setSimpleGuide();
+			}
+			else
+			{
+				announce = false;
+				setEmptyGuide();
+			}
+		}
+		else
+		{
+			announce = false;
+			setEmptyGuide();
+		}
+	}
+	//on junction
+	else if (remain_dist < m_arrived_threshold)
+	{
+		m_last_announce_dist = -1;	//reset m_last_announce_dist
+		announce = false;
+		setEmptyGuide();
+	}
+	//normal case
+	else
+	{
+		if (announce_dist != m_last_announce_dist)
+		{
+			announce = true;
+			setSimpleGuide();
+			m_last_announce_dist = announce_dist;
+		}
+		else
+			announce = false;
+	}
+	m_curguidance.announce = announce;
+	m_curguidance.distance_to_remain = m_remain_distance;
+
+	return true;
+}
 
 bool GuidanceManager::setEmptyGuide()
 {
@@ -733,6 +897,16 @@ bool GuidanceManager::isEdgeInPath(ID edgeid)
 	return false;
 }
 
+bool GuidanceManager::isNodeInPastGuides(ID nodeid)
+{
+	for (size_t i = 0; i < m_past_guides.size(); i++)
+	{
+		if (nodeid == m_past_guides[i].heading_node_id)
+			return true;
+	}
+	return false;
+}
+
 int GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
 {
 	ID nodeid = pose.node_id;
@@ -743,6 +917,18 @@ int GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
 	}
 	return -1;
 }
+
+cv::Point2d GuidanceManager::cvtValue2Pixel4Guidance(cv::Point2d& val, double deg, cv::Point2d px_per_val, cv::Point2d offset)
+{	
+	cv::Point2d px;
+	double cost = cos(-cx::cvtDeg2Rad(deg));
+	double sint = sin(-cx::cvtDeg2Rad(deg));
+	px.x = (val.x * px_per_val.x) * cost - (-val.y * px_per_val.y) * sint + offset.x;
+	px.y = (val.x * px_per_val.x) * sint + (-val.y * px_per_val.y) * cost + offset.y;
+
+	return px;
+}
+
 
 void GuidanceManager::makeLostValue(double prevconf, double curconf)
 {

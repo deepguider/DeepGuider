@@ -284,6 +284,8 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "site_names", site_names, n_read);
     CX_LOAD_PARAM_COUNT(fn, "site_index", site_index, n_read);
     if (site_index >= 0 && site_index < site_names.size()) site_tagname = site_names[site_index];
+    m_guider.setSiteName(site_tagname);
+	printf("site_tagname: %s\n", site_tagname.c_str());
 
     CX_LOAD_PARAM_COUNT(fn, "dg_srcdir", m_srcdir, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_tts", m_enable_tts, n_read);
@@ -423,6 +425,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize guidance
     if (!m_guider.initialize(this)) return false;
+    printf("m_dxrobot_usage: %d\n", m_guider.m_dxrobot_usage);
     printf("\tGuidance initialized!\n");
 
     // load background GUI image
@@ -1253,7 +1256,8 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
         return;
     }
     m_guider_mutex.lock();
-    m_guider.update(pose_topo, pose_metric);
+    if(m_guider.m_dxrobot_usage)    m_guider.updateWithRobot(pose_topo, pose_metric);
+    else m_guider.update(pose_topo, pose_metric);
     cur_status = m_guider.getGuidanceStatus();
     cur_guide = m_guider.getGuidance();
     
