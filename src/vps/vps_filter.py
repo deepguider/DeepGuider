@@ -7,16 +7,16 @@ from ipdb import set_trace as bp
 from skimage.measure import LineModelND, ransac
 
 class vps_filter:
-    def __init__(self):
+    def __init__(self, ksize=9):
         self.n_sample_count = 0
-        self.n_samples = 7  # filter size of points for ransac
+        self.n_samples = ksize  # kernel_size
         #self.n_mean_samples = 15  # filter size of points for average filter
         self.n_samples_max = 100  # maximum filter size of points for ransac
-        self.n_samples_min = 5   # minimum filter size of points for ransac
+        self.n_samples_min = 1   # minimum filter size of points for ransac
         self.dims = 2
         self.utm_xys = np.zeros((self.n_samples_max, self.dims))
-        self.utm_xys[:,0] = np.arange(self.n_samples_max)
-        self.utm_xys[:,1] = np.arange(self.n_samples_max)
+        #self.utm_xys[:,0] = np.arange(self.n_samples_max)  # for debugging
+        #self.utm_xys[:,1] = np.arange(self.n_samples_max)  # for debugging
 
         if True:
             #self.ransacline_distance_threshold = 15  # Distance between current point and estimated line
@@ -89,10 +89,14 @@ class vps_filter:
         if n_samples > self.n_sample_count:  # Data is not sufficient
             n_samples = self.n_sample_count
 
-        return self.utm_xys[-n_samples:]
+        if n_samples == 0:
+            return np.asarray([[0,0]])
+        else:
+            return self.utm_xys[-n_samples:]
 
     def check_valid(self, new_x, new_y):
-        self.update_samples(new_x, new_y)
+        if new_x >0 and new_y > 0:
+            self.update_samples(new_x, new_y)
         utm_xys = self.get_samples(self.n_samples)
         mean_xys = np.median(utm_xys, axis=0)
         if len(utm_xys) < self.n_samples_min:
