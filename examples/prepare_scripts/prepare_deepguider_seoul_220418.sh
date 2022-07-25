@@ -24,6 +24,7 @@ if [ -e ${TARGET} ]; then
     ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_dg_seoul_220418/dbImg/StreetView/* ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/.
     ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_dg_seoul_220418/prebuilt_dbFeat.mat ${TARGET}/data_vps/.
     ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_dg_seoul_220418/poses.txt ${TARGET}/data_vps/.
+    ln -sf ${SRCPATH}/data_vps/dataset/ImageRetrievalDB/custom_dataset_seoul_dbRobot_qRobot_220418/datasets ${TARGET}/data_vps/netvlad_etri_datasets/
 
 	echo "If you got error, re-run this after running catkin_ws/init_vps_ramdisk.sh"
 	
@@ -32,6 +33,8 @@ if [ -e ${TARGET} ]; then
 	## Check error on return value of above commands
 	if [ $? -eq 1 ]; then # Error
 		echo "Some error have occured. Did you run ./setup_all.sh in examples directory before running ${0}."
+		echo "Run if you do not have dg_seoul_test.mat in dg_bin/data_vps/dataset/ImageRetrievalDB/custom_dataset_seoul_dbRobot_qRobot_220418/datasets/"
+		echo "Run git clone github.com/ccsmm78/dataset.git at ~/dg_bin/data_vps/"
 	fi
 else
 	echo ">>>No target directory exists : ${TARGET}"
