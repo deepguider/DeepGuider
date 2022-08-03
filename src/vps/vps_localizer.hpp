@@ -56,7 +56,7 @@ namespace dg
             if (m_sv_id == 0) return false;  // no valid matching between query and streetveiw due to lack of db images around query.
             streetview_confidence = vpss[0].confidence;
             //m_custom_dataset_abs_path = vpss[0].custom_dataset_abs_path;  // /home/dg/catkin_ws/devel/lib/dg_simple_ros/./data_vps/dataset/ImageRetrievalDB/custom_dataset_seoul_dbRobot_qRobot_220418/././rosImg/_2022-04-18-14-08-03/uvc_image/006276.jpg
-            m_custom_dataset_abs_path = "./data_vps/netvlad_etri_datasets/dbImg/StreetView";
+            m_custom_dataset_abs_path = "./data_vps/netvlad_etri_datasets/dbImg/StreetView";  // The parents dir name has to be identical to root_dir = "./data_vps/netvlad_etri_datasets" in src/vps/config_seoul.py 
 
             // matched streetview xy
             if (m_use_custom_image_server)
@@ -104,12 +104,14 @@ namespace dg
         {
             cv::Mat sv_image;
             dg::ID sv_id = getViewID();
+			printf("[vps] Ennterd getView Image.");
             if (m_use_custom_image_server)
             {
                 std::string fpath = cv::format("%s/%06ld.jpg", m_custom_dataset_abs_path.c_str(), sv_id);
                 if (file_exists(fpath))
 				{
 					sv_image = cv::imread(fpath);
+					printf("[vps] custom streetview db image [%s] was found.", fpath.c_str());
 				}
 				else
 				{

@@ -34,6 +34,7 @@ class WholeDatasetFromStruct():
         self.distances = None
 
     def initialize(self, structFile, db_dir, queries_dir):
+        self.structFile = structFile
         if os.path.exists(structFile) == False:
             print("[vps] ===> Not Found custom dataset : {}".format(structFile))
             return False
