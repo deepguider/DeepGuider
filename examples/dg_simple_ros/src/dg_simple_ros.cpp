@@ -6,6 +6,8 @@
 #include <std_msgs/String.h>
 #include <nav_msgs/Path.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/OccupancyGrid.h>
+#include <nav_msgs/MapMetaData.h>
 #include <cv_bridge/cv_bridge.h>
 #include <thread>
 #include "dg_simple.cpp"
@@ -54,6 +56,7 @@ protected:
     ros::Subscriber sub_robot_status;
     ros::Subscriber sub_robot_pose;
     ros::Subscriber sub_robot_heading;
+    ros::Subscriber sub_robot_map;
     void callbackThetaZ1360Image(const sensor_msgs::Image::ConstPtr& msg);
     void callbackThetaZ1360Crop(const sensor_msgs::Image::ConstPtr& msg);
     void callbackImage(const sensor_msgs::Image::ConstPtr& msg);
@@ -67,6 +70,7 @@ protected:
     void callbackRobotStatus(const std_msgs::String::ConstPtr& msg);
     void callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
     void callbackRobotHeading(const std_msgs::String::ConstPtr& msg);
+    void callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 
     // Topic publishers (sensor data)
     ros::Publisher pub_guide;
@@ -92,6 +96,14 @@ protected:
     ros::NodeHandle& nh_dg;
     double m_update_hz;
     double m_timestamp_offset = -1;
+
+    //Robot parameters
+    dg::LatLon m_robotmap_ref_point_latlon  = dg::LatLon(37.515838, 126.764309);
+    dg::Point2 m_robotmap_ref_point_pixel = dg::Point2(2410, 5142);
+    double m_robotmap_pixel_per_meter = 10.2;
+    double m_robotmap_image_rotation = 1.4;
+    double m_robot_map_rotation = -90.0;
+    cv::Point2d m_robot_map_origin = cv::Point2d(3110, 2576);
 };
 
 DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
@@ -150,8 +162,40 @@ int DeepGuiderROS::readRosParam(const cv::FileNode& fn)
         }
     }
 
+    //read robot configuration
+    cv::Vec2d ref_point = cv::Vec2d(m_robotmap_ref_point_latlon.lat, m_robotmap_ref_point_latlon.lon);
+    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_latlon", ref_point, n_read);
+    m_robotmap_ref_point_latlon = dg::LatLon(ref_point[0], ref_point[1]);
+    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_pixel", m_robotmap_ref_point_pixel, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "map_pixel_per_meter", m_robotmap_pixel_per_meter, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "map_image_rotation", m_robotmap_image_rotation, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "robot_map_rotation", m_robot_map_rotation, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "robot_map_origin", m_robot_map_origin, n_read);
+
+    int robot_site_index = -1;
+    std::string robot_site_tagname;
+    std::vector<cv::String> robot_site_set;
+    CX_LOAD_PARAM_COUNT(fn, "robot_site_set", robot_site_set, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "robot_site_index", robot_site_index, n_read);
+    if (robot_site_index >= 0 && robot_site_index < robot_site_set.size()) robot_site_tagname = robot_site_set[robot_site_index];
+
+    // Read Robot Setting
+    if (!robot_site_tagname.empty())
+    {
+        cv::FileNode fn_robot = fn[robot_site_tagname];
+        if (!fn_robot.empty())
+        {
+            n_read += readRosParam(fn_robot);
+        }
+    }
     m_guider.setRobotUsage(topicset_tagname);
 	printf("topicset_tagname: %s\n", topicset_tagname.c_str());
+    m_guider.setMapUsage(false);
+
+
+	printf("map_pixel_per_meter.x: %f\n", m_robotmap_ref_point_pixel.x);
+	printf("m_robotmap_pixel_per_meter: %f\n", m_robotmap_pixel_per_meter);
+	printf("map_image_rotation: %f\n", m_robotmap_image_rotation);
     
     return n_read;
 }
@@ -177,6 +221,7 @@ bool DeepGuiderROS::initialize(std::string config_file)
     sub_robot_status = nh_dg.subscribe("/keti_robot/state", 1, &DeepGuiderROS::callbackRobotStatus, this);
     sub_robot_heading = nh_dg.subscribe("/keti_robot/heading_node", 1, &DeepGuiderROS::callbackRobotHeading, this);
     sub_robot_pose = nh_dg.subscribe("/mcl3d/current/pose", 1, &DeepGuiderROS::callbackRobotPose, this);
+    sub_robot_map = nh_dg.subscribe("/mcl3d/current/map", 1, &DeepGuiderROS::callbackRobotMap, this);
     sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
     sub_ocr_image = nh_dg.subscribe("/dg_ocr/image", 1, &DeepGuiderROS::callbackOCRImage, this);
 	if(m_enable_vps == 2)sub_vps = nh_dg.subscribe("/dg_vps/output", 1, &DeepGuiderROS::callbackVPS, this);
@@ -590,16 +635,38 @@ void DeepGuiderROS::callbackRobotHeading(const std_msgs::String::ConstPtr& msg)
 
 }
 
+void DeepGuiderROS::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
+{
+    try
+    {
+        m_robotmap_mutex.lock();
+        std_msgs::Header header = msg->header;
+        nav_msgs::MapMetaData info = msg->info;
+        ROS_INFO_THROTTLE(1.0, "Got robot map (timestamp: %f [sec], W:%d, H%d).", msg->header.stamp.toSec(), info.width, info.height);
+        
+        cv::Mat image = cv::imdecode(cv::Mat(msg->data), 1);
+
+        m_robotmap_image = image;  
+        m_robotmap_capture_time = msg->header.stamp.toSec();
+        m_robotmap_mutex.unlock();
+
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("exception @ callbackRobotMap(): %s", e.what());
+        return;
+    }
+}
+
 
 void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     dg::Pose2 robot_pose;
     robot_pose.x = msg->pose.position.x;
     robot_pose.y = msg->pose.position.y;
-    //ROS_INFO_THROTTLE(1.0, "Robot: %f,%f", robot_pose.x, robot_pose.y);
+    ROS_INFO_THROTTLE(1.0, "Robot: %f,%f", robot_pose.x, robot_pose.y);
 
     dg::Timestamp capture_time = msg->header.stamp.toSec();
-
     
     //ROS_INFO_THROTTLE(1.0, "m_site_tagname: %s", m_site_tagname.c_str());
     
@@ -607,13 +674,21 @@ void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr
     //Aligned to "bucheon_robotmap(flipudlr).png"
 	if(m_guider.m_site_name == 1) // 1:"Bucheon_KETI"
     {    //Aligned to "bucheon_robotmap(flipudlr).png"
-    
-        double img_deg_dx = -90;
-        cv::Point2d img_scale_dx = cv::Point2d(10.0, 10.0);
-        cv::Point2d img_offset_dx = cv::Point2d(2576, 3110);
-        cv::Point2d img_pt_dx = m_guider.cvtValue2Pixel4Guidance(robot_pose, img_deg_dx, img_scale_dx, img_offset_dx);
-        //ROS_INFO_THROTTLE(1.0, "dx_pose on Image: %f,%f", img_pt_dx.x, img_pt_dx.y);
 
+        // double img_deg_dx1 = -90;
+        // cv::Point2d img_scale_dx1 = cv::Point2d(10.0, 10.0);
+        // cv::Point2d img_offset_dx1 = cv::Point2d(2576, 3110);
+        // cv::Point2d img_pt_dx1 = m_guider.cvtValue2Pixel4Guidance(robot_pose, img_deg_dx1, img_scale_dx1, img_offset_dx1);
+        // ROS_INFO_THROTTLE(1.0, "[before]callbackRobotPose-robot2image: %f,%f", img_pt_dx1.x, img_pt_dx1.y);
+
+
+        double img_deg_dx = -90;
+        cv::Point2d img_scale_dx = cv::Point2d(m_robotmap_pixel_per_meter, m_robotmap_pixel_per_meter);
+        cv::Point2d img_offset_dx = cv::Point2d(m_robot_map_origin.y, m_robot_map_origin.x);
+        cv::Point2d img_pt_dx = m_guider.cvtValue2Pixel4Guidance(robot_pose, img_deg_dx, img_scale_dx, img_offset_dx);
+        ROS_INFO_THROTTLE(1.0, "callbackRobotPose-robot2image: %f,%f", img_pt_dx.x, img_pt_dx.y);
+   
+        m_guider.m_robot_pose = img_pt_dx;
         cv::circle(m_map_image, img_pt_dx, 10, cv::Vec3b(0, 255, 0));
 
         /*
@@ -702,6 +777,9 @@ void DeepGuiderROS::publishSubGoal()
     geometry_msgs::PoseStamped rosps;
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
     ID nid = cur_guide.heading_node_id;
+    double angle = cur_guide.relative_angle;
+    double dist = cur_guide.distance_to_remain;
+     
     Node* hNode = m_map.getNode(nid);
     if(hNode == nullptr) return;
     cv::Point2d pt;
@@ -709,27 +787,48 @@ void DeepGuiderROS::publishSubGoal()
     //Align KAIST's Bucheon map 2022-03-10 to DG map
 	if(m_guider.m_site_name == 1) // 1:"Bucheon_KETI"
     {    //Aligned to "bucheon_robotmap(flipudlr).png"
-        double img_deg = 1.4;
-        cv::Point2d img_scale = cv::Point2d(10.2, 10.2);
-        cv::Point2d img_offset = cv::Point2d(2400, 5142);
 
         Pose2 node_pt = Pose2(hNode->x, hNode->y);
+        //ROS_INFO_THROTTLE(1.0, "heading_node_id: %zd<==============", nid);
 
-        ROS_INFO_THROTTLE(1.0, "heading_node_id: %zd<==============", nid);
+        // double img_deg1 = 1.4;
+        // cv::Point2d img_scale1 = cv::Point2d(10.2, 10.2);
+        // cv::Point2d img_offset1 = cv::Point2d(2400, 5142);
+        // cv::Point2d img_pt1 = m_guider.cvtValue2Pixel4Guidance(node_pt, img_deg1, img_scale1, img_offset1);;
+        // ROS_INFO_THROTTLE(1.0, "[before] publishSubGoal-node2img: %f,%f", img_pt1.x, img_pt1.y);
+
+
+        double img_deg = m_robotmap_image_rotation;
+        cv::Point2d img_scale = cv::Point2d(m_robotmap_pixel_per_meter, m_robotmap_pixel_per_meter);
+        cv::Point2d img_offset = m_robotmap_ref_point_pixel;
         cv::Point2d img_pt = m_guider.cvtValue2Pixel4Guidance(node_pt, img_deg, img_scale, img_offset);
+        // ROS_INFO_THROTTLE(1.0, "[after] publishSubGoal-node2img: %f,%f", img_pt.x, img_pt.y);
 
         //translation to image to robot's coordintate
-        double r_deg = -90;
-        cv::Point2d r_scale = cv::Point2d(0.1, 0.1);
-        cv::Point2d r_offset = cv::Point2d(-311, -257.6);
+        // double r_deg1 = -90;
+        // cv::Point2d r_scale1 = cv::Point2d(0.1, 0.1);
+        // cv::Point2d r_offset1 = cv::Point2d(-311, -257.6);
+        // cv::Point2d pt1 = m_guider.cvtValue2Pixel4Guidance(img_pt1, r_deg1, r_scale1, r_offset1);
+        // ROS_INFO_THROTTLE(1.0, "[before] publishSubGoal-img2robot: %f,%f", pt1.x, pt1.y);
+
+        double r_deg = m_robot_map_rotation;
+        cv::Point2d r_scale = cv::Point2d(1/m_robotmap_pixel_per_meter, 1/m_robotmap_pixel_per_meter);
+        cv::Point2d r_offset = cv::Point2d(-m_robot_map_origin.x*1/m_robotmap_pixel_per_meter, -m_robot_map_origin.y*1/m_robotmap_pixel_per_meter);
         cv::Point2d pt = m_guider.cvtValue2Pixel4Guidance(img_pt, r_deg, r_scale, r_offset);
+        ROS_INFO_THROTTLE(1.0, "publishSubGoal-img2robot: %f,%f", pt.x, pt.y);
+
+        if (m_guider.m_use_online_map)
+        {
+            //translated robot's pose
+            //translated heading node's pose
+            pt;
+        } 
   
     }
     else
     {
         Pose2 metric = Pose2(hNode->x, hNode->y);
         pt = cvtLatLon2UTM(toLatLon(metric));
-
     }
 
     dg::Timestamp  timestamp;

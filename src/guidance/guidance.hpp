@@ -176,6 +176,8 @@ namespace dg
         bool m_dxrobot_usage = 0;
         int m_site_name = 0;
         ID m_robot_heading;
+        bool m_use_online_map = 0;
+        cv::Point2d m_robot_pose;
         bool initialize(dg::SharedInterface* shared);
         bool initiateNewGuidance();
         bool initiateNewGuidance(Point2F gps_start, Point2F gps_des);
@@ -212,6 +214,10 @@ namespace dg
                 m_site_name = 1;
             }
         };
+        void setMapUsage(bool flag){
+            if(flag) m_use_online_map = true;
+            else m_use_online_map = false;
+        };
         cv::Point2d cvtValue2Pixel4Guidance(cv::Point2d& val, double deg, cv::Point2d px_per_val, cv::Point2d offset);
 
 
@@ -238,7 +244,7 @@ namespace dg
         double m_arrived_threshold = 1.0;
         bool m_arrival = false;
         int m_arrival_cnt = 0;
-        bool m_use_robot_map = 0;
+        //bool m_use_robot_map = 0;
 
         std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
             "ESCALATOR", "UNKNOWN" };

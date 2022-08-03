@@ -222,6 +222,10 @@ protected:
     cv::Mutex m_map_mutex;
     cv::Mutex m_guider_mutex;
 
+    cv::Mutex m_robotmap_mutex;
+    cv::Mat m_robotmap_image;
+    dg::Timestamp m_robotmap_capture_time;
+
     // guidance icons
     cv::Mat m_icon_forward;
     cv::Mat m_mask_forward;
