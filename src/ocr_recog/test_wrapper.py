@@ -4,17 +4,17 @@ import glob
 from ocr_recognizer import OCRRecognizer
 from tqdm import tqdm
 
-imagepath = 'demo_image'
+imagepath = '/gallery_moma/minjung.kim/project/coex_demo/220418_uvc_image' #'demo_image'
 
 start = time.time()
 
 test = OCRRecognizer()
 test.initialize()
 
-imgs = glob.glob(os.path.join(imagepath, '*.png'))
+imgs = glob.glob(os.path.join(imagepath, '*.jpg'))
 imgs.sort()
 
-with open('pred_list.txt', 'w') as f:
+with open('pred_list_uvc2.txt', 'w') as f:
     for img in tqdm(imgs):
         pred, timestamp = test.apply(img, start, True)
         for p in pred:
