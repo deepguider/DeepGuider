@@ -42,7 +42,9 @@ def train(opt):
         print('Filtering the images containing characters which are not in opt.character')
         print('Filtering the images whose label is longer than opt.batch_max_length')
         # see https://github.com/clovaai/deep-text-recognition-benchmark/blob/6593928855fb7abb999a99f428b3e4477d4ae356/dataset.py#L130
-
+    print(opt.character)
+    print(opt.language, len(opt.character))
+    
     opt.select_data = opt.select_data.split('-')
     opt.batch_ratio = opt.batch_ratio.split('-')
     train_dataset = Batch_Balanced_Dataset(opt)
@@ -69,7 +71,7 @@ def train(opt):
         opt.input_channel = 3
 
     # sekim for transfer learning
-    model = Model(opt, 38)
+    model = Model(opt, opt.num_class)
 
     print('model input parameters', opt.imgH, opt.imgW, opt.num_fiducial, opt.input_channel, opt.output_channel,
           opt.hidden_size, opt.num_class, opt.batch_max_length)
