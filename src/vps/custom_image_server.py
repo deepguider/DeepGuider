@@ -57,7 +57,8 @@ class WholeDatasetFromStruct():
             self.init_tmp_dir()
         except:
             return False
-        self.abs_image_path = os.path.join(self.curr_path, self.db_dir, os.path.dirname(self.dbStruct.dbImage[0]))
+        #self.abs_image_path = os.path.join(self.curr_path, self.db_dir, os.path.dirname(self.dbStruct.dbImage[0]))
+        self.abs_image_path = os.path.join(self.curr_path, self.db_dir, "dbImg", "StreetView")
         return True
 
     def get_abs_image_path(self):
