@@ -24,7 +24,6 @@ if [ -e ${TARGET} ]; then
 	ln -sf ${SRCPATH}/recordings ${TARGET}/.  # rosbag data file
 
     ## Test dataset
-    ln -sf ${SRCPATH}/data/ETRI ${TARGET}/data/video
     ln -sf ${SRCPATH}/data/ETRI ${TARGET}/data/.
     ln -sf ${SRCPATH}/data/COEX ${TARGET}/data/.
 
@@ -75,11 +74,11 @@ if [ -e ${TARGET} ]; then
 	ln -sf ${SRCPATH}/data_exp ${TARGET}/../src/exploration/data_exp
 
 	## Misc.
-
-        ## Door detect
-        ln -sf ${SRCPATH}/data_door_detect /home/${USER}/catkin_ws/data_door_detect
 		echo "###### Be careful to make symbolic link including large amount files in ros workspace,"
 		echo "  because ros takes times to search and index all files in package workspace at starting time. ######"
+
+    ## Door detect
+        ln -sf ${SRCPATH}/data_door_detect /home/${USER}/catkin_ws/data_door_detect
 
 	## Check error on return value of above commands
 	if [ $? -eq 1 ]; then # Error
