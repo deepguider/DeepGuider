@@ -29,6 +29,8 @@ if [ -e ${TARGET} ]; then
 	echo "If you got error, re-run this after running catkin_ws/init_vps_ramdisk.sh"
 	
 	## Misc.
+		echo "###### Be careful to make symbolic link including large amount files in ros workspace,"
+		echo "  because ros takes times to search and index all files in package workspace at starting time. ######"
 
 	## Check error on return value of above commands
 	if [ $? -eq 1 ]; then # Error

@@ -47,8 +47,10 @@ if [ -e ${TARGET} ]; then
 	rm -rf ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/*
     #cp -rf ${SRCPATH}/data_vps/netvlad_etri_datasets_indoor_etri12b_1way/dbImg/StreetView/* ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/.
 
+	## Be careful to make symbolic link including large amount files, because ros takes times to searchs all files in package workspace at starting timeo.
+	## In /opt/ros/melodic/lib/python2.7/dist-packages/roslib/packages.py at line 470
 	## VPS : Custom dataset instead of Naver image server
-	ln -sf ${SRCPATH}/data_vps/dataset ${TARGET}/data_vps/.
+	#ln -sf ${SRCPATH}/data_vps/dataset ${TARGET}/data_vps/.
 
     ## Intersection weight
     # ln -sf ${SRCPATH}/data_intersection_cls ${TARGET}/data_intersection_cls  ## This was done in examples/setup_intersection.sh
@@ -76,6 +78,8 @@ if [ -e ${TARGET} ]; then
 
         ## Door detect
         ln -sf ${SRCPATH}/data_door_detect /home/${USER}/catkin_ws/data_door_detect
+		echo "###### Be careful to make symbolic link including large amount files in ros workspace,"
+		echo "  because ros takes times to search and index all files in package workspace at starting time. ######"
 
 	## Check error on return value of above commands
 	if [ $? -eq 1 ]; then # Error
