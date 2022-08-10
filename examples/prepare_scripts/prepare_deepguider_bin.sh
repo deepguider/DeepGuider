@@ -39,7 +39,7 @@ if [ -e ${TARGET} ]; then
 	## VPS weight
     ln -sf ${SRCPATH}/data_vps/netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint ${TARGET}/data_vps/netvlad/pretrained_checkpoint/.
     ln -sf ${SRCPATH}/data_vps/netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint_gpu4 ${TARGET}/data_vps/netvlad/pretrained_checkpoint/.
-    cp -rf ${SRCPATH}/data_vps/prebuilt_dbFeat_1way.mat ${TARGET}/data_vps/prebuilt_dbFeat.mat
+    ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_indoor_etri12b_1way/prebuilt_dbFeat_1way.mat ${TARGET}/data_vps/prebuilt_dbFeat.mat
 
 	## VPS : Indoor streetview for VPS in prebuilt weight mode
 	echo "Flushing and copying indoor streetview images to ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/."
@@ -74,11 +74,11 @@ if [ -e ${TARGET} ]; then
 	ln -sf ${SRCPATH}/data_exp ${TARGET}/../src/exploration/data_exp
 
 	## Misc.
+
+        ## Door detect
+        ln -sf ${SRCPATH}/data_door_detect /home/${USER}/catkin_ws/data_door_detect
 		echo "###### Be careful to make symbolic link including large amount files in ros workspace,"
 		echo "  because ros takes times to search and index all files in package workspace at starting time. ######"
-
-    ## Door detect
-        ln -sf ${SRCPATH}/data_door_detect /home/${USER}/catkin_ws/data_door_detect
 
 	## Check error on return value of above commands
 	if [ $? -eq 1 ]; then # Error
