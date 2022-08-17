@@ -31,7 +31,7 @@ python test.py --eval_data data_lmdb_release/evaluation --benchmark_all_eval --s
 ```
 
 ### Run demo
-1. Download pretrained models from [here](https://drive.google.com/drive/folders/12b60GO8rAMXV5-bbXJyR4x5hYwwqltmZ). <!--[detection](https://drive.google.com/file/d/1R3hzHWwDJ_cKp__KcIvDg4V1hikT9MvU/view?usp=sharing), [recognition](https://drive.google.com/file/d/1hTjJDJNY98CZRrADNpCOOVZsbZwBE4zC/view?usp=sharing) -->
+1. Download pretrained models from [here](https://drive.google.com/drive/folders/17_Mbb6yNxalFymKAlkuWj0yJRSXeQib-?usp=sharing). 
 3. Set image path and run test_wrapper.py
 4. Check ./data_ocr/result.jpg
 ```
