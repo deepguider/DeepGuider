@@ -43,4 +43,4 @@ python test_wrapper.py
 
 Model |  IC13_857 | IC13_1015 | avg
 -- | -- | -- | -- |
-Our best model   | 96.033 | 94.975 | 95.459
+Our best model   | 96.033 | 95.074 | 95.513
