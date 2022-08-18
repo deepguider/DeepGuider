@@ -60,7 +60,8 @@ if [ -e ${TARGET} ]; then
 
 	## OCR
 	ln -sf ${SRCPATH}/data_ocr/best_craft.pth ${TARGET}/data_ocr/.
-	ln -sf ${SRCPATH}/data_ocr/best_accuracy.pth ${TARGET}/data_ocr/.
+	ln -sf ${SRCPATH}/data_ocr/best_accuracy_en.pth ${TARGET}/data_ocr/.
+	ln -sf ${SRCPATH}/data_ocr/best_accuracy_kr.pth ${TARGET}/data_ocr/.
 
 	## POI
 
