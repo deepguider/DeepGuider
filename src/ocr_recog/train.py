@@ -70,7 +70,7 @@ def train(opt):
     if opt.rgb:
         opt.input_channel = 3
 
-    # sekim for transfer learning
+    # for transfer learning
     model = Model(opt, opt.num_class)
 
     print('model input parameters', opt.imgH, opt.imgW, opt.num_fiducial, opt.input_channel, opt.output_channel,
@@ -101,7 +101,7 @@ def train(opt):
         else:
             model.load_state_dict(torch.load(opt.saved_model))
             
-    # sekim change last layer
+    # change last layer
     in_feature = model.module.Prediction.generator.in_features
     model.module.Prediction.attention_cell.rnn = nn.LSTMCell(256 + opt.num_class, 256).to(device)
     model.module.Prediction.generator = nn.Linear(in_feature, opt.num_class).to(device)

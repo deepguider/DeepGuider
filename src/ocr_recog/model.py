@@ -27,6 +27,9 @@ class Model(nn.Module):
     def __init__(self, opt, num_class):
         super(Model, self).__init__()
         self.opt = opt
+        
+        if opt.rgb:
+            opt.input_channel = 3
 
         """ Transformation TPS """
         self.Transformation = TPS_SpatialTransformerNetwork(
