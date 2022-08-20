@@ -34,10 +34,10 @@ enum
     DATA_RoadTheta = 6,
 
     /** OCR data */
-    DATA_OCR = 7
+    DATA_OCR = 7,
 
     /** Intersection3Camera classifier data (time, v, confidence) */
-    DATA_Intersect3CameraCls = 8,
+    DATA_Intersect3CameraCls = 8
 };
 
 /**

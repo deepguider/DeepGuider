@@ -91,6 +91,7 @@ public:
     virtual bool procOutOfPath(const Point2& curr_pose);
 	cv::Mat crop_image(cv::Mat cam_image, int num, int idx); // num : number of h-stacked images, idx, 0: left, 1: front, 2:right
 	bool get_cam_image(cv::Mat& cam_image, cv::Mat& cam_image_for_draw, int idx_for_draw, double& txt_scale, dg::Timestamp& capture_time, dg::Timestamp capture_time_prev);
+	bool get_360cam_image(cv::Mat& cam_image, cv::Mat& cam_image_for_draw, double& txt_scale, dg::Timestamp& capture_time, dg::Timestamp capture_time_prev);
 
     void procMouseEvent(int evt, int x, int y, int flags);
     void procTTS();
