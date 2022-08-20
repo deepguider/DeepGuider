@@ -1451,8 +1451,8 @@ bool DeepGuider::procIntersectionClassifier()
 
 bool DeepGuider::procIntersection3CameraClassifier()
 {
-	cv::Mat cam360_image;
-	cv::Mat cam360_image_for_draw;
+	cv::Mat cam_image;
+	cv::Mat cam_image_for_draw;
 	dg::Timestamp capture_time;
 	double txt_scale;
 
