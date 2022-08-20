@@ -68,11 +68,14 @@ namespace dg
 
             /** RoadTheta data (v1: theta) */
             OBS_RoadTheta = 7
+
+            /** Intersection3Camera classifier data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
+            OBS_IntersectCls3Camera = 8,
         };
 
         /**
          * The type of observation data
-         * @see OBS_GPS, OBS_IMU, OBS_POI, OBS_VPS, OBS_VPS_LR, OBS_RoadTheta, OBS_IntersectCls
+         * @see OBS_GPS, OBS_IMU, OBS_POI, OBS_VPS, OBS_VPS_LR, OBS_RoadTheta, OBS_IntersectCls, OBS_Intersect3CameraCls
          */
         int type;
 
@@ -285,6 +288,14 @@ namespace dg
             return false;
         }
 
+        virtual bool setParamIntersect3CameraClsNoise(double sigma_position)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (m_ekf) return m_ekf->setParamIntersect3CameraClsNoise(sigma_position);
+            return false;
+        }
+
+
         virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1)
         {
             return applyGPS(toMetric(ll), time, confidence);
@@ -395,6 +406,24 @@ namespace dg
             else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
             if (!m_ekf->applyIntersectCls(xy, time, confidence)) return false;
             saveObservation(ObsData::OBS_IntersectCls, xy, time, confidence);
+            saveEKFState(m_ekf, time);
+            return applyPathLocalizer(m_ekf->getPose(), time);
+        }
+
+        virtual bool applyIntersect3CameraCls(const Point2& xy, Timestamp time = -1, double confidence = -1)
+        {
+            return true;
+            
+            cv::AutoLock lock(m_mutex);
+            if (m_pose_history.empty()) return false;
+            if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
+            {
+                if (!backtrackingEKF(time, ObsData(ObsData::OBS_Intersect3CameraCls, xy, time, confidence))) return false;
+                return applyPathLocalizer(m_ekf->getPose(), time);
+            }
+            else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
+            if (!m_ekf->applyIntersect3CameraCls(xy, time, confidence)) return false;
+            saveObservation(ObsData::OBS_Intersect3CameraCls, xy, time, confidence);
             saveEKFState(m_ekf, time);
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
@@ -571,6 +600,10 @@ namespace dg
             else if (obs.type == ObsData::OBS_IntersectCls)
             {
                 return m_ekf->applyIntersectCls(Point2(obs.v1, obs.v2), obs.timestamp, obs.confidence);
+            }
+            else if (obs.type == ObsData::OBS_Intersect3CameraCls)
+            {
+                return m_ekf->applyIntersect3CameraCls(Point2(obs.v1, obs.v2), obs.timestamp, obs.confidence);
             }
             else if (obs.type == ObsData::OBS_RoadLR)
             {

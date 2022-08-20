@@ -87,6 +87,13 @@ public:
     virtual bool setParamIntersectClsNoise(double sigma_position) = 0;
 
     /**
+     * Set error covariance of Intersection3camera-based localization
+     * @param sigma_position Standard deviation of robot position estimated from Intersection3camera observation (Unit: [m])
+     */
+    virtual bool setParamIntersect3CameraClsNoise(double sigma_position) = 0;
+
+
+    /**
      * Set error variance of RoadTheta
      * @param sigma_theta_deg Standard deviation of RoadTheta error (Unit: [deg])
      */
@@ -178,6 +185,16 @@ public:
      * @return True if successful (false if failed)
      */
     virtual bool applyIntersectCls(const Point2& xy, Timestamp time = -1, double confidence = -1) = 0;
+};
+
+    /**
+     * Apply position observation from Intersection3camera-based localizer
+     * @param xy The coordinate of robot position estimated from intsection observation
+     * @param time The observed time (Unit: [sec])
+     * @param confidence The observation confidence
+     * @return True if successful (false if failed)
+     */
+    virtual bool applyIntersect3CameraCls(const Point2& xy, Timestamp time = -1, double confidence = -1) = 0;
 };
 
 

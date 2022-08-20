@@ -287,6 +287,94 @@ protected:
     double m_inter_disappear_time;
 };
 
+
+
+class EKFLocalizerInterSec3Camera : public EKFLocalizerSinTrack
+{
+public:
+    EKFLocalizerInterSec3Camera()
+    {
+        m_inter_appear_threshold = 1;
+        m_inter_disappear_time = 2;
+
+        m_inter_appear_count = 0;
+        m_inter_appear_time = 0;
+    }
+
+    virtual int readParam(const cv::FileNode& fn)
+    {
+        int n_read = EKFLocalizerSinTrack::readParam(fn);
+        CX_LOAD_PARAM_COUNT(fn, "inter_appear_threshold", m_inter_appear_threshold, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "inter_disappear_time", m_inter_disappear_time, n_read);
+        return n_read;
+    }
+
+    virtual bool applyLocClue(ID node_id, const Polar2& obs = Polar2(-1, CV_PI), double time = -1, double confidence = -1)
+    {
+        if (node_id == 0)
+        {
+            cv::AutoLock lock(m_mutex);
+            if (m_inter_appear_threshold > 0)
+            {
+                m_inter_appear_count++;
+                m_inter_appear_time = time;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    virtual bool applyPosition(const Point2& xy, double time = -1, double confidence = -1)
+    {
+        if (EKFLocalizerHyperTan::applyPosition(xy, time, confidence))
+        {
+            cv::AutoLock lock(m_mutex);
+            return applyRoadMap() && applyIntersection(time);
+        }
+        return false;
+    }
+
+    virtual bool applyOrientation(double theta, double time, double confidence = -1)
+    {
+        if (EKFLocalizerHyperTan::applyOrientation(theta, time, confidence))
+        {
+            cv::AutoLock lock(m_mutex);
+            applyIntersection(time);
+            return true;
+        }
+        return false;
+    }
+
+protected:
+    bool applyIntersection3Camera(double time)
+    {
+        bool update = false;
+        if (m_inter_appear_time > 0)
+        {
+            double interval = time - m_inter_appear_time;
+            if (interval >= m_inter_disappear_time)
+            {
+                if (m_inter_appear_count > m_inter_appear_threshold)
+                {
+                    m_pose_topo.dist = m_state_vec.at<double>(3) * interval;
+                    update = true;
+                }
+                m_inter_appear_count = 0;
+                m_inter_appear_time = 0;
+            }
+        }
+        return update;
+    }
+
+    int m_inter_appear_threshold;
+
+    int m_inter_appear_count;
+
+    double m_inter_appear_time;
+
+    double m_inter_disappear_time;
+};
+
 } // End of 'dg'
 
 #endif // End of '__EKF_LOCALIZER_VARIANTS__'

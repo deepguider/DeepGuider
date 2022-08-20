@@ -374,7 +374,7 @@ bool DeepGuider::initialize(std::string config_file)
     if (m_enable_intersection==1) printf("\tIntersection initialized in %.3lf seconds!\n", m_intersection.procTime());
 
     // initialize Intersection 3 Camera
-    std::string py_module_path = m_srcdir + "/intersection3camera_cls";
+    py_module_path = m_srcdir + "/intersection3camera_cls";
     if (m_enable_intersection3camera==1 && !m_intersection3camera.initialize(this, py_module_path)) return false;
     if (m_enable_intersection3camera==1) printf("\tIntersection 3 camera initialized in %.3lf seconds!\n", m_intersection3camera.procTime());
 

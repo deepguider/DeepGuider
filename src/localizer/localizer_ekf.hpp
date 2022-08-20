@@ -34,6 +34,7 @@ namespace dg
         cv::Mat m_poi_noise_relative;
         cv::Mat m_vps_noise_relative;
         cv::Mat m_intersectcls_noise;
+        cv::Mat m_intersect3cameracls_noise;
         cv::Mat m_observation_noise;
         double m_threshold_time;
         double m_threshold_clue_dist;
@@ -72,6 +73,7 @@ namespace dg
             m_poi_noise_relative = cv::Mat::eye(4, 4, CV_64F);
             m_vps_noise_relative = cv::Mat::eye(4, 4, CV_64F);
             m_intersectcls_noise = cv::Mat::eye(2, 2, CV_64F);
+            m_intersect3cameracls_noise = cv::Mat::eye(2, 2, CV_64F);
             m_camera_offset = Polar2(0, 0);
             m_sensor_offset = Polar2(0, 0);
 
@@ -108,6 +110,7 @@ namespace dg
             CX_LOAD_PARAM_COUNT(fn, "poi_noise_relative", m_poi_noise_relative, n_read);
             CX_LOAD_PARAM_COUNT(fn, "vps_noise_relative", m_vps_noise_relative, n_read);
             CX_LOAD_PARAM_COUNT(fn, "intersectcls_noise", m_intersectcls_noise, n_read);
+            CX_LOAD_PARAM_COUNT(fn, "intersect3cameracls_noise", m_intersect3cameracls_noise, n_read);
             CX_LOAD_PARAM_COUNT(fn, "threshold_time", m_threshold_time, n_read);
             CX_LOAD_PARAM_COUNT(fn, "threshold_clue_dist", m_threshold_clue_dist, n_read);
             CX_LOAD_PARAM_COUNT(fn, "norm_conf_a", m_norm_conf_a, n_read);
@@ -242,6 +245,13 @@ namespace dg
             return true;
         }
 
+        virtual bool setParamIntersect3CameraClsNoise(double sigma_position)
+        {
+            cv::AutoLock lock(m_mutex);
+            m_intersect3cameracls_noise = (cv::Mat_<double>(2, 2) << sigma_position * sigma_position, 0, 0, sigma_position * sigma_position);
+            return true;
+        }
+
         virtual bool applyGPS(const LatLon& ll, Timestamp time = -1, double confidence = -1)
         {
             Point2 xy = toMetric(ll);
@@ -356,6 +366,13 @@ namespace dg
         virtual bool applyIntersectCls(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
             m_observation_noise = m_intersectcls_noise;
+            m_sensor_offset = m_camera_offset;
+            return applyPosition(xy, time, confidence);
+        }
+
+        virtual bool applyIntersect3CameraCls(const Point2& xy, Timestamp time = -1, double confidence = -1)
+        {
+            m_observation_noise = m_intersect3cameracls_noise;
             m_sensor_offset = m_camera_offset;
             return applyPosition(xy, time, confidence);
         }
