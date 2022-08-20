@@ -55,6 +55,15 @@ if [ -e ${TARGET} ]; then
     # ln -sf ${SRCPATH}/data_intersection_cls ${TARGET}/data_intersection_cls  ## This was done in examples/setup_intersection.sh
     ln -sf ${SRCPATH}/data_intersection_cls/v1.10_binary_resnet18_3_best.pth ${TARGET}/data_intersection_cls/.
     ln -sf ${SRCPATH}/data_intersection_cls/weight.pth ${TARGET}/data_intersection_cls/.
+    ln -sf ${SRCPATH}/data_intersection_cls/v5.0-3_indoor2wbg_resnet18_best.pth ${TARGET}/data_intersection_cls/.  # outdoor model
+    ln -sf ${SRCPATH}/data_intersection_cls/v5.0-4_2wbg_resnet18_best.pth ${TARGET}/data_intersection_cls/.  # indoor-outdoor model
+    ln -sf ${SRCPATH}/data_intersection_cls/v5.0-2_outdoor2wbg_resnet18_best.pth ${TARGET}/data_intersection_cls/.  # indoor model
+
+
+    ## Intersection 3 camera weight
+    ln -sf ${SRCPATH}/data_intersection3camera_cls/outdoor_3camera_bestrecall.pth ${TARGET}/data_intersection3camera_cls/.  # outdoor model
+    ln -sf ${SRCPATH}/data_intersection3camera_cls/v1indoor_resnet18_3camera ${TARGET}/data_intersection3camera_cls/.  # folder of indoor models
+
 
 	## Localizer
 
