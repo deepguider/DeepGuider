@@ -49,9 +49,9 @@ namespace dg
             xy_valid = false;
 
             // apply state filtering
-            Intersection3CameraResult intersect = get();
+            Intersection3CameraResult intersect3camera = get();
             int state_prev = m_state;
-            m_state = simpleStateFiltering(intersect.cls);
+            m_state = simpleStateFiltering(intersect3camera.cls);
 
             // apply classification result only at the end of intersection
             if (state_prev == INTERSECTION && m_state == NONE_INTERSECTION)
@@ -71,10 +71,10 @@ namespace dg
             Pose2 pose = m_shared->getPose();
             xy_valid = false;
 
-            Intersection3CameraResult intersect;            
-            intersect.cls = (int)(cls + 0.5);
-            intersect.confidence = cls_conf;
-            set(intersect, data_time);
+            Intersection3CameraResult intersect3camera;            
+            intersect3camera.cls = (int)(cls + 0.5);
+            intersect3camera.confidence = cls_conf;
+            set(intersect3camera, data_time);
 
             // apply state filtering
             int observed_cls = (int)(cls + 0.5);
