@@ -105,6 +105,8 @@
     <ClInclude Include="..\..\src\core\shared_data.hpp" />
     <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp" />
     <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp" />
+    <ClInclude Include="..\..\src\intersection3camera_cls\intersection3camera_cls.hpp" />
+    <ClInclude Include="..\..\src\intersection3camera_cls\intersection3camera_localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\data_loader.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_base.hpp" />

@@ -233,8 +233,8 @@ int testUTMConverter()
     dg::Point2UTM p1 = converter.cvtLatLon2UTM(dg::LatLon(36.383837659737, 127.367880828442));  // etri
     dg::Point2UTM p2 = converter.cvtLatLon2UTM(dg::LatLon(37.506207, 127.05482));               // coex
     dg::Point2UTM p3 = converter.cvtLatLon2UTM(dg::LatLon(37.510928, 126.764344));              // bucheon
-    dg::Point2UTM p4 = converter.cvtLatLon2UTM(dg::LatLon(33.19740, 126.10256));              // ³²¼­´Ü
-    dg::Point2UTM p5 = converter.cvtLatLon2UTM(dg::LatLon(38.61815, 129.58138));              // ºÏµ¿´Ü
+    dg::Point2UTM p4 = converter.cvtLatLon2UTM(dg::LatLon(33.19740, 126.10256));              // \B3\B2\BC\AD\B4\DC
+    dg::Point2UTM p5 = converter.cvtLatLon2UTM(dg::LatLon(38.61815, 129.58138));              // \BAÏµ\BF\B4\DC
     printf("etri: zone=%d, x = %lf, y = %lf\n", p1.zone, p1.x, p1.y);
     printf("coex: zone=%d, x = %lf, y = %lf\n", p2.zone, p2.x, p2.y);
     printf("bucheon: zone=%d, x = %lf, y = %lf\n", p3.zone, p3.x, p3.y);
@@ -297,7 +297,7 @@ int runLocalizer()
 {
     std::string rec_video_file = "";
     const std::string rec_traj_file = "";
-    std::string gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+    std::string gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, intersection3camera_file, lr_file, roadtheta_file;
     bool enable_gps = true;
     bool use_novatel = false;
     bool enable_imu = false;
@@ -305,6 +305,7 @@ int runLocalizer()
     bool enable_poi = false;
     bool enable_vps = false;
     bool enable_intersection = false;
+    bool enable_intersection3camera = false;
     bool enable_lr = false;
     bool enable_roadtheta = false;
     bool draw_gps = false;
@@ -372,6 +373,7 @@ int runLocalizer()
     if (!localizer->setParamPOINoise(1, 10)) return -1;         // distance error(m), orientation error(deg)
     if (!localizer->setParamVPSNoise(1, 10)) return -1;         // distance error(m), orientation error(deg)
     if (!localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
+    if (!localizer->setParamIntersect3CameraClsNoise(0.1)) return -1;  // position error(m)
     if (!localizer->setParamRoadThetaNoise(50)) return -1;      // angle arror(deg)
     if (!localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
     localizer->setParamValue("gps_reverse_vel", -0.5);
@@ -388,6 +390,7 @@ int runLocalizer()
     //enable_poi = true;
     //enable_vps = true;
     //enable_intersection = true;
+    //enable_intersection3camera = true;
     //enable_lr = true;
     //enable_roadtheta = true;
     //draw_gps = true;
@@ -416,11 +419,12 @@ int runLocalizer()
     if (enable_poi) poi_file = data_head[data_sel][0] + "_poi.csv";
     if (enable_vps) vps_file = data_head[data_sel][0] + "_vps.csv";
     if (enable_intersection) intersection_file = data_head[data_sel][0] + "_intersect.csv";
+    if (enable_intersection3camera) intersection3camera_file = data_head[data_sel][0] + "_intersect3camera.csv";
     if (enable_lr) lr_file = data_head[data_sel][0] + "_vps_lr.csv";
     if (enable_roadtheta) roadtheta_file = data_head[data_sel][0] + "_roadtheta.csv";
 
     dg::DataLoader data_loader;
-    if (!data_loader.load(video_file, gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
+    if (!data_loader.load(video_file, gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, intersection3camera_file, lr_file, roadtheta_file))
     {
         printf("Failed to load data file\n");
         return -1;

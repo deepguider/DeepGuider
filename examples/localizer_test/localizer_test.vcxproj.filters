@@ -71,6 +71,9 @@
     <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\intersection3camera_cls\intersection3camera_localizer.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\ocr_recog\ocr_localizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
@@ -93,6 +96,9 @@
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\intersection3camera_cls\intersection3camera_cls.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
     <ClInclude Include="test_core_type.hpp">

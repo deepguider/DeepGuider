@@ -4,6 +4,7 @@
 #include "dg_localizer.hpp"
 #include "localizer/data_loader.hpp"
 #include "intersection_cls/intersection_localizer.hpp"
+#include "intersection3camera_cls/intersection3camera_localizer.hpp"
 #include "vps/vps_localizer.hpp"
 #include "roadlr/roadlr_localizer.hpp"
 #include "ocr_recog/ocr_localizer.hpp"
@@ -20,6 +21,7 @@ protected:
 
     cv::Ptr<dg::BaseLocalizer> m_localizer;
     dg::IntersectionLocalizer m_intersection_localizer;
+    dg::Intersection3CameraLocalizer m_intersection3camera_localizer;
     dg::OCRLocalizer m_ocr_localizer;
     dg::VPSLocalizer m_vps_localizer;
     dg::RoadLRLocalizer m_lr_localizer;
@@ -65,6 +67,7 @@ public:
 
         // initialize module localizers
         m_intersection_localizer.initialize_without_python(this);
+        m_intersection3camera_localizer.initialize_without_python(this);
         m_ocr_localizer.initialize_without_python(this);
         m_vps_localizer.initialize_without_python(this);
         m_lr_localizer.initialize_without_python(this);
@@ -178,6 +181,19 @@ public:
                 {
                     bool success = localizer->applyIntersectCls(xy, data_time, xy_confidence);
                     if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
+                }
+            }
+            else if (type == dg::DATA_Intersect3CameraCls)
+            {
+                double cls = vdata[1];
+                double cls_conf = vdata[2];
+                dg::Point2 xy;
+                double xy_confidence;
+                bool xy_valid = false;
+                if (m_intersection3camera_localizer.applyPreprocessed(cls, cls_conf, data_time, xy, xy_confidence, xy_valid) && xy_valid)
+                {
+                    bool success = localizer->applyIntersect3CameraCls(xy, data_time, xy_confidence);
+                    if (!success) fprintf(stderr, "applyIntersect3CameraCls() was failed.\n");
                 }
             }
             else if (type == dg::DATA_RoadLR && dg_localizer)
