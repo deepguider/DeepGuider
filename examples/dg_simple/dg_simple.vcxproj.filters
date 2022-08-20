@@ -101,6 +101,9 @@
     <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\intersection3camera_cls\intersection3camera_localizer.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\logo_recog\logo_localizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
@@ -125,6 +128,9 @@
     <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\intersection3camera_cls\intersection3camera_cls.hpp">
+      <Filter>Recognizer Modules</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\logo_recog\logo_recognizer.hpp">
       <Filter>Recognizer Modules</Filter>
     </ClInclude>
@@ -143,6 +149,9 @@
       <Filter>Recognizer Modules</Filter>
     </None>
     <None Include="..\..\src\intersection_cls\intersection_cls.py">
+      <Filter>Recognizer Modules</Filter>
+    </None>
+    <None Include="..\..\src\intersection3camera_cls\intersection3camera_cls.py">
       <Filter>Recognizer Modules</Filter>
     </None>
     <None Include="..\..\src\logo_recog\logo_recognizer.py">

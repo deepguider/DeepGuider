@@ -109,6 +109,8 @@
     <ClInclude Include="..\..\src\guidance\guidance.hpp" />
     <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp" />
     <ClInclude Include="..\..\src\intersection_cls\intersection_localizer.hpp" />
+    <ClInclude Include="..\..\src\intersection3camera_cls\intersection3camera_cls.hpp" />
+    <ClInclude Include="..\..\src\intersection3camera_cls\intersection3camera_localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\data_loader.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_base.hpp" />
@@ -137,6 +139,7 @@
   <ItemGroup>
     <None Include="..\..\src\exploration\active_navigation.py" />
     <None Include="..\..\src\intersection_cls\intersection_cls.py" />
+    <None Include="..\..\src\intersection3camera_cls\intersection3camera_cls.py" />
     <None Include="..\..\src\logo_recog\logo_recognizer.py" />
     <None Include="..\..\src\roadlr\roadlr.py" />
     <None Include="..\..\src\ocr_recog\ocr_recognizer.py" />
