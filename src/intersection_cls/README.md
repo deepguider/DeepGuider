@@ -18,17 +18,31 @@
     - Torchvision 0.4.0
     - Dropblock 0.3.0
     
-- Download weight file from this 
-[link](https://drive.google.com/file/d/1gA2z28QPA0W0UbtC7J2kX3QXLOYCKIvz/view?usp=sharing) 
+- Download weight (v5.0 indoor and outdoor) file from this 
+[link](https://drive.google.com/file/d/1rPrYu3ReLvHEz9yXqGJlcrHnEWKsOdWm/view?usp=sharing) 
 , put it inside *data_intersection_cls* folder and rename it as *weight.pth*
 
-Older models
-- v1: [link](https://drive.google.com/file/d/15zZC16vN7oavhX-dx3oAth39loJp31Ay/view?usp=sharing) 
-- v0: [link](https://drive.google.com/file/d/1sX411P95LHE6kB7yzgmHq537uvZRUcA-/view?usp=sharing)
+Other models
+- v5.0 (outdoor): [link](https://drive.google.com/file/d/12aUd0IoZ6k4IYra1TslxYAoiwWBgu6xs/view?usp=sharing)
+- v5.0 (indoor): [link](https://drive.google.com/file/d/1gOsqg19xNV7o51jF8OJ1cN3E7pZrwpFf/view?usp=sharing)
+- v1.10 (outdoor): [link](https://drive.google.com/file/d/18arE8seqD4xnhYSY8oVDtBh4-07WeH0I/view?usp=sharing) 
+- v1.1 (outdoor): [link](https://drive.google.com/file/d/11lwdIjx-GEyzVRa4W0whZ9y-ZdG_ZRE2/view?usp=sharing) 
+- v0.14 (outdoor): [link](https://drive.google.com/file/d/11iMMgd3dq66N3nZ3-2GLD8K8gA5RM2oM/view?usp=sharing)
     
 ### Run demo
 - Run demo from this current folder `python intersection_cls.py`
 - Output should be 
+```
+processing time: 0.0266 seconds
+nonintersection_img demo: class  0  confidence  1.0
+processing time: 0.0205 seconds
+intersection_img demo: class  0  confidence  0.9999996423721313
+processing time: 0.0196 seconds
+nonintersection_img2 demo: class  0  confidence  0.9999991655349731
+processing time: 0.0406 seconds
+nonintersection_img3 demo: class  1  confidence  0.9776144027709961
+```
+- Output of older models (v1.10)
 ```
 processing time: 0.0557 seconds
 nonintersection_img demo: class  0  confidence  0.9951779842376709
@@ -38,17 +52,6 @@ processing time: 0.0317 seconds
 nonintersection_img2 demo: class  0  confidence  0.9989577531814575
 processing time: 0.0603 seconds
 nonintersection_img3 demo: class  0  confidence  0.9921876192092896
-```
-- Output of older models (v1)
-```
-processing time: 0.0526 seconds
-nonintersection_img demo: class  0  confidence  0.9880973696708679
-processing time: 0.0377 seconds
-intersection_img demo: class  1  confidence  0.9951642751693726
-processing time: 0.0314 seconds
-nonintersection_img2 demo: class  0  confidence  0.8869904279708862
-processing time: 0.0604 seconds
-nonintersection_img3 demo: class  1  confidence  0.5098475217819214
 ```
 
 ### Outputs
