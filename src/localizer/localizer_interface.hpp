@@ -185,7 +185,6 @@ public:
      * @return True if successful (false if failed)
      */
     virtual bool applyIntersectCls(const Point2& xy, Timestamp time = -1, double confidence = -1) = 0;
-};
 
     /**
      * Apply position observation from Intersection3camera-based localizer
