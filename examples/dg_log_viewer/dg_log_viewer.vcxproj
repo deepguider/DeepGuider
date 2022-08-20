@@ -103,6 +103,7 @@
     <ClInclude Include="..\..\src\core\map.hpp" />
     <ClInclude Include="..\..\src\core\path.hpp" />
     <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp" />
+    <ClInclude Include="..\..\src\intersection3camera_cls\intersection3camera_cls.hpp" />
     <ClInclude Include="..\..\src\logo_recog\logo_recognizer.hpp" />
     <ClInclude Include="..\..\src\ocr_recog\ocr_recognizer.hpp" />
     <ClInclude Include="..\..\src\utils\map_painter.hpp" />

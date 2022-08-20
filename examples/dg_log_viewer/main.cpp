@@ -6,6 +6,7 @@
 #include "dg_logo.hpp"
 #include "dg_ocr.hpp"
 #include "dg_intersection.hpp"
+#include "dg_intersection3camera.hpp"
 #include "dg_vps.hpp"
 #include "dg_guidance.hpp"
 #include "dg_exploration.hpp"
@@ -24,6 +25,7 @@ struct LogFrameData
     std::vector<std::string> ocr;
     std::vector<std::string> logo;
     std::vector<std::string> intersection;
+    std::vector<std::string> intersection3camera;
 };
 
 class LogViewer
@@ -56,6 +58,7 @@ public:
         OCRRecognizer ocr;
         LogoRecognizer logo;
         IntersectionClassifier intersection;
+        Intersection3CameraClassifier intersection3camera;
 
         MapManager map_manager;
         std::string server_ip = "127.0.0.1";
@@ -70,6 +73,7 @@ public:
         if (sel == 1) winname = "POI-OCR";
         if (sel == 2) winname = "POI-Logo";
         if (sel == 3) winname = "Intersection Classifier";
+        if (sel == 4) winname = "Intersection 3 Camera Classifier";
 
         cv::Mat image;
         cv::namedWindow(winname, cv::WINDOW_NORMAL);
@@ -143,6 +147,17 @@ public:
                 if(intersect.cls>0) disp_delay = 300;
                 else disp_delay = 50;
             }
+            else if (sel == 4 && !m_data[fn].intersection3camera.empty())
+            {
+                image_disp = image;
+                intersection3camera.read(m_data[fn].intersection3camera);
+                intersection3camera.draw(image_disp);
+                if (!m_data[fn].intersection3camera.empty()) fps = 1.0 / intersection3camera.procTime();
+                Intersection3CameraResult intersect3camera;
+                intersection3camera.get(intersect3camera);
+                if(intersect3camera.cls>0) disp_delay = 300;
+                else disp_delay = 50;
+            }
 
             // fn & fps
             std::string str;
@@ -212,6 +227,8 @@ protected:
                     m_data[fn].logo.push_back(std::string(buf));
                 else if (name == "intersection")
                     m_data[fn].intersection.push_back(std::string(buf));
+                else if (name == "intersection3camera")
+                    m_data[fn].intersection3camera.push_back(std::string(buf));
             }
         }
 
@@ -222,7 +239,7 @@ protected:
 
 int main(int argc, char* argv[])
 {
-    int module_selection = 1;     // 0: vps, 1: ocr, 2: logo, 3: intersection
+    int module_selection = 1;     // 0: vps, 1: ocr, 2: logo, 3: intersection, 4: intersection 3 camera
 
     std::string dataname = "dg_simple_200804_102346";
     if (argc > 1) dataname = argv[1];
@@ -233,6 +250,7 @@ int main(int argc, char* argv[])
         if(module_name == "ocr") module_selection = 1;
         if(module_name == "logo") module_selection = 2;
         if(module_name == "intersection" || module_name == "intersect") module_selection = 3;
+        if(module_name == "intersection3camera" || module_name == "intersect3camera") module_selection = 4;
     }
 
     std::string fname_log = dataname + ".txt";

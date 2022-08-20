@@ -59,6 +59,9 @@
     <ClInclude Include="..\..\src\intersection_cls\intersection_cls.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\intersection3camera_cls\intersection3camera_cls.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\logo_recog\logo_recognizer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
