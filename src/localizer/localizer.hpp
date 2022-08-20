@@ -70,7 +70,7 @@ namespace dg
             OBS_RoadTheta = 7
 
             /** Intersection3Camera classifier data (v1: utm x, v2: utm y, v3: lin, v4: ang) */
-            OBS_IntersectCls3Camera = 8,
+            OBS_Intersect3CameraCls = 8,
         };
 
         /**
