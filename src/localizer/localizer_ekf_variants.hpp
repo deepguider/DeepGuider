@@ -329,7 +329,7 @@ public:
         if (EKFLocalizerHyperTan::applyPosition(xy, time, confidence))
         {
             cv::AutoLock lock(m_mutex);
-            return applyRoadMap() && applyIntersection(time);
+            return applyRoadMap() && applyIntersection3Camera(time);
         }
         return false;
     }
@@ -339,7 +339,7 @@ public:
         if (EKFLocalizerHyperTan::applyOrientation(theta, time, confidence))
         {
             cv::AutoLock lock(m_mutex);
-            applyIntersection(time);
+            applyIntersection3Camera(time);
             return true;
         }
         return false;
