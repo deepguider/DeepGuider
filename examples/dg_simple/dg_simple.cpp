@@ -90,6 +90,7 @@ public:
     virtual double getPoseConfidence(Timestamp* timestamp = nullptr) const;
     virtual bool procOutOfPath(const Point2& curr_pose);
 	cv::Mat crop_image(cv::Mat cam_image, int num, int idx); // num : number of h-stacked images, idx, 0: left, 1: front, 2:right
+	cv::Mat crop_image_leftcenterright(cv::Mat cam_image, int num); 
 	bool get_cam_image(cv::Mat& cam_image, cv::Mat& cam_image_for_draw, int idx_for_draw, double& txt_scale, dg::Timestamp& capture_time, dg::Timestamp capture_time_prev);
 	bool get_360cam_image(cv::Mat& cam_image, cv::Mat& cam_image_for_draw, double& txt_scale, dg::Timestamp& capture_time, dg::Timestamp capture_time_prev);
 
@@ -507,6 +508,8 @@ bool DeepGuider::initialize(std::string config_file)
     m_path_generation_pended = false;
     m_cam_image.release();
     m_cam_capture_time = -1;
+    m_360cam_image.release();
+    m_360cam_capture_time = -1;
     m_vps_image.release();
     m_roadlr_image.release();
     m_logo_image.release();
@@ -996,7 +999,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_intersection3camera_mutex.lock();
         if(!m_intersection3camera_image.empty())
         {
-            cv::resize(m_intersection3camera_image, result_image, cv::Size((int)(win_rect.height * 0.9), win_rect.height));
+            cv::resize(m_intersection3camera_image, result_image, cv::Size((int)(win_rect.height * 0.5), win_rect.height));
         }
         m_intersection3camera_mutex.unlock();
 
@@ -1416,6 +1419,19 @@ cv::Mat DeepGuider::crop_image(cv::Mat cam_image, int num, int idx) // idx, 0: l
 	return cam_image(rect);
 }
 
+cv::Mat DeepGuider::crop_image_leftcenterright(cv::Mat cam_image, int num) 
+{
+	int w,h,idx;
+    cv::Mat leftcenterright_cam_image[3];
+    cv::Mat combined_image;
+    
+    for(idx=0;idx<3;idx++){
+        leftcenterright_cam_image[idx] = crop_image(cam_image, num, idx);
+    }
+    cv::vconcat(leftcenterright_cam_image, num, combined_image);
+	return combined_image;
+}
+
 bool DeepGuider::procIntersectionClassifier()
 {
 	cv::Mat cam_image;
@@ -1457,7 +1473,9 @@ bool DeepGuider::procIntersection3CameraClassifier()
 	dg::Timestamp capture_time;
 	double txt_scale;
 
+
 	if(!get_360cam_image(cam_image, cam_image_for_draw, txt_scale, capture_time, m_intersection3camera.timestamp()))
+    //if(!get_cam_image(cam_image, cam_image_for_draw, 1, txt_scale, capture_time, m_intersection.timestamp()))
 	{
 	    return false;
 	}
@@ -1465,6 +1483,7 @@ bool DeepGuider::procIntersection3CameraClassifier()
     dg::Point2 xy;
     double confidence;
     bool valid_xy = false;
+
     if (m_intersection3camera.apply(cam_image, capture_time, xy, confidence, valid_xy))
     {
         if(valid_xy) m_localizer.applyIntersect3CameraCls(xy, capture_time, confidence);
@@ -1695,7 +1714,7 @@ bool DeepGuider::get_360cam_image(cv::Mat& cam_image, cv::Mat& cam_image_for_dra
 	    }
 	    cam_image = m_360cam_image.clone();
     	m_360cam_mutex.unlock();
-		cam_image_for_draw = crop_image(cam_image, num_of_hstack_image, idx_for_draw); // num=3(l,f,r),  idx=0 (0:left, 1:front, 2:right)
+		cam_image_for_draw = crop_image_leftcenterright(cam_image.clone(), num_of_hstack_image); 
 	}
 	else  
 	{
