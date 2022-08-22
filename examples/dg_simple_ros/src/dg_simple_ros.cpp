@@ -242,6 +242,7 @@ int DeepGuiderROS::run()
 
     // start internal recognizer threads
     if (m_enable_intersection==1) intersection_thread = new std::thread(threadfunc_intersection, this);
+    if (m_enable_intersection3camera==1) intersection3camera_thread = new std::thread(threadfunc_intersection3camera, this);
     if (m_enable_ocr==1) ocr_thread = new std::thread(threadfunc_ocr, this);
     if (m_enable_vps==1) vps_thread = new std::thread(threadfunc_vps, this);
     if (m_enable_roadlr==1) roadlr_thread = new std::thread(threadfunc_roadlr, this);
