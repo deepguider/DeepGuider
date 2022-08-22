@@ -71,4 +71,4 @@ class RicohthetaTo3CameraConverter:
 #cv2.imshow("left", left)
 #cv2.imshow("center", center)
 #cv2.imshow("right", right)
-cv2.waitKey(0)
+#cv2.waitKey(0)
