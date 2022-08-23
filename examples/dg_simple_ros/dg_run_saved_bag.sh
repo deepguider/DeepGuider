@@ -64,4 +64,4 @@ LIBDIR="devel/lib/dg_simple_ros"
 cp -rf data* font logo_data model recordings ${LIBDIR}/.
 ln -sf ${CWD}/dg_ros.yml ${LIBDIR}/.
 
-roslaunch dg_simple_ros dg_simple_ros.launch
+roslaunch dg_simple_ros dg_simple_ros_rosbag.launch
