@@ -49,14 +49,14 @@ def benchmark_all_eval(model, criterion, converter, opt, calculate_infer_time=Fa
             num_workers=int(opt.workers),
             collate_fn=AlignCollate_evaluation, pin_memory=True)
 
-        _, accuracy_by_best_model, norm_ED_by_best_model, _, _, _, infer_time, length_of_data = validation(
+        _, accuracy_by_best_model, norm_ED_by_best_model, _, _, _, infer_time, length_of_data, n_correct = validation(
             model, criterion, evaluation_loader, converter, opt)
         list_accuracy.append(f'{accuracy_by_best_model:0.3f}')
         total_forward_time += infer_time
         total_evaluation_data_number += len(eval_data)
         total_correct_number += accuracy_by_best_model * length_of_data
         log.write(eval_data_log)
-        print(f'Acc {accuracy_by_best_model:0.3f}\t normalized_ED {norm_ED_by_best_model:0.3f}')
+        print(f'Acc: {accuracy_by_best_model:0.3f}\t\t num correct: {n_correct}\t normalized_ED: {norm_ED_by_best_model:0.3f}')
         log.write(f'Acc {accuracy_by_best_model:0.3f}\t normalized_ED {norm_ED_by_best_model:0.3f}\n')
         print(dashed_line)
         log.write(dashed_line + '\n')
@@ -163,7 +163,7 @@ def validation(model, criterion, evaluation_loader, converter, opt):
     accuracy = n_correct / float(length_of_data) * 100
     norm_ED = norm_ED / float(length_of_data)  # ICDAR2019 Normalized Edit Distance
 
-    return valid_loss_avg.val(), accuracy, norm_ED, preds_str, confidence_score_list, labels, infer_time, length_of_data
+    return valid_loss_avg.val(), accuracy, norm_ED, preds_str, confidence_score_list, labels, infer_time, length_of_data, n_correct
 
 
 
