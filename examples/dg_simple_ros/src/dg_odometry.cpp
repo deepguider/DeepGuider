@@ -2,6 +2,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <std_msgs/Float32.h>
 #include <nav_msgs/Odometry.h>
+#include "dg_simple_ros/dg_status.h"
 #include "opencv2/highgui.hpp"
 
 #define LOAD_PARAM_VALUE(fn, name_cfg, name_var) \
@@ -60,6 +61,10 @@ protected:
     void callbackEncoderLeft(const std_msgs::Float32& msg);
     void callbackEncoderRight(const std_msgs::Float32& msg);
 
+    bool m_stop_running = false;
+    ros::Subscriber sub_dg_status;
+    void callbackDGStatus(const dg_simple_ros::dg_status::ConstPtr& msg);
+
     // Topic publishers
     ros::Publisher m_publisher_odometry;
 
@@ -116,6 +121,7 @@ bool DGNodeOdometry::initialize(std::string config_file)
         sub_encoder_left = nh_dg.subscribe("/left_tick_data", 10, &DGNodeOdometry::callbackEncoderLeft, this);
         sub_encoder_right = nh_dg.subscribe("/right_tick_data", 10, &DGNodeOdometry::callbackEncoderRight, this);
     }
+    sub_dg_status = nh_dg.subscribe("/dg_simple_ros/dg_status", 1, &DGNodeOdometry::callbackDGStatus, this);
 
     // Initialize publishers
     m_publisher_odometry = nh_dg.advertise<nav_msgs::Odometry>("pose", 1, true);
@@ -147,7 +153,7 @@ int DGNodeOdometry::run()
 
     ros::Rate loop(m_update_hz);
     m_prev_timestamp = ros::Time::now().toSec();
-    while (ros::ok())
+    while (ros::ok() && !m_stop_running)
     {
         if (!runOnce(ros::Time::now().toSec())) break;
         loop.sleep();
@@ -303,6 +309,11 @@ void DGNodeOdometry::callbackEncoderRight(const std_msgs::Float32& msg)
         ROS_ERROR("exception @ DGNodeOdometry::callbackEncoderRight(): %s", e.what());
         return;
     }
+}
+
+void DGNodeOdometry::callbackDGStatus(const dg_simple_ros::dg_status::ConstPtr& msg)
+{
+    if(msg->dg_shutdown) m_stop_running = true;
 }
 
 // The main function
