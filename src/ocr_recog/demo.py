@@ -21,7 +21,10 @@ def saveResult(img, boxes, pred_list, dirname, res_imagefileName):
     #res_img_file = dirname + 'result.jpg'
     #if res_imagefileName is not None :
     #    res_img_file = res_imagefileName
-    res_img_file = dirname + 'result_' + res_imagefileName
+    #res_img_file = dirname + 'result_' + res_imagefileName
+    if not os.path.exists(dirname):
+        os.mkdir(dirname)
+    res_img_file = os.path.join(dirname, 'result_' + res_imagefileName)
 
     valid = []
     for i, box in enumerate(boxes):
