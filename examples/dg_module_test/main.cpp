@@ -41,7 +41,7 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
     MapGUIProp ETRI2;
     ETRI2.server_port = "10000";
     ETRI2.image_file = "data/ETRI/NaverMap_ETRI(Satellite)_large.png";
-    ETRI2.map_file = "data/ETRI/TopoMap_ETRI.csv";
+    ETRI2.map_file = "data/ETRI/TopoMap_ETRI_poi.csv";
     ETRI2.map_ref_point_latlon = dg::LatLon(36.379208, 127.364585);
     ETRI2.map_ref_point_pixel = cv::Point2d(3790, 3409);
     ETRI2.map_pixel_per_meter = 2.081;
@@ -147,30 +147,32 @@ int runModuleReal(int module_sel, bool use_saved_testset, const std::string& sit
 int runModule()
 {
     std::string rec_video_file = "";
-    std::string gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file;
+    std::string gps_file, odo_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file;
 
     bool enable_gps = true;
+    bool enable_odometry = true;
+    bool use_andro_gps = false;
     bool use_novatel = false;
     bool enable_imu = false;
     bool use_saved_testset = true;
     dg::Point2 gps_offset;
-    gps_offset = dg::Point2(0, 0);
+    gps_offset = dg::Point2(20, 0);
 
     int module_sel = -1;
     //module_sel = DG_Intersection;
     //module_sel = DG_VPS;
     //module_sel = DG_RoadLR;
-    module_sel = DG_OCR;
+    //module_sel = DG_OCR;
     //module_sel = DG_POI;
     //module_sel = DG_RoadTheta;
 
-    int data_sel = 1;
+    int data_sel = 0;
     double start_time = 0;     // time skip (seconds)
     //start_time = 1360;     // time skip (seconds), testset 1, 우리은행
-    start_time = 970; // 1180;     // time skip (seconds), testset 2, 상가
     //start_time = 1440;     // time skip (seconds), testset 2, 횡단보도
     //rec_video_file = "module_test.avi";
     std::vector<std::string> data_head[] = {
+        {"data/ETRI/2022-08-08-13-38-04_etri_to_119", "0"},
         {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
         {"data/ETRI/200219_150153", "1.6244"},  // 1, 23911 frames, 3884 sec, video_scale = 1.6244
         {"data/ETRI/200326_132938", "1.6694"},  // 2, 18366 frames, 3066 sec, video_scale = 1.6694
@@ -181,12 +183,17 @@ int runModule()
         {"data/COEX/201007_152840", "2.8902"},  // 7, 20931 frames, 2086 sec, video_scale = 2.8902
         {"data/COEX/211005_130940", "2.8902"}   // 8, 20931 frames, 2086 sec, video_scale = 2.8902
     };
-    const int coex_idx = 5;
+    const int coex_idx = 6;
     const std::string site = (data_sel < coex_idx) ? "ETRI" : "COEX";
     std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
-    if (data_sel == 8) video_file = data_head[data_sel][0] + "_images.avi";
-    if (enable_gps && !use_novatel) gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
-    if (enable_gps && use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
+    if (data_sel == 9) video_file = data_head[data_sel][0] + "_images.avi";
+    if (enable_gps)
+    {
+        if (use_andro_gps) gps_file = data_head[data_sel][0] + "_andro2linux_gps.csv";
+        else if (use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
+        else gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
+    }
+    if (enable_odometry) odo_file = data_head[data_sel][0] + "_odometry.csv";
     if (enable_imu) imu_file = data_head[data_sel][0] + "_imu_data.csv";
     if (use_saved_testset && module_sel == DG_OCR) ocr_file = data_head[data_sel][0] + "_ocr.csv";
     if (use_saved_testset && module_sel == DG_POI) poi_file = data_head[data_sel][0] + "_poi.csv";
@@ -196,7 +203,7 @@ int runModule()
     if (use_saved_testset && module_sel == DG_RoadTheta) roadtheta_file = data_head[data_sel][0] + "_roadtheta.csv";
 
     dg::DataLoader data_loader;
-    if (!data_loader.load(video_file, gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
+    if (!data_loader.load(video_file, gps_file, odo_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
     {
         printf("Failed to load data file\n");
         return -1;

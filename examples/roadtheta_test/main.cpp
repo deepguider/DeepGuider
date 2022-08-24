@@ -77,14 +77,14 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
         dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
         printf("iteration: %d (it took %lf seconds)\n", i++, t2 - t1);
         t1 = t2;
-        recognizer.print();
+        //recognizer.print();
 
         // draw frame number & fps
         std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0 / recognizer.procTime());
         cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
         cv::putText(image, fn.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
 
-        recognizer.draw(image);
+        recognizer.draw(image, 2);
         if (recording)
         {
             video << image;
@@ -123,7 +123,7 @@ void procfunc(bool recording, int rec_fps, const char* video_path)
 
 int main()
 {
-    bool recording = false;
+    bool recording = true;
     int rec_fps = 15;
     bool threaded_run = false;
 

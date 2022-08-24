@@ -136,6 +136,13 @@ public:
                     bool success = m_localizer->applyIMUCompass(euler.z, data_time, 1);
                     if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
                 }
+                else if (type == dg::DATA_ODO)
+                {
+                    dg::Pose2 odo_pose(vdata[1], vdata[2], vdata[3]);
+                    bool success = m_localizer->applyOdometry(odo_pose, data_time, 1);
+                    if (!success) fprintf(stderr, "applyOdometry() was failed.\n");
+                    if (module_sel < 0) update_gui = true;
+                }
                 else if (type == dg::DATA_GPS)
                 {
                     dg::LatLon gps_datum(vdata[1], vdata[2]);
@@ -143,7 +150,11 @@ public:
                     bool success = m_localizer->applyGPS(gps_xy, data_time, 1);
                     if (!success) fprintf(stderr, "applyGPS() was failed.\n");
                     if (show_gui && gui_gps_radius > 0) gui_painter->drawPoint(bg_image, gps_xy, gui_gps_radius, gui_gps_color);
-                    if(module_sel < 0) update_gui = true;
+                    if (module_sel < 0)
+                    {
+                        video_image = data_loader.getFrame(data_time, fnumber);
+                        update_gui = true;
+                    }
                 }
                 else if (module_sel == DG_Intersection && type == dg::DATA_IntersectCls)
                 {
@@ -274,6 +285,12 @@ public:
                         auto euler = cx::cvtQuat2EulerAng(vdata[1], vdata[2], vdata[3], vdata[4]);
                         bool success = m_localizer->applyIMUCompass(euler.z, data_time, 1);
                         if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
+                    }
+                    else if (type == dg::DATA_ODO)
+                    {
+                        dg::Pose2 odo_pose(vdata[1], vdata[2], vdata[3]);
+                        bool success = m_localizer->applyOdometry(odo_pose, data_time, 1);
+                        if (!success) fprintf(stderr, "applyOdometry() was failed.\n");
                     }
                     else if (type == dg::DATA_GPS)
                     {

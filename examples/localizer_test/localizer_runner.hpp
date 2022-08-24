@@ -118,6 +118,15 @@ public:
                 bool success = localizer->applyIMUCompass(euler.z, data_time, 1);
                 if (!success) fprintf(stderr, "applyIMUCompass() was failed.\n");
             }
+            else if (type == dg::DATA_ODO)
+            {
+                dg::Pose2 odo_pose(vdata[1], vdata[2], vdata[3]);
+                bool success = localizer->applyOdometry(odo_pose, data_time, 1);
+                if (!success) fprintf(stderr, "applyOdometry() was failed.\n");
+
+                cam_image = data_loader.getFrame(data_time);
+                update_gui = true;
+            }
             else if (type == dg::DATA_GPS)
             {
                 dg::LatLon gps_datum(vdata[1], vdata[2]);

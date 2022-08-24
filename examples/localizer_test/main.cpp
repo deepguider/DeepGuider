@@ -297,8 +297,10 @@ int runLocalizer()
 {
     std::string rec_video_file = "";
     const std::string rec_traj_file = "";
-    std::string gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
+    std::string gps_file, odo_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file;
     bool enable_gps = true;
+    bool enable_odometry = false;
+    bool use_andro_gps = false;
     bool use_novatel = false;
     bool enable_imu = false;
     bool enable_ocr = false;
@@ -368,6 +370,7 @@ int runLocalizer()
     if (!localizer->setParamMotionBounds(1, 10)) return -1;     // max. linear_velocity(m), max. angular_velocity(deg)
     if (!localizer->setParamGPSNoise(10)) return -1;            // position error(m)
     if (!localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
+    if (!localizer->setParamOdometryNoise(0.01, 1)) return -1;  // position error(m), orientation error(deg)
     if (!localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
     if (!localizer->setParamPOINoise(1, 10)) return -1;         // distance error(m), orientation error(deg)
     if (!localizer->setParamVPSNoise(1, 10)) return -1;         // distance error(m), orientation error(deg)
@@ -380,9 +383,11 @@ int runLocalizer()
     localizer->setParamValue("enable_path_projection", true);
     localizer->setParamValue("enable_map_projection", false);
     localizer->setParamValue("enable_backtracking_ekf", true);
-    localizer->setParamValue("enable_gps_smoothing", true);
+    localizer->setParamValue("enable_gps_smoothing", false);
 
-    enable_imu = true;
+    enable_odometry = true;
+    //enable_imu = true;
+    //use_andro_gps = true;
     //use_novatel = true;
     //enable_ocr = true;
     //enable_poi = true;
@@ -394,9 +399,10 @@ int runLocalizer()
 
     int data_sel = 0;
     double start_time = 0;     // skip time (seconds)
-    //rec_video_file = "localizer_test_simple.avi";
+    //rec_video_file = "localizer_no_odometry.avi";
     double rec_video_fps = 10;
     std::vector<std::string> data_head[] = {
+        {"data/ETRI/2022-08-08-13-38-04_etri_to_119", "0"},
         {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
         {"data/ETRI/200219_150153", "1.6244"},  // 1, 23911 frames, 3884 sec, video_scale = 1.6244
         {"data/ETRI/200326_132938", "1.6694"},  // 2, 18366 frames, 3066 sec, video_scale = 1.6694
@@ -406,11 +412,16 @@ int runLocalizer()
         {"data/COEX/201007_145022", "2.869"},   // 6, 18730 frames, 1853 sec, video_scale = 2.869
         {"data/COEX/201007_152840", "2.8902"}   // 7, 20931 frames, 2086 sec, video_scale = 2.8902
     };
-    const int coex_idx = 5;
+    const int coex_idx = 6;
     MapGUIProp& PROP = (data_sel < coex_idx) ? ETRI : COEX;
     std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
-    if (enable_gps && !use_novatel) gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
-    if (enable_gps && use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
+    if (enable_gps)
+    {
+        if (use_andro_gps) gps_file = data_head[data_sel][0] + "_andro2linux_gps.csv";
+        else if (use_novatel) gps_file = data_head[data_sel][0] + "_novatel_fix.csv";
+        else gps_file = data_head[data_sel][0] + "_ascen_fix.csv";
+    }
+    if (enable_odometry) odo_file = data_head[data_sel][0] + "_odometry.csv";
     if (enable_imu) imu_file = data_head[data_sel][0] + "_imu_data.csv";
     if (enable_ocr) ocr_file = data_head[data_sel][0] + "_ocr.csv";
     if (enable_poi) poi_file = data_head[data_sel][0] + "_poi.csv";
@@ -420,7 +431,7 @@ int runLocalizer()
     if (enable_roadtheta) roadtheta_file = data_head[data_sel][0] + "_roadtheta.csv";
 
     dg::DataLoader data_loader;
-    if (!data_loader.load(video_file, gps_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
+    if (!data_loader.load(video_file, gps_file, odo_file, imu_file, ocr_file, poi_file, vps_file, intersection_file, lr_file, roadtheta_file))
     {
         printf("Failed to load data file\n");
         return -1;

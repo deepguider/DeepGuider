@@ -34,7 +34,10 @@ enum
     DATA_RoadTheta = 6,
 
     /** OCR data */
-    DATA_OCR = 7
+    DATA_OCR = 7,
+
+    /** Odometry data (time, x, y, theta_radian) */
+    DATA_ODO = 8
 };
 
 /**
@@ -45,7 +48,7 @@ enum
 class DataLoader
 {
 public:
-    bool load(const std::string& video_file, const std::string& gps_file, const std::string& ahrs_file = "", const std::string& ocr_file = "", const std::string& poi_file = "", const std::string& vps_file = "", const std::string& intersection_file = "", const std::string& roadlr_file = "", const std::string& roadtheta_file = "")
+    bool load(const std::string& video_file, const std::string& gps_file, const std::string& odo_file = "", const std::string& ahrs_file = "", const std::string& ocr_file = "", const std::string& poi_file = "", const std::string& vps_file = "", const std::string& intersection_file = "", const std::string& roadlr_file = "", const std::string& roadtheta_file = "")
     {
         clear();
 
@@ -58,6 +61,11 @@ public:
             else
                 m_gps_data = readROSGPSFix(gps_file);
             if (m_gps_data.empty()) return false;
+        }
+        if (!odo_file.empty())
+        {
+            m_odo_data = readROSOdometry(odo_file);
+            if (m_odo_data.empty()) return false;
         }
         if (!ahrs_file.empty())
         {
@@ -144,6 +152,13 @@ public:
             min_index = &m_gps_index;
             min_type = DATA_GPS;
         }
+        if (m_odo_index < m_odo_data.size() && m_odo_data[m_odo_index][0] < min_time)
+        {
+            min_time = m_odo_data[m_odo_index][0];
+            min_data = &m_odo_data;
+            min_index = &m_odo_index;
+            min_type = DATA_ODO;
+        }
         if (m_ahrs_index < m_ahrs_data.size() && m_ahrs_data[m_ahrs_index][0] < min_time)
         {
             min_time = m_ahrs_data[m_ahrs_index][0];
@@ -228,6 +243,13 @@ public:
             min_data = &m_gps_data;
             min_index = &m_gps_index;
             min_type = DATA_GPS;
+        }
+        if (m_odo_index < m_odo_data.size() && m_odo_data[m_odo_index][0] <= min_time)
+        {
+            min_time = m_odo_data[m_odo_index][0];
+            min_data = &m_odo_data;
+            min_index = &m_odo_index;
+            min_type = DATA_ODO;
         }
         if (m_ahrs_index < m_ahrs_data.size() && m_ahrs_data[m_ahrs_index][0] <= min_time)
         {
@@ -371,6 +393,7 @@ public:
         if (m_first_data_time < 0) return;  // there is no loaded data
 
         m_gps_index = 0;
+        m_odo_index = 0;
         m_ahrs_index = 0;
         m_intersection_index = 0;
         m_vps_index = 0;
@@ -386,6 +409,10 @@ public:
         if (!m_gps_data.empty())
         {
             while (m_gps_index<m_gps_data.size() && m_gps_data[m_gps_index][0] < start_time) m_gps_index++;
+        }
+        if (!m_odo_data.empty())
+        {
+            while (m_odo_index < m_odo_data.size() && m_odo_data[m_odo_index][0] < start_time) m_odo_index++;
         }
         if (!m_ahrs_data.empty())
         {
@@ -425,7 +452,7 @@ public:
 
     bool empty() const
     {
-        return !m_camera_data.isOpened() && m_gps_data.empty() && m_ahrs_data.empty() && m_ocr_sdata.empty() && m_ocr_vdata.empty() && m_poi_data.empty() && m_vps_data.empty() && m_intersection_data.empty() && m_roadlr_data.empty() && m_roadtheta_data.empty();
+        return !m_camera_data.isOpened() && m_gps_data.empty() && m_odo_data.empty() && m_ahrs_data.empty() && m_ocr_sdata.empty() && m_ocr_vdata.empty() && m_poi_data.empty() && m_vps_data.empty() && m_intersection_data.empty() && m_roadlr_data.empty() && m_roadtheta_data.empty();
     }
 
 protected:
@@ -433,6 +460,7 @@ protected:
     {
         m_camera_data.release();
         m_gps_data.clear();
+        m_odo_data.clear();
         m_ahrs_data.clear();
         m_ocr_vdata.clear();
         m_ocr_sdata.clear();
@@ -443,6 +471,7 @@ protected:
         m_roadtheta_data.clear();
 
         m_gps_index = 0;
+        m_odo_index = 0;
         m_ahrs_index = 0;
         m_ocr_index = 0;
         m_poi_index = 0;
@@ -497,6 +526,26 @@ protected:
                     double accuracy = row->at(3);
                     std::vector<double> datum = { timestamp, ll.lat, ll.lon, accuracy };
                     data.push_back(datum);
+                }
+            }
+        }
+        return data;
+    }
+
+    cx::CSVReader::Double2D readROSOdometry(const std::string& odo_file)
+    {
+        cx::CSVReader::Double2D data;
+        cx::CSVReader csv;
+        if (csv.open(odo_file))
+        {
+            // time,seq,nsecs,frame_id,child_frame_id,pos.x,pos.y,pos.z,.orientation.x,orientation.y,orientation.z
+            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 2, 5, 6, 10 }); // Skip the header
+            if (!raw_data.empty())
+            {
+                for (auto row = raw_data.begin(); row != raw_data.end(); row++)
+                {
+                    double timestamp = 1e-9 * row->at(0);
+                    data.push_back({ timestamp, row->at(1), row->at(2), row->at(3) }); // t,x,y,theta
                 }
             }
         }
@@ -599,6 +648,7 @@ protected:
 
     cv::VideoCapture m_camera_data;
     cx::CSVReader::Double2D m_gps_data;
+    cx::CSVReader::Double2D m_odo_data;
     cx::CSVReader::Double2D m_ahrs_data;
     cx::CSVReader::String2D m_ocr_sdata;
     cx::CSVReader::Double2D m_ocr_vdata;
@@ -609,6 +659,7 @@ protected:
     cx::CSVReader::Double2D m_roadtheta_data;
 
     size_t m_gps_index = 0;
+    size_t m_odo_index = 0;
     size_t m_ahrs_index = 0;
     size_t m_ocr_index = 0;
     size_t m_poi_index = 0;

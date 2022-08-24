@@ -44,6 +44,13 @@ public:
     virtual bool setParamGPSNoise(double sigma_normal, double sigma_deadzone = -1) = 0;
 
     /**
+     * Set error covariance of Odometry
+     * @param sigma_position Standard deviation of odometry position (Unit: [m])
+     * @param sigma_theta_deg Standard deviation of odomery orientation (Unit: [deg])
+     */
+    virtual bool setParamOdometryNoise(double sigma_position, double sigma_theta_deg) = 0;
+
+    /**
      * Set error variance of IMU theta
      * @param sigma_theta_deg Standard deviation of IMU theta error (Unit: [deg])
      * @param theta_offset Angular offset of IMU theta (Unit: [deg])
@@ -126,6 +133,16 @@ public:
      * @return True if successful (false if failed)
      */
     virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1) = 0;
+
+    /**
+     * Apply an relative pose observation from Odometry<br>
+     *  The data usually come from wheel encoder based position estimators.
+     * @param odometry_pose The observed odomery pose (Unit: [m, m, rad])
+     * @param time The observed time (Unit: [sec])
+     * @param confidence The observation confidence
+     * @return True if successful (false if failed)
+     */
+    virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1) = 0;
 
     /**
      * Apply an relative orientation observation from IMU<br>
