@@ -16,7 +16,7 @@ start = time.time()
 test = OCRRecognizer(language=language)
 test.initialize(saved_model=saved_model)
 
-imgs = glob.glob(os.path.join(imagepath, '*.jpg'))
+imgs = glob.glob(os.path.join(imagepath, '*.png'))
 imgs.sort()
 
 with open('pred_list.txt', 'w') as f:

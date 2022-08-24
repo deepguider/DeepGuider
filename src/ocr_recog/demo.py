@@ -70,7 +70,6 @@ def detect_ocr(config, image, timestamp, save_img, save_log):
     #print("config device", device)
     model = config.model
     converter = config.converter
-
     # 32 * 100
     AlignCollate_demo = AlignCollate(imgH=config.imgH, imgW=config.imgW, keep_ratio_with_pad=config.PAD)
     # demo_data = RawDataset(root=image, opt=config)  # use RawDataset
