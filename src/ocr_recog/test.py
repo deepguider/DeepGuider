@@ -69,7 +69,7 @@ def benchmark_all_eval(model, criterion, converter, opt, calculate_infer_time=Fa
     for name, accuracy in zip(eval_data_list, list_accuracy):
         evaluation_log += f'{name}: {accuracy}\t'
     evaluation_log += f'total_accuracy: {total_accuracy:0.3f}\t'
-    evaluation_log += f'averaged_infer_time: {averaged_forward_time:0.3f}\t# parameters: {params_num/1e6:0.3f}'
+    evaluation_log += f'averaged_infer_time: {averaged_forward_time:0.3f}\t# parameters: {params_num/1e6:0.3f}M'
     print(evaluation_log)
     log.write(evaluation_log + '\n')
     log.close()
