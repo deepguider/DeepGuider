@@ -448,6 +448,11 @@ namespace dg
             return m_ekf->getStateCov();
         }
 
+        const RingBuffer<Pose2>& getProjectedPoseHistory()
+        { 
+            return m_projected_pose_history; 
+        }
+
         void printInternalState()
         {
             cv::AutoLock lock(m_mutex);

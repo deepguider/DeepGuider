@@ -387,7 +387,7 @@ int runLocalizer()
 
     enable_odometry = true;
     //enable_imu = true;
-    //use_andro_gps = true;
+    use_andro_gps = true;
     //use_novatel = true;
     //enable_ocr = true;
     //enable_poi = true;
@@ -398,7 +398,7 @@ int runLocalizer()
     //draw_gps = true;
 
     int data_sel = 0;
-    double start_time = 0;     // skip time (seconds)
+    double start_time = 200;     // skip time (seconds)
     //rec_video_file = "localizer_outofpath_smoothing.avi";
     double rec_video_fps = 10;
     std::vector<std::string> data_head[] = {

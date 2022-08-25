@@ -143,12 +143,12 @@ public:
             m_localmap_center_nid = localmap_center_nid;
         }
 
-        // find oldest pose in the local branch map
+        // find oldest pose in the local branch map (the implementation need to be revised)
         Node* center_node = m_localmap.getNode(localmap_center_nid);
         int pose_eval_len = 0;
         for (int i = projected_pose_history.data_count() - 1; i >= 0; i--)
         {
-            if (norm(*center_node - projected_pose_history[i]) > m_branchmap_search_radius) break;
+            if (norm(*center_node - projected_pose_history[i]) >= 0.8 * m_branchmap_search_radius) break;
             pose_eval_len++;
         }
         if (pose_eval_len < 1) return m_localmap.getNearestMapPose(pose);

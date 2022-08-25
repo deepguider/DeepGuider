@@ -58,6 +58,8 @@ public:
 
     int runLocalizer(cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader)
     {
+        bool show_projected_history = false; // debugging purpose
+
         CV_DbgAssert(!localizer.empty() && !data_loader.empty());
         m_localizer = localizer;
         m_localizer->setShared(this);
@@ -267,6 +269,18 @@ public:
                     for (int idx = 1; idx < (int)path.pts.size() - 1; idx++)
                     {
                         painter->drawNode(path_image, dg::Point2ID(0, path.pts[idx]), nradius, 0, ncolor);
+                    }
+
+                    if (show_projected_history)
+                    {
+                        // draw projected pose history
+                        const dg::RingBuffer<dg::Pose2>& pose_history = dg_localizer->getProjectedPoseHistory();
+                        int j = pose_history.data_count() - 1;
+                        while (j >= 0)
+                        {
+                            painter->drawNode(path_image, dg::Point2ID(0, pose_history[j]), nradius, 0, cv::Vec3b(255, 255, 0));
+                            j--;
+                        }
                     }
                 }
                 // Record the current visualization on the AVI file
