@@ -124,8 +124,8 @@ public:
                 bool success = localizer->applyOdometry(odo_pose, data_time, 1);
                 if (!success) fprintf(stderr, "applyOdometry() was failed.\n");
 
-                cam_image = data_loader.getFrame(data_time);
-                update_gui = true;
+                //cam_image = data_loader.getFrame(data_time);
+                //update_gui = true;
             }
             else if (type == dg::DATA_GPS)
             {
@@ -486,7 +486,7 @@ public:
     cv::Vec3b    gui_clue_color = cv::Vec3b(255, 0, 0);
     int          gui_clue_thickness = 2;
     int          gui_wnd_flag = cv::WindowFlags::WINDOW_AUTOSIZE;
-    int          gui_wnd_wait_msec = 1;
+    int          gui_wnd_wait_msec = 5;
     bool         gui_wnd_wait_exit = false;
 
     double       video_resize = 1;

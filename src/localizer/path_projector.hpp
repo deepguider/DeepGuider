@@ -11,14 +11,23 @@ namespace dg
 {
 
 /**
- * @brief Pose2 with LR
+ * @brief Pose2T with LR
  *
- * Data structure for saving pose with LR info
+ * Data structure for saving pose with timnestamp and LR info
  */
-struct Pose2LR : public Pose2
+struct Pose2TLR : public Pose2
 {
+    /** The timestamp */
+    Timestamp timestamp;
+
+    /** The LR info */
     int lr_side = Edge::LR_NONE;
-    Pose2LR(const Pose2& p = Pose2(0, 0), int lr = Edge::LR_NONE): Pose2(p), lr_side(lr) { }
+
+    /** A default constructor */
+    Pose2TLR() : Pose2(0, 0), timestamp(0), lr_side(Edge::LR_NONE) { }
+
+    /** A constructor with a 2D point, timestamp, and LR info */
+    Pose2TLR(Pose2 p, Timestamp t, int lr = Edge::LR_NONE): Pose2(p), timestamp(t), lr_side(lr) { }
 };
 
 
@@ -31,15 +40,16 @@ class PathProjector
 {
 protected:
     // configuable parameters
-    double m_branchmap_search_radius = 100;     // Unit: [m]
-    double m_projection_search_radius = 100;    // Unit: [m]
-    double m_min_alignscore_gap = 20;           // Unit: [m]
-    double m_max_position_change = 2.0;         // Unit: [m]
+    double m_branchmap_search_radius = 100;         // Unit: [m]
+    double m_projection_search_radius = 100;        // Unit: [m]
+    double m_normal_alignscore_gap = 1;             // Unit: [m], 기존 path와 신규 path의 score 차이가 이 값 이내면 통상적인 범위로 간주 (현재 path에 프로젝션)
+    double m_abnormal_alignscore_gap = 20;          // Unit: [m], 기존 path와 신규 path의 score 차이가 이 값을 넘어서면 경로이탈로 감지
+    double m_max_robot_velocity = 2.0;              // Unit: [m/sec]
     double m_length_align_weight = 0.5;
-    double m_error_tolerance = 0.01;            // Unit: [m]
+    double m_error_tolerance = 0.01;                // Unit: [m]
     bool m_enable_debugging_display = false;
 
-    double m_lr_mismatch_cost = 50;             // Unit: [m]
+    double m_lr_mismatch_cost = 50;                 // Unit: [m]
     bool m_enable_lr_reject = false;
     int m_lr_estimation_interval = 20;
     int m_lr_continuous_n = 10;
@@ -53,8 +63,9 @@ public:
         int n_read = 0;
         CX_LOAD_PARAM_COUNT(fn, "branchmap_search_radius", m_branchmap_search_radius, n_read);
         CX_LOAD_PARAM_COUNT(fn, "projection_search_radius", m_projection_search_radius, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "min_alignscore_gap", m_min_alignscore_gap, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "m_max_position_change", m_max_position_change, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "normal_alignscore_gap", m_normal_alignscore_gap, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "abnormal_alignscore_gap", m_abnormal_alignscore_gap, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "max_robot_velocity", m_max_robot_velocity, n_read);
         CX_LOAD_PARAM_COUNT(fn, "length_align_weight", m_length_align_weight, n_read);
         CX_LOAD_PARAM_COUNT(fn, "error_tolerance", m_error_tolerance, n_read);
         CX_LOAD_PARAM_COUNT(fn, "enable_debugging_display", m_enable_debugging_display, n_read);
@@ -74,7 +85,7 @@ public:
      * @param projected_pose_history Recent trajectory of map-projected poses
      * @return Estimated best map-projected pose
      */
-    Pose2 getMapPose(dg::Map* map, const Pose2& pose, RingBuffer<Pose2LR>& pose_history, RingBuffer<Pose2>& projected_pose_history)
+    Pose2 getMapPose(dg::Map* map, const Pose2& pose, RingBuffer<Pose2TLR>& pose_history, RingBuffer<Pose2>& projected_pose_history)
     {
         bool out_of_path;
         return getPathPose(map, nullptr, pose, pose_history, projected_pose_history, out_of_path);
@@ -90,7 +101,7 @@ public:
      * @param out_of_path True if out of path is detected
      * @return Estimated best path-projected pose (it can be out-of-path pose in case out-of-path detected)
      */
-    Pose2 getPathPose(dg::Map* map, Path* path, const Pose2& pose, RingBuffer<Pose2LR>& pose_history, RingBuffer<Pose2>& projected_pose_history, bool& out_of_path)
+    Pose2 getPathPose(dg::Map* map, Path* path, const Pose2& pose, RingBuffer<Pose2TLR>& pose_history, RingBuffer<Pose2>& projected_pose_history, bool& out_of_path)
     {
         if (map == nullptr || map->isEmpty()) return pose;
         out_of_path = false;
@@ -159,6 +170,8 @@ public:
 
         // find candidate map poses
         std::vector<Pose2> map_poses = findProjectedMapPoses(&m_localmap, pose, m_projection_search_radius, m_error_tolerance);
+        
+        // add path pose to candidate list
         int path_pose_idx = -1;
         if (path && !path->empty())
         {
@@ -179,7 +192,7 @@ public:
         }
         if(map_poses.empty()) return m_localmap.getNearestMapPose(pose);
 
-        // evaluate candidate map poses
+        // find best candidate map pose
         if (m_enable_debugging_display)
         {
             m_evalMapPath.clear();
@@ -188,6 +201,7 @@ public:
         double min_align_cost = DBL_MAX;
         Pose2 best_map_pose = pose;
         int best_pose_idx = -1;
+        double best_align_cost = min_align_cost;
         double path_pose_cost = -1;
         Pose2 mappose_start = projected_pose_history[projected_pose_history.data_count() - pose_eval_len];
         for (int i = 0; i < (int)map_poses.size(); i++)
@@ -227,6 +241,7 @@ public:
                 min_align_cost = align_cost;
                 best_map_pose = map_pose;
                 best_pose_idx = i;
+                best_align_cost = min_align_cost;
 
                 if (m_enable_debugging_display)
                 {
@@ -247,17 +262,19 @@ public:
         }
         if (m_enable_debugging_display) printf("\n");
 
-        // compare to path pose and determine out-of-path
+        // compare best pose to path pose and determine out-of-path
         if (path_pose_idx >= 0 && best_pose_idx != path_pose_idx)
         {
-            if ((path_pose_cost - min_align_cost) < m_min_alignscore_gap)
+            double align_score_gap = path_pose_cost - best_align_cost;
+
+            if (align_score_gap >= m_abnormal_alignscore_gap)
+            {
+                out_of_path = true;
+            }
+            else if (align_score_gap <= m_normal_alignscore_gap)
             {
                 best_pose_idx = path_pose_idx;
                 best_map_pose = map_poses[best_pose_idx];
-            }
-            else
-            {
-                out_of_path = true;
             }
         }
 
@@ -272,12 +289,14 @@ public:
             if (ok && !best_path.empty())
             {
                 int j = projected_pose_history.data_count() - 1;
-                while (j >= start_j && j >= 0)
+                int k = pose_history.data_count() - 2;
+                while (j >= start_j && j >= 0 && k >= 0)
                 {
-                    Pose2 new_p = m_localmap.getNearestPathPose(best_path, projected_pose_history[j]);
+                    Pose2 new_p = m_localmap.getNearestPathPose(best_path, pose_history[k]);
                     if (norm(new_p - projected_pose_history[j]) < m_error_tolerance) break;
                     projected_pose_history[j] = new_p;
                     j--;
+                    k--;
                 }
             }
         }
@@ -505,7 +524,7 @@ public:
     std::vector<Point2>& getEvalPoseHistory() { return m_evalPoseHistory; }
 
 protected:
-    double computeAlignCost(dg::Map* map, const dg::Path& path, int path_idx1, int path_idx2, const Pose2& projected_path_pose, const RingBuffer<Pose2LR>& pose_history, int pose_idx1, int pose_idx2, int& n_lr_match, int& n_lr_mismatch, std::vector<Point2>& eval_path_points)
+    double computeAlignCost(dg::Map* map, const dg::Path& path, int path_idx1, int path_idx2, const Pose2& projected_path_pose, const RingBuffer<Pose2TLR>& pose_history, int pose_idx1, int pose_idx2, int& n_lr_match, int& n_lr_mismatch, std::vector<Point2>& eval_path_points)
     {
         if (pose_idx2 < 0) pose_idx2 = pose_history.data_count() - 1;
         if (pose_idx1 < 0) pose_idx1 = 0;
@@ -515,8 +534,9 @@ protected:
         double pose_len_total = 0;
         for (int k = pose_idx1 + 1; k <= pose_idx2; k++)
         {
+            double max_displacement = (pose_history[k].timestamp - pose_history[k - 1].timestamp) * m_max_robot_velocity;
             double displacement = norm(pose_history[k] - pose_history[k - 1]);
-            if (displacement > m_max_position_change) displacement = m_max_position_change;
+            if (displacement > max_displacement) displacement = max_displacement;
             pose_len_total += displacement;
         }
 
@@ -543,8 +563,9 @@ protected:
         double align_cost = norm(pose_history[pose_idx1] - path_node_points[0]);
         for (int k = pose_idx1 + 1; k <= pose_idx2; k++)
         {
+            double max_displacement = (pose_history[k].timestamp - pose_history[k - 1].timestamp) * m_max_robot_velocity;
             double displacement = norm(pose_history[k] - pose_history[k - 1]);
-            if (displacement > m_max_position_change) displacement = m_max_position_change;
+            if (displacement > max_displacement) displacement = max_displacement;
             pose_len_upto += displacement;
             double len_ratio_upto = pose_len_upto / pose_len_total;
             double target_path_len = path_len_total * len_ratio_upto;

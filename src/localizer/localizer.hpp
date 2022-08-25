@@ -183,9 +183,16 @@ namespace dg
             if (m_ekf) m_ekf->setPose(pose, time, reset_velocity, reset_cov);
             m_state_history.resize(m_history_size);
             m_observation_history.resize(m_history_size);
-            m_pose_history.resize(m_history_size);
+            m_ekf_pose_history.resize(m_history_size);
             m_projected_pose_history.resize(m_history_size);
             m_pose = pose;
+        }
+
+        virtual Pose2 getPose(Timestamp* timestamp = nullptr) const
+        {
+            cv::AutoLock lock(m_mutex);
+            if (timestamp) *timestamp = m_timestamp;
+            return m_pose;
         }
 
         Pose2 getEkfPose()
@@ -307,7 +314,7 @@ namespace dg
             if(!isPoseStabilized()) return false;
 
             cv::AutoLock lock(m_mutex);
-            if (m_pose_history.empty()) return false;
+            if (m_ekf_pose_history.empty()) return false;
             if (!m_ekf->applyOdometry(odometry_pose, time, confidence)) return false;
             saveObservation(ObsData::OBS_ODO, odometry_pose, time, confidence);
             saveEKFState(m_ekf, time);
@@ -319,7 +326,7 @@ namespace dg
             if(!isPoseStabilized()) return false;
 
             cv::AutoLock lock(m_mutex);
-            if (m_pose_history.empty()) return false;
+            if (m_ekf_pose_history.empty()) return false;
             if (!m_ekf->applyIMUCompass(odometry_theta, time, confidence)) return false;
             saveObservation(ObsData::OBS_IMU, odometry_theta, time, confidence);
             saveEKFState(m_ekf, time);
@@ -329,7 +336,7 @@ namespace dg
         virtual bool applyRoadTheta(double theta, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_pose_history.empty()) return false;
+            if (m_ekf_pose_history.empty()) return false;
             if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
             {
                 if (!backtrackingEKF(time, ObsData(ObsData::OBS_RoadTheta, theta, time, confidence))) return false;
@@ -386,7 +393,7 @@ namespace dg
             return true;
             
             cv::AutoLock lock(m_mutex);
-            if (m_pose_history.empty()) return false;
+            if (m_ekf_pose_history.empty()) return false;
             if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
             {
                 if (!backtrackingEKF(time, ObsData(ObsData::OBS_IntersectCls, xy, time, confidence))) return false;
@@ -406,16 +413,9 @@ namespace dg
         virtual bool applyRoadLR(int lr_cls, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
-            if (lr_cls == Edge::LR_NONE || m_pose_history.empty()) return false;
-            m_pose_history.back().lr_side = lr_cls;
+            if (lr_cls == Edge::LR_NONE || m_ekf_pose_history.empty()) return false;
+            m_ekf_pose_history.back().lr_side = lr_cls;
             return true;
-        }
-
-        virtual Pose2 getPose(Timestamp* timestamp = nullptr) const
-        {
-            cv::AutoLock lock(m_mutex);
-            if (timestamp) *timestamp = m_timestamp;
-            return m_pose;
         }
 
         virtual double getPoseConfidence(Timestamp* timestamp = nullptr) const
@@ -470,7 +470,7 @@ namespace dg
         {
             m_state_history.resize(m_history_size);
             m_observation_history.resize(m_history_size);
-            m_pose_history.resize(m_history_size);
+            m_ekf_pose_history.resize(m_history_size);
             m_projected_pose_history.resize(m_history_size);
             m_gps_state = Point2T(Point2(0, 0), 0);
             m_gps_velocity = Point2(0, 0);
@@ -487,7 +487,7 @@ namespace dg
             ekf->getImuState(state.imu_angle, state.imu_time);
             state.timestamp = timestamp;
             m_state_history.push_back(state);
-            m_pose_history.push_back(Pose2T(ekf->getPose(), timestamp));
+            m_ekf_pose_history.push_back(Pose2TLR(ekf->getPose(), timestamp));
         }
 
         bool applyPathLocalizer(Pose2 pose, Timestamp timestamp)
@@ -502,8 +502,8 @@ namespace dg
             if (map)
             {
                 Path path = m_shared->getPath();
-                if (!path.empty() && m_enable_path_projection) m_pose = getPathPose(map, &path, pose, m_pose_history, m_projected_pose_history, out_of_path);
-                else if (m_enable_map_projection) m_pose = getMapPose(map, pose, m_pose_history, m_projected_pose_history);
+                if (!path.empty() && m_enable_path_projection) m_pose = getPathPose(map, &path, pose, m_ekf_pose_history, m_projected_pose_history, out_of_path);
+                else if (m_enable_map_projection) m_pose = getMapPose(map, pose, m_ekf_pose_history, m_projected_pose_history);
             }
             m_shared->releaseMapLock();
             if (out_of_path) m_shared->procOutOfPath(m_pose);
@@ -530,7 +530,7 @@ namespace dg
 
             // rollback state
             m_state_history.erase(restart_i, -1);
-            m_pose_history.erase(restart_i, -1);
+            m_ekf_pose_history.erase(restart_i, -1);
 
             // re-apply observations after rollback point
             restart_i = m_observation_history.insert(restart_i, delayed_observation);
@@ -623,7 +623,7 @@ namespace dg
         cv::Ptr<dg::EKFLocalizer> m_ekf;
         RingBuffer<EKFState> m_state_history;
         RingBuffer<ObsData> m_observation_history;
-        RingBuffer<Pose2LR> m_pose_history;
+        RingBuffer<Pose2TLR> m_ekf_pose_history;
         RingBuffer<Pose2> m_projected_pose_history;
         Point2T m_gps_state;
         Point2 m_gps_velocity;
