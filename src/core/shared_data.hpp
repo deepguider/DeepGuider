@@ -55,6 +55,13 @@ public:
         m_path = path;
     }
 
+    /** Clear shared path data */
+    virtual void clearPath()
+    {
+        cv::AutoLock lock(m_mutex_path);
+        m_path.clear();
+    }
+
     /** Get gps position of a metric position by using shared converter */
     virtual LatLon toLatLon(const Point2& metric)
     {

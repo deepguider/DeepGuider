@@ -57,14 +57,19 @@ protected:
     double m_map_image_rotation = cx::cvtDeg2Rad(1.0);
     std::string m_gps_input_path = "data/191115_ETRI_asen_fix.csv";
     std::string m_video_input_path = "data/ETRI/191115_151140_images.avi";
-    cv::Vec3b m_gui_robot_color = cv::Vec3b(0, 0, 255);  // B,G,R
-    cv::Vec3b m_gui_gps_color = cv::Vec3b(0, 255, 0);
-    cv::Vec3b m_gui_gps_novatel_color = cv::Vec3b(255, 0, 0);
     cv::Vec3b m_gui_vps_color = cv::Vec3b(229, 204, 255); // bright pink
     cv::Vec3b m_gui_vps_rpose_color = cv::Vec3b(127, 0, 255);  // pink
-    int m_gui_gps_trj_radius = 3;
-    int m_gui_robot_trj_radius = 1;
     bool m_gui_auto_scroll = true;
+
+    // gps drawing
+    cv::Vec3b m_gui_gps_color = cv::Vec3b(0, 255, 0);
+    cv::Vec3b m_gui_gps_novatel_color = cv::Vec3b(255, 0, 0);
+    int m_gui_gps_trj_radius = 3;
+
+    // robot trajectory drawing
+    cv::Vec3b m_gui_robot_color = cv::Vec3b(0, 0, 255);  // B,G,R
+    int m_gui_robot_trj_radius = 2;
+    cv::Vec3b m_gui_path_color = cv::Vec3b(255, 0, 0);
 
 	// 0.0 means "Not using", 1.0 means "Using"
 	int m_vps_load_dbfeat = 0;
@@ -138,7 +143,6 @@ protected:
     std::ofstream m_log;
     cv::Mutex m_log_mutex;
     cv::Mat m_map_image;
-    cv::Mat m_map_image_original;
     dg::MapPainter m_painter;
     dg::GuidanceManager::Motion m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
     dg::GuidanceManager::GuideStatus m_guidance_status = dg::GuidanceManager::GuideStatus::GUIDE_INITIAL;
@@ -453,7 +457,6 @@ bool DeepGuider::initialize(std::string config_file)
     m_painter.setParamValue("mixedroad_color", { 200, 100, 100 });
     m_painter.setParamValue("edge_thickness", 2);
     VVS_CHECK_TRUE(m_painter.drawMap(m_map_image, &m_map));
-    m_map_image_original = m_map_image.clone();
 
     // load icon images
     double icon_scale = 3.0;
@@ -666,10 +669,6 @@ int DeepGuider::run()
         // update
         if (update_gui)
         {
-            // draw robot trajectory
-            Pose2 pose_m = getPose();
-            m_painter.drawPoint(m_map_image, pose_m, m_gui_robot_trj_radius, m_gui_robot_color);
-
             m_cam_mutex.lock();
             m_cam_image = video_image;
             m_cam_capture_time = data_time;
@@ -691,8 +690,9 @@ int DeepGuider::run()
             procGuidance(data_time);
 
             // draw GUI display
-            dg::Pose2 px = m_painter.cvtValue2Pixel(pose_m);
-            if (m_gui_auto_scroll && m_localizer.isPoseInitialized()) m_viewport.centerizeViewportTo(px);
+            dg::Pose2 pose_m = getPose();
+            dg::Pose2 pose_px = m_painter.cvtValue2Pixel(pose_m);
+            if (m_gui_auto_scroll && m_localizer.isPoseInitialized()) m_viewport.centerizeViewportTo(pose_px);
             m_viewport.getViewportImage(gui_image);
             drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
 
@@ -856,8 +856,6 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
         Path path;
         bool ok = m_map.getPath(start, dest, path);
         if (!ok) return false;
-        dg::Pose2 pose = m_localizer.getPose();
-        m_localizer.setPose(pose);
         setPath(path);
         dg::LatLon gps_dest = toLatLon(dest);
         printf("[OfflineMap] New path generated to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
@@ -877,17 +875,21 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
 
 void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, double view_zoom)
 {
-    if (m_cam_image.empty()) return;
-    cv::Rect image_rc(0, 0, image.cols, image.rows);
+    // draw robot trajectory
+    dg::Pose2 pose_m = getPose();
+    m_painter.drawPoint(m_map_image, pose_m, m_gui_robot_trj_radius, m_gui_robot_color);
 
     // draw path
     dg::Path path = getPath();
     if (!path.empty())
     {
-        m_painter.drawPath(image, &m_map, &path, view_offset, view_zoom);
+        m_painter.drawPath(image, &m_map, &path, view_offset, view_zoom, m_gui_path_color);
     }
 
     // draw cam image on the GUI map (image is a map Mat)
+    if (m_cam_image.empty()) return;
+    cv::Rect image_rc(0, 0, image.cols, image.rows);
+
     cv::Mat video_image;
     cv::Point video_offset(m_video_win_margin, image.rows - m_video_win_margin - m_video_win_height);
     double video_resize_scale = (double)m_video_win_height / m_cam_image.rows;
@@ -1100,17 +1102,26 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::Scalar gui_bg(255, 255, 255);
     cv::Scalar gui_fg(200, 0, 0);
     double gui_fscale = 0.8;
-    std::string gui_msg = cv::format("Zoom: %.1lfx", m_viewport.zoom());
+    std::string gui_msg = cv::format("Zoom(0~4): %.1lfx", m_viewport.zoom());
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
     gui_xy.y += 40;
 
-    gui_msg = (m_gui_auto_scroll) ? "Auto: On" : "Auto: Off";
+    gui_msg = (m_gui_auto_scroll) ? "Auto(A): On" : "Auto(A): Off";
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
     if (m_gui_auto_scroll) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
     else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, cv::Scalar(128, 128, 128), 2);
     gui_xy.y += 40;
 
+    gui_msg = "GPS Traj: ----";
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, cx::COLOR_BLACK, 5);
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, m_gui_gps_color, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "Robot Traj: ---";
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, m_gui_robot_color, 2);
+    gui_xy.y += 40;
 
     // print status message (localization)
     printf("[Localizer]\n");
@@ -1136,8 +1147,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     {
         std::string msg = "ARRIVED!";
         cv::Point pt(600, 500);
-        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 255, 0), 8);
-        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 0, 0), 4);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 8, cv::Scalar(0, 255, 0), 16);
+        cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 8, cv::Scalar(0, 0, 0), 8);
     }
 }
 
@@ -1266,10 +1277,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     cur_guide = m_guider.getGuidance();
     
     m_guider_mutex.unlock();
-
-    // print guidance message
-    //printf("[tts] %s\n", cur_guide.msg.c_str());
-    
+ 
     // tts guidance message
     if (m_enable_tts && cur_guide.announce && !cur_guide.actions.empty())
     {
@@ -1320,6 +1328,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
             printf("Arrived to destination!\n");
             m_dest_defined = false;
             m_path_generation_pended = false;
+            clearPath();
             if (m_enable_tts) putTTS("Arrived to destination!");
             m_exploration_state_count = m_exploration_state_count_max;  //Enter exploration mode until state_count becomes 0 from count_max
         }
