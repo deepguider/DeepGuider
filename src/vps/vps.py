@@ -140,8 +140,8 @@ class vps:
         self.parser.add_argument('--dataset', type=str, default='deepguider', help='Dataset to use', choices=['pittsburgh','deepguider'])
         self.parser.add_argument('--cacheBatchSize', type=int, default=1, help='Batch size for caching and testing')
 
-        self.parser.add_argument('--dbFeat_fname', type=str, default='data_vps/prebuilt_dbFeat.mat', help='dbFeat file calculated in advance')
-        self.parser.add_argument('--qFeat_fname', type=str, default='data_vps/prebuilt_qFeat.mat', help='dbFeat file calculated in advance')
+        self.parser.add_argument('--dbFeat_fname', type=str, default='data_vps/prebuilt_dbFeat.pickle', help='dbFeat file calculated in advance')
+        self.parser.add_argument('--save_dbFeat', default=False, action='store_true', help='Save features of database in  to --dbFeat_fname')
         self.parser.add_argument('--verbose', default=False, action='store_true', help='Print internal messages') #fixed, dg's issue #41
         
         # When you get 'ERROR: Unexpected segmentation fault encountered in worker'
@@ -168,6 +168,7 @@ class vps:
         self.cacheBatchSize = opt.cacheBatchSize
         self.custom_dataset = None
         self.use_custom_dataset = False
+        self.dbFeat_fname = opt.dbFeat_fname
 
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
@@ -327,7 +328,8 @@ class vps:
         if self.verbose:
             print('===> Building model end(vps.py)')
 
-        self.mVps_filter = vps_filter(ksize=7)
+        #self.mVps_filter = vps_filter(ksize=7)  #  Default
+        self.mVps_filter = vps_filter(ksize=11)  #  For coex 22.08.29 test
 
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
@@ -411,16 +413,19 @@ class vps:
         if self.load_dbfeat == True:
             if self.load_dbfeat_initialized == False: ## Initial condition is False (off)
                 if self.verbose:
-                    print('[vps]====> Initializing load_dbfeat.')
-                dbFeat_dict = sio.loadmat(opt.dbFeat_fname)
-                dbFeat = dbFeat_dict['Feat']
-                self.dbImage = dbFeat_dict['dbImage']
-                dbFeat = np.ascontiguousarray(dbFeat)
-                self.faiss_index = self.make_search_index(dbFeat)
-                self.load_dbfeat_initialized = True  ## Turn on the switch after loading dbfeat.
-            ## Reuse faiss_index made in previous call
-            faiss_index = self.faiss_index
-            dbImage = self.dbImage
+                    print('[vps]====> Initializing load_dbfeat with ', opt.dbFeat_fname)
+                #dbFeat_dict = sio.loadmat(opt.dbFeat_fname)
+                #dbFeat = dbFeat_dict['Feat']
+                #self.dbImage = dbFeat_dict['dbImage']
+                #dbFeat = np.ascontiguousarray(dbFeat)
+                self.valid_feature, self.dbFeat, self.dbImage, self.utmDb = load_feature(opt.dbFeat_fname)
+                if self.valid_feature == False:
+                    print("[vps] ************* Cannot load valid {} ! ************.".format(opt.dbFeat_fname))
+                    return 0
+                else:
+                    ## Reuse faiss_index made in previous call
+                    self.faiss_index = self.make_search_index(self.dbFeat)
+                    self.load_dbfeat_initialized = True  ## Turn on the switch after loading dbfeat.
         else:  # Calculate DB features everytime
             if (eval_set_db == None) or (eval_set_q == None):
                 return -1
@@ -440,20 +445,20 @@ class vps:
             test_db_data_loader = DataLoader(dataset=eval_set_db, 
                 num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
                 pin_memory=cuda)
-            dbImage = test_db_data_loader.dataset.ImgStruct.Image
-            faiss_index = self.make_search_index(dbFeat)
-            if self.save_dbfeat:
-                if self.verbose:
-                    print('====> Saving dbfeat into ', opt.dbFeat_fname)
-                dbFeat_dict={'Feat':dbFeat, 'dbImage':dbImage}
-                sio.savemat(opt.dbFeat_fname, dbFeat_dict) # savemat may cause segmentation fault randomly when embedded in C++.
+            self.dbImage = test_db_data_loader.dataset.ImgStruct.Image
+            self.faiss_index = self.make_search_index(dbFeat)
+            #if self.save_dbfeat:
+            #    if self.verbose:
+            #        print('====> Saving dbfeat into ', opt.dbFeat_fname)
+            #    dbFeat_dict={'Feat':dbFeat, 'dbImage':dbImage}
+            #    sio.savemat(opt.dbFeat_fname, dbFeat_dict) # savemat may cause segmentation fault randomly when embedded in C++.
 
         if self.verbose:
             print('====> Building faiss index')
 
         # extracted for query, now split in own sets
         qFeat = self.test_sub(eval_set_q)
-        qFeat = qFeat.astype('float32') #[nqImg,32768]
+        self.qFeat = qFeat.astype('float32') #[nqImg,32768]
 
         test_q_data_loader = DataLoader(dataset=eval_set_q, 
                 num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
@@ -462,66 +467,89 @@ class vps:
         if self.verbose:
             print('====> Calculating recall @',self.K)
         
-        pred_confidence, pred_idx = faiss_index.search(qFeat, self.K) # [ NumQ x K ]
+        self.pred_confidence, self.pred_idx = self.faiss_index.search(self.qFeat, self.K) # [ NumQ x K ]
   
         if self.verbose:
-            print('predicted ID:\n', pred_idx)
+            print('predicted ID:\n', self.pred_idx)
   
-        qImage  = test_q_data_loader.dataset.ImgStruct.Image
-  
-        self.qImage = qImage
-        self.dbImage = dbImage
-        self.pred_idx = pred_idx
-        self.pred_confidence = pred_confidence
+        self.qImage  = test_q_data_loader.dataset.ImgStruct.Image
 
         if self.verbose:
             print('QueryImage <=================> predicted dbImage')
         match_cnt = 0
-        total_cnt = len(qImage)  # Maybe 1.
+        total_cnt = len(self.qImage)  # Maybe 1.
 
         if total_cnt == 0:
             return 0
-        for i in range(total_cnt):
-            qName = os.path.basename(qImage[i].item()).strip()
-            if qName in 'newquery.jpg':
-                flist = dbImage[pred_idx[i]]
-                vps_imgID_str = self.Fname2ID(flist) # list
-                vps_imgConf_str = [val for val in pred_confidence[i]] # list
-                vps_imgID = [np.int(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
-                vps_imgConf = [np.float(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
-                self.pred_utmDb = [-1.0, -1.0]  # utm_x, utm_y
-                pred_confidence0 = pred_confidence[i][0]
-                if pred_confidence0 > 0.0:  # Check that network was initialized well.
-                    self.vps_IDandConf = [vps_imgID, vps_imgConf]
-                    if (self.use_custom_dataset == True):
-                        if (self.is_custom_dataset_valid == True):
-                            pred_utmDb = self.custom_dataset.db_name2utm(vps_imgID[i])
-                            self.pred_utmDb = [float(i) for i in pred_utmDb]  # [327922.6661131374, 4153540.910004767]
-                            #utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
-                            #lat, lon = utm.to_latlon(utm_x, utm_y, 52, 'S')
-                        else:
-                            self.is_custom_dataset_valid = self.custom_dataset.initialize(config.structFile, config.db_dir, config.queries_dir)
-            if self.verbose:
-                dbImage_predicted = dbImage[pred_idx[i,0]] #Use best [0] image for display
-                try:
-                    dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
-                except:
-                    dbName_predicted = os.path.basename(dbImage_predicted[i].strip())
 
-                #IDs = ['spherical_2812920067800000','spherical_2812920067800000']
-                lat,lon,deg = self.ID2LL(self.Fname2ID(dbName_predicted))
-                if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
-                    match_cnt = match_cnt + 1
-                    print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
+        for i in range(total_cnt):
+            qName = os.path.basename(self.qImage[i].item()).strip()
+            if qName in 'newquery.jpg':
+                if self.load_dbfeat == True:
+                    self.db_info_from_prebuilt(i)
                 else:
-                    print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon)
-    
+                    self.db_info_from_filename(i)
+
         acc = match_cnt/total_cnt
         if self.verbose:
-            print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
+            print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(self.dbImage)))
             print('Return from vps.py->apply()')
 
         return acc
+
+    def db_info_from_filename(self, i):
+        flist = self.dbImage[self.pred_idx[i]]
+        vps_imgID_str = self.Fname2ID(flist) # list
+        vps_imgConf_str = [val for val in self.pred_confidence[i]] # list
+        vps_imgID = [np.int(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
+        vps_imgConf = [np.float(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
+        self.pred_utmDb = [-1.0, -1.0]  # utm_x, utm_y
+        pred_confidence0 = self.pred_confidence[i][0]
+        if pred_confidence0 > 0.0:  # Check that network was initialized well.
+            self.vps_IDandConf = [vps_imgID, vps_imgConf]
+            if (self.use_custom_dataset == True):
+                '''
+                If the use_custom_dataset is False (ie, using naver server),
+                vps_localizer.cpp can get utm coordinates using getview(svid)
+                But, if use_custom_dataset is True,
+                since vps_localizer cannot access python custom dataset,
+                vps.py must pass valid utm coordinates and image path to vps_localizer using following:
+                '''
+                if (self.is_custom_dataset_valid == True):
+                    pred_utmDb = self.custom_dataset.db_name2utm(vps_imgID[i])
+                    self.pred_utmDb = [float(i) for i in pred_utmDb]  # [327922.6661131374, 4153540.910004767]
+                    #utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
+                    #lat, lon = utm.to_latlon(utm_x, utm_y, 52, 'S')
+                else:
+                    self.is_custom_dataset_valid = self.custom_dataset.initialize(config.structFile, config.db_dir, config.queries_dir)
+        if self.verbose:
+            dbImage_predicted = self.dbImage[self.pred_idx[i,0]] #Use best [0] image for display
+            try:
+                dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
+            except:
+                dbName_predicted = os.path.basename(dbImage_predicted[i].strip())
+
+            #IDs = ['spherical_2812920067800000','spherical_2812920067800000']
+            lat,lon,deg = self.ID2LL(self.Fname2ID(dbName_predicted))
+            if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
+                match_cnt = match_cnt + 1
+                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
+            else:
+                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon)
+
+    def db_info_from_prebuilt(self, i):
+        idx0 = self.pred_idx[i][0]
+        flist = self.dbImage[idx0]
+        vps_imgID_str = self.Fname2ID(flist) # list
+        vps_imgConf_str = [val for val in self.pred_confidence[i]] # list
+        vps_imgID = [np.int(ii) for ii in vps_imgID_str] # fixed, dg'issue #36
+        vps_imgConf = [np.float(ii) for ii in vps_imgConf_str] # fixed, dg'issue #36
+        self.pred_utmDb = [-1.0, -1.0]  # utm_x, utm_y
+        pred_confidence0 = self.pred_confidence[i][0]
+        if pred_confidence0 > 0.0:  # Check that network was initialized well.
+            self.vps_IDandConf = [vps_imgID, vps_imgConf]
+            pred_utmDb = self.utmDb[idx0]
+            self.pred_utmDb = [float(i) for i in pred_utmDb]
 
     def checking_return_value(self):
         K = self.K
@@ -542,107 +570,6 @@ class vps:
         if K != ErrCnt:
             return -1
         return 0
-
-
-    def test(self,eval_set, write_tboard=False):
-        # TODO what if features dont fit in memory? 
-        opt = self.parser.parse_args()
-        cuda = not opt.nocuda
-
-        test_data_loader = DataLoader(dataset=eval_set, 
-                    num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
-                    pin_memory=cuda)
-    
-        self.model.eval()
-
-        qImage = test_data_loader.dataset.dbStruct.qImage
-        dbImage = test_data_loader.dataset.dbStruct.dbImage
-
-        with torch.no_grad():
-            print('====> Extracting Features')
-            pool_size = self.encoder_dim
-            if opt.pooling.lower() == 'netvlad': pool_size *= opt.num_clusters
-            dbqFeat = np.empty((len(eval_set), pool_size))
-        
-            for iteration, (input, indices) in enumerate(test_data_loader, 1):
-                input = input.to(self.device) #[24, 3, 480, 640]
-                image_encoding = self.model.encoder(input) #[24, 512, 30, 40]
-                vlad_encoding = self.model.pool(image_encoding) #[24,32768] 
-        
-                #dbqFeat : [17608, 32768]
-                dbqFeat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy() #[24,32768]
-                try:
-                    if iteration % 50 == 0 or len(test_data_loader) <= 10:
-                        print("==> Batch ({}/{})".format(iteration,len(test_data_loader)), flush=True)
-                except:
-                    print("Cannot Display")
-            del input, image_encoding, vlad_encoding
-        del test_data_loader
-
-        if self.load_dbfeat == True:
-            dbFeat = sio.loadmat(opt.dbFeat_fname)
-            dbFeat = dbFeat['dbFeat']
-        else:
-            # extracted for db, now split in own sets
-            dbFeat = dbqFeat[:eval_set.dbStruct.numDb].astype('float32') #[10000,32768]
-            dbFeat_dict={'dbFeat':dbFeat}
-            if self.save_dbfeat:
-                sio.savemat(opt.dbFeat_fname,dbFeat_dict)
-
-        # extracted for query, now split in own sets
-        qFeat = dbqFeat[eval_set.dbStruct.numDb:].astype('float32') #[7608,32768]
-        qFeat_dict={'qFeat':qFeat}
-
-        print('====> Building faiss index')
-        #qFeat  : [7608,32768], pool_size = 32768 as dimension of feature
-        #dbFeat : [10000,32768]
-        faiss_index = faiss.IndexFlatL2(pool_size) #32768
-        faiss_index.add(dbFeat)
-    
-        print('====> Calculating recall @ N')
-        n_values = [1,5,10,20] #n nearest neighbors
-    
-        pred_confidence, pred_idx = faiss_index.search(qFeat, self.K) #predictions : [7608,1]
-
-        print('predicted ID:\n', pred_idx)
-        test_data_loader = DataLoader(dataset=eval_set, 
-                    num_workers=self.num_workers, batch_size=self.cacheBatchSize, shuffle=False, 
-                    pin_memory=cuda)
-
-        qImage = test_data_loader.dataset.dbStruct.qImage
-        dbImage = test_data_loader.dataset.dbStruct.dbImage
-        dbImage_predicted = test_data_loader.dataset.dbStruct.dbImage[pred_idx[:,0]] #Use first K for display
-
-        print('QueryImage <=================> predicted dbImage')
-        match_cnt = 0
-        total_cnt = len(qImage)
-        for i in range(total_cnt):
-            qName = os.path.basename(qImage[i].item()).strip()
-            dbName_predicted = os.path.basename(dbImage_predicted[i].item()).strip()
-        #    IDs = ['spherical_2812920067800000','spherical_2812920067800000']
-            lat,lon,deg = self.ID2LL(self.Fname2ID(dbName_predicted))
-            if qName in 'newquery.jpg':
-                flist = test_data_loader.dataset.dbStruct.dbImage[pred_idx[i]]
-                self.pred_utmDb = [-1.0, -1.0]  # utm_x, utm_y
-                if (self.use_custom_dataset == True) and (self.is_custom_dataset_valid == True):
-                    pred_utmDb = self.custom_dataset.get_utmDb()[self.pred_idx[i]]
-                    self.pred_utmDb = [float(i) for i in pred_utmDb[0]]
-                    #utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
-                    #lat, lon = utm.to_latlon(utm_x, utm_y, 52, 'S')
-                vps_imgID = self.Fname2ID(flist)
-                vps_imgConf = [val for val in pred_confidence[i]]
-                self.vps_IDandConf = [vps_imgID, vps_imgConf] #ori
-                #self.vps_IDandConf = [123456, 1.33] #dbg
-
-            if self.Fname2ID(qName)[0] in self.Fname2ID(dbName_predicted)[0]:
-                match_cnt = match_cnt + 1
-                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon,'[*Matched]')
-            else:
-                print('[Q]',qName,'<==> [Pred]', dbName_predicted,'[Lat,Lon] =',lat,',',lon)
-
-        acc = match_cnt/total_cnt
-        print('Accuracy : {} / {} = {} % in {} DB images'.format(match_cnt,total_cnt,acc*100.0,len(dbImage)))
-        return acc
 
     def get_param(self):
         # get parameter
@@ -763,12 +690,17 @@ class vps:
             whole_test_set = dataset.get_whole_test_set()
             print('[vps] ===> Evaluating on test set')
             print('[vps] ===> Running evaluation step')
-            recalls = self.test(whole_test_set, write_tboard=False)
+            print('[vps] ===> Not being implemented for {} dataset.'.format(opt.dataset.lower()))
+            #recalls = self.test(whole_test_set, write_tboard=False)
         elif opt.dataset.lower() == 'deepguider':
             init_db_q_dir()
             from netvlad import etri_dbloader as dataset
-            if (self.load_dbfeat == True) or (self.use_local_db==True) :
-                    print("[vps] Local DB and features are used : ", self.dataset_struct_dir)
+            if self.load_dbfeat == True :
+                if self.verbose:
+                    print("[vps] uses pre-built features: ", opt.dbFeat_fname)
+            elif self.use_local_db==True :
+                if self.verbose:
+                    print("[vps] uses Local database w/o downloading them in ", self.dataset_struct_dir)
             else:
                 ## Get DB images from streetview image server            
                 if self.use_custom_dataset == True:
@@ -982,9 +914,13 @@ class vps:
         ID = []
         fcnt = len(flist)
         for i in range(fcnt):
-            imgID = os.path.basename(flist[i]).strip() #'spherical_2813220026700000_f.jpg'
+            fname =  os.path.basename(flist[i])
+            imgID = fname.strip()  # Remove spacei at the beginning and the end point of string
             if '_' in imgID:
-                imgID = imgID.split('_')[-2] #2813220026700000
+                if "spherical" in fname: # 'spherical_2813220026700000_f.jpg'
+                    imgID = imgID.split('_')[-2] #2813220026700000
+                elif "pitch" in fname:  # "000156_pitch1_yaw11.jpg"
+                    imgID = imgID.split('_')[0] #2813220026700000
             else:
                 imgID = imgID.split('.')[0]
             ID.append(imgID) # string
@@ -1030,8 +966,32 @@ class vps:
             dbImgs.append(dbImg)
         return torch.stack(dbImgs)
 
+def load_feature(fname):  # code from /home/ccsmm/dg_git/image_retrieval_deatt/utils/misc.py
+    dbFeat = []
+    dbImage = []
+    utmDb = []
+    valid_feature = False
+    if (os.path.exists(fname) == True):
+        import pickle
+        ## load
+        try:
+            with open(fname, 'rb') as f:
+                data = pickle.load(f)
+            ## You can check key with data.keys() ==> dict_keys(['dbFeat', 'qFeat', 'predictions', 'distances', 'dbImage', 'qImage', 'utmDb', 'utmQ'])
+            dbFeat = data['dbFeat']
+            utmDb = data['utmDb']
+            dbImage = data['dbImage']
+            # You can remake clear from complex shape of utmDb or utmQ np.array using following commands
+            x = [dd[0][0] for dd in utmDb[:,0]]
+            y = [dd[0][0] for dd in utmDb[:,1]]
+            utmDb = np.stack((x,y), axis=1)  # shape : (3885, 2)
+        except:
+            pass
+        if len(dbFeat) > 0 and len(dbImage) > 0 and len(utmDb):
+            valid_feature = True
+    return valid_feature, dbFeat, dbImage, utmDb
 
-def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
+def run_prebuilt_dbfeat(load_dbfeat=1):
     init_db_q_dir()
     from netvlad import etri_dbloader as dataset
     from PIL import Image
@@ -1050,15 +1010,7 @@ def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
     mod_vps.verbose = True
     print("It took {} sec.".format(time.time()-st))
 
-    if load_dbfeat > 0:
-        print("Run VPS for testing [Loading prebuilt dbfeat into data_vps/prebuilt_dbFeat.mat]")
-
-    if save_dbfeat > 0:
-        db_image_dir = os.path.join(dataset.struct_dir,'StreetView')
-        print("Run VPS for testing [Saving prebuilt dbfeat into data_vps/prebuilt_dbFeat.mat] of {}".format(db_image_dir))
-        if True:  # Fast feature extract at offline
-            mod_vps.set_threads(16)
-            mod_vps.set_cacheBatchSize(256)
+    print("Run VPS for testing [Loading prebuilt dbfeat into {}]".format(mod_vps.dbFeat_fname))
 
     #qimage = np.uint8(256*np.random.rand(1024,1024,3))
     for fname in qFlist:
@@ -1075,14 +1027,11 @@ def run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=0):
         st = time.time()
 
         vps_IDandConf = mod_vps.apply(qimg, K=3, gps_lat=gps_lat, gps_lon=gps_lon, gps_accuracy=0.0,
-                timestamp=1.0, ipaddr_port=ipaddr_port, load_dbfeat=load_dbfeat, save_dbfeat=save_dbfeat, use_custom_image_server=0.0) # k=3 for knn
+                timestamp=1.0, ipaddr_port=ipaddr_port, load_dbfeat=load_dbfeat, save_dbfeat=0, use_custom_image_server=0.0) # k=3 for knn
         print('vps_IDandConf : {}\n{} sec. elapsed.'.format(vps_IDandConf, time.time() - st))
 
-def save_prebuild_dbfeat():
-    run_prebuilt_dbfeat(load_dbfeat=0, save_dbfeat=1)
-
 def load_prebuild_dbfeat():
-    run_prebuilt_dbfeat(load_dbfeat=1, save_dbfeat=0)
+    run_prebuilt_dbfeat()
 
 if __name__ == "__main__":
     '''

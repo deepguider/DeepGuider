@@ -1,6 +1,6 @@
 #!/bin/bash
-server_ip="localhost"
-#server_ip="129.254.81.204"
+#server_ip="localhost"
+server_ip="129.254.81.204"
 test_dir="./.test_img_server"
 mkdir -p ${test_dir}
 cd ${test_dir}

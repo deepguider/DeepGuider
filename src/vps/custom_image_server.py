@@ -32,6 +32,7 @@ class WholeDatasetFromStruct():
         self.curr_path = os.getcwd()
         self.positives = None
         self.distances = None
+        self.knn = None
 
     def initialize(self, structFile, db_dir, queries_dir):
         self.structFile = structFile
@@ -82,13 +83,16 @@ class WholeDatasetFromStruct():
         utm_xy = np.asarray([x,y])
         utm_xy = utm_xy.reshape(-1,2)
 
-        knn = NearestNeighbors(n_jobs=-1)
-        #knn = NearestNeighbors(n_jobs=1)
-        knn.fit(self.dbStruct.utmDb)
+        if self.knn is None:
+            self.knn = NearestNeighbors(n_jobs=-1)
+            #self.knn = NearestNeighbors(n_jobs=1)
+            self.knn.fit(self.dbStruct.utmDb)
+
         if radius is None:
             radius = self.dbStruct.posDistThr
-        self.distances, self.positives = knn.radius_neighbors(utm_xy, radius=radius)
-        #self.distances, self.positives = knn.radius_neighbors(self.dbStruct.utmQ, radius=radius)
+
+        self.distances, self.positives = self.knn.radius_neighbors(utm_xy, radius=radius)
+        #self.distances, self.positives = self.knn.radius_neighbors(self.dbStruct.utmQ, radius=radius)
 
         if len(self.positives.item()) > 0:
             return self.positives.item()

@@ -104,14 +104,38 @@ namespace dg
         {
             cv::Mat sv_image;
             dg::ID sv_id = getViewID();
-			printf("[vps] Ennterd getView Image.");
+			printf("[vps] Enterd getView Image.");
             if (m_use_custom_image_server)
             {
-                std::string fpath = cv::format("%s/%06ld.jpg", m_custom_dataset_abs_path.c_str(), sv_id);
+                std::string fpath = cv::format("%s/%06ld.jpg", m_custom_dataset_abs_path.c_str(), sv_id); // ex) 004648.jpg 
+                std::string fpath2 = cv::format("%s/%06ld_pitch0_yaw00.jpg", m_custom_dataset_abs_path.c_str(), sv_id); // ex) 004648_pitch0_yaw00.jpg, front
+                std::string fpath3 = cv::format("%s/%06ld_pitch0_yaw01.jpg", m_custom_dataset_abs_path.c_str(), sv_id); // ex) 004648_pitch0_yaw01.jpg, 30deg cw
+                std::string fpath4 = cv::format("%s/%06ld_pitch0_yaw11.jpg", m_custom_dataset_abs_path.c_str(), sv_id); // ex) 004648_pitch0_yaw11.jpg, -30deg cw
+                std::string fpath5 = cv::format("%s/%06ld_pitch1_yaw00.jpg", m_custom_dataset_abs_path.c_str(), sv_id); // ex) 004648_pitch1_yaw00.jpg, front
                 if (file_exists(fpath))
 				{
 					sv_image = cv::imread(fpath);
 					printf("[vps] custom streetview db image [%s] was found.", fpath.c_str());
+				}
+				else if (file_exists(fpath2))
+				{
+					sv_image = cv::imread(fpath2);
+					printf("[vps] custom streetview db image [%s] was found.", fpath2.c_str());
+				}
+				else if (file_exists(fpath3))
+				{
+					sv_image = cv::imread(fpath3);
+					printf("[vps] custom streetview db image [%s] was found.", fpath3.c_str());
+				}
+				else if (file_exists(fpath4))
+				{
+					sv_image = cv::imread(fpath4);
+					printf("[vps] custom streetview db image [%s] was found.", fpath4.c_str());
+				}
+				else if (file_exists(fpath5))
+				{
+					sv_image = cv::imread(fpath5);
+					printf("[vps] custom streetview db image [%s] was found.", fpath5.c_str());
 				}
 				else
 				{
