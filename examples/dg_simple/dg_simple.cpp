@@ -1164,6 +1164,7 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
     std::string dir_msg;
     dg::GuidanceManager::Motion cmd; 
     cv::Point msg_offset;
+    float fontsize;
 
     for (size_t i = 0; i < guide.actions.size(); i++)
     {
@@ -1229,20 +1230,26 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
 
         // show direction message
         if (i == 0)
+        {
             msg_offset = rect.tl() + cv::Point(10, 40);
+            fontsize = 2.0;
+        }
         else   
-            msg_offset = center_pos + cv::Point(-110, 0);
+        {
+            msg_offset = center_pos + cv::Point(50, 80);
+            fontsize = 1.0;
+        }
         
-        cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(0, 255, 255), 12);
-        cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(255, 0, 0), 4);
+        cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, fontsize, cv::Scalar(0, 255, 255), 12);
+        cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, fontsize, cv::Scalar(255, 0, 0), 4);
 
     }
 
     // show distance message
-    msg_offset = center_pos + cv::Point(-110, 50);
-    std::string distance = cv::format("Remain=%.1lfm", guide.distance_to_remain);
-    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(0, 255, 255), 14);
-    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.4, cv::Scalar(255, 0, 0), 4);
+    msg_offset = center_pos + cv::Point(50, 20);
+    std::string distance = cv::format("After = %.1lfm", guide.distance_to_remain);
+    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 255), 14);
+    cv::putText(image, distance.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 0, 0), 4);
 
     // show guidance message
     msg_offset = rect.tl() + cv::Point(0, rect.height + 25);
