@@ -263,6 +263,11 @@ namespace dg
             return applyPosition(xy, time, confidence);
         }
 
+        virtual void resetOdometry()
+        {
+            m_odometry_prev_time = -1;
+        }
+
         virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)
         {
             Pose2 odometry_pose_prev = m_odometry_prev_pose;

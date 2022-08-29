@@ -38,6 +38,15 @@ protected:
     int m_enable_odometry = 0;
     int m_enable_mapserver = 1;
 
+    bool m_apply_intersection = true;
+    bool m_apply_imu = true;
+    bool m_apply_ocr = true;
+    bool m_apply_vps = true;
+    bool m_apply_roadlr = true;
+    bool m_apply_roadtheta = true;
+    bool m_apply_gps = true;
+    bool m_apply_odometry = true;
+
     std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
     std::string m_image_server_port = "10000";  // etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
     std::string m_srcdir = "./../src";      // path of deepguider/src (required for python embedding)
@@ -71,7 +80,9 @@ protected:
     int m_gui_robot_trj_radius = 2;
     cv::Vec3b m_gui_path_color = cv::Vec3b(255, 0, 0);
 
+    // VPS parameters
 	// 0.0 means "Not using", 1.0 means "Using"
+    double m_vps_max_error_distance = 25;
 	int m_vps_load_dbfeat = 0;
 	int m_vps_save_dbfeat = 0;
 	double m_vps_gps_accuracy = 0.9;  // Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
@@ -411,8 +422,8 @@ bool DeepGuider::initialize(std::string config_file)
     if (!m_localizer.setParamGPSOffset(1, 0)) return false;         // displacement(lin,ang) from robot origin
     if (!m_localizer.setParamOdometryNoise(0.01, 1)) return false;  // position error(m), orientation error(deg)
     if (!m_localizer.setParamIMUCompassNoise(1, 0)) return false;   // angle arror(deg), angle offset(deg)
-    if (!m_localizer.setParamPOINoise(10, 20, 25)) return false;     // position error(m), orientation error(deg), max error (m)
-    if (!m_localizer.setParamVPSNoise(10, 20, 25)) return false;    // position error(m), orientation error(deg), max error (m)
+    if (!m_localizer.setParamPOINoise(5, 20, 25)) return false;    // position error(m), orientation error(deg), max error (m)
+    if (!m_localizer.setParamVPSNoise(5, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
     if (!m_localizer.setParamIntersectClsNoise(0.1)) return false;  // position error(m)
     if (!m_localizer.setParamRoadThetaNoise(50)) return false;      // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin
@@ -713,6 +724,18 @@ int DeepGuider::run()
             if (key == '4') m_viewport.setZoom(4);
             if (key == '0') m_viewport.setZoom(0.1);
             if (key == 'a') m_gui_auto_scroll = !m_gui_auto_scroll;  // toggle auto scroll of the map view
+            if (key == 'g' || key == 'G') m_apply_gps = !m_apply_gps;
+            if (key == 'm' || key == 'M') m_apply_imu = !m_apply_imu;
+            if (key == 'o' || key == 'O')
+            {
+                m_apply_odometry = !m_apply_odometry;
+                if(m_enable_odometry && m_apply_odometry) m_localizer.resetOdometry();
+            }
+            if (key == 'v' || key == 'V') m_apply_vps = !m_apply_vps;
+            if (key == 'p' || key == 'P') m_apply_ocr = !m_apply_ocr;
+            if (key == 'i' || key == 'I') m_apply_intersection = !m_apply_intersection;
+            if (key == 'l' || key == 'L') m_apply_roadlr = !m_apply_roadlr;
+            if (key == 't' || key == 'T') m_apply_roadtheta = !m_apply_roadtheta;
             if (key == 'e') m_exploration_state_count = 0;  // terminate exploration (active view)
             if (key == 83) itr += 30;   // Right Key
 
@@ -760,18 +783,24 @@ bool DeepGuider::procOutOfPath(const Point2& curr_pose)
 }
 
 void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
-{    
+{
+    if (!m_apply_gps) return;
+
     VVS_CHECK_TRUE(m_localizer.applyGPS(gps_datum, ts));
 }
 
 void DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts)
 {
+    if (!m_apply_imu) return;
+
     auto euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
     VVS_CHECK_TRUE(m_localizer.applyIMUCompass(euler.z, ts));
 }
 
 void DeepGuider::procOdometryData(double x, double y, double theta, dg::Timestamp ts)
 {
+    if (!m_apply_odometry) return;
+
     VVS_CHECK_TRUE(m_localizer.applyOdometry(Pose2(x,y,theta), ts));
 }
 
@@ -1010,7 +1039,16 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             // Draw matched streetview position
             win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
             if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
-            m_painter.drawPoint(image, sv_xy, 20, m_gui_vps_color, view_offset, view_zoom);  // sky color for streetview position
+
+            double sv_distance = norm(pose_m - sv_xy);
+            if (sv_distance <= m_vps_max_error_distance)
+            {
+                m_painter.drawPoint(image, sv_xy, 20, m_gui_vps_color, view_offset, view_zoom);  // sky color for streetview position
+            }
+            else
+            {
+                m_painter.drawPoint(image, sv_xy, 20, cv::Vec3b(128, 128, 128), view_offset, view_zoom);  // sky color for streetview position
+            }
 
             // Draw virtual robot position computed from relative pose
             dg::Pose2 pose = getPose();
@@ -1098,11 +1136,11 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
 
     // draw status message (Auto Scroll & Sensor Connections)
-    cv::Point gui_xy(10, 120);
+    cv::Point gui_xy(10, 100);
     cv::Scalar gui_bg(255, 255, 255);
     cv::Scalar gui_fg(200, 0, 0);
     double gui_fscale = 0.8;
-    std::string gui_msg = cv::format("Zoom(0~4): %.1lfx", m_viewport.zoom());
+    std::string gui_msg  = cv::format("Zoom(0~4): %.1lfx", m_viewport.zoom());
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
     gui_xy.y += 40;
@@ -1121,6 +1159,65 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     gui_msg = "Robot Traj: ---";
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, m_gui_robot_color, 2);
+    gui_xy.y += 40;
+
+    // sensor status
+    cv::Scalar gui_active(255, 0, 0);
+    cv::Scalar gui_deactive(128, 128, 128);
+    gui_msg = "GPS(G)";
+    bool active = m_apply_gps;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if(active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "IMU(M)";
+    active = m_enable_imu && m_apply_imu;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "ODO(O)";
+    active = m_enable_odometry && m_apply_odometry;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "VPS(V)";
+    active = m_enable_vps && m_apply_vps;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "POI(P)";
+    active = m_enable_ocr && m_apply_ocr;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "Intersect(I)";
+    active = m_enable_intersection && m_apply_intersection;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "RoadLR(L)";
+    active = m_enable_roadlr && m_apply_roadlr;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "RoadTheta(T)";
+    active = m_enable_roadtheta && m_apply_roadtheta;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
     gui_xy.y += 40;
 
     // print status message (localization)
@@ -1380,6 +1477,8 @@ cv::Mat DeepGuider::crop_image(cv::Mat cam_image, int num, int idx) // idx, 0: l
 
 bool DeepGuider::procIntersectionClassifier()
 {
+    if (!m_apply_intersection) return false;
+
 	cv::Mat cam_image;
 	cv::Mat cam_image_for_draw;
 	dg::Timestamp capture_time;
@@ -1450,6 +1549,8 @@ bool DeepGuider::procLogo()
 
 bool DeepGuider::procOcr()
 {
+    if (!m_apply_ocr) return false;
+
     m_cam_mutex.lock();
     dg::Timestamp capture_time = m_cam_capture_time;
     if (m_cam_image.empty() || capture_time <= m_ocr.timestamp())
@@ -1489,6 +1590,8 @@ bool DeepGuider::procOcr()
 
 bool DeepGuider::procRoadTheta()
 {
+    if (!m_apply_roadtheta) return false;
+
     m_cam_mutex.lock();
     dg::Timestamp capture_time = m_cam_capture_time;
     if (m_cam_image.empty() || capture_time <= m_roadtheta.timestamp())
@@ -1521,6 +1624,8 @@ bool DeepGuider::procRoadTheta()
 
 bool DeepGuider::procVps()
 {
+    if (!m_apply_vps) return false;
+
     m_cam_mutex.lock();
     dg::Timestamp capture_time = m_cam_capture_time;
     if (m_cam_image.empty() || capture_time <= m_vps.timestamp())
@@ -1608,6 +1713,8 @@ bool DeepGuider::get_cam_image(cv::Mat& cam_image, cv::Mat& cam_image_for_draw, 
 
 bool DeepGuider::procRoadLR()
 {
+    if (!m_apply_roadlr) return false;
+
 	cv::Mat cam_image;
 	cv::Mat cam_image_for_draw;
 	dg::Timestamp capture_time;

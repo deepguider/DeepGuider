@@ -309,6 +309,12 @@ namespace dg
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
 
+        virtual void resetOdometry()
+        {
+            cv::AutoLock lock(m_mutex);
+            m_ekf->resetOdometry();
+        }
+
         virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)
         {
             if(!isPoseStabilized()) return false;
