@@ -328,7 +328,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     if (key == 'l' || key == 'L') m_apply_roadlr = !m_apply_roadlr;
     if (key == 't' || key == 'T') m_apply_roadtheta = !m_apply_roadtheta;    
     if (key == 'a') m_gui_auto_scroll = !m_gui_auto_scroll;  // toggle auto scroll of the map view
-    if (key == 'e') m_exploration_state_count = 0;  // terminate exploration (active view)
+    if (key == 'e') m_show_ekf_pose = !m_show_ekf_pose;
     if (key == cx::KEY_ESC) return false;
 
     return true;

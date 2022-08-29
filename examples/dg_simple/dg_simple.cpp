@@ -46,6 +46,7 @@ protected:
     bool m_apply_roadtheta = true;
     bool m_apply_gps = true;
     bool m_apply_odometry = true;
+    bool m_show_ekf_pose = false;
 
     std::string m_server_ip = "127.0.0.1";  // default: 127.0.0.1 (localhost)
     std::string m_image_server_port = "10000";  // etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
@@ -736,7 +737,7 @@ int DeepGuider::run()
             if (key == 'i' || key == 'I') m_apply_intersection = !m_apply_intersection;
             if (key == 'l' || key == 'L') m_apply_roadlr = !m_apply_roadlr;
             if (key == 't' || key == 'T') m_apply_roadtheta = !m_apply_roadtheta;
-            if (key == 'e') m_exploration_state_count = 0;  // terminate exploration (active view)
+            if (key == 'e') m_show_ekf_pose = !m_show_ekf_pose;
             if (key == 83) itr += 30;   // Right Key
 
             // update iteration
@@ -1122,10 +1123,21 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     double pose_confidence = m_localizer.getPoseConfidence();
 
     // draw robot on the map
-    m_painter.drawPoint(image, pose_metric, 10*2, cx::COLOR_YELLOW, view_offset, view_zoom);
-    m_painter.drawPoint(image, pose_metric, 8*2, cx::COLOR_BLUE, view_offset, view_zoom);
-    cv::Point2d px = (m_painter.cvtValue2Pixel(pose_metric) - view_offset) * view_zoom;
-    cv::line(image, px, px + 10*2 * view_zoom * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_YELLOW, (int)(2*2*view_zoom+0.5));
+    if (m_show_ekf_pose)
+    {
+        dg::Pose2 pose_ekf = m_localizer.getEkfPose();
+        m_painter.drawPoint(image, pose_ekf, 10 * 2, cx::COLOR_WHITE, view_offset, view_zoom);
+        m_painter.drawPoint(image, pose_ekf, 8 * 2, cx::COLOR_BLUE, view_offset, view_zoom);
+        cv::Point2d px = (m_painter.cvtValue2Pixel(pose_ekf) - view_offset) * view_zoom;
+        cv::line(image, px, px + 10 * 2 * view_zoom * dg::Point2(cos(pose_ekf.theta), -sin(pose_ekf.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_YELLOW, (int)(2 * 2 * view_zoom + 0.5));
+    }
+    else
+    {
+        m_painter.drawPoint(image, pose_metric, 10 * 2, cx::COLOR_YELLOW, view_offset, view_zoom);
+        m_painter.drawPoint(image, pose_metric, 8 * 2, cx::COLOR_BLUE, view_offset, view_zoom);
+        cv::Point2d px = (m_painter.cvtValue2Pixel(pose_metric) - view_offset) * view_zoom;
+        cv::line(image, px, px + 10 * 2 * view_zoom * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_YELLOW, (int)(2 * 2 * view_zoom + 0.5));
+    }
 
     // draw status message (localization)
     cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
