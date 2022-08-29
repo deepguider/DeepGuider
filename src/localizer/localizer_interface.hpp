@@ -62,14 +62,14 @@ public:
      * @param sigma_position Standard deviation of position error of POI localization (Unit: [m])
      * @param sigma_theta_deg Standard deviation of orientation error of POI localization (Unit: [deg])
      */
-    virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg) = 0;
+    virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg, double max_error = -1) = 0;
 
     /**
      * Set error covariance of VPS observation
      * @param sigma_position Standard deviation of position error of VPS localization (Unit: [m])
      * @param sigma_theta_deg Standard deviation of orientation error of VPS localization (Unit: [deg])
      */
-    virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg) = 0;
+    virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg, double max_error = -1) = 0;
 
     /**
      * Set error covariance of POI observation

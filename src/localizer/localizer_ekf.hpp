@@ -31,6 +31,8 @@ namespace dg
         Polar2 m_camera_offset;
         cv::Mat m_poi_noise;
         cv::Mat m_vps_noise;
+        double m_vps_max_error;
+        double m_poi_max_error;
         cv::Mat m_poi_noise_relative;
         cv::Mat m_vps_noise_relative;
         cv::Mat m_intersectcls_noise;
@@ -69,6 +71,8 @@ namespace dg
             m_roadtheta_noise = (cv::Mat_<double>(1, 1) << cx::cvtDeg2Rad(1));
             m_poi_noise = cv::Mat::eye(3, 3, CV_64F);
             m_vps_noise = cv::Mat::eye(3, 3, CV_64F);
+            m_vps_max_error = -1;
+            m_poi_max_error = -1;
             m_poi_noise_relative = cv::Mat::eye(4, 4, CV_64F);
             m_vps_noise_relative = cv::Mat::eye(4, 4, CV_64F);
             m_intersectcls_noise = cv::Mat::eye(2, 2, CV_64F);
@@ -193,23 +197,25 @@ namespace dg
             return true;
         }
 
-        virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg)
+        virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg, double max_error = -1)
         {
             cv::AutoLock lock(m_mutex);
             m_poi_noise = cv::Mat::zeros(3, 3, CV_64F);
             m_poi_noise.at<double>(0, 0) = sigma_position * sigma_position;
             m_poi_noise.at<double>(1, 1) = sigma_position * sigma_position;
             m_poi_noise.at<double>(2, 2) = cx::cvtDeg2Rad(sigma_theta_deg) * cx::cvtDeg2Rad(sigma_theta_deg);
+            m_poi_max_error = max_error;
             return true;
         }
 
-        virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg)
+        virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg, double max_error = -1)
         {
             cv::AutoLock lock(m_mutex);
             m_vps_noise = cv::Mat::zeros(3, 3, CV_64F);
             m_vps_noise.at<double>(0, 0) = sigma_position * sigma_position;
             m_vps_noise.at<double>(1, 1) = sigma_position * sigma_position;
             m_vps_noise.at<double>(2, 2) = cx::cvtDeg2Rad(sigma_theta_deg) * cx::cvtDeg2Rad(sigma_theta_deg);
+            m_vps_max_error = max_error;
             return true;
         }
 
@@ -311,6 +317,12 @@ namespace dg
             pose.x = rx;
             pose.y = ry;
 
+            if (m_poi_max_error > 0)
+            {
+                Point2 cur = getPose();
+                if (norm(cur - pose) > m_poi_max_error) return false;
+            }
+
             m_observation_noise = m_poi_noise;
             m_sensor_offset = m_camera_offset;
             return applyPose(pose, time, confidence);
@@ -347,6 +359,12 @@ namespace dg
             double ry = clue_xy.y - relative.lin * sin(poi_theta);
             pose.x = rx;
             pose.y = ry;
+
+            if (m_vps_max_error > 0)
+            {
+                Point2 cur = getPose();
+                if (norm(cur - pose) > m_vps_max_error) return false;
+            }
 
             m_observation_noise = m_vps_noise;
             m_sensor_offset = m_camera_offset;

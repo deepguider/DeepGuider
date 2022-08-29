@@ -411,8 +411,8 @@ bool DeepGuider::initialize(std::string config_file)
     if (!m_localizer.setParamGPSOffset(1, 0)) return false;         // displacement(lin,ang) from robot origin
     if (!m_localizer.setParamOdometryNoise(0.01, 1)) return false;  // position error(m), orientation error(deg)
     if (!m_localizer.setParamIMUCompassNoise(1, 0)) return false;   // angle arror(deg), angle offset(deg)
-    if (!m_localizer.setParamPOINoise(5, 20)) return false;         // position error(m), orientation error(deg)
-    if (!m_localizer.setParamVPSNoise(5, 20)) return false;         // position error(m), orientation error(deg)
+    if (!m_localizer.setParamPOINoise(10, 20, 25)) return false;     // position error(m), orientation error(deg), max error (m)
+    if (!m_localizer.setParamVPSNoise(10, 20, 25)) return false;    // position error(m), orientation error(deg), max error (m)
     if (!m_localizer.setParamIntersectClsNoise(0.1)) return false;  // position error(m)
     if (!m_localizer.setParamRoadThetaNoise(50)) return false;      // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin
@@ -980,7 +980,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_roadtheta_mutex.lock();
         if (!m_roadtheta_image.empty())
         {
-            cv::resize(m_roadtheta_image, result_image, cv::Size(win_rect.height, win_rect.height));
+            cv::resize(m_roadtheta_image, result_image, cv::Size(win_rect.height*0.9, win_rect.height));
         }
         m_roadtheta_mutex.unlock();
 
@@ -1001,7 +1001,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         if (!m_vps_image.empty())
         {
             double fy = (double)win_rect.height / m_vps_image.rows;
-            cv::resize(m_vps_image, result_image, cv::Size(), fy, fy);
+            cv::resize(m_vps_image, result_image, cv::Size(), fy * 0.7, fy);
         }
         m_vps_mutex.unlock();
 

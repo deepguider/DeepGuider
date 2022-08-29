@@ -257,17 +257,17 @@ namespace dg
             return false;
         }
 
-        virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg)
+        virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg, double max_error = -1)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_ekf) return m_ekf->setParamPOINoise(sigma_position, sigma_theta_deg);
+            if (m_ekf) return m_ekf->setParamPOINoise(sigma_position, sigma_theta_deg, max_error);
             return false;
         }
 
-        virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg)
+        virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg, double max_error = -1)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_ekf) return m_ekf->setParamVPSNoise(sigma_position, sigma_theta_deg);
+            if (m_ekf) return m_ekf->setParamVPSNoise(sigma_position, sigma_theta_deg, max_error);
             return false;
         }
 

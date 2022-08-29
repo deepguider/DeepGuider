@@ -387,7 +387,7 @@ int runLocalizer()
 
     enable_odometry = true;
     //enable_imu = true;
-    use_andro_gps = true;
+    //use_andro_gps = true;
     //use_novatel = true;
     //enable_ocr = true;
     //enable_poi = true;
