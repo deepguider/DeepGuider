@@ -476,6 +476,12 @@ namespace dg
             }
         }
 
+        bool toggleEnablePathProjection()
+        {
+            m_enable_path_projection = !m_enable_path_projection;
+            return m_enable_path_projection;
+        }
+
     protected:
         bool initInternalVariables()
         {

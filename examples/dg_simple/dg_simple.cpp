@@ -737,7 +737,8 @@ int DeepGuider::run()
             if (key == 'i' || key == 'I') m_apply_intersection = !m_apply_intersection;
             if (key == 'l' || key == 'L') m_apply_roadlr = !m_apply_roadlr;
             if (key == 't' || key == 'T') m_apply_roadtheta = !m_apply_roadtheta;
-            if (key == 'e') m_show_ekf_pose = !m_show_ekf_pose;
+            if (key == 'k') m_show_ekf_pose = !m_show_ekf_pose;
+            if (key == 'j') m_localizer.toggleEnablePathProjection();
             if (key == 83) itr += 30;   // Right Key
 
             // update iteration
@@ -1157,7 +1158,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
     gui_xy.y += 40;
 
-    gui_msg = (m_gui_auto_scroll) ? "Auto(A): On" : "Auto(A): Off";
+    gui_msg = (m_gui_auto_scroll) ? "AutoScroll(A): On" : "AutoScroll(A): Off";
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
     if (m_gui_auto_scroll) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
     else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, cv::Scalar(128, 128, 128), 2);
@@ -1172,7 +1173,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, m_gui_robot_color, 2);
     gui_xy.y += 40;
-
+ 
     // sensor status
     cv::Scalar gui_active(255, 0, 0);
     cv::Scalar gui_deactive(128, 128, 128);
