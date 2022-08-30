@@ -1562,7 +1562,7 @@ bool DeepGuider::procLogo()
 
 bool DeepGuider::procOcr()
 {
-    if (!m_apply_ocr) return false;
+    //if (!m_apply_ocr) return false;
 
     m_cam_mutex.lock();
     dg::Timestamp capture_time = m_cam_capture_time;
@@ -1581,7 +1581,7 @@ bool DeepGuider::procOcr()
     {
         for (int k = 0; k < (int)pois.size(); k++)
         {
-            m_localizer.applyPOI(*(pois[k]), relatives[k], capture_time, poi_confidences[k]);
+            if (m_apply_ocr) m_localizer.applyPOI(*(pois[k]), relatives[k], capture_time, poi_confidences[k]);
         }
     }
 
@@ -1637,7 +1637,7 @@ bool DeepGuider::procRoadTheta()
 
 bool DeepGuider::procVps()
 {
-    if (!m_apply_vps) return false;
+    //if (!m_apply_vps) return false;
 
     m_cam_mutex.lock();
     dg::Timestamp capture_time = m_cam_capture_time;
@@ -1654,7 +1654,7 @@ bool DeepGuider::procVps()
     double sv_confidence;
     if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
     {
-        m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
+        if (m_apply_vps) m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
 
 	    cv::Mat sv_image = m_vps.getViewImage();  // I will return naver or custom db image according to m_vps_use_custom_image_server
