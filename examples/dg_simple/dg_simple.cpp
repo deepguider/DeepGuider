@@ -1490,8 +1490,6 @@ cv::Mat DeepGuider::crop_image(cv::Mat cam_image, int num, int idx) // idx, 0: l
 
 bool DeepGuider::procIntersectionClassifier()
 {
-    if (!m_apply_intersection) return false;
-
 	cv::Mat cam_image;
 	cv::Mat cam_image_for_draw;
 	dg::Timestamp capture_time;
@@ -1507,7 +1505,7 @@ bool DeepGuider::procIntersectionClassifier()
     bool valid_xy = false;
     if (m_intersection.apply(cam_image, capture_time, xy, confidence, valid_xy))
     {
-        if(valid_xy) m_localizer.applyIntersectCls(xy, capture_time, confidence);
+        if(m_apply_intersection && valid_xy) m_localizer.applyIntersectCls(xy, capture_time, confidence);
         m_intersection.print();
 
         m_intersection.draw(cam_image_for_draw, txt_scale);  // 2.0 when w is 1280(webcam), 1.0 when w is 640(360cam_crop)
@@ -1562,8 +1560,6 @@ bool DeepGuider::procLogo()
 
 bool DeepGuider::procOcr()
 {
-    //if (!m_apply_ocr) return false;
-
     m_cam_mutex.lock();
     dg::Timestamp capture_time = m_cam_capture_time;
     if (m_cam_image.empty() || capture_time <= m_ocr.timestamp())
@@ -1579,9 +1575,12 @@ bool DeepGuider::procOcr()
     std::vector<double> poi_confidences;
     if (m_ocr.apply(cam_image, capture_time, pois, relatives, poi_confidences))
     {
-        for (int k = 0; k < (int)pois.size(); k++)
+        if (m_apply_ocr)
         {
-            if (m_apply_ocr) m_localizer.applyPOI(*(pois[k]), relatives[k], capture_time, poi_confidences[k]);
+            for (int k = 0; k < (int)pois.size(); k++)
+            {
+                m_localizer.applyPOI(*(pois[k]), relatives[k], capture_time, poi_confidences[k]);
+            }
         }
     }
 
@@ -1603,8 +1602,6 @@ bool DeepGuider::procOcr()
 
 bool DeepGuider::procRoadTheta()
 {
-    if (!m_apply_roadtheta) return false;
-
     m_cam_mutex.lock();
     dg::Timestamp capture_time = m_cam_capture_time;
     if (m_cam_image.empty() || capture_time <= m_roadtheta.timestamp())
@@ -1618,7 +1615,7 @@ bool DeepGuider::procRoadTheta()
     double theta, confidence;
     if (m_roadtheta.apply(cam_image, capture_time, theta, confidence))
     {
-        m_localizer.applyRoadTheta(theta, capture_time, confidence);
+        if (m_apply_roadtheta) m_localizer.applyRoadTheta(theta, capture_time, confidence);
         m_roadtheta.print();
 
         m_roadtheta.draw(cam_image, 4);
@@ -1637,8 +1634,6 @@ bool DeepGuider::procRoadTheta()
 
 bool DeepGuider::procVps()
 {
-    //if (!m_apply_vps) return false;
-
     m_cam_mutex.lock();
     dg::Timestamp capture_time = m_cam_capture_time;
     if (m_cam_image.empty() || capture_time <= m_vps.timestamp())
@@ -1726,8 +1721,6 @@ bool DeepGuider::get_cam_image(cv::Mat& cam_image, cv::Mat& cam_image_for_draw, 
 
 bool DeepGuider::procRoadLR()
 {
-    if (!m_apply_roadlr) return false;
-
 	cv::Mat cam_image;
 	cv::Mat cam_image_for_draw;
 	dg::Timestamp capture_time;
@@ -1743,7 +1736,7 @@ bool DeepGuider::procRoadLR()
 
     if (m_roadlr.apply(cam_image, capture_time, lr_pose, lr_confidence))
     {
-        m_localizer.applyRoadLR(lr_pose, capture_time, lr_confidence);
+        if (m_apply_roadlr) m_localizer.applyRoadLR(lr_pose, capture_time, lr_confidence);
         m_roadlr.print();
 
         m_roadlr.draw(cam_image_for_draw, txt_scale);  // 2.0 when w is 1280(webcam), 1.0 when w is 640(360cam_crop)
