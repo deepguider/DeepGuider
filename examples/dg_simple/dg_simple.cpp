@@ -443,8 +443,6 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("discontinuity_weight", 0.5);      // 0.5
     printf("\tLocalizer initialized!\n");
 
-    m_localizer.setPose(dg::Pose2(0,0,0), t1);
-
     // initialize guidance
     if (!m_guider.initialize(this)) return false;
     printf("m_dxrobot_usage: %d\n", m_guider.m_dxrobot_usage);
