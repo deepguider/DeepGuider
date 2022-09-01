@@ -443,6 +443,8 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("discontinuity_weight", 0.5);      // 0.5
     printf("\tLocalizer initialized!\n");
 
+    m_localizer.setPose(dg::Pose2(0,0,0), t1);
+
     // initialize guidance
     if (!m_guider.initialize(this)) return false;
     printf("m_dxrobot_usage: %d\n", m_guider.m_dxrobot_usage);
@@ -538,8 +540,6 @@ bool DeepGuider::initializeDefaultMap()
 
     return true;
 }
-
-
 
 int DeepGuider::run()
 {
@@ -829,10 +829,12 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
     {
         cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
         cv::Point2d val = m_painter.cvtPixel2Value(px);
-        dg::Pose2 pose = getPose();
+        dg::Timestamp time = -1;
+        dg::Pose2 pose = getPose(&time);
         pose.x = val.x;
         pose.y = val.y;
-        m_localizer.setPose(pose);
+        if(time<0) time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+        m_localizer.setPose(pose, time);
         printf("[Localizer] set user pose: x = %lf, y = %lf\n", val.x, val.y);
     }
     else if (evt == cv::EVENT_RBUTTONUP)

@@ -461,7 +461,7 @@ namespace dg
                 double v = sqrt(dx * dx + dy * dy) / dt, w = cx::trimRad(pose_curr.theta - pose_prev.theta) / dt;
                 cv::AutoLock lock(m_mutex);
                 double interval = 0;
-                if (m_time_last_update > 0) interval = time_curr - m_time_last_update;
+                if (m_time_last_update >= 0) interval = time_curr - m_time_last_update;
                 if (interval > DBL_EPSILON && predict(cv::Vec3d(interval, v, w)))
                 {
                     m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
@@ -476,7 +476,7 @@ namespace dg
         {
             double dt = 0;
             cv::AutoLock lock(m_mutex);
-            if (m_time_last_update > 0) dt = time - m_time_last_update;
+            if (m_time_last_update >= 0) dt = time - m_time_last_update;
             if (dt > DBL_EPSILON)
             {
                 double interval = time - m_time_last_update;

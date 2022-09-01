@@ -177,7 +177,6 @@ namespace dg
         }
 
         virtual void setPose(const Pose2 pose, Timestamp time = -1, bool reset_velocity = true, bool reset_cov = true)
-
         {
             cv::AutoLock lock(m_mutex);
             if (m_ekf) m_ekf->setPose(pose, time, reset_velocity, reset_cov);
@@ -185,6 +184,8 @@ namespace dg
             m_observation_history.resize(m_history_size);
             m_ekf_pose_history.resize(m_history_size);
             m_projected_pose_history.resize(m_history_size);
+            m_ekf_pose_history.push_back(Pose2TLR(pose, time));
+            m_projected_pose_history.push_back(pose);
             m_pose = pose;
         }
 
