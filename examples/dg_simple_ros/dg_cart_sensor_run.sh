@@ -63,12 +63,12 @@ gnome-terminal --tab -- rosrun rosserial_python serial_node.py _port:=/dev/ttyUS
 
 ## Run dg odometry
 ## Start dg_simple_ros package (working directory: devel/lib/dg_simple_ros/)
-pid=`pgrep -f dg_odometry`
+pid=`pgrep -f dg_cart_odometry`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
 
-gnome-terminal --tab -- rosrun dg_simple_ros dg_odometry
+gnome-terminal --tab -- rosrun dg_simple_ros dg_cart_odometry
 
 
 ## Start recording cart sensor

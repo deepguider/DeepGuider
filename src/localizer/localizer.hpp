@@ -177,7 +177,6 @@ namespace dg
         }
 
         virtual void setPose(const Pose2 pose, Timestamp time = -1, bool reset_velocity = true, bool reset_cov = true)
-
         {
             cv::AutoLock lock(m_mutex);
             if (m_ekf) m_ekf->setPose(pose, time, reset_velocity, reset_cov);
@@ -185,6 +184,8 @@ namespace dg
             m_observation_history.resize(m_history_size);
             m_ekf_pose_history.resize(m_history_size);
             m_projected_pose_history.resize(m_history_size);
+            m_ekf_pose_history.push_back(Pose2TLR(pose, time));
+            m_projected_pose_history.push_back(pose);
             m_pose = pose;
         }
 
@@ -257,17 +258,17 @@ namespace dg
             return false;
         }
 
-        virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg)
+        virtual bool setParamPOINoise(double sigma_position, double sigma_theta_deg, double max_error = -1)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_ekf) return m_ekf->setParamPOINoise(sigma_position, sigma_theta_deg);
+            if (m_ekf) return m_ekf->setParamPOINoise(sigma_position, sigma_theta_deg, max_error);
             return false;
         }
 
-        virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg)
+        virtual bool setParamVPSNoise(double sigma_position, double sigma_theta_deg, double max_error = -1)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_ekf) return m_ekf->setParamVPSNoise(sigma_position, sigma_theta_deg);
+            if (m_ekf) return m_ekf->setParamVPSNoise(sigma_position, sigma_theta_deg, max_error);
             return false;
         }
 
@@ -307,6 +308,12 @@ namespace dg
             saveObservation(ObsData::OBS_GPS, smoothed_xy, time, confidence);
             saveEKFState(m_ekf, time);
             return applyPathLocalizer(m_ekf->getPose(), time);
+        }
+
+        virtual void resetOdometry()
+        {
+            cv::AutoLock lock(m_mutex);
+            m_ekf->resetOdometry();
         }
 
         virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)
@@ -468,6 +475,12 @@ namespace dg
                 dg::EKFState s = m_state_history[i];
                 printf("\t[%d] %lf, %lf, x=%lf, y=%lf, theta=%lf\n", i, s.timestamp, s.state_time, s.state_vec.at<double>(0), s.state_vec.at<double>(1), s.state_vec.at<double>(2));
             }
+        }
+
+        bool toggleEnablePathProjection()
+        {
+            m_enable_path_projection = !m_enable_path_projection;
+            return m_enable_path_projection;
         }
 
     protected:

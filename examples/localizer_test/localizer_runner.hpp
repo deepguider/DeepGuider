@@ -58,7 +58,7 @@ public:
 
     int runLocalizer(cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader)
     {
-        bool show_projected_history = false; // debugging purpose
+        bool show_projected_history = true; // debugging purpose
 
         CV_DbgAssert(!localizer.empty() && !data_loader.empty());
         m_localizer = localizer;
