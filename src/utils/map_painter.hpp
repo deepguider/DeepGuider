@@ -67,7 +67,8 @@ public:
         if (!image.empty())
         {
             for (auto n = map->getHeadNodeConst(); n != map->getTailNodeConst(); n++)
-                drawEdges(image, map, &(*n), m_node_radius, m_edge_color, m_edge_thickness, offset, zoom);
+                // drawEdges(image, map, &(*n), m_node_radius, m_edge_color, m_edge_thickness, offset, zoom);
+                drawEdges(image, map, &(*n), m_node_radius, m_edge_color, 10, offset, zoom);
             drawNodes(image, map, m_node_radius, m_node_font_scale, m_node_color, offset, zoom);
             return true;
         }

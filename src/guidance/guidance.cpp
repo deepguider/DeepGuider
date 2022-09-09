@@ -7,16 +7,32 @@ using namespace dg;
 bool GuidanceManager::initialize(SharedInterface* shared)
 {
 	m_shared = shared;
+
+	//initialize guidance parameters
+	std::vector <ExtendedPathElement> m_extendedPath;
+	GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
+	std::vector<Guidance> m_past_guides;
+	Guidance m_curguidance;
+	RobotStatus m_robot_status = RobotStatus::READY;
+	m_guide_idx = -1;	//starts with -1 because its pointing current guide.
+	m_robot_guide_idx = -1;
+	m_remain_distance = 0.0;
+	m_last_announce_dist = -1;
+	m_arrival = false;
+	m_arrival_cnt = 0;
+
 	return (m_shared != nullptr);
 }
 
 bool GuidanceManager::initiateNewGuidance()
 {
+	initialize(m_shared);
 	return buildGuides();
 }
 
 bool GuidanceManager::initiateNewGuidance(TopometricPose pose_topo, Point2F gps_dest)
 {
+	initialize(m_shared);
 	if (buildGuides())
 	{
 		//add start path		
@@ -67,6 +83,7 @@ bool GuidanceManager::initiateNewGuidance(TopometricPose pose_topo, Point2F gps_
 
 		ExtendedPathElement dest_element(0, 0, 0, 0, 0, gps_dest.x, gps_dest.y);
 		m_extendedPath.push_back(dest_element);
+			
 		return true;
 	}
 	else
@@ -232,11 +249,6 @@ bool GuidanceManager::buildGuides()
 	m_guide_idx = 0;
 	m_robot_guide_idx = 0;
 	
-	//for (size_t i = 0; i < m_extendedPath.size(); i++)
-	//{
-	//	if (m_extendedPath[i].is_junction)
-	//		printf("[%d] Node id:%zu, Deg: %d \n", (int)i, m_extendedPath[i].cur_node_id, m_extendedPath[i].cur_degree);
-	//}
 	return true;
 }
 
@@ -262,7 +274,7 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	//after arrival, continuously moving.
 	if (m_arrival)
 	{
-		if (m_arrival_cnt > 20)
+		if (m_arrival_cnt > m_max_arrival_cnt)
 		{
 			m_extendedPath.clear();
 			m_arrival = false;
@@ -293,7 +305,7 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	int gidx = getGuideIdxFromPose(pose);
 	if (gidx == -1)
 	{
-		printf("[Error] GuidanceManager::update - Pose not found on path!\n");
+		printf("[Error] GuidanceManager::update - Pose not found on path! %zd\n", pose.node_id);
 		m_gstatus = GuideStatus::GUIDE_UNKNOWN;
 		setEmptyGuide();
 		return false;
@@ -315,22 +327,29 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	m_remain_distance = remain_dist;
 
 	//check finishing condition
-	if (m_guide_idx >= m_extendedPath.size() - 2 && goal_dist < m_start_exploration_dist)
-	{
-		//Optimal view sequence
-		m_gstatus = GuideStatus::GUIDE_OPTIMAL_VIEW;	
-		setEmptyGuide();
-		m_curguidance.msg = "[GUIDANCE] NEAR_ARRIVAL. Optimal view started!";
-		m_curguidance.announce = true;
-		m_curguidance.distance_to_remain = m_remain_distance;
-		return true;
-	}
+	// if (m_guide_idx >= m_extendedPath.size() - 2 && goal_dist < m_start_exploration_dist)
+	// {
+	// 	//Optimal view sequence
+	// 	m_gstatus = GuideStatus::GUIDE_OPTIMAL_VIEW;	
+	// 	setEmptyGuide();
+	// 	m_curguidance.msg = "[GUIDANCE] NEAR_ARRIVAL. Optimal view started!";
+	// 	m_curguidance.announce = true;
+	// 	m_curguidance.distance_to_remain = m_remain_distance;
+	// 	return true;
+	// }
 
 	//check announce
 	int announce_dist = ((int) (remain_dist - 1 ) / m_guide_interval) * m_guide_interval;
 	bool announce = false;
 
 	m_gstatus = GuideStatus::GUIDE_NORMAL;
+	//on junction
+	// if (remain_dist < m_arrived_threshold)
+	// {
+	// 	m_last_announce_dist = -1;	//reset m_last_announce_dist
+	// 	announce = false;
+	// 	setEmptyGuide();
+	// }
 	//near junction
 	if (remain_dist <= m_uncertain_dist)// || (curNode->type == Node::NODE_JUNCTION && passsed_dist < m_uncertain_dist))
 	{
@@ -353,15 +372,8 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 		else
 		{
 			announce = false;
-			setEmptyGuide();
+			setSimpleGuide();
 		}
-	}
-	//on junction
-	else if (remain_dist < m_arrived_threshold)
-	{
-		m_last_announce_dist = -1;	//reset m_last_announce_dist
-		announce = false;
-		setEmptyGuide();
 	}
 	//normal case
 	else
@@ -395,14 +407,14 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	Edge* curEdge = getMap()->getEdge(cureid);
 	if (curEdge == nullptr)
 	{
-		printf("[Error] GuidanceManager::update - curEdge: %zu == nullptr!\n", cureid);
+		printf("[Error] Gunext_junction_idxidanceManager::update - curEdge: %zu == nullptr!\n", cureid);
 		return false;
 	}
 
 	//after arrival, continuously moving.
 	if (m_arrival)
 	{
-		if (m_arrival_cnt > 20)
+		if (m_arrival_cnt > m_max_arrival_cnt)
 		{
 			m_extendedPath.clear();
 			m_arrival = false;
@@ -479,24 +491,31 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	m_remain_distance = remain_dist;
 
 	//check finishing condition
-	if (m_guide_idx >= m_extendedPath.size() - 2 && goal_dist < m_start_exploration_dist)
-	{
-		//Optimal view sequence
-		m_gstatus = GuideStatus::GUIDE_OPTIMAL_VIEW;	
-		setEmptyGuide();
-		m_curguidance.msg = "[GUIDANCE] NEAR_ARRIVAL. Optimal view started!";
-		m_curguidance.announce = true;
-		m_curguidance.distance_to_remain = m_remain_distance;
-		return true;
-	}
+	// if (m_guide_idx >= m_extendedPath.size() - 2 && goal_dist < m_start_exploration_dist)
+	// {
+	// 	//Optimal view sequence
+	// 	m_gstatus = GuideStatus::GUIDE_OPTIMAL_VIEW;	
+	// 	setEmptyGuide();
+	// 	m_curguidance.msg = "[GUIDANCE] NEAR_ARRIVAL. Optimal view started!";
+	// 	m_curguidance.announce = true;
+	// 	m_curguidance.distance_to_remain = m_remain_distance;
+	// 	return true;
+	// }
+
+	m_gstatus = GuideStatus::GUIDE_NORMAL;
 
 	//check announce
 	int announce_dist = ((int) (remain_dist - 1 ) / m_guide_interval) * m_guide_interval;
 	bool announce = false;
-
-	m_gstatus = GuideStatus::GUIDE_NORMAL;
+	//on junction
+	if (remain_dist < m_arrived_threshold)
+	{
+		m_last_announce_dist = -1;	//reset m_last_announce_dist
+		announce = false;
+		setEmptyGuide();
+	}
 	//near junction
-	if (remain_dist <= m_uncertain_dist)// || (curNode->type == Node::NODE_JUNCTION && passsed_dist < m_uncertain_dist))
+	else if (remain_dist <= m_uncertain_dist)// || (curNode->type == Node::NODE_JUNCTION && passsed_dist < m_uncertain_dist))
 	{
 		//if the edge is shorter than 2*m_uncertain_dist
 		if (junction_dist <= 2 * m_uncertain_dist)
@@ -517,15 +536,9 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 		else
 		{
 			announce = false;
-			setEmptyGuide();
+			//setEmptyGuide();
+			setSimpleGuide();
 		}
-	}
-	//on junction
-	else if (remain_dist < m_arrived_threshold)
-	{
-		m_last_announce_dist = -1;	//reset m_last_announce_dist
-		announce = false;
-		setEmptyGuide();
 	}
 	//normal case
 	else
@@ -544,6 +557,24 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 
 	return true;
 }
+        
+// cv::Point2d GuidanceManager::getGuidancePoint()
+// {
+// 	m_robot_mutex.lock();
+// 	cv::Point2d rp = m_robot_pose;
+// 	cv::Point2d gp = m_goal_pose;
+// 	// cv::Mat robotmap = m_robotmap_image;
+// 	cv::Mat img = cv::imread("occumap.png", 0);	//이미지를 grayscale로 불러옴
+// 	m_robot_mutex.unlock();
+
+// 	cv::Mat img_threshold, img_erode;
+// 	cv::threshold(img, img_threshold, 180, 255, cv::THRESH_BINARY);
+// 	cv::erode(img_threshold, img_erode, cv::Mat::ones(cv::Size(10,10),CV_8UC1), cv::Point(-1,-1),2);
+// 	cv::circle(img_erode,rp,5,(255,0,0));
+// 	cv::circle(img_erode,gp,5,(0,255,0));
+// 	imwrite("img_erode.png",img_erode);
+
+// }
 
 bool GuidanceManager::setEmptyGuide()
 {
@@ -557,7 +588,8 @@ bool GuidanceManager::setSimpleGuide()
 	guide.guide_status = m_gstatus;
 
 	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
-
+	ExtendedPathElement nextJuncEP = getCurExtendedPath(curEP.next_junction_idx);
+			
 	if (m_remain_distance > m_uncertain_dist )
 	{
 		//first action
@@ -566,7 +598,6 @@ bool GuidanceManager::setSimpleGuide()
 		//second action
 		if (curEP.next_junction_idx != 0)
 		{
-			ExtendedPathElement nextJuncEP = getCurExtendedPath(curEP.next_junction_idx);
 			//if junction turn exists
 			if (!isForward(nextJuncEP.cur_degree))
 			{
@@ -576,7 +607,27 @@ bool GuidanceManager::setSimpleGuide()
 			else
 				guide.actions.push_back(setActionGo(nextJuncEP.next_node_id, nextJuncEP.cur_edge_id));
 		}
+		else //if(curEP.next_junction_idx == 0)	//if next juction is final goal
+		{
+			Action act(Motion::STOP, 0,0,0, MotionMode::MOVE_NORMAL);
+			guide.actions.push_back(act);
+		}
+		
 	}	
+	else //near junction
+	{
+		//if junction turn exists
+		if (!isForward(nextJuncEP.cur_degree))
+		{
+			guide.actions.push_back(
+				setActionTurn(nextJuncEP.cur_node_id, nextJuncEP.cur_edge_id, nextJuncEP.cur_degree));
+		}
+		else
+		{
+			guide.actions.push_back(setActionGo(nextJuncEP.next_node_id, nextJuncEP.cur_edge_id));
+		}
+		
+	}
 
 	guide.heading_node_id = curEP.next_node_id;
 	guide.distance_to_remain = m_remain_distance;
@@ -759,6 +810,10 @@ std::string GuidanceManager::getStringGuidance(Guidance guidance)
 					guidance.heading_node_id);	
 			}
 		}
+		else if (actions[i].cmd == Motion::STOP)
+		{
+			str_first = "Arrival";
+		}		
 		else
 		{
 			str_first = getStringTurn(actions[i], actions[i].node_type);

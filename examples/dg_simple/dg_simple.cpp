@@ -663,6 +663,7 @@ int DeepGuider::run()
         // process path generation
         if(m_dest_defined && m_path_generation_pended && m_localizer.isPoseInitialized())
         {
+            printf("[run]]\n");
             if(updateDeepGuiderPath(getPose(), m_dest)) m_path_generation_pended = false;
         }
 
@@ -821,11 +822,12 @@ bool DeepGuider::setDeepGuiderDestination(dg::Point2F dest)
         m_path_generation_pended = true;
         return true;
     }
-
+    
     if (!updateDeepGuiderPath(getPose(), dest)) return false;
     m_dest = dest;
     m_dest_defined = true;
     m_path_generation_pended = false;
+    
     return true;
 }
 
@@ -1170,6 +1172,7 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
     {
         cmd = guide.actions[i].cmd;   
     
+    
         if (cmd == dg::GuidanceManager::Motion::GO_FORWARD || cmd == dg::GuidanceManager::Motion::CROSS_FORWARD || cmd == dg::GuidanceManager::Motion::ENTER_FORWARD || cmd == dg::GuidanceManager::Motion::EXIT_FORWARD)
         {
             cv::Mat& icon = m_icon_forward;
@@ -1223,10 +1226,20 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
                 if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
             dir_msg = "TURN_BACK";
         }
+        else if (cmd == dg::GuidanceManager::Motion::STOP)
+        {            cv::Mat& icon = m_icon_forward;
+            cv::Mat& mask = m_mask_forward;
+            int x1 = center_pos.x - icon.cols / 2;
+            int y1 = center_pos.y - icon.rows / 2;
+            cv::Rect rect(x1, y1, icon.cols, icon.rows);
+            if (i == guide.actions.size()-1)
+                if (rect.x >= 0 && rect.y >= 0 && rect.br().x < image.cols && rect.br().y < image.rows) icon.copyTo(image(rect), mask);
+            dir_msg = "Arrival"; 
+        }
         else
         {
             dir_msg = "[Guide] N/A";
-        }    
+        }   
 
         // show direction message
         if (i == 0)
@@ -1244,6 +1257,15 @@ void DeepGuider::drawGuidance(cv::Mat image, dg::GuidanceManager::Guidance guide
         cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, fontsize, cv::Scalar(255, 0, 0), 4);
 
     }
+ 
+    // if (guide.heading_node_id == 0) //if next goal is final
+    // {
+    //     dir_msg = "Arrival"; 
+    //     msg_offset = center_pos + cv::Point(50, 80);
+    //     fontsize = 1.0;
+    //     cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, fontsize, cv::Scalar(0, 255, 255), 12);
+    //     cv::putText(image, dir_msg.c_str(), msg_offset, cv::FONT_HERSHEY_SIMPLEX, fontsize, cv::Scalar(255, 0, 0), 4);
+    // }
 
     // show distance message
     msg_offset = center_pos + cv::Point(50, 20);
@@ -1433,11 +1455,6 @@ bool DeepGuider::procLogo()
             m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
         }
         m_logo.print();
-
-        m_logo.draw(cam_image, 1.5);
-        m_logo_mutex.lock();
-        m_logo_image = cam_image;
-        m_logo_mutex.unlock();
         return true;
     }
     else

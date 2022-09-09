@@ -177,7 +177,9 @@ namespace dg
         int m_site_name = 0;
         ID m_robot_heading;
         bool m_use_online_map = 0;
+        cv::Mutex m_robot_mutex;
         cv::Point2d m_robot_pose;
+        cv::Point2d m_goal_pose;
         bool initialize(dg::SharedInterface* shared);
         bool initiateNewGuidance();
         bool initiateNewGuidance(Point2F gps_start, Point2F gps_des);
@@ -187,6 +189,7 @@ namespace dg
         bool updateWithRobot(TopometricPose pose, Pose2 pose_metric);
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
         Guidance getGuidance() const { return m_curguidance; };
+        cv::Point2d getGuidancePoint();
         void setRobotStatus(RobotStatus status) 
         { 
                 /*
@@ -208,13 +211,15 @@ namespace dg
         };
         void setSiteName(cv::String name)
         {
-            cv::String site = "Bucheon_KETI";
-            if (name.compare(site)==0)
-            {            
+            if (name.compare("Bucheon_KETI")==0)
                 m_site_name = 1;
-            }
+            else if (name.compare("COEX_KETI")==0)
+                m_site_name = 2;
+            else if (name.compare("COEX_KETI_220824")==0)
+                m_site_name = 3;
+
         };
-        void setMapUsage(bool flag){
+        void setRobotMapOnOff(bool flag){
             if(flag) m_use_online_map = true;
             else m_use_online_map = false;
         };
@@ -233,18 +238,20 @@ namespace dg
         GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
         std::vector<Guidance> m_past_guides;
         Guidance m_curguidance;
-        RobotStatus m_robot_status;
+        RobotStatus m_robot_status = RobotStatus::READY;
         int m_guide_idx = -1;	//starts with -1 because its pointing current guide.
-        int m_robot_guide_idx;
+        int m_robot_guide_idx = -1;
         double m_remain_distance = 0.0;
         int m_last_announce_dist = -1;
-        int m_guide_interval = 10; //m
-        double m_uncertain_dist = 3.0;
-        double m_start_exploration_dist = 5.0;
-        double m_arrived_threshold = 1.0;
         bool m_arrival = false;
         int m_arrival_cnt = 0;
-        //bool m_use_robot_map = 0;
+
+        //fixed parameter
+        int m_guide_interval = 10; //m
+        double m_uncertain_dist = 1.0;
+        double m_arrived_threshold = 1.0;
+        double m_start_exploration_dist = 5.0;
+        int m_max_arrival_cnt = 10;
 
         std::string m_nodes[6] = { "POI", "JUNCTION", "DOOR", "ELEVATOR"
             "ESCALATOR", "UNKNOWN" };
