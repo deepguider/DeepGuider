@@ -42,6 +42,7 @@ import cv2
 
 from get_streetview import ImgServer, GetStreetView_fromID
 
+from load_cv2_yaml import load_cv2_yaml
 from vps_filter import vps_filter
 from custom_image_server import WholeDatasetFromStruct
 
@@ -169,6 +170,7 @@ class vps:
         self.custom_dataset = None
         self.use_custom_dataset = False
         self.dbFeat_fname = opt.dbFeat_fname
+        self.yml = load_cv2_yaml("dg_ros.yml")
 
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
@@ -616,6 +618,14 @@ class vps:
             It seems that the number of input parameters should not exceed 10.
             #print("image[0] = {0}, K = {1}, gps = lat = {2}, gps lon = {3}, gps acc. = {4}\nts = {5}, ip = {6}, port = {7}, load = {8}, save = {9}, custom = {10}".format(image[0][0], K , gps_lat, gps_lon, gps_accuracy, timestamp, ipaddr, port, load_dbfeat, save_dbfeat, use_custom_image_server))
         '''
+        ## You can access dg_ros.yml directly with follwing yml API
+        #ipaddr = self.yml.get_ip()
+        #port = self.yml.read("image_server_port")
+        #load_dbfeat= self.yml.read("vps_load_dbfeat")
+        #save_dbfeat= self.yml.read("vps_save_dbfeat")
+        #use_custom_image_server = self.yml.read("vps_use_custom_image_server")
+        #gps_accuracy = self.yml.read("vps_gps_accuracy")
+
         ipaddr = ipaddr_port.split(":")[0]
         port   = ipaddr_port.split(":")[1]
 
