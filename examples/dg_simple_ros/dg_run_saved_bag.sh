@@ -30,8 +30,9 @@ function set_site_idx(){
     # You can modify the site_index parameter in dg_ros.yml
     #                     0        1        2          3             4            5                   6
     local index=${1} # ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR", "ETRI_EXTENDED"]
-    local param="site_index"
-    sed -i "s|${param}: [0-9]|${param}: ${index}|g" dg_ros.yml
+    local param="^site_index"
+    local param_dst="site_index"
+    sed -i "s|${param}: [0-9]|${param_dst}: ${index}|g" dg_ros.yml
 }
 
 function set_topic_idx(){
@@ -39,7 +40,8 @@ function set_topic_idx(){
     #                         0                 1             2
     local index=${1} # ["ETRI_CART_VER2_ANDROIDGPS", "ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
     local param="topic_name_index"
-    sed -i "s|${param}: [0-9]|${param}: ${index}|g" dg_ros.yml
+    local param_dst=${param}
+    sed -i "s|${param}: [0-9]|${param_dst}: ${index}|g" dg_ros.yml
 }
 
 ## Run theta360z1 crop publish
