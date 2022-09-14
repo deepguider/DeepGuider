@@ -543,7 +543,7 @@ int DeepGuider::run()
 {
     // load test dataset    
     dg::DataLoader data_loader;
-    std::string ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file, exploration_file;
+    std::string odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file, exploration_file;
     std::string data_header = "data/ETRI/191115_151140";
     //ahrs_file = data_header + "_imu_data.csv";
     //ocr_file = data_header + "_ocr.csv";
@@ -552,7 +552,7 @@ int DeepGuider::run()
     //intersection_file = data_header + "_intersect.csv";
     //lr_file = data_header + "_roadlr.csv";
     //roadtheta_file = data_header + "_roadtheta.csv";
-    if (!data_loader.load(m_video_input_path, m_gps_input_path, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
+    if (!data_loader.load(m_video_input_path, m_gps_input_path, odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
     {
         printf("DeepGuider::run() - Fail to load test data. Exit program...\n");
         return -1;
@@ -590,7 +590,11 @@ int DeepGuider::run()
 
         // process data
         bool update_gui = false;
-        if (type == dg::DATA_GPS)
+        if (type == dg::DATA_ODO)
+        {
+            procOdometryData(vdata[1], vdata[2], vdata[3], data_time);
+        }
+        else if (type == dg::DATA_GPS)
         {
             const dg::LatLon gps_datum(vdata[1], vdata[2]);
             procGpsData(gps_datum, data_time);
@@ -1013,7 +1017,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_roadtheta_mutex.lock();
         if (!m_roadtheta_image.empty())
         {
-            cv::resize(m_roadtheta_image, result_image, cv::Size(win_rect.height*0.9, win_rect.height));
+            cv::resize(m_roadtheta_image, result_image, cv::Size((int)(win_rect.height*0.9), win_rect.height));
         }
         m_roadtheta_mutex.unlock();
 
@@ -1682,7 +1686,7 @@ bool DeepGuider::procVps()
         }
 		else
 		{
-			printf("[vps] empty sv_image : m_vps_id %ld\n", m_vps.getViewID());
+			printf("[vps] empty sv_image : m_vps_id %zd\n", m_vps.getViewID());
 		}
         return true;
     }

@@ -123,17 +123,17 @@ public:
             else if (type == dg::DATA_ODO)
             {
                 dg::Pose2 odo_pose(vdata[1], vdata[2], vdata[3]);
-                bool success = localizer->applyOdometry(odo_pose, data_time, 1);
+                bool success = (apply_odo) ? localizer->applyOdometry(odo_pose, data_time, 1) : true;
                 if (!success) fprintf(stderr, "applyOdometry() was failed.\n");
 
-                //cam_image = data_loader.getFrame(data_time);
-                //update_gui = true;
+                cam_image = data_loader.getFrame(data_time);
+                update_gui = true;
             }
             else if (type == dg::DATA_GPS)
             {
                 dg::LatLon gps_datum(vdata[1], vdata[2]);
                 dg::Point2 gps_xy = toMetric(gps_datum);
-                bool success = localizer->applyGPS(gps_xy, data_time, 1);
+                bool success = (apply_gps) ? localizer->applyGPS(gps_xy, data_time, 1) : true;
                 if (!success) fprintf(stderr, "applyGPS() was failed.\n");
 
                 if (gui_gps_radius > 0)
@@ -225,6 +225,24 @@ public:
                 if (gui_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, gui_traj_radius, gui_robot_color);
                 cv::Mat out_image = genStateImage(bg_image, localizer, data_time - timestart);
 
+                // show sensor status
+                cv::Scalar color_bg(255, 255, 255);
+                cv::Scalar color_active(255, 0, 0);
+                cv::Scalar color_deactive(128, 128, 128);
+                double gui_fscale = 0.8;
+                cv::Point gui_xy(10, 50);
+                std::string gui_msg = "GPS(G)";
+                cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_bg, 5);
+                if (apply_gps) cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_active, 2);
+                else cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_deactive, 2);
+                gui_xy.y += 40;
+
+                gui_msg = "ODO(O)";
+                cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_bg, 5);
+                if (apply_odo) cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_active, 2);
+                else cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_deactive, 2);
+                gui_xy.y += 40;
+
                 // Draw the current state on the bigger background
                 if (show_zoom)
                 {
@@ -290,10 +308,13 @@ public:
                 }
 
                 cv::imshow("LocalizerRunner::runLocalizer()", path_image);
-                int key = cv::waitKey(gui_wnd_wait_msec);
-                if (key == cx::KEY_SPACE) key = cv::waitKey(0);
-                if (key == cx::KEY_ESC) break;
             }
+
+            int key = cv::waitKey(gui_wnd_wait_msec);
+            if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+            if (key == 'g') apply_gps = !apply_gps;
+            if (key == 'o') apply_odo = !apply_odo;
+            if (key == cx::KEY_ESC) break;
         }
         if (out_traj != nullptr) fclose(out_traj);
         if (gui_wnd_wait_exit) cv::waitKey(0);
@@ -525,6 +546,9 @@ public:
     int          rec_video_fourcc = cv::VideoWriter::fourcc('X', 'V', 'I', 'D');
     double       rec_video_quality = 100;
     double       rec_video_resize = 1;
+
+    bool        apply_gps = true;
+    bool        apply_odo = true;
 
 }; // End of 'LocalizerRunner'
 
