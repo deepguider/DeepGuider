@@ -49,6 +49,8 @@ namespace dg
         bool m_pose_stabilized;
         double m_time_last_update;
 
+        enum { OBS_Th, OBS_XY, OBS_XYTh, OBS_VW, OBS_RoPiXY};
+
     public:
         EKFLocalizer()
         {
@@ -163,13 +165,12 @@ namespace dg
             return true;
         }
 
-        virtual bool setParamOdometryNoise(double sigma_position, double sigma_theta_deg)
+        virtual bool setParamOdometryNoise(double sigma_linear, double sigma_angular_deg)
         {
             cv::AutoLock lock(m_mutex);
-            m_odometry_noise = cv::Mat::zeros(3, 3, CV_64F);
-            m_odometry_noise.at<double>(0, 0) = sigma_position * sigma_position;
-            m_odometry_noise.at<double>(1, 1) = sigma_position * sigma_position;
-            m_odometry_noise.at<double>(2, 2) = cx::cvtDeg2Rad(sigma_theta_deg) * cx::cvtDeg2Rad(sigma_theta_deg);
+            m_odometry_noise = cv::Mat::zeros(2, 2, CV_64F);
+            m_odometry_noise.at<double>(0, 0) = sigma_linear * sigma_linear;
+            m_odometry_noise.at<double>(1, 1) = cx::cvtDeg2Rad(sigma_angular_deg) * cx::cvtDeg2Rad(sigma_angular_deg);
             return true;
         }
 
@@ -459,12 +460,31 @@ namespace dg
             {
                 double dx = pose_curr.x - pose_prev.x, dy = pose_curr.y - pose_prev.y;
                 double v = sqrt(dx * dx + dy * dy) / dt, w = cx::trimRad(pose_curr.theta - pose_prev.theta) / dt;
+
                 cv::AutoLock lock(m_mutex);
+                /*
                 double interval = 0;
                 if (m_time_last_update >= 0) interval = time_curr - m_time_last_update;
                 if (interval > DBL_EPSILON && predict(cv::Vec3d(interval, v, w)))
                 {
                     m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
+                    m_time_last_update = time_curr;
+                    return true;
+                }
+                */
+
+                double interval = 0;
+                if (m_time_last_update >= 0) interval = time_curr - m_time_last_update;
+                if (interval > m_threshold_time)
+                {
+                    predict(interval);
+                    m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
+                }
+
+                if (correct(cv::Vec2d(v, w), OBS_VW))
+                {
+                    m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
+                    applyMotionBounds(m_state_vec);
                     m_time_last_update = time_curr;
                     return true;
                 }
@@ -531,7 +551,7 @@ namespace dg
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
             }
 
-            if (correct(cv::Vec3d(pose.x, pose.y, pose.theta), true, 2))
+            if (correct(cv::Vec3d(pose.x, pose.y, pose.theta), OBS_XYTh, true, 2))
             {
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
                 applyMotionBounds(m_state_vec);
@@ -586,7 +606,7 @@ namespace dg
                 }
             }
             if (is_normal) m_gps_noise = m_gps_noise_normal;
-            if (correct(cv::Vec2d(xy.x, xy.y)))
+            if (correct(cv::Vec2d(xy.x, xy.y), OBS_XY))
             {
                 if (m_gps_reverse_vel < 0 && m_state_vec.at<double>(3) < m_gps_reverse_vel)
                 {
@@ -622,7 +642,7 @@ namespace dg
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
             }
 
-            if (correct(theta, true, 0))
+            if (correct(theta, OBS_Th, true, 0))
             {
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
                 m_state_vec.at<double>(4) = 0;
@@ -654,7 +674,7 @@ namespace dg
             double interval = 0;
             if (m_time_last_update > 0) interval = time - m_time_last_update;
             if (interval > m_threshold_time) predict(interval);
-            if (dr > 1e-10 && obs.lin > m_threshold_clue_dist && obs.ang < CV_PI && correct(cv::Vec4d(obs.lin, obs.ang, clue_xy.x, clue_xy.y)))
+            if (dr > 1e-10 && obs.lin > m_threshold_clue_dist && obs.ang < CV_PI && correct(cv::Vec4d(obs.lin, obs.ang, clue_xy.x, clue_xy.y), OBS_RoPiXY))
             {
                 m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
                 m_time_last_update = time;
@@ -746,15 +766,15 @@ namespace dg
             else if (control.rows == 2)
             {
                 // The control input: [ dt, w_c ]
-                const double v = state.at<double>(3), w = control.at<double>(1);
-                const double vt = v * dt, wt = w * dt;
+                const double v = state.at<double>(3), w_c = control.at<double>(1);
+                const double vt = v * dt, wt = w_c * dt;
                 const double c = cos(theta + wt / 2), s = sin(theta + wt / 2);
                 func = (cv::Mat_<double>(5, 1) <<
                     x + vt * c,
                     y + vt * s,
                     theta + wt,
                     v,
-                    w);
+                    w_c);
                 jacobian = (cv::Mat_<double>(5, 5) <<
                     1, 0, -vt * s, dt * c, 0,
                     0, 1, vt * c, dt * s, 0,
@@ -771,15 +791,15 @@ namespace dg
             else if (control.rows >= 3)
             {
                 // The control input: [ dt, v_c, w_c ]
-                const double v = control.at<double>(1), w = control.at<double>(2);
-                const double vt = v * dt, wt = w * dt;
+                const double v_c = control.at<double>(1), w_c = control.at<double>(2);
+                const double vt = v_c * dt, wt = w_c * dt;
                 const double c = cos(theta + wt / 2), s = sin(theta + wt / 2);
                 func = (cv::Mat_<double>(5, 1) <<
                     x + vt * c,
                     y + vt * s,
                     theta + wt,
-                    v,
-                    w);
+                    v_c,
+                    w_c);
                 jacobian = (cv::Mat_<double>(5, 5) <<
                     1, 0, -vt * s, 0, 0,
                     0, 1, vt * c, 0, 0,
@@ -797,17 +817,18 @@ namespace dg
             return func;
         }
 
-        virtual cv::Mat observeFunc(const cv::Mat& state, const cv::Mat& measure, cv::Mat& jacobian, cv::Mat& noise)
+        virtual cv::Mat observeFunc(const cv::Mat& state, const cv::Mat& measure, int measure_type, cv::Mat& jacobian, cv::Mat& noise)
         {
             const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
+            const double v = state.at<double>(3), w = state.at<double>(4);
             cv::Mat func;
-            if (measure.rows == 1)
+            if (measure_type == OBS_Th)
             {
                 // Measurement: [ theta_{roadtheta} ]
                 func = (cv::Mat_<double>(1, 1) << theta + m_sensor_offset.ang);
                 jacobian = (cv::Mat_<double>(1, 5) << 0, 0, 1, 0, 0);
             }
-            else if (measure.rows == 2)
+            else if (measure_type == OBS_XY)
             {
                 // Measurement: [ x_{GPS}, y_{GPS} ]
                 const double c = cos(theta + m_sensor_offset.ang);
@@ -819,7 +840,19 @@ namespace dg
                     1, 0, -m_sensor_offset.lin * s, 0, 0,
                     0, 1, m_sensor_offset.lin * c, 0, 0);
             }
-            else if (measure.rows == 3)
+            else if (measure_type == OBS_VW)
+            {
+                // Measurement: [ v_{linear velocity}, w_{angular velocity} ]
+                const double c = cos(theta + m_sensor_offset.ang);
+                const double s = sin(theta + m_sensor_offset.ang);
+                func = (cv::Mat_<double>(2, 1) <<
+                    v,
+                    w);
+                jacobian = (cv::Mat_<double>(2, 5) <<
+                    0, 0, 0, 1, 0,
+                    0, 0, 0, 0, 1);
+            }
+            else if (measure_type == OBS_XYTh)
             {
                 // Measurement: [ x, y, theta ]
                 const double c = cos(theta + m_sensor_offset.ang);
@@ -833,7 +866,7 @@ namespace dg
                     0, 1, m_sensor_offset.lin * c, 0, 0,
                     0, 0, 1, 0, 0);
             }
-            else if (measure.rows >= 4)
+            else if (measure_type == OBS_RoPiXY)
             {
                 // Measurement: [ rho_{id}, phi_{id}, x_{id}, y_{id} ]
                 const double dx = measure.at<double>(2) - x;

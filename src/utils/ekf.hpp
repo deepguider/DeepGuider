@@ -95,14 +95,14 @@ namespace cx
          * @param measure The given measurement
          * @return True if successful (false if failed)
          */
-        virtual bool correct(cv::InputArray measure, bool fix_theta_discontinuity = false, int theta_index = 0)
+        virtual bool correct(cv::InputArray measure, int measure_type, bool fix_theta_discontinuity = false, int theta_index = 0)
         {
             cv::Mat z = measure.getMat();
             if (z.rows < z.cols) z = z.t();
 
             // Calculate Kalman gain
             cv::Mat H, R;
-            cv::Mat expectation = observeFunc(m_state_vec, z, H, R);
+            cv::Mat expectation = observeFunc(m_state_vec, z, measure_type, H, R);
             cv::Mat S = H * m_state_cov * H.t() + R;
             cv::Mat K = m_state_cov * H.t() * S.inv(cv::DecompTypes::DECOMP_SVD);
             cv::Mat innovation = z - expectation;
@@ -133,13 +133,13 @@ namespace cx
          * @param measure The given measurement
          * @return The squared Mahalanobis distance
          */
-        virtual double checkMeasurement(cv::InputArray measure)
+        virtual double checkMeasurement(cv::InputArray measure, int measure_type)
         {
             cv::Mat z = measure.getMat();
             if (z.rows < z.cols) z = z.t();
 
             cv::Mat H, R;
-            cv::Mat expectation = observeFunc(m_state_vec, z, H, R);
+            cv::Mat expectation = observeFunc(m_state_vec, z, measure_type, H, R);
             cv::Mat innovation = z - expectation;
             cv::Mat S = H * m_state_cov * H.t();
             cv::Mat mah_dist2 = innovation.t() * S.inv(cv::DecompTypes::DECOMP_SVD) * innovation;
@@ -203,7 +203,7 @@ namespace cx
          * @param noise The state observation noise (return value)
          * @return The expected measurement
          */
-        virtual cv::Mat observeFunc(const cv::Mat& state, const cv::Mat& measure, cv::Mat& jacobian, cv::Mat& noise) = 0;
+        virtual cv::Mat observeFunc(const cv::Mat& state, const cv::Mat& measure, int measure_type, cv::Mat& jacobian, cv::Mat& noise) = 0;
 
         /** The state variable */
         cv::Mat m_state_vec;

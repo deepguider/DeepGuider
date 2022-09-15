@@ -70,6 +70,187 @@ protected:
     double m_max_ang_vel;
 };
 
+class EKFLocalizerHyperTanBias : public EKFLocalizer
+{
+public:
+    EKFLocalizerHyperTanBias() : m_max_ang_vel(1)
+    {
+        initialize(cv::Mat::zeros(6, 1, CV_64F), cv::Mat::eye(6, 6, CV_64F));
+    }
+
+    virtual int readParam(const cv::FileNode& fn)
+    {
+        int n_read = EKFLocalizer::readParam(fn);
+        CX_LOAD_PARAM_COUNT(fn, "max_ang_vel", m_max_ang_vel, n_read);
+        return n_read;
+    }
+
+protected:
+    virtual cv::Mat transitFunc(const cv::Mat& state, const cv::Mat& control, cv::Mat& jacobian, cv::Mat& noise)
+    {
+        const double dt = control.at<double>(0);
+        const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
+        cv::Mat func, W;
+        if (control.rows == 1)
+        {
+            // The control input: [ dt ]
+            const double v = state.at<double>(3), w = state.at<double>(4), b = state.at<double>(5);
+            const double vt = v * dt, wt = (w + b) * dt;
+            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2), th = m_max_ang_vel * tanh(w / m_max_ang_vel);
+            func = (cv::Mat_<double>(6, 1) <<
+                x + vt * c,
+                y + vt * s,
+                theta + wt,
+                v,
+                th,
+                b);
+            jacobian = (cv::Mat_<double>(6, 6) <<
+                1, 0, -vt * s, dt * c, -vt * dt * s / 2, -vt * dt * s / 2,
+                0, 1, vt * c, dt * s, vt * dt * c / 2, vt * dt * c / 2,
+                0, 0, 1, 0, dt, dt,
+                0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 1 - th * th, 0,
+                0, 0, 0, 0, 0, 1);
+            cv::Mat W = (cv::Mat_<double>(6, 2) <<
+                dt * c, -vt * dt * s / 2,
+                dt * s, vt * dt * c / 2,
+                0, dt,
+                1, 0,
+                0, 1 - th * th,
+                0, 0);
+        }
+        else if (control.rows == 2)
+        {
+            // The control input: [ dt, w_c ]
+            const double v = state.at<double>(3), w_c = control.at<double>(1), b = state.at<double>(5);
+            const double vt = v * dt, wt = (w_c + b) * dt;
+            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2);
+            func = (cv::Mat_<double>(6, 1) <<
+                x + vt * c,
+                y + vt * s,
+                theta + wt,
+                v,
+                w_c,
+                b);
+            jacobian = (cv::Mat_<double>(6, 6) <<
+                1, 0, -vt * s, dt * c, 0, -vt * dt * s / 2,
+                0, 1, vt * c, dt * s, 0, vt * dt * c / 2,
+                0, 0, 1, 0, 0, dt,
+                0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 1);
+            W = (cv::Mat_<double>(6, 2) <<
+                dt * c, -vt * dt * s / 2,
+                dt * s, vt * dt * c / 2,
+                0, dt,
+                1, 0,
+                0, 1,
+                0, 0);
+        }
+        else if (control.rows >= 3)
+        {
+            // The control input: [ dt, v_c, w_c ]
+            const double v_c = control.at<double>(1), w_c = control.at<double>(2), b = state.at<double>(5);
+            const double vt = v_c * dt, wt = (w_c + b) * dt;
+            const double c = cos(theta + wt / 2), s = sin(theta + wt / 2);
+            func = (cv::Mat_<double>(6, 1) <<
+                x + vt * c,
+                y + vt * s,
+                theta + wt,
+                v_c,
+                w_c,
+                b);
+            jacobian = (cv::Mat_<double>(6, 6) <<
+                1, 0, -vt * s, 0, 0, -vt * dt * s / 2,
+                0, 1, vt * c, 0, 0, vt * dt * c / 2,
+                0, 0, 1, 0, 0, dt,
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 1);
+            W = (cv::Mat_<double>(6, 2) <<
+                dt * c, -vt * dt * s / 2,
+                dt * s, vt * dt * c / 2,
+                0, dt,
+                1, 0,
+                0, 1,
+                0, 0);
+        }
+        if (!W.empty()) noise = W * getMotionNoise() * W.t();
+        return func;
+    }
+
+    virtual cv::Mat observeFunc(const cv::Mat& state, const cv::Mat& measure, int measure_type, cv::Mat& jacobian, cv::Mat& noise)
+    {
+        const double x = state.at<double>(0), y = state.at<double>(1), theta = state.at<double>(2);
+        const double v = state.at<double>(3), w = state.at<double>(4), b = state.at<double>(4);
+        cv::Mat func;
+        if (measure_type == OBS_Th)
+        {
+            // Measurement: [ theta_{roadtheta} ]
+            func = (cv::Mat_<double>(1, 1) << theta + m_sensor_offset.ang);
+            jacobian = (cv::Mat_<double>(1, 6) << 0, 0, 1, 0, 0, 0);
+        }
+        else if (measure_type == OBS_XY)
+        {
+            // Measurement: [ x_{GPS}, y_{GPS} ]
+            const double c = cos(theta + m_sensor_offset.ang);
+            const double s = sin(theta + m_sensor_offset.ang);
+            func = (cv::Mat_<double>(2, 1) <<
+                x + m_sensor_offset.lin * c,
+                y + m_sensor_offset.lin * s);
+            jacobian = (cv::Mat_<double>(2, 6) <<
+                1, 0, -m_sensor_offset.lin * s, 0, 0, 0,
+                0, 1, m_sensor_offset.lin * c, 0, 0, 0);
+        }
+        else if (measure_type == OBS_VW)
+        {
+            // Measurement: [ v_{linear velocity}, w_{angular velocity} ]
+            func = (cv::Mat_<double>(2, 1) <<
+                v,
+                w);
+            jacobian = (cv::Mat_<double>(2, 6) <<
+                0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 1, 0);
+        }
+        else if (measure_type == OBS_XYTh)
+        {
+            // Measurement: [ x, y, theta ]
+            const double c = cos(theta + m_sensor_offset.ang);
+            const double s = sin(theta + m_sensor_offset.ang);
+            func = (cv::Mat_<double>(3, 1) <<
+                x + m_sensor_offset.lin * c,
+                y + m_sensor_offset.lin * s,
+                cx::trimRad(theta + m_sensor_offset.ang));
+            jacobian = (cv::Mat_<double>(3, 6) <<
+                1, 0, -m_sensor_offset.lin * s, 0, 0, 0,
+                0, 1, m_sensor_offset.lin * c, 0, 0, 0,
+                0, 0, 1, 0, 0, 0);
+        }
+        else if (measure_type == OBS_RoPiXY)
+        {
+            // Measurement: [ rho_{id}, phi_{id}, x_{id}, y_{id} ]
+            const double dx = measure.at<double>(2) - x;
+            const double dy = measure.at<double>(3) - y;
+            const double r = sqrt(dx * dx + dy * dy);
+            func = (cv::Mat_<double>(4, 1) <<
+                r,
+                cx::trimRad(atan2(dy, dx) - theta),
+                measure.at<double>(2),
+                measure.at<double>(3));
+            jacobian = (cv::Mat_<double>(4, 6) <<
+                -dx / r, -dy / r, 0, 0, 0, 0,
+                dy / r / r, -dx / r / r, -1, 0, 0, 0,
+                0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0);
+        }
+        noise = getObservationNoise();
+        return func;
+    }
+
+    double m_max_ang_vel;
+};
+
+
 class EKFLocalizerSinTrack : public EKFLocalizerHyperTan
 {
 public:

@@ -418,10 +418,10 @@ bool DeepGuider::initialize(std::string config_file)
     // initialize localizer
     if (!m_localizer.initialize(this, "EKFLocalizerHyperTan")) return false;
     if (!m_localizer.setParamMotionNoise(1, 10)) return false;      // linear_velocity(m/sec), angular_velocity(deg/sec)
-    if (!m_localizer.setParamMotionBounds(1, 10)) return false;     // max_linear_velocity(m/sec), max_angular_velocity(deg/sec)
-    if (!m_localizer.setParamGPSNoise(10)) return false;            // position error(m)
+    if (!m_localizer.setParamMotionBounds(1, 20)) return false;     // max_linear_velocity(m/sec), max_angular_velocity(deg/sec)
+    if (!m_localizer.setParamGPSNoise(5)) return false;            // position error(m)
     if (!m_localizer.setParamGPSOffset(1, 0)) return false;         // displacement(lin,ang) from robot origin
-    if (!m_localizer.setParamOdometryNoise(0.01, 1)) return false;  // position error(m), orientation error(deg)
+    if (!m_localizer.setParamOdometryNoise(0.1, 1)) return false;  // position error(m), orientation error(deg)
     if (!m_localizer.setParamIMUCompassNoise(1, 0)) return false;   // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamPOINoise(5, 20, 25)) return false;    // position error(m), orientation error(deg), max error (m)
     if (!m_localizer.setParamVPSNoise(5, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)

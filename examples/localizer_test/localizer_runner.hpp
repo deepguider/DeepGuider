@@ -126,8 +126,11 @@ public:
                 bool success = (apply_odo) ? localizer->applyOdometry(odo_pose, data_time, 1) : true;
                 if (!success) fprintf(stderr, "applyOdometry() was failed.\n");
 
-                cam_image = data_loader.getFrame(data_time);
-                update_gui = true;
+                if (apply_odo && !apply_gps)
+                {
+                    cam_image = data_loader.getFrame(data_time);
+                    update_gui = true;
+                }
             }
             else if (type == dg::DATA_GPS)
             {
@@ -268,12 +271,9 @@ public:
                 }
 
                 // Draw path
-                cv::Mat path_image = out_image;
                 dg::Path path = getPath();
                 if (!path.empty())
                 {
-                    path_image = out_image.clone();
-
                     // draw current path
                     dg::MapPainter* painter = (dg::MapPainter*)gui_painter;
                     const cv::Vec3b ecolor = cv::Vec3b(255, 0, 0);
@@ -282,11 +282,11 @@ public:
                     int ethickness = 1;
                     for (int idx = 1; idx < (int)path.pts.size(); idx++)
                     {
-                        painter->drawEdge(path_image, path.pts[idx - 1], path.pts[idx], nradius, ecolor, ethickness);
+                        painter->drawEdge(out_image, path.pts[idx - 1], path.pts[idx], nradius, ecolor, ethickness);
                     }
                     for (int idx = 1; idx < (int)path.pts.size() - 1; idx++)
                     {
-                        painter->drawNode(path_image, dg::Point2ID(0, path.pts[idx]), nradius, 0, ncolor);
+                        painter->drawNode(out_image, dg::Point2ID(0, path.pts[idx]), nradius, 0, ncolor);
                     }
 
                     if (show_projected_history)
@@ -296,7 +296,7 @@ public:
                         int j = pose_history.data_count() - 1;
                         while (j >= 0)
                         {
-                            painter->drawNode(path_image, dg::Point2ID(0, pose_history[j]), nradius, 0, cv::Vec3b(255, 255, 0));
+                            painter->drawNode(out_image, dg::Point2ID(0, pose_history[j]), nradius, 0, cv::Vec3b(255, 255, 0));
                             j--;
                         }
                     }
@@ -304,17 +304,16 @@ public:
                 // Record the current visualization on the AVI file
                 if (out_video.isConfigured() && rec_video_resize > 0)
                 {
-                    out_video << path_image;
+                    out_video << out_image;
                 }
 
-                cv::imshow("LocalizerRunner::runLocalizer()", path_image);
+                cv::imshow("LocalizerRunner::runLocalizer()", out_image);
+                int key = cv::waitKey(gui_wnd_wait_msec);
+                if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+                if (key == 'g') apply_gps = !apply_gps;
+                if (key == 'o') apply_odo = !apply_odo;
+                if (key == cx::KEY_ESC) break;
             }
-
-            int key = cv::waitKey(gui_wnd_wait_msec);
-            if (key == cx::KEY_SPACE) key = cv::waitKey(0);
-            if (key == 'g') apply_gps = !apply_gps;
-            if (key == 'o') apply_odo = !apply_odo;
-            if (key == cx::KEY_ESC) break;
         }
         if (out_traj != nullptr) fclose(out_traj);
         if (gui_wnd_wait_exit) cv::waitKey(0);
