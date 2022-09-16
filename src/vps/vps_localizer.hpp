@@ -36,16 +36,19 @@ namespace dg
             return (m_shared != nullptr);
         }
 
-        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence, double manual_gps_accuracy = 0.9, const int load_dbfeat = 0, const int save_dbfeat = 0)
+        bool apply(const cv::Mat image, const dg::Timestamp image_time, dg::Point2& streetview_xy, dg::Polar2& relative, double& streetview_confidence, double manual_gps_accuracy = 0.9)
         {
             // Top-1 match
             int N = 1;  // top-1
+			double odo_x=0;
+			double odo_y=0;
+			double heading=0;
             if (m_shared == nullptr) return false;
             Pose2 pose = m_shared->getPose();
             LatLon ll = m_shared->toLatLon(pose);
             double pose_confidence = manual_gps_accuracy; // 0(vps search radius = 200m) ~ 1(search radius = 10m)
 			/** In streetview image server, download_radius = int(10 + 190*(1-manual_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters **/
-            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, m_server_ipaddr.c_str(), m_server_port.c_str(), load_dbfeat, save_dbfeat, m_use_custom_image_server)) return false;
+            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, odo_x, odo_y, heading)) return false;
 
             // matched streetview ID, confidence & image path(custom)
             cv::AutoLock lock(m_localizer_mutex);

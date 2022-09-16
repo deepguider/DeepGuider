@@ -1664,7 +1664,8 @@ bool DeepGuider::procVps()
     dg::Point2 sv_xy;
     dg::Polar2 relative;
     double sv_confidence;
-    if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
+    //if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
+    if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy))
     {
         if (m_apply_vps) m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();

@@ -247,7 +247,8 @@ bool DGNodeVPS::runOnce(double timestamp)
     dg::Point2 sv_xy;
     dg::Polar2 relative;
     double sv_confidence;
-    if (!cam_image.empty() && m_recognizer.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
+    //if (!cam_image.empty() && m_recognizer.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy, m_vps_load_dbfeat, m_vps_save_dbfeat))
+    if (!cam_image.empty() && m_recognizer.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy))
     {
         dg_simple_ros::vps msg;
         msg.id = m_recognizer.getViewID();

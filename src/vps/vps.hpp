@@ -35,14 +35,15 @@ namespace dg
         * @param N number of matched images to be returned (top-N)
         * @return true if successful (false if failed)
         */
-        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port, const int load_dbfeat, const int save_dbfeat, const int use_custom_image_server)
+		//bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port, const int load_dbfeat, const int save_dbfeat, const int use_custom_image_server)
+        bool apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, double odo_x, double odo_y, double heading)
         {
             dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
 
             PyGILState_STATE state;
             if (isThreadingEnabled()) state = PyGILState_Ensure();
 
-            bool ret = _apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, ipaddr, port, load_dbfeat, save_dbfeat, use_custom_image_server);
+            bool ret = _apply(image, N, gps_lat, gps_lon, gps_accuracy, ts, odo_x, odo_y, heading);
 
             if (isThreadingEnabled()) PyGILState_Release(state);
 
@@ -58,11 +59,12 @@ namespace dg
         * @param N number of matched images to be returned (top-N)
         * @return true if successful (false if failed)
         */
-        bool _apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port, const int load_dbfeat, const int save_dbfeat, const int use_custom_image_server)
+        //bool _apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, const char* ipaddr, const char* port, const int load_dbfeat, const int save_dbfeat, const int use_custom_image_server)
+        bool _apply(cv::Mat image, int N, double gps_lat, double gps_lon, double gps_accuracy, dg::Timestamp ts, double odo_x, double odo_y, double heading)
         {
             // Set function arguments
             int arg_idx = 0;
-            PyObject* pArgs = PyTuple_New(10);
+            PyObject* pArgs = PyTuple_New(9);
 
             // Image
             import_array();
@@ -72,38 +74,31 @@ namespace dg
                 fprintf(stderr, "VPS::apply() - Cannot convert argument1\n");
                 return false;
             }
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue); // 1
 
             // N
             pValue = PyFloat_FromDouble(N);
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue); // 2
 
             // GPS lat, lon, accuracy
             pValue = PyFloat_FromDouble(gps_lat);
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue); // 3
             pValue = PyFloat_FromDouble(gps_lon);
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue); // 4
             pValue = PyFloat_FromDouble(gps_accuracy);
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue); // 5
 
             // Timestamp
             pValue = PyFloat_FromDouble(ts);
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue); //6
 
-            // Image server's ip address, port
-            std::string ip_port = cv::format("%s:%s", ipaddr, port);
-            pValue = PyUnicode_FromString(ip_port.c_str());
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
-
-			// Use pre-built database features
-            pValue = PyFloat_FromDouble(load_dbfeat);
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
-            pValue = PyFloat_FromDouble(save_dbfeat);
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
-
-			// Use custom image dataset instead of naver roadview
-            pValue = PyFloat_FromDouble(use_custom_image_server);
-            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+            // Odometry and robot heading angle from X-axis in real map.
+            pValue = PyFloat_FromDouble(odo_x);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue); //7
+            pValue = PyFloat_FromDouble(odo_y);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue); //8
+            pValue = PyFloat_FromDouble(heading);
+            PyTuple_SetItem(pArgs, arg_idx++, pValue); //9
 
             // Call the method (ccsmm's comment : It seems that the number of input parameters should not exceed 10. So, arg_idx max is 10. Otherwise, You will meet out of tuple error."
             PyObject* pRet = PyObject_CallObject(m_pFuncApply, pArgs);

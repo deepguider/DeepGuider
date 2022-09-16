@@ -45,6 +45,7 @@ from get_streetview import ImgServer, GetStreetView_fromID
 from load_cv2_yaml import load_cv2_yaml
 from vps_filter import vps_filter
 from custom_image_server import WholeDatasetFromStruct
+import vps_mcl
 
 from ipdb import set_trace as bp
 
@@ -170,7 +171,7 @@ class vps:
         self.custom_dataset = None
         self.use_custom_dataset = False
         self.dbFeat_fname = opt.dbFeat_fname
-        self.yml = load_cv2_yaml("dg_ros.yml")
+        self.dg_ros_yml = load_cv2_yaml("dg_ros.yml")
 
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
@@ -333,6 +334,8 @@ class vps:
         #self.mVps_filter = vps_filter(ksize=7)  #  Default
         self.mVps_filter = vps_filter(ksize=11)  #  For coex 22.08.29 test
 
+        self.mcl_init() ## Initialize : vps_mcl
+
         if opt.dataset.lower() == 'pittsburgh':
             from netvlad import pittsburgh as dataset
             return 0 # Failed
@@ -346,7 +349,7 @@ class vps:
             makedir(self.dataset_struct_dir)
             makedir(self.dataset_queries_dir)
             return 1 # Non-zero means success return 
-    
+
     def set_threads(self, num_workers=0):
         if num_workers > 0 :
             self.num_workers = num_workers
@@ -613,21 +616,17 @@ class vps:
             self.flush_db_dir()  # Remove downloaded roadview jpg files. getVpsResult() shoud be called before this.
         return [IDs, Confs, custom_sv_lat, custom_sv_lon, pan, t_scaled, self.custom_dataset_abs_path]
 
-    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr_port="0.0.0.0:10000", load_dbfeat=0.0, save_dbfeat=0.0, use_custom_image_server=0.0):
-        '''
-            It seems that the number of input parameters should not exceed 10.
-            #print("image[0] = {0}, K = {1}, gps = lat = {2}, gps lon = {3}, gps acc. = {4}\nts = {5}, ip = {6}, port = {7}, load = {8}, save = {9}, custom = {10}".format(image[0][0], K , gps_lat, gps_lon, gps_accuracy, timestamp, ipaddr, port, load_dbfeat, save_dbfeat, use_custom_image_server))
-        '''
+    def parsing_dg_ros_yml(self):
         ## You can access dg_ros.yml directly with follwing yml API
-        #ipaddr = self.yml.get_ip()
-        #port = self.yml.read("image_server_port")
-        #load_dbfeat= self.yml.read("vps_load_dbfeat")
-        #save_dbfeat= self.yml.read("vps_save_dbfeat")
-        #use_custom_image_server = self.yml.read("vps_use_custom_image_server")
-        #gps_accuracy = self.yml.read("vps_gps_accuracy")
+        ipaddr = self.dg_ros_yml.get_ip()
+        port = self.dg_ros_yml.read("image_server_port")
+        load_dbfeat= self.dg_ros_yml.read("vps_load_dbfeat")
+        save_dbfeat= self.dg_ros_yml.read("vps_save_dbfeat")
+        use_custom_image_server = self.dg_ros_yml.read("vps_use_custom_image_server")
+        #gps_accuracy = self.dg_ros_yml.read("vps_gps_accuracy")
 
-        ipaddr = ipaddr_port.split(":")[0]
-        port   = ipaddr_port.split(":")[1]
+        #ipaddr = ipaddr_port.split(":")[0]
+        #port   = ipaddr_port.split(":")[1]
 
         if ipaddr == USE_LOCAL_DB:
             self.use_local_db = True
@@ -649,11 +648,19 @@ class vps:
         else:
             self.save_dbfeat = False
 
-        ## Init.
-        if ipaddr != None:
+        if ipaddr is not None:
             self.ipaddr = ipaddr
-        if port != None:
+        if port is not None:
             self.port = port
+
+    #def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, ipaddr_port="0.0.0.0:10000", load_dbfeat=0.0, save_dbfeat=0.0, use_custom_image_server=0.0):
+    def apply(self, image=None, K = 3, gps_lat=37.0, gps_lon=127.0, gps_accuracy=0.79, timestamp=0.0, odo_x=-1, odo_y=-1, heading=-1):
+        '''
+            It seems that the number of input parameters should not exceed 10.
+            #print("image[0] = {0}, K = {1}, gps = lat = {2}, gps lon = {3}, gps acc. = {4}\nts = {5}, ip = {6}, port = {7}, load = {8}, save = {9}, custom = {10}".format(image[0][0], K , gps_lat, gps_lon, gps_accuracy, timestamp, ipaddr, port, load_dbfeat, save_dbfeat, use_custom_image_server))
+        '''
+
+        self.parsing_dg_ros_yml()
 
         if self.use_custom_dataset == True:
             ## This statement is executed only the first time.
@@ -749,7 +756,33 @@ class vps:
         else:
             raise Exception('Unknown dataset')
 
+        self.mcl_run()
+
         return self.flush_db_dir_and_return_val(relativePose_enable=True)
+
+    def mcl_init(self):
+        vps_enable_mcl = self.dg_ros_yml.read("vps_enable_mcl")
+        if vps_enable_mcl > 0:
+            self.vps_enable_mcl = True
+        else:
+            self.vps_enable_mcl = False
+        if self.vps_enable_mcl == True:
+            img_path = "data_vps/map.png"
+            ## For n_landmark,  a number less than 10000 means that it will use the number of random generated landmark points.
+            ##                  a numvber over 10000 means that it will use pre-defined landmarks in mcl_config.landmarks
+            n_landmark = 10000  # 10000 means pre-defined landmarks
+            ## noise_std is ratio of addictive noise (-0.5~+0.5) to zs, which means output is zs*(1 +- (0.5)*noise_std) when zs is GT. For example) 0.1 means 10 percent noise are added to GT.
+            self.mMCL = vps_mcl.MCL(observation_mode=1, img_path=img_path, n_landmark=n_landmark, pdf_sigma=0.1, noise_std=1.0, manualPath=True, manualPath_rate=0.1, noise=True)  # angel metric
+            self.mMCL.vps_mcl_initialize(disp=True) 
+            self.mcl_run_stime = time.time() 
+
+    def mcl_run(self):
+        if self.vps_enable_mcl == True:
+            n_landmark = 10000  # 10000 means pre-defined landmarks
+            landmark_radius = 100 
+            top_N = -2 #1 
+            [x, y] = self.mMCL.get_trajectory()[self.mMCL.callback_count] 
+            self.mcl_run_stime = vps_mcl.single_loop(self.mcl_run_stime, self.mMCL, sleep_sec=0.1, n_landmark=n_landmark, landmark_radius=landmark_radius, top_N=top_N)
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []
@@ -1043,6 +1076,27 @@ def run_prebuilt_dbfeat(load_dbfeat=1):
 def load_prebuild_dbfeat():
     run_prebuilt_dbfeat()
 
+def run_mcl_demo():
+    img_path = "map.png"
+    ## For n_landmark,  a number less than 10000 means that it will use the number of random generated landmark points.
+    ##                  a numvber over 10000 means that it will use pre-defined landmarks in mcl_config.landmarks
+    n_landmark = 10000  # 10000 means pre-defined landmarks
+    ## noise_std is ratio of addictive noise (-0.5~+0.5) to zs, which means output is zs*(1 +- (0.5)*noise_std) when zs is GT. For example) 0.1 means 10 percent noise are added to GT.
+    mMCL = vps_mcl.MCL(observation_mode=1, img_path=img_path, n_landmark=n_landmark, pdf_sigma=0.1, noise_std=1.0, manualPath=True, manualPath_rate=0.1, noise=True)  # angel metric
+
+    if True:  # vps mode 
+        landmark_radius = 100 
+        top_N = -2 #1 
+ 
+        mMCL.vps_mcl_initialize(disp=True) 
+ 
+        stime = time.time() 
+        [x, y] = mMCL.get_trajectory()[mMCL.callback_count] 
+        while(1): 
+            vps_mcl.single_loop(stime, mMCL, sleep_sec=0.1, n_landmark=n_landmark, landmark_radius=landmark_radius, top_N=top_N)
+ 
+    cv2.destroyAllWindows() 
+
 if __name__ == "__main__":
     '''
     To make prebuild_dbfeat and to use it
@@ -1051,4 +1105,6 @@ if __name__ == "__main__":
     2) copy _2022-04-18-14-08-03/uvc_image/poses_latlon_robot.txt data_vps/netvlad_etri_datasets/poses.txt
     '''
     #save_prebuild_dbfeat()
-    load_prebuild_dbfeat()
+    #load_prebuild_dbfeat()
+
+    run_mcl_demo()
