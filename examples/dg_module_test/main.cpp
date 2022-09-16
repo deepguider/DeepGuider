@@ -151,12 +151,12 @@ int runModule()
 
     bool enable_gps = true;
     bool enable_odometry = true;
-    bool use_andro_gps = false;
+    bool use_andro_gps = true;
     bool use_novatel = false;
     bool enable_imu = false;
     bool use_saved_testset = true;
     dg::Point2 gps_offset;
-    gps_offset = dg::Point2(20, 0);
+    //gps_offset = dg::Point2(20, 0);
 
     int module_sel = -1;
     //module_sel = DG_Intersection;

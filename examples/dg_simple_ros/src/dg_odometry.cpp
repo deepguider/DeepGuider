@@ -246,8 +246,7 @@ bool DGNodeOdometry::runOnce(double timestamp)
             line(m_traj_map, cv::Point(x,0), cv::Point(x, h), grid_color);
             int y = cy + (int)(i*scale);
             line(m_traj_map, cv::Point(0,y), cv::Point(w, y), grid_color);
-        }    double wL = 0.9799845;                // compensation factor for left wheel
-    double wR = 0.9913012;                // compensation factor for right wheel
+        }
 
         line(m_traj_map, cv::Point(cx,0), cv::Point(cx, h), cv::Scalar(100,100,100));
         line(m_traj_map, cv::Point(0,cy), cv::Point(w, cy), cv::Scalar(100,100,100));

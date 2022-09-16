@@ -45,10 +45,10 @@ public:
 
     /**
      * Set error covariance of Odometry
-     * @param sigma_position Standard deviation of odometry position (Unit: [m])
-     * @param sigma_theta_deg Standard deviation of odomery orientation (Unit: [deg])
+     * @param sigma_linear Standard deviation of odometry position (Unit: [m])
+     * @param sigma_angular_deg Standard deviation of odomery orientation (Unit: [deg])
      */
-    virtual bool setParamOdometryNoise(double sigma_position, double sigma_theta_deg) = 0;
+    virtual bool setParamOdometryNoise(double sigma_linear, double sigma_angular) = 0;
 
     /**
      * Set error variance of IMU theta

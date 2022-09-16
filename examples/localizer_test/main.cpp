@@ -364,11 +364,11 @@ int runLocalizer()
     //localizer = cv::makePtr<dg::EKFLocalizer>();
     //localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
     //localizer = cv::makePtr<dg::EKFLocalizerSinTrack>();
-    localizer = cv::makePtr<dg::DGLocalizer>();
+    localizer = cv::makePtr<dg::DGLocalizer>("EKFLocalizerHyperTan");
 
     if (!localizer->setParamMotionNoise(1, 10)) return -1;      // linear_velocity(m), angular_velocity(deg)
-    if (!localizer->setParamMotionBounds(1, 10)) return -1;     // max. linear_velocity(m), max. angular_velocity(deg)
-    if (!localizer->setParamGPSNoise(10)) return -1;            // position error(m)
+    if (!localizer->setParamMotionBounds(1, 20)) return -1;     // max. linear_velocity(m), max. angular_velocity(deg)
+    if (!localizer->setParamGPSNoise(5)) return -1;            // position error(m)
     if (!localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
     if (!localizer->setParamOdometryNoise(0.1, 1)) return -1;  // position error(m), orientation error(deg)
     if (!localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
@@ -387,7 +387,7 @@ int runLocalizer()
 
     enable_odometry = true;
     //enable_imu = true;
-    //use_andro_gps = true;
+    use_andro_gps = true;
     //use_novatel = true;
     //enable_ocr = true;
     //enable_poi = true;

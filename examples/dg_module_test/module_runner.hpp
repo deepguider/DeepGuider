@@ -31,10 +31,10 @@ public:
         m_localizer = cv::makePtr<dg::DGLocalizer>();
         m_localizer->initialize(this, "EKFLocalizerHyperTan");
         if (!m_localizer->setParamMotionNoise(1, 10)) return -1;      // linear_velocity(m), angular_velocity(deg)
-        if (!m_localizer->setParamMotionBounds(1, 10)) return -1;     // max_linear_velocity(m), max_angular_velocity(deg)
-        if (!m_localizer->setParamGPSNoise(10)) return -1;            // position error(m)
+        if (!m_localizer->setParamMotionBounds(1, 20)) return -1;     // max_linear_velocity(m), max_angular_velocity(deg)
+        if (!m_localizer->setParamGPSNoise(5)) return -1;            // position error(m)
         if (!m_localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
-        if (!m_localizer->setParamOdometryNoise(0.01, 1)) return false;  // position error(m), orientation error(deg)
+        if (!m_localizer->setParamOdometryNoise(0.1, 1)) return false;  // position error(m), orientation error(deg)
         if (!m_localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
         if (!m_localizer->setParamPOINoise(5, 20)) return -1;         // position error(m), orientation error(deg)
         if (!m_localizer->setParamVPSNoise(5, 20)) return -1;         // position error(m), orientation error(deg)

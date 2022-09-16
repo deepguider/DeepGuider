@@ -401,8 +401,8 @@ void DeepGuiderROS::callbackThetaZ1360Crop(const sensor_msgs::Image::ConstPtr& m
 // A callback function for subscribing a compressed RGB image
 void DeepGuiderROS::callbackImageCompressed(const sensor_msgs::CompressedImageConstPtr& msg)
 {
-    ROS_INFO_THROTTLE(1.0, "Compressed RGB(timestamp: %f [sec]).", msg->header.stamp.toSec());
-    cv_bridge::CvImagePtr image_ptr;
+    ROS_INFO_THROTTLE(1.0, "Compressed RGB");
+    cv_bridge::CvImagePtr image_ptr; 
     try
     {
         cv::Mat logging_image;
@@ -457,10 +457,10 @@ void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
     if (fix->header.stamp == ros::Time(0)) return;
 
     if (fix->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) {
-        ROS_INFO_THROTTLE(1.0, "GPS Asen: no fix (timestamp: %f [sec])", fix->header.stamp.toSec());
+        ROS_INFO_THROTTLE(1.0, "GPS: no fix");
         return;
     }
-    ROS_INFO_THROTTLE(1.0, "GPS Asen: lat=%f, lon=%f (timestamp: %f [sec])", fix->latitude, fix->longitude, fix->header.stamp.toSec());
+    ROS_INFO_THROTTLE(1.0, "GPS: lat=%f, lon=%f", fix->latitude, fix->longitude);
 
     double lat = fix->latitude;
     double lon = fix->longitude;
@@ -468,8 +468,6 @@ void DeepGuiderROS::callbackGPSAsen(const sensor_msgs::NavSatFixConstPtr& fix)
     // apply & draw gps
     const dg::LatLon gps_datum(lat, lon);
     const dg::Timestamp gps_time = fix->header.stamp.toSec();
-    double timestamp_offset = timestamp - gps_time;
-    if (timestamp_offset > 60) m_timestamp_offset = timestamp_offset;
     if (!m_use_high_precision_gps) procGpsData(gps_datum, gps_time);
     m_painter.drawPoint(m_map_image, toMetric(gps_datum), m_gui_gps_trj_radius, m_gui_gps_color);
 }
@@ -480,10 +478,10 @@ void DeepGuiderROS::callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix
     if (fix->header.stamp == ros::Time(0)) return;
 
     if (fix->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) {
-        ROS_INFO_THROTTLE(1.0, "GPS Novatel: no fix (timestamp: %f [sec])", fix->header.stamp.toSec());
+        ROS_INFO_THROTTLE(1.0, "GPS Novatel: no fix");
         return;
     }
-    ROS_INFO_THROTTLE(1.0, "GPS Novatel: lat=%f, lon=%f (timestamp: %f [sec])", fix->latitude, fix->longitude, fix->header.stamp.toSec());
+    ROS_INFO_THROTTLE(1.0, "GPS Novatel: lat=%f, lon=%f", fix->latitude, fix->longitude);
 
     double lat = fix->latitude;
     double lon = fix->longitude;
@@ -509,7 +507,6 @@ void DeepGuiderROS::callbackOdometry(const nav_msgs::Odometry::ConstPtr& msg)
     ROS_INFO_THROTTLE(1.0, "ODO: x=%.2lf, y=%.2lf, theta=%.1lf", x, y, theta);
 
     dg::Timestamp odo_time = msg->header.stamp.toSec();
-    if (m_timestamp_offset>0) odo_time = odo_time - m_timestamp_offset;
     if (m_enable_odometry)
     {
         procOdometryData(x, y, theta, odo_time);

@@ -151,9 +151,9 @@ namespace dg
 
     public:
         /** The constructor */
-        DGLocalizer()
+        DGLocalizer(std::string baselocalizer_name = "EKFLocalizer")
         {
-            initialize(nullptr, "EKFLocalizer");
+            initialize(nullptr, baselocalizer_name);
         }
 
         bool initialize(SharedInterface* shared, std::string baselocalizer_name = "")
@@ -162,6 +162,7 @@ namespace dg
             if (baselocalizer_name == "EKFLocalizer") m_ekf = cv::makePtr<dg::EKFLocalizer>();
             else if (baselocalizer_name == "EKFLocalizerZeroGyro") m_ekf = cv::makePtr<dg::EKFLocalizerZeroGyro>();
             else if (baselocalizer_name == "EKFLocalizerHyperTan") m_ekf = cv::makePtr<dg::EKFLocalizerHyperTan>();
+            else if (baselocalizer_name == "EKFLocalizerHyperTanBias") m_ekf = cv::makePtr<dg::EKFLocalizerHyperTanBias>();
             else if (baselocalizer_name == "EKFLocalizerSinTrack") m_ekf = cv::makePtr<dg::EKFLocalizerSinTrack>();
             if (m_ekf) m_ekf->setShared(shared);
             BaseLocalizer::setShared(shared);
@@ -230,10 +231,10 @@ namespace dg
             return false;
         }
 
-        virtual bool setParamOdometryNoise(double sigma_position, double sigma_theta_deg)
+        virtual bool setParamOdometryNoise(double sigma_linear, double sigma_angular_deg)
         {
             cv::AutoLock lock(m_mutex);
-            if (m_ekf) return m_ekf->setParamOdometryNoise(sigma_position, sigma_theta_deg);
+            if (m_ekf) return m_ekf->setParamOdometryNoise(sigma_linear, sigma_angular_deg);
             return false;
         }
 

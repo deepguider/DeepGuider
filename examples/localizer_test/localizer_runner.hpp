@@ -123,17 +123,20 @@ public:
             else if (type == dg::DATA_ODO)
             {
                 dg::Pose2 odo_pose(vdata[1], vdata[2], vdata[3]);
-                bool success = localizer->applyOdometry(odo_pose, data_time, 1);
+                bool success = (apply_odo) ? localizer->applyOdometry(odo_pose, data_time, 1) : true;
                 if (!success) fprintf(stderr, "applyOdometry() was failed.\n");
 
-                //cam_image = data_loader.getFrame(data_time);
-                //update_gui = true;
+                if (apply_odo && !apply_gps)
+                {
+                    cam_image = data_loader.getFrame(data_time);
+                    update_gui = true;
+                }
             }
             else if (type == dg::DATA_GPS)
             {
                 dg::LatLon gps_datum(vdata[1], vdata[2]);
                 dg::Point2 gps_xy = toMetric(gps_datum);
-                bool success = localizer->applyGPS(gps_xy, data_time, 1);
+                bool success = (apply_gps) ? localizer->applyGPS(gps_xy, data_time, 1) : true;
                 if (!success) fprintf(stderr, "applyGPS() was failed.\n");
 
                 if (gui_gps_radius > 0)
@@ -225,6 +228,24 @@ public:
                 if (gui_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, gui_traj_radius, gui_robot_color);
                 cv::Mat out_image = genStateImage(bg_image, localizer, data_time - timestart);
 
+                // show sensor status
+                cv::Scalar color_bg(255, 255, 255);
+                cv::Scalar color_active(255, 0, 0);
+                cv::Scalar color_deactive(128, 128, 128);
+                double gui_fscale = 0.8;
+                cv::Point gui_xy(10, 50);
+                std::string gui_msg = "GPS(G)";
+                cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_bg, 5);
+                if (apply_gps) cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_active, 2);
+                else cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_deactive, 2);
+                gui_xy.y += 40;
+
+                gui_msg = "ODO(O)";
+                cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_bg, 5);
+                if (apply_odo) cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_active, 2);
+                else cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_deactive, 2);
+                gui_xy.y += 40;
+
                 // Draw the current state on the bigger background
                 if (show_zoom)
                 {
@@ -250,12 +271,9 @@ public:
                 }
 
                 // Draw path
-                cv::Mat path_image = out_image;
                 dg::Path path = getPath();
                 if (!path.empty())
                 {
-                    path_image = out_image.clone();
-
                     // draw current path
                     dg::MapPainter* painter = (dg::MapPainter*)gui_painter;
                     const cv::Vec3b ecolor = cv::Vec3b(255, 0, 0);
@@ -264,11 +282,11 @@ public:
                     int ethickness = 1;
                     for (int idx = 1; idx < (int)path.pts.size(); idx++)
                     {
-                        painter->drawEdge(path_image, path.pts[idx - 1], path.pts[idx], nradius, ecolor, ethickness);
+                        painter->drawEdge(out_image, path.pts[idx - 1], path.pts[idx], nradius, ecolor, ethickness);
                     }
                     for (int idx = 1; idx < (int)path.pts.size() - 1; idx++)
                     {
-                        painter->drawNode(path_image, dg::Point2ID(0, path.pts[idx]), nradius, 0, ncolor);
+                        painter->drawNode(out_image, dg::Point2ID(0, path.pts[idx]), nradius, 0, ncolor);
                     }
 
                     if (show_projected_history)
@@ -278,7 +296,7 @@ public:
                         int j = pose_history.data_count() - 1;
                         while (j >= 0)
                         {
-                            painter->drawNode(path_image, dg::Point2ID(0, pose_history[j]), nradius, 0, cv::Vec3b(255, 255, 0));
+                            painter->drawNode(out_image, dg::Point2ID(0, pose_history[j]), nradius, 0, cv::Vec3b(255, 255, 0));
                             j--;
                         }
                     }
@@ -286,12 +304,14 @@ public:
                 // Record the current visualization on the AVI file
                 if (out_video.isConfigured() && rec_video_resize > 0)
                 {
-                    out_video << path_image;
+                    out_video << out_image;
                 }
 
-                cv::imshow("LocalizerRunner::runLocalizer()", path_image);
+                cv::imshow("LocalizerRunner::runLocalizer()", out_image);
                 int key = cv::waitKey(gui_wnd_wait_msec);
                 if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+                if (key == 'g') apply_gps = !apply_gps;
+                if (key == 'o') apply_odo = !apply_odo;
                 if (key == cx::KEY_ESC) break;
             }
         }
@@ -525,6 +545,9 @@ public:
     int          rec_video_fourcc = cv::VideoWriter::fourcc('X', 'V', 'I', 'D');
     double       rec_video_quality = 100;
     double       rec_video_resize = 1;
+
+    bool        apply_gps = true;
+    bool        apply_odo = true;
 
 }; // End of 'LocalizerRunner'
 
