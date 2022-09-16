@@ -612,6 +612,7 @@ class vps:
 
     def flush_db_dir_and_return_val(self, relativePose_enable=True, flush_db=True):
         [IDs, Confs, custom_sv_lat, custom_sv_lon, pan, t_scaled] = self.getVpsResult(relativePose_enable)
+        self.mcl_run()
         if flush_db == True:
             self.flush_db_dir()  # Remove downloaded roadview jpg files. getVpsResult() shoud be called before this.
         return [IDs, Confs, custom_sv_lat, custom_sv_lon, pan, t_scaled, self.custom_dataset_abs_path]
@@ -661,6 +662,11 @@ class vps:
         '''
 
         self.parsing_dg_ros_yml()
+
+        self.odo_x, self.odo_y, self.heading = odo_x, odo_y, heading
+        self.utm_x, self.utm_y, self.tilt = None, None, None
+
+        #print("[VPS]=============> odo_x, odo_y, heading : {}, {}, {}".format(odo_x, odo_y, heading))
 
         if self.use_custom_dataset == True:
             ## This statement is executed only the first time.
@@ -756,9 +762,16 @@ class vps:
         else:
             raise Exception('Unknown dataset')
 
-        self.mcl_run()
-
         return self.flush_db_dir_and_return_val(relativePose_enable=True)
+
+    def mcl_get_landmark(self):
+        if self.utm_x is not None:
+            return np.array([[self.utm_x, self.utm_y]])
+        else:
+            return None
+
+    def mcl_get_tilt(self):
+        return self.tilt
 
     def mcl_init(self):
         vps_enable_mcl = self.dg_ros_yml.read("vps_enable_mcl")
@@ -768,21 +781,14 @@ class vps:
             self.vps_enable_mcl = False
         if self.vps_enable_mcl == True:
             img_path = "data_vps/map.png"
-            ## For n_landmark,  a number less than 10000 means that it will use the number of random generated landmark points.
-            ##                  a numvber over 10000 means that it will use pre-defined landmarks in mcl_config.landmarks
-            n_landmark = 10000  # 10000 means pre-defined landmarks
-            ## noise_std is ratio of addictive noise (-0.5~+0.5) to zs, which means output is zs*(1 +- (0.5)*noise_std) when zs is GT. For example) 0.1 means 10 percent noise are added to GT.
-            self.mMCL = vps_mcl.MCL(observation_mode=1, img_path=img_path, n_landmark=n_landmark, pdf_sigma=0.1, noise_std=1.0, manualPath=True, manualPath_rate=0.1, noise=True)  # angel metric
-            self.mMCL.vps_mcl_initialize(disp=True) 
-            self.mcl_run_stime = time.time() 
+            self.mMCL = vps_mcl.MCL(img_path=img_path, n_particle=400, pdf_sigma=0.1)  # angel metric
+            self.mMCL.initialize(disp=True) 
 
     def mcl_run(self):
         if self.vps_enable_mcl == True:
-            n_landmark = 10000  # 10000 means pre-defined landmarks
-            landmark_radius = 100 
-            top_N = -2 #1 
-            [x, y] = self.mMCL.get_trajectory()[self.mMCL.callback_count] 
-            self.mcl_run_stime = vps_mcl.single_loop(self.mcl_run_stime, self.mMCL, sleep_sec=0.1, n_landmark=n_landmark, landmark_radius=landmark_radius, top_N=top_N)
+            landmarks = self.mcl_get_landmark()
+            if landmarks is not None:
+                self.mMCL.run_step(self.odo_x, self.odo_y, self.heading, self.tilt, landmarks)
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []
@@ -881,7 +887,11 @@ class vps:
         #    print("[vps] ===> (utm_x, utm_y) : ({}, {}) using custom roadview dataset".format(utm_x, utm_y))
         #    print("[vps] ===> (custom_sv_lat, custom_sv_lon) : ({}, {}) using custom roadview dataset".format(custom_sv_lat, custom_sv_lon))
 
+
         pan = np.float64(pan)
+
+        self.utm_x, self.utm_x = utm_x, utm_y  # for mcl
+        self.pan, self.tilt = pan, tilt  # mcl
 
         ## [[id1, id2, ..., idn], [conf1, conf2, ..., confn], custom_lat, custom_lon, pan, scale*[tx, ty, tz]], where pan and (tx, ty, tz) is for top-1.
         return [IDs, Confs, custom_sv_lat, custom_sv_lon, pan, query_cam2_pos.tolist()]
@@ -1076,27 +1086,6 @@ def run_prebuilt_dbfeat(load_dbfeat=1):
 def load_prebuild_dbfeat():
     run_prebuilt_dbfeat()
 
-def run_mcl_demo():
-    img_path = "map.png"
-    ## For n_landmark,  a number less than 10000 means that it will use the number of random generated landmark points.
-    ##                  a numvber over 10000 means that it will use pre-defined landmarks in mcl_config.landmarks
-    n_landmark = 10000  # 10000 means pre-defined landmarks
-    ## noise_std is ratio of addictive noise (-0.5~+0.5) to zs, which means output is zs*(1 +- (0.5)*noise_std) when zs is GT. For example) 0.1 means 10 percent noise are added to GT.
-    mMCL = vps_mcl.MCL(observation_mode=1, img_path=img_path, n_landmark=n_landmark, pdf_sigma=0.1, noise_std=1.0, manualPath=True, manualPath_rate=0.1, noise=True)  # angel metric
-
-    if True:  # vps mode 
-        landmark_radius = 100 
-        top_N = -2 #1 
- 
-        mMCL.vps_mcl_initialize(disp=True) 
- 
-        stime = time.time() 
-        [x, y] = mMCL.get_trajectory()[mMCL.callback_count] 
-        while(1): 
-            vps_mcl.single_loop(stime, mMCL, sleep_sec=0.1, n_landmark=n_landmark, landmark_radius=landmark_radius, top_N=top_N)
- 
-    cv2.destroyAllWindows() 
-
 if __name__ == "__main__":
     '''
     To make prebuild_dbfeat and to use it
@@ -1105,6 +1094,4 @@ if __name__ == "__main__":
     2) copy _2022-04-18-14-08-03/uvc_image/poses_latlon_robot.txt data_vps/netvlad_etri_datasets/poses.txt
     '''
     #save_prebuild_dbfeat()
-    #load_prebuild_dbfeat()
-
-    run_mcl_demo()
+    load_prebuild_dbfeat()
