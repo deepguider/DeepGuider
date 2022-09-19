@@ -42,6 +42,7 @@ namespace dg
         double m_norm_conf_a;
         double m_norm_conf_b;
         Polar2 m_sensor_offset;
+        double m_max_observation_error;
 
         // Internal variables
         std::vector<Point2> m_initial_xy_history;       // initial xy history is used to check if pose is stabilized
@@ -80,6 +81,7 @@ namespace dg
             m_intersectcls_noise = cv::Mat::eye(2, 2, CV_64F);
             m_camera_offset = Polar2(0, 0);
             m_sensor_offset = Polar2(0, 0);
+            m_max_observation_error = 20;
 
             m_threshold_time = 0.01;    // second
             m_threshold_clue_dist = 1e-6;
@@ -118,6 +120,7 @@ namespace dg
             CX_LOAD_PARAM_COUNT(fn, "threshold_clue_dist", m_threshold_clue_dist, n_read);
             CX_LOAD_PARAM_COUNT(fn, "norm_conf_a", m_norm_conf_a, n_read);
             CX_LOAD_PARAM_COUNT(fn, "norm_conf_b", m_norm_conf_b, n_read);
+            CX_LOAD_PARAM_COUNT(fn, "max_observation_error", m_max_observation_error, n_read);
             return n_read;
         }
 
@@ -462,16 +465,6 @@ namespace dg
                 double v = sqrt(dx * dx + dy * dy) / dt, w = cx::trimRad(pose_curr.theta - pose_prev.theta) / dt;
 
                 cv::AutoLock lock(m_mutex);
-                /*
-                double interval = 0;
-                if (m_time_last_update >= 0) interval = time_curr - m_time_last_update;
-                if (interval > DBL_EPSILON && predict(cv::Vec3d(interval, v, w)))
-                {
-                    m_state_vec.at<double>(2) = cx::trimRad(m_state_vec.at<double>(2));
-                    m_time_last_update = time_curr;
-                    return true;
-                }
-                */
 
                 double interval = 0;
                 if (m_time_last_update >= 0) interval = time_curr - m_time_last_update;
@@ -838,7 +831,7 @@ namespace dg
                     y + m_sensor_offset.lin * s);
                 jacobian = (cv::Mat_<double>(2, 5) <<
                     1, 0, -m_sensor_offset.lin * s, 0, 0,
-                    0, 1, m_sensor_offset.lin * c, 0, 0);
+                    0, 1, m_sensor_offset.lin * c, 0, 0);                
             }
             else if (measure_type == OBS_VW)
             {
@@ -885,6 +878,50 @@ namespace dg
             }
             noise = getObservationNoise();
             return func;
+        }
+
+        virtual bool correct(cv::InputArray measure, int measure_type, bool fix_theta_discontinuity = false, int theta_index = 0)
+        {
+            cv::Mat z = measure.getMat();
+            if (z.rows < z.cols) z = z.t();
+
+            // Calculate Kalman gain
+            cv::Mat H, R;
+            cv::Mat expectation = observeFunc(m_state_vec, z, measure_type, H, R);
+            cv::Mat S = H * m_state_cov * H.t() + R;
+            cv::Mat K = m_state_cov * H.t() * S.inv(cv::DecompTypes::DECOMP_SVD);
+            cv::Mat innovation = z - expectation;
+
+            // suppress large error
+            if (measure_type == OBS_XY)
+            {
+                for(int i = 0; i<innovation.size().area(); i++)
+                {
+                    double v = innovation.at<double>(i);
+                    if(v>m_max_observation_error) innovation.at<double>(i) = m_max_observation_error;
+                    if(v<=-m_max_observation_error) innovation.at<double>(i) = -m_max_observation_error;
+                }
+            }
+
+            // Fix orientation discontinuity
+            if (fix_theta_discontinuity)
+            {
+                double radian = innovation.at<double>(theta_index);
+                radian -= static_cast<int>(radian / (2 * CV_PI)) * (2 * CV_PI);
+                if (radian >= CV_PI) radian -= 2 * CV_PI;
+                if (radian < -CV_PI) radian += 2 * CV_PI;
+                innovation.at<double>(theta_index) = radian;
+            }
+
+            // Correct the state
+            m_state_vec = m_state_vec + K * innovation;
+            cv::Mat I_KH = cv::Mat::eye(m_state_cov.size(), m_state_cov.type()) - K * H;
+            //m_state_cov = I_KH * m_state_cov; // The standard form
+            m_state_cov = I_KH * m_state_cov * I_KH.t() + K * R * K.t(); // Joseph form
+
+            // Enforce the state covariance symmetric
+            m_state_cov = 0.5 * m_state_cov + 0.5 * cv::Mat(m_state_cov.t());
+            return true;
         }
 
     }; // End of 'EKFLocalizer'
