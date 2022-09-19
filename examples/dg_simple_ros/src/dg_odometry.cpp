@@ -194,8 +194,8 @@ bool DGNodeOdometry::runOnce(double timestamp)
 {
 	// Parameter obtained near NoBrand at Coex with error of 0.35m in x, 0.25m in y in 10 meters.
     double wheelbase = 0.588;            // distance between left and right wheel, 0.588
-    double wL = 0.00027718816638673;     // pulse to meter for left wheel
-    double wR = 0.0002715774392764516;   // pulse to meter for right wheel
+    double wL = 0.000271377664092;     // pulse to meter for left wheel
+    double wR = 0.000267372000397;   // pulse to meter for right wheel
 
     double pulse_left, pulse_right;
     bool left_initialized, right_initialized;
@@ -281,6 +281,7 @@ bool DGNodeOdometry::runOnce(double timestamp)
         cv::line(m_traj_map, center, cv::Point(heading_x, heading_y), robot_color, 2);
         cv::imshow("odometry", m_traj_map);
         int key = cv::waitKey(1);
+        if(key == 27) return false;
         if(key == 's' || key == 'S')
         {
             m_pulse_left = m_pulse_right = 0;
