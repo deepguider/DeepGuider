@@ -42,6 +42,7 @@ protected:
     bool m_simulated_encoder = false;
     bool m_display_trajectory = false;
     cv::Mat m_traj_map;
+    cv::Mat m_traj_map_original;
 
     double m_pulse_left = 0;
     double m_pulse_right = 0;
@@ -132,7 +133,26 @@ bool DGNodeOdometry::initialize(std::string config_file)
         int delta = 12;  // meter
         int scale = 50;
         int sz = (int)(delta*scale*2 + 1);
-        m_traj_map = cv::Mat::zeros(sz, sz, CV_8UC3);        
+        m_traj_map = cv::Mat::zeros(sz, sz, CV_8UC3);
+
+        cv::Scalar grid_color(100, 100, 100);
+        int w = m_traj_map.cols;
+        int h = m_traj_map.rows;
+        int cx = m_traj_map.cols/2;
+        int cy = m_traj_map.rows/2;
+        for(int i=-delta; i<=delta; i++)
+        {
+            int x = cx + (int)(i*scale);
+            line(m_traj_map, cv::Point(x,0), cv::Point(x, h), grid_color);
+            int y = cy + (int)(i*scale);
+            line(m_traj_map, cv::Point(0,y), cv::Point(w, y), grid_color);
+        }
+
+        int origin_y = cy + (delta - 3) * scale;
+        line(m_traj_map, cv::Point(cx,0), cv::Point(cx, h), cv::Scalar(200,200,200));
+        line(m_traj_map, cv::Point(0,origin_y), cv::Point(w, origin_y), cv::Scalar(200,200,200));
+
+        m_traj_map_original = m_traj_map.clone();
     }
 
     return true;
@@ -172,13 +192,10 @@ int DGNodeOdometry::run()
 
 bool DGNodeOdometry::runOnce(double timestamp)
 {
-    double wheelbase = 0.596;       // distance between left and right wheel, 0.588
-    //double wL = 0.9799845;                // compensation factor for left wheel
-    //double wR = 0.9913012;                // compensation factor for right wheel
-
 	// Parameter obtained near NoBrand at Coex with error of 0.35m in x, 0.25m in y in 10 meters.
-    double wL = 0.9757583432906607;      // compensation factor for left wheel
-    double wR = 0.9785017433324273;      // compensation factor for right wheel
+    double wheelbase = 0.588;            // distance between left and right wheel, 0.588
+    double wL = 0.00027718816638673;     // pulse to meter for left wheel
+    double wR = 0.0002715774392764516;   // pulse to meter for right wheel
 
     double pulse_left, pulse_right;
     bool left_initialized, right_initialized;
@@ -194,8 +211,8 @@ bool DGNodeOdometry::runOnce(double timestamp)
     double dpL = (left_initialized) ? pulse_left - m_prev_pulse_left : 0;
     double dpR = (right_initialized) ? pulse_right - m_prev_pulse_right : 0;
 
-    double dL = wL * dpL * 0.99 / 3485;
-    double dR = wR * dpR * 0.99 / 3567;
+    double dL = wL * dpL;
+    double dR = wR * dpR;
 
     double D = (dL + dR) / 2;
     double dtheta = (dR - dL) / wheelbase;
@@ -231,40 +248,49 @@ bool DGNodeOdometry::runOnce(double timestamp)
     {
         int delta = 12;  // meter
         int scale = 50;
-        int sz = (int)(delta*scale*2 + 1);
-        cv::Scalar grid_color(50, 50, 50);
-        if(m_traj_map.empty()) m_traj_map = cv::Mat::zeros(sz, sz, CV_8UC3);
-        else m_traj_map = 0;
+        m_traj_map_original.copyTo(m_traj_map);
 
-        int w = m_traj_map.cols;
-        int h = m_traj_map.rows;
-        int cx = m_traj_map.cols/2;
-        int cy = m_traj_map.rows/2;
-        for(int i=-delta; i<=delta; i++)
-        {
-            int x = cx + (int)(i*scale);
-            line(m_traj_map, cv::Point(x,0), cv::Point(x, h), grid_color);
-            int y = cy + (int)(i*scale);
-            line(m_traj_map, cv::Point(0,y), cv::Point(w, y), grid_color);
-        }
-
-        line(m_traj_map, cv::Point(cx,0), cv::Point(cx, h), cv::Scalar(100,100,100));
-        line(m_traj_map, cv::Point(0,cy), cv::Point(w, cy), cv::Scalar(100,100,100));
-
-        double ix = cy - scale*m_pose.y;      // odometry to image point
-        double iy = cx - scale*m_pose.x;      // odometry to image point
+        int ox = m_traj_map.cols/2;
+        int oy = m_traj_map.rows/2 + (delta - 3) * scale;
+        double ix = ox - scale*m_pose.y;      // odometry to image point
+        double iy = oy - scale*m_pose.x;      // odometry to image point
         cv::Point center = cv::Point2d(ix, iy) + cv::Point2d(0.5, 0.5);
-        int hr = 15;               // heading arrow length
+        int hr = 20;               // heading arrow length
         int heading_x = (int)(ix - hr*sin(m_pose.theta) + 0.5);
         int heading_y = (int)(iy - hr*cos(m_pose.theta) + 0.5);
-        int robot_radius = 10;
+        int robot_radius = 15;
         cv::Scalar robot_color(0,255,0);
 
-        cv::circle(m_traj_map, center, robot_radius, robot_color, 1);
-        cv::line(m_traj_map, center, cv::Point(heading_x, heading_y), robot_color, 1);
+        cv::Scalar gui_color(200,255,200);
+        double gui_scale = 0.8;
+        cv::Point gui_xy(10, 30);
+
+        std::string gui_msg = cv::format("x = %.2lf, y = %.2lf, theta = %.1lf", m_pose.x, m_pose.y, m_pose.theta*180/CV_PI);
+        cv::putText(m_traj_map, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_scale, gui_color, 1);
+        gui_xy.y += 40;
+
+        gui_msg = cv::format("left = %.0lf, right = %.0lf", pulse_left, pulse_right);
+        cv::putText(m_traj_map, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_scale, gui_color, 1);
+        gui_xy.y += 40;
+
+        gui_msg = "'s': initialize odometry";
+        cv::putText(m_traj_map, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_scale, gui_color, 1);
+        gui_xy.y += 40;
+
+        cv::circle(m_traj_map, center, robot_radius, robot_color, 2);
+        cv::line(m_traj_map, center, cv::Point(heading_x, heading_y), robot_color, 2);
         cv::imshow("odometry", m_traj_map);
         int key = cv::waitKey(1);
-        if(key == 27) return false;
+        if(key == 's' || key == 'S')
+        {
+            m_pulse_left = m_pulse_right = 0;
+            m_prev_pulse_left = 0;
+            m_prev_pulse_right = 0;
+            m_pose.x = 0;
+            m_pose.y = 0;
+            m_pose.theta = 0;
+            m_pose_prev = m_pose;
+        }
     }
 
     return true;
