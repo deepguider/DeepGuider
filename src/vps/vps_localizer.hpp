@@ -107,7 +107,7 @@ namespace dg
         {
             cv::Mat sv_image;
             dg::ID sv_id = getViewID();
-			printf("[vps] Enterd getView Image.");
+			printf("[vps] Entered getView Image.");
             if (m_use_custom_image_server)
             {
                 std::string fpath = cv::format("%s/%06ld.jpg", m_custom_dataset_abs_path.c_str(), sv_id); // ex) 004648.jpg 

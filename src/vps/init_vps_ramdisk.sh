@@ -18,3 +18,5 @@ else
     echo "This allows all users to have access to ${ramdisk}"
     sudo chmod 777 ${ramdisk} -R
 fi
+
+ln -sf /mnt/ramdisk/.vps_dataset data_vps/netvlad_etri_datasets
