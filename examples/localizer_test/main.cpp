@@ -370,13 +370,15 @@ int runLocalizer()
     if (!localizer->setParamMotionBounds(1, 20)) return -1;     // max. linear_velocity(m), max. angular_velocity(deg)
     if (!localizer->setParamGPSNoise(5)) return -1;            // position error(m)
     if (!localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
-    if (!localizer->setParamOdometryNoise(0.1, 1)) return -1;  // position error(m), orientation error(deg)
+    if (!localizer->setParamOdometryNoise(0.1, 2)) return -1;  // position error(m), orientation error(deg)
     if (!localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
     if (!localizer->setParamPOINoise(1, 10)) return -1;         // distance error(m), orientation error(deg)
     if (!localizer->setParamVPSNoise(1, 10)) return -1;         // distance error(m), orientation error(deg)
     if (!localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
     if (!localizer->setParamRoadThetaNoise(50)) return -1;      // angle arror(deg)
     if (!localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
+    localizer->setParamValue("max_observation_error", 20);         // meter
+    localizer->setParamValue("odometry_stabilization_d", 0.5);     // meter
     localizer->setParamValue("gps_reverse_vel", -0.5);
     localizer->setParamValue("search_turn_weight", 100);
     localizer->setParamValue("track_near_radius", 20);
@@ -387,7 +389,7 @@ int runLocalizer()
 
     enable_odometry = true;
     //enable_imu = true;
-    use_andro_gps = true;
+    //use_andro_gps = true;
     //use_novatel = true;
     //enable_ocr = true;
     //enable_poi = true;
