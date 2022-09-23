@@ -126,6 +126,20 @@ namespace dg
         double m_smoothing_beta = 0.01;
         double m_smoothing_velocity_decaying = 0.95;
 
+        // odometry stabilization
+        double m_odometry_stabilization_d = 0.5;
+        bool m_odometry_stabilized = false;
+        bool m_odometry_active = false;
+        Pose2 m_initial_odometry_pose;
+        Pose2 m_prev_odometry_pose;
+        Timestamp m_prev_odometry_time;
+
+        // robot stop
+        bool m_robot_stopped = false;
+        double m_stop_min_velocity = 0.05;     // meter/sec
+        double m_stop_min_period = 1.0;        // seconds
+        Timestamp m_stopped_time = -1;         // seconds
+
         /** Read parameters from cv::FileNode - Inherited from cx::Algorithm */
         virtual int readParam(const cv::FileNode& fn)
         {
@@ -138,6 +152,7 @@ namespace dg
             CX_LOAD_PARAM_COUNT(fn, "smoothing_alpha", m_smoothing_alpha, n_read);
             CX_LOAD_PARAM_COUNT(fn, "smoothing_beta", m_smoothing_beta, n_read);
             CX_LOAD_PARAM_COUNT(fn, "smoothing_velocity_decaying", m_smoothing_velocity_decaying, n_read);
+            CX_LOAD_PARAM_COUNT(fn, "odometry_stabilization_d", m_odometry_stabilization_d, n_read);
 
             int history_size = m_history_size;
             CX_LOAD_PARAM_COUNT(fn, "history_size", history_size, n_read);
@@ -301,6 +316,8 @@ namespace dg
 
         virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
+            if(m_odometry_active && m_odometry_stabilized && m_robot_stopped) return false;
+
             cv::AutoLock lock(m_mutex);
             Point2 smoothed_xy = xy;
             if (m_enable_gps_smoothing) smoothed_xy = getSmoothedGPS(xy, time);
@@ -317,9 +334,58 @@ namespace dg
             m_ekf->resetOdometry();
         }
 
+        virtual void resetOdometryActivated()
+        {
+            cv::AutoLock lock(m_mutex);
+            m_odometry_active = false;
+        }
+
         virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)
         {
+            // initialization
+            if(!m_odometry_active)
+            {
+                m_initial_odometry_pose = odometry_pose;
+                m_prev_odometry_pose = odometry_pose;
+                m_prev_odometry_time = time;
+                m_odometry_active = true;
+            }
+
+            // check odometry displacement
+            Point2 initial_displacement(odometry_pose.x - m_initial_odometry_pose.x, odometry_pose.y - m_initial_odometry_pose.y);
+            if(!m_odometry_stabilized && norm(initial_displacement) < m_odometry_stabilization_d)
+            {
+                m_prev_odometry_pose = odometry_pose;
+                m_prev_odometry_time = time;
+                return false;
+            }
+            m_odometry_stabilized = true;
+
             if(!isPoseStabilized()) return false;
+
+            // check odometry velocity
+            Point2 odo_delta(odometry_pose.x - m_prev_odometry_pose.x, odometry_pose.y - m_prev_odometry_pose.y);
+            double odo_dt = time - m_prev_odometry_time;
+            double odo_velocity = (odo_dt>0) ? norm(odo_delta) / odo_dt : norm(odo_delta);
+            if(norm(odo_delta) <= m_stop_min_velocity)
+            {
+                if(m_stopped_time<0)
+                {
+                    m_stopped_time = time;
+                }
+                double stop_period = time - m_stopped_time;
+                if(!m_robot_stopped && stop_period >= m_stop_min_period)
+                {
+                    m_robot_stopped = true;
+                }
+            }
+            else
+            {
+                m_robot_stopped = false;
+                m_stopped_time = -1;
+            }
+            m_prev_odometry_pose = odometry_pose;
+            m_prev_odometry_time = time;
 
             cv::AutoLock lock(m_mutex);
             if (m_ekf_pose_history.empty()) return false;

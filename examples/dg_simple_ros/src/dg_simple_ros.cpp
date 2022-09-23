@@ -324,6 +324,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     {
         m_apply_odometry = !m_apply_odometry;
         if(m_enable_odometry && m_apply_odometry) m_localizer.resetOdometry();
+        if(m_enable_odometry && !m_apply_odometry) m_localizer.resetOdometryActivated();
     }
     if (key == 'v' || key == 'V') m_apply_vps = !m_apply_vps;
     if (key == 'p' || key == 'P') m_apply_ocr = !m_apply_ocr;
