@@ -83,6 +83,13 @@ public:
         return m_map.cvtLatLon2UTM(ll);
     }
 
+    /** Get UTM position of a gps position by using shared converter */
+    virtual LatLon cvtUTM2LatLon(const Point2UTM& utm)
+    {
+        cv::AutoLock lock(m_mutex_map);
+        return m_map.cvtUTM2LatLon(utm);
+    }
+
 protected:
     dg::Map m_map;
     dg::Path m_path;

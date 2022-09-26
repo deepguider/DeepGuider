@@ -135,6 +135,7 @@ namespace dg
         Timestamp m_prev_odometry_time;
 
         // robot stop
+        bool m_enable_stop_filtering = true;
         bool m_robot_stopped = false;
         double m_stop_min_velocity = 0.05;     // meter/sec
         double m_stop_min_period = 1.0;        // seconds
@@ -153,6 +154,7 @@ namespace dg
             CX_LOAD_PARAM_COUNT(fn, "smoothing_beta", m_smoothing_beta, n_read);
             CX_LOAD_PARAM_COUNT(fn, "smoothing_velocity_decaying", m_smoothing_velocity_decaying, n_read);
             CX_LOAD_PARAM_COUNT(fn, "odometry_stabilization_d", m_odometry_stabilization_d, n_read);
+            CX_LOAD_PARAM_COUNT(fn, "enable_stop_filtering", m_enable_stop_filtering, n_read);
 
             int history_size = m_history_size;
             CX_LOAD_PARAM_COUNT(fn, "history_size", history_size, n_read);
@@ -316,7 +318,7 @@ namespace dg
 
         virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
-            if(m_odometry_active && m_odometry_stabilized && m_robot_stopped) return false;
+            if(m_enable_stop_filtering && m_odometry_active && m_odometry_stabilized && m_robot_stopped) return false;
 
             cv::AutoLock lock(m_mutex);
             Point2 smoothed_xy = xy;
