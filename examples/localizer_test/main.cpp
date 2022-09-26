@@ -355,7 +355,7 @@ int runLocalizer()
     COEX.map_file = "data/COEX/TopoMap_COEX.csv";
     COEX.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
     COEX.video_resize = 0.4;
-    COEX.video_offset = cv::Point(10, 50);
+    COEX.video_offset = cv::Point(200, 50);
     COEX.zoom_level = 5;
     COEX.zoom_radius = 40;
     COEX.zoom_offset = cv::Point(450, 500);
@@ -400,7 +400,7 @@ int runLocalizer()
     //enable_roadtheta = true;
     //draw_gps = true;
 
-    int data_sel = 6;
+    int data_sel = 0;
     double start_time = 0;     // skip time (seconds)
     //rec_video_file = "localizer_after_stop_filtering.avi";
     double rec_video_fps = 10;
