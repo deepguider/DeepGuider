@@ -504,6 +504,7 @@ bool DeepGuider::initialize(std::string config_file)
     m_path_generation_pended = false;
     m_cam_image.release();
     m_cam_capture_time = -1;
+    m_360cam_capture_time = -1;
     m_vps_image.release();
     m_roadlr_image.release();
     m_logo_image.release();
@@ -688,6 +689,7 @@ int DeepGuider::run()
             m_cam_mutex.lock();
             m_cam_image = video_image;
             m_cam_capture_time = data_time;
+            m_360cam_capture_time = data_time;
             m_cam_mutex.unlock();
 
             // process vision modules
@@ -1652,15 +1654,43 @@ bool DeepGuider::procRoadTheta()
 
 bool DeepGuider::procVps()
 {
-    m_cam_mutex.lock();
-    dg::Timestamp capture_time = m_cam_capture_time;
-    if (m_cam_image.empty() || capture_time <= m_vps.timestamp())
-    {
-        m_cam_mutex.unlock();
-        return false;
-    }
-    cv::Mat cam_image = m_cam_image.clone();
-    m_cam_mutex.unlock();
+	cv::Mat cam_image;
+	cv::Mat cam_image_for_draw;
+	dg::Timestamp capture_time;
+	double txt_scale;
+
+	/*
+	if (false)
+	{ // Use usb cam image as input to vps
+	    m_cam_mutex.lock();
+	    capture_time = m_cam_capture_time;
+	    if (m_cam_image.empty() || capture_time <= m_vps.timestamp())
+	    {
+	        m_cam_mutex.unlock();
+	        return false;
+	    }
+	    cam_image = m_cam_image.clone();
+	    m_cam_mutex.unlock();
+	}
+	else
+	{ // Use 360 panoramic image as input to vps
+	    m_360cam_mutex.lock();
+	    capture_time = m_360cam_capture_time;
+	    //if (m_360cam_image.empty() || capture_time <= m_vps.timestamp())
+	    if (m_360cam_image.empty())
+	    {
+	        m_360cam_mutex.unlock();
+	        return false;
+	    }
+	    cam_image = m_360cam_image.clone();
+	    m_360cam_mutex.unlock();
+	}
+	*/
+
+	if(!get_cam_image(cam_image, cam_image_for_draw, 1, txt_scale, capture_time, m_vps.timestamp()))
+	{
+	    return false;
+	}
 
     dg::Point2 sv_xy;
     dg::Polar2 relative;
@@ -1674,7 +1704,7 @@ bool DeepGuider::procVps()
 	    cv::Mat sv_image = m_vps.getViewImage();  // I will return naver or custom db image according to m_vps_use_custom_image_server
         if(!sv_image.empty())
         {
-            m_vps.draw(sv_image, 2.0);
+            m_vps.draw(sv_image, txt_scale);  // 2.0 when w is 1280(webcam), 1.0 when w is 640(360cam_crop)
             m_vps_mutex.lock();
             m_vps_image = sv_image;
             m_vps_xy = sv_xy;

@@ -172,6 +172,7 @@ class vps:
         self.use_custom_dataset = False
         self.dbFeat_fname = opt.dbFeat_fname
         self.dg_ros_yml = load_cv2_yaml("dg_ros.yml")
+        self.parsing_dg_ros_yml()
 
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
@@ -332,7 +333,7 @@ class vps:
             print('===> Building model end(vps.py)')
 
         #self.mVps_filter = vps_filter(ksize=7)  #  Default
-        self.mVps_filter = vps_filter(ksize=11)  #  For coex 22.08.29 test
+        self.mVps_filter = vps_filter(ksize=self.filter_size)  #  11 for coex 22.08.29 test
 
         self.mcl_init() ## Initialize : vps_mcl
 
@@ -624,6 +625,7 @@ class vps:
         load_dbfeat= self.dg_ros_yml.read("vps_load_dbfeat")
         save_dbfeat= self.dg_ros_yml.read("vps_save_dbfeat")
         use_custom_image_server = self.dg_ros_yml.read("vps_use_custom_image_server")
+        self.filter_size = self.dg_ros_yml.read("vps_filter_size")
         #gps_accuracy = self.dg_ros_yml.read("vps_gps_accuracy")
 
         #ipaddr = ipaddr_port.split(":")[0]
