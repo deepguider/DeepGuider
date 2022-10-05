@@ -111,6 +111,23 @@ namespace dg
             if (m_use_custom_image_server)
             {
                 std::string fpath;
+
+                fpath = cv::format("%s/%06ld_concat.jpg", m_custom_dataset_abs_path.c_str(), sv_id); // ex) 004648_concat.jpg, concatenated image horizontally
+                if (file_exists(fpath))
+			    {
+			    	sv_image = cv::imread(fpath);
+			    	printf("[vps] custom streetview db image [%s] was found.", fpath.c_str());
+            		return sv_image;                
+			    }
+
+                fpath = cv::format("%s/%06ld.jpg", m_custom_dataset_abs_path.c_str(), sv_id); // ex) 004648.jpg, front
+                if (file_exists(fpath))
+			    {
+			    	sv_image = cv::imread(fpath);
+			    	printf("[vps] custom streetview db image [%s] was found.", fpath.c_str());
+            		return sv_image;                
+			    }
+
 				for (size_t i = 0; i <= 2; i++)
 				{
 					for (size_t j = 0; j <= 11; j++)

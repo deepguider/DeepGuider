@@ -976,6 +976,10 @@ class vps:
                     imgID = imgID.split('_')[-2] #2813220026700000
                 elif "pitch" in fname:  # "000156_pitch1_yaw11.jpg"
                     imgID = imgID.split('_')[0] #2813220026700000
+                elif "concat" in fname:  # "000156_concat.jpg"
+                    imgID = imgID.split('_')[0] #2813220026700000
+                else:  # "000156_concat.jpg"
+                    imgID = imgID.split('_')[0] #2813220026700000
             else:
                 imgID = imgID.split('.')[0]
             ID.append(imgID) # string
