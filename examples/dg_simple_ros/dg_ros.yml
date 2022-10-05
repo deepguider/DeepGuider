@@ -43,9 +43,9 @@ vps_use_custom_image_server: 0   # 0 (default) to use naver roadview, 1 to use c
 vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_
 vps_enable_mcl: 0
 vps_filter_size: 11  # 11 for coex indoor, window size of median filter ( 1 means off)
-vps_filter_valid_thre: 5 # 1st threshold to check valid of vps result in median filter in metric (Large numger, (ex) 1000, means off)
+vps_filter_valid_thre: 3 # 1st threshold to check valid of vps result in median filter in metric (Large numger, (ex) 1000, means off)
 vps_filter_outlier_thre: 25  # 2nd threshold to reject outlier sample in median filter in metric (Large numger, (ex) 1000, means off)
-vps_filter_conf_thre: 0.8
+vps_filter_conf_thre: 0.81
 
 ## Odometry Specific Options
 enable_simulated_encoder: 0

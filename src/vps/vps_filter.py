@@ -27,6 +27,10 @@ class vps_filter:
             self.valid_dist_thre = 500
             self.utm_differential_threshold = 500
 
+        self.continuous_outlier_count = 0
+        self.continuous_outlier_count_min = 0
+        self.continuous_outlier_count_max = 30
+
     def set_valid_dist_thre(self, thre=5):  # Large number, 500 meter, means filter off.
         self.valid_dist_thre = thre
 
@@ -108,6 +112,9 @@ class vps_filter:
     def check_valid(self, new_x, new_y):
         if new_x >0 and new_y > 0:
             self.update_samples(new_x, new_y)
+        else:
+            return False, None
+
         utm_xys = self.get_samples(self.n_samples)
         mean_xys = np.median(utm_xys, axis=0)
         if len(utm_xys) < self.n_samples_min:
@@ -115,13 +122,20 @@ class vps_filter:
         utm_distance = np.sqrt(np.sum((mean_xys - [new_x, new_y])**2))  # meter
         ## Check 2 : distance average point and current point in the small window
         if utm_distance > self.outlier_dist_thre:
-            self.undo_update_samples()
-            #print("[vps] Reject outlier ==========================> Reject outlier : {}".format(utm_distance))
-        if utm_distance < self.valid_dist_thre:  # Check new point is near to mean of previous point.
-            return True, mean_xys
+            if self.continuous_outlier_count < self.continuous_outlier_count_max:
+                self.continuous_outlier_count += 1
+                self.undo_update_samples()
         else:
+            self.continuous_outlier_count -= 1
+            if self.continuous_outlier_count < self.continuous_outlier_count_min:
+                self.continuous_outlier_count = self.continuous_outlier_count_min
+
+            #print("[vps] Reject outlier ==========================> Reject outlier : {}".format(utm_distance))
+        if utm_distance > self.valid_dist_thre:  # Check new point is near to mean of previous point.
             #print("[vps] Filter out ==========================> Filter out utm : {}".format(utm_distance))
             return False, mean_xys
+        else:
+            return True, mean_xys
 
     def check_valid_ori(self, new_x, new_y):
         self.update_samples(new_x, new_y)

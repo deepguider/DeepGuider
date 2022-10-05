@@ -877,7 +877,7 @@ class vps:
         R, t = self.get_relativePose('zero')
 
         if relativePose_enable == True:
-            if Confs[0] > 0.8:
+            if Confs[0] > self.filter_conf_thre:
                 R0, t0 = self.get_relativePose('normal')
                 pan, tilt = self.mod_rPose.get_pan_tilt(R0)
                 query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R0, t0)

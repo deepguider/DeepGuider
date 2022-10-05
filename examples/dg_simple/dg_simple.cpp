@@ -83,7 +83,7 @@ protected:
 
     // VPS parameters
 	// 0.0 means "Not using", 1.0 means "Using"
-    double m_vps_max_error_distance = 25;
+    double m_vps_max_error_distance = 75; // 25
 	int m_vps_load_dbfeat = 0;
 	int m_vps_save_dbfeat = 0;
 	double m_vps_gps_accuracy = 0.9;  // Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
@@ -424,7 +424,8 @@ bool DeepGuider::initialize(std::string config_file)
     if (!m_localizer.setParamOdometryNoise(0.1, 2)) return false;  // position error(m), orientation error(deg)
     if (!m_localizer.setParamIMUCompassNoise(1, 0)) return false;   // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamPOINoise(5, 20, 25)) return false;    // position error(m), orientation error(deg), max error (m)
-    if (!m_localizer.setParamVPSNoise(5, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
+    //if (!m_localizer.setParamVPSNoise(5, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
+    if (!m_localizer.setParamVPSNoise(1, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
     if (!m_localizer.setParamIntersectClsNoise(0.1)) return false;  // position error(m)
     if (!m_localizer.setParamRoadThetaNoise(50)) return false;      // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin
