@@ -324,6 +324,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     {
         m_apply_odometry = !m_apply_odometry;
         if(m_enable_odometry && m_apply_odometry) m_localizer.resetOdometry();
+        if(m_enable_odometry && !m_apply_odometry) m_localizer.resetOdometryActivated();
     }
     if (key == 'v' || key == 'V') m_apply_vps = !m_apply_vps;
     if (key == 'p' || key == 'P') m_apply_ocr = !m_apply_ocr;
@@ -734,13 +735,26 @@ void DeepGuiderROS::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& ma
 
 void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
+    double x = msg->pose.position.x;
+    double y = msg->pose.position.y;
+    ROS_INFO_THROTTLE(1.0, "Robot: %f,%f", x, y);
+
+    double ori_x = msg->pose.orientation.x;
+    double ori_y = msg->pose.orientation.y;
+    double ori_z = msg->pose.orientation.z;
+    double ori_w = msg->pose.orientation.w;
+    cv::Point3d euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
+    double theta = euler.z;
+
+    dg::Timestamp timestamp = msg->header.stamp.toSec();
+    if (m_enable_odometry)
+    {
+        procOdometryData(x, y, theta, timestamp);
+    }
+
     dg::Pose2 robot_pose;
     robot_pose.x = msg->pose.position.x;
     robot_pose.y = msg->pose.position.y;
-    ROS_INFO_THROTTLE(1.0, "Robot: %f,%f", robot_pose.x, robot_pose.y);
-
-    dg::Timestamp capture_time = msg->header.stamp.toSec();        
-    cv::Point2d img_pt_dx;
 
     //Align robot pose to image point
 	ROS_INFO_THROTTLE(1.0, "m_guider.m_site_name: %d", m_guider.m_site_name);
@@ -756,13 +770,12 @@ void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr
         double img_deg_dx = m_robot_map_rotation;
         cv::Point2d img_scale_dx = cv::Point2d(m_robotmap_pixel_per_meter, m_robotmap_pixel_per_meter);
         cv::Point2d img_offset_dx = m_guider.cvtValue2Pixel4Guidance(m_robot_map_origin, -img_deg_dx, img_scale_dx, cv::Point2d(0.0,0.0));
-        img_pt_dx = m_guider.cvtValue2Pixel4Guidance(robot_pose, img_deg_dx, img_scale_dx, img_offset_dx);
+        cv::Point2d img_pt_dx = m_guider.cvtValue2Pixel4Guidance(robot_pose, img_deg_dx, img_scale_dx, img_offset_dx);
         ROS_INFO_THROTTLE(1.0, "callbackRobotPose-robot2image: %f,%f", img_pt_dx.x, img_pt_dx.y);
    
         m_guider.m_robot_pose = img_pt_dx;
         cv::circle(m_map_image, img_pt_dx, 10, cv::Vec3b(0, 255, 0));
-    }
-        
+    }        
 }
 
 

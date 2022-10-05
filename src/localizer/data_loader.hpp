@@ -538,14 +538,14 @@ protected:
         cx::CSVReader csv;
         if (csv.open(odo_file))
         {
-            // time,seq,nsecs,frame_id,child_frame_id,pos.x,pos.y,pos.z,.orientation.x,orientation.y,orientation.z
-            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 2, 5, 6, 10 }); // Skip the header
+            // time,seq,secs,nsecs,frame_id,child_frame_id,pos.x,pos.y,pos.z,.orientation.x,orientation.y,orientation.z,orientation.w
+            cx::CSVReader::Double2D raw_data = csv.extDouble2D(1, { 2, 3, 6, 7, 11 }); // Skip the header
             if (!raw_data.empty())
             {
                 for (auto row = raw_data.begin(); row != raw_data.end(); row++)
                 {
-                    double timestamp = 1e-9 * row->at(0);
-                    data.push_back({ timestamp, row->at(1), row->at(2), row->at(3) }); // t,x,y,theta
+                    double timestamp = row->at(0) + 1e-9 * row->at(1);
+                    data.push_back({ timestamp, row->at(2), row->at(3), row->at(4) }); // t,x,y,theta
                 }
             }
         }

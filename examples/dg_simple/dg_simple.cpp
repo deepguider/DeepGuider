@@ -428,20 +428,22 @@ bool DeepGuider::initialize(std::string config_file)
     if (!m_localizer.setParamIntersectClsNoise(0.1)) return false;  // position error(m)
     if (!m_localizer.setParamRoadThetaNoise(50)) return false;      // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin
-    m_localizer.setParamValue("max_observation_error", 20);
-    m_localizer.setParamValue("gps_reverse_vel", -0.5);
-    m_localizer.setParamValue("search_turn_weight", 100);
-    m_localizer.setParamValue("track_near_radius", 20);
     m_localizer.setParamValue("enable_path_projection", true);
     m_localizer.setParamValue("enable_map_projection", false);
     m_localizer.setParamValue("enable_backtracking_ekf", true); // default : true, for demo : false
     m_localizer.setParamValue("enable_gps_smoothing", false);
-    m_localizer.setParamValue("enable_debugging_display", false);
+    m_localizer.setParamValue("enable_stop_filtering", true);
+    m_localizer.setParamValue("max_observation_error", 20);         // meter
+    m_localizer.setParamValue("odometry_stabilization_d", 0.5);     // meter
+    m_localizer.setParamValue("gps_reverse_vel", -0.5);
+    m_localizer.setParamValue("search_turn_weight", 100);
+    m_localizer.setParamValue("track_near_radius", 20);
     m_localizer.setParamValue("lr_mismatch_cost", 50);
     m_localizer.setParamValue("enable_lr_reject", false);
     m_localizer.setParamValue("lr_reject_cost", 20);             // 20
     m_localizer.setParamValue("enable_discontinuity_cost", true);
     m_localizer.setParamValue("discontinuity_weight", 0.5);      // 0.5
+    m_localizer.setParamValue("enable_debugging_display", false);
     printf("\tLocalizer initialized!\n");
 
     // initialize guidance
@@ -737,6 +739,7 @@ int DeepGuider::run()
             {
                 m_apply_odometry = !m_apply_odometry;
                 if(m_enable_odometry && m_apply_odometry) m_localizer.resetOdometry();
+                if(m_enable_odometry && !m_apply_odometry) m_localizer.resetOdometryActivated();
             }
             if (key == 'v' || key == 'V') m_apply_vps = !m_apply_vps;
             if (key == 'p' || key == 'P') m_apply_ocr = !m_apply_ocr;

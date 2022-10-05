@@ -355,7 +355,7 @@ int runLocalizer()
     COEX.map_file = "data/COEX/TopoMap_COEX.csv";
     COEX.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
     COEX.video_resize = 0.4;
-    COEX.video_offset = cv::Point(10, 50);
+    COEX.video_offset = cv::Point(200, 50);
     COEX.zoom_level = 5;
     COEX.zoom_radius = 40;
     COEX.zoom_offset = cv::Point(450, 500);
@@ -370,13 +370,15 @@ int runLocalizer()
     if (!localizer->setParamMotionBounds(1, 20)) return -1;     // max. linear_velocity(m), max. angular_velocity(deg)
     if (!localizer->setParamGPSNoise(5)) return -1;            // position error(m)
     if (!localizer->setParamGPSOffset(1, 0)) return -1;         // displacement(lin,ang) from robot origin
-    if (!localizer->setParamOdometryNoise(0.1, 1)) return -1;  // position error(m), orientation error(deg)
+    if (!localizer->setParamOdometryNoise(0.1, 2)) return -1;  // position error(m), orientation error(deg)
     if (!localizer->setParamIMUCompassNoise(1, 0)) return -1;   // angle arror(deg), angle offset(deg)
     if (!localizer->setParamPOINoise(1, 10)) return -1;         // distance error(m), orientation error(deg)
     if (!localizer->setParamVPSNoise(1, 10)) return -1;         // distance error(m), orientation error(deg)
     if (!localizer->setParamIntersectClsNoise(0.1)) return -1;  // position error(m)
     if (!localizer->setParamRoadThetaNoise(50)) return -1;      // angle arror(deg)
     if (!localizer->setParamCameraOffset(1, 0)) return -1;      // displacement(lin,ang) from robot origin
+    localizer->setParamValue("max_observation_error", 20);         // meter
+    localizer->setParamValue("odometry_stabilization_d", 0.5);     // meter
     localizer->setParamValue("gps_reverse_vel", -0.5);
     localizer->setParamValue("search_turn_weight", 100);
     localizer->setParamValue("track_near_radius", 20);
@@ -384,6 +386,7 @@ int runLocalizer()
     localizer->setParamValue("enable_map_projection", false);
     localizer->setParamValue("enable_backtracking_ekf", true);
     localizer->setParamValue("enable_gps_smoothing", false);
+    localizer->setParamValue("enable_stop_filtering", true);
 
     enable_odometry = true;
     //enable_imu = true;
@@ -398,23 +401,24 @@ int runLocalizer()
     //draw_gps = true;
 
     int data_sel = 0;
-    double start_time = 200;     // skip time (seconds)
-    //rec_video_file = "localizer_outofpath_smoothing.avi";
+    double start_time = 0;     // skip time (seconds)
+    //rec_video_file = "localizer_after_stop_filtering.avi";
     double rec_video_fps = 10;
     std::vector<std::string> data_head[] = {
-        {"data/ETRI/2022-08-08-13-38-04_etri_to_119", "0"},
-        {"data/ETRI/191115_151140", "1.75"},    // 0, 11296 frames, 1976 sec, video_scale = 1.75
-        {"data/ETRI/200219_150153", "1.6244"},  // 1, 23911 frames, 3884 sec, video_scale = 1.6244
-        {"data/ETRI/200326_132938", "1.6694"},  // 2, 18366 frames, 3066 sec, video_scale = 1.6694
-        {"data/ETRI/200429_131714", "1.6828"},  // 3, 13953 frames, 2348 sec, video_scale = 1.6828
-        {"data/ETRI/200429_140025", "1.6571"},  // 4, 28369 frames, 4701 sec, video_scale = 1.6571
-        {"data/COEX/201007_142326", "2.8918"},  // 5, 12435 frames, 1240 sec, video_scale = 2.8918
-        {"data/COEX/201007_145022", "2.869"},   // 6, 18730 frames, 1853 sec, video_scale = 2.869
-        {"data/COEX/201007_152840", "2.8902"}   // 7, 20931 frames, 2086 sec, video_scale = 2.8902
+        {"data/ETRI/2022-08-08-13-38-04_etri_to_119", "avi", "0"},
+        {"data/ETRI/191115_151140", "avi", "1.75"},    // 1, 11296 frames, 1976 sec, video_scale = 1.75
+        {"data/ETRI/200219_150153", "avi", "1.6244"},  // 2, 23911 frames, 3884 sec, video_scale = 1.6244
+        {"data/ETRI/200326_132938", "avi", "1.6694"},  // 3, 18366 frames, 3066 sec, video_scale = 1.6694
+        {"data/ETRI/200429_131714", "avi", "1.6828"},  // 4, 13953 frames, 2348 sec, video_scale = 1.6828
+        {"data/ETRI/200429_140025", "avi", "1.6571"},  // 5, 28369 frames, 4701 sec, video_scale = 1.6571
+        {"data/COEX/2022-08-29-16-01-55", "avi", "0"}, // 6
+        {"data/COEX/201007_142326", "mkv", "2.8918"},  // 7, 12435 frames, 1240 sec, video_scale = 2.8918
+        {"data/COEX/201007_145022", "mkv", "2.869"},   // 8, 18730 frames, 1853 sec, video_scale = 2.869
+        {"data/COEX/201007_152840", "mkv", "2.8902"}   // 9, 20931 frames, 2086 sec, video_scale = 2.8902
     };
     const int coex_idx = 6;
     MapGUIProp& PROP = (data_sel < coex_idx) ? ETRI : COEX;
-    std::string video_file = (data_sel < coex_idx) ? data_head[data_sel][0] + "_images.avi" : data_head[data_sel][0] + "_images.mkv";
+    std::string video_file = data_head[data_sel][0] + "_images." + data_head[data_sel][1];
     if (enable_gps)
     {
         if (use_andro_gps) gps_file = data_head[data_sel][0] + "_andro2linux_gps.csv";
