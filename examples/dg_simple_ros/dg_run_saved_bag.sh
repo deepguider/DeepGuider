@@ -55,7 +55,8 @@ gnome-terminal --tab --title="theta360z1_crop_pub" -- bash -c 'cd ~/catkin_ws/sr
 #set_site_idx 4; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag /dg_odometry/pose:=/dg_odometry_record/pose
 #set_site_idx 4; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/220418_coex_out_to_indoor/_2022-04-18-14-08-03.bag /dg_odometry/pose:=/dg_odometry_record/pose
 #set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/220418_coex_out_to_indoor/_2022-04-18-13-20-44.bag /dg_odometry/pose:=/dg_odometry_record/pose  # no gps test with vps at COEX
-set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 1 ./recordings/220829_coex/_2022-08-29-11-52-58.bag /dg_odometry/pose:=/dg_odometry_record/pose # coex indoor
+#set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 1 ./recordings/220829_coex/_2022-08-29-11-52-58.bag /dg_odometry/pose:=/dg_odometry_record/pose # coex indoor
+set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 1 ./recordings/220829_coex/_2022-08-29-13-23-17.bag /dg_odometry/pose:=/dg_odometry_record/pose # coex indoor
 #set_site_idx 4; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/coex.bag /dg_odometry/pose:=/dg_odometry_record/pose
 #set_site_idx 3; set_topic_idx 2; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 600 -r 10 ./recordings/etri.bag /dg_odometry/pose:=/dg_odometry_record/pose
 #set_site_idx 5; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/indoor.bag /dg_odometry/pose:=/dg_odometry_record/pose

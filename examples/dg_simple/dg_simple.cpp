@@ -1703,6 +1703,10 @@ bool DeepGuider::procVps()
         if (m_apply_vps) m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
 
+		if (sv_confidence < 0)
+		{
+			return false;
+		}
 	    cv::Mat sv_image = m_vps.getViewImage();  // I will return naver or custom db image according to m_vps_use_custom_image_server
         if(!sv_image.empty())
         {

@@ -332,8 +332,7 @@ class vps:
         if self.verbose:
             print('===> Building model end(vps.py)')
 
-        #self.mVps_filter = vps_filter(ksize=7)  #  Default
-        self.mVps_filter = vps_filter(ksize=self.filter_size)  #  11 for coex 22.08.29 test
+        self.mVps_filter = vps_filter(self.filter_size, self.filter_valid_thre, self.filter_outlier_thre)  # 11 for coex 22.08.29 test
 
         self.mcl_init() ## Initialize : vps_mcl
 
@@ -626,6 +625,9 @@ class vps:
         save_dbfeat= self.dg_ros_yml.read("vps_save_dbfeat")
         use_custom_image_server = self.dg_ros_yml.read("vps_use_custom_image_server")
         self.filter_size = self.dg_ros_yml.read("vps_filter_size")
+        self.filter_valid_thre = self.dg_ros_yml.read("vps_filter_valid_thre")
+        self.filter_outlier_thre = self.dg_ros_yml.read("vps_filter_outlier_thre")
+        self.filter_conf_thre = self.dg_ros_yml.read("vps_filter_conf_thre")
         #gps_accuracy = self.dg_ros_yml.read("vps_gps_accuracy")
 
         #ipaddr = ipaddr_port.split(":")[0]
@@ -846,27 +848,36 @@ class vps:
         utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
 
         ## Filter out noisy result with median filter for top-1 for indoor test
-        if self.port == "10003":  # 10003 means etri indoor, 10004 means coex indoor
-        #if self.port == "10003" or self.port == "10004":  # 10003 means etri indoor, 10004 means coex indoor
-            top1_id = IDs[0]
-            _, lat, lon = GetStreetView_fromID(top1_id, roi_radius=1, ipaddr=self.ipaddr)
-            if lat != -1:  # Image server is ready.
-                # When image server is not available, do not filter out because it cannot get current lat, lon information.
-                utm_x, utm_y, r_num, r_str = utm.from_latlon(lat, lon)  # (353618.4250711136, 4027830.874694569, 52, 'S')
-                self.mVps_filter.set_utm_distance_threshold(5)  # filter radius 5 meters for etri indoor
-                #self.mVps_filter.set_utm_distance_threshold(self.get_radius())  # filter radius 50 meters for outdoor
-                if self.mVps_filter.check_valid(utm_x, utm_y) == False:   # Filter out noisy result with ransac of first-order line function
-                    # Noisy result is changed to -1.
-                    IDs[0] = 0
-                    Confs[0] = -1
-        else:
+#        if self.port == "10003":  # 10003 means etri indoor, 10004 means coex indoor
+#            top1_id = IDs[0]
+#            _, lat, lon = GetStreetView_fromID(top1_id, roi_radius=1, ipaddr=self.ipaddr)
+#            if lat != -1:  # Image server is ready.
+#                # When image server is not available, do not filter out because it cannot get current lat, lon information.
+#                utm_x, utm_y, r_num, r_str = utm.from_latlon(lat, lon)  # (353618.4250711136, 4027830.874694569, 52, 'S')
+#                self.mVps_filter.set_utm_distance_threshold(5)  # filter radius 5 meters for etri indoor
+#                #self.mVps_filter.set_utm_distance_threshold(self.get_radius())  # filter radius 50 meters for outdoor
+#                if self.mVps_filter.check_valid(utm_x, utm_y) == False:   # Filter out noisy result with ransac of first-order line function
+#                    # Noisy result is changed to -1.
+#                    IDs[0] = 0
+#                    Confs[0] = -1
+
+        ## Filter out noisy result with median filter for top-1 for indoor test
+        if Confs[0] >= self.filter_conf_thre :
             valid, mean_utm_xy = self.mVps_filter.check_valid(utm_x, utm_y)
+        else:
+            valid = False
+
+        if valid is True:
             utm_x, utm_y = mean_utm_xy[0], mean_utm_xy[1]
+        else:
+            utm_x, utm_y = -1, -1
+            IDs[0] = -1
+            Confs[0] = -1
 
         R, t = self.get_relativePose('zero')
 
         if relativePose_enable == True:
-            if Confs[0] > 0.4:
+            if Confs[0] > 0.8:
                 R0, t0 = self.get_relativePose('normal')
                 pan, tilt = self.mod_rPose.get_pan_tilt(R0)
                 query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R0, t0)

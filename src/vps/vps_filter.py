@@ -7,7 +7,7 @@ from ipdb import set_trace as bp
 from skimage.measure import LineModelND, ransac
 
 class vps_filter:
-    def __init__(self, ksize=9):
+    def __init__(self, ksize=9, valid_dist_thre=5, outlier_dist_thre=25):  # meters
         self.n_sample_count = 0
         self.n_samples = ksize  # kernel_size
         #self.n_mean_samples = 15  # filter size of points for average filter
@@ -19,19 +19,25 @@ class vps_filter:
         #self.utm_xys[:,1] = np.arange(self.n_samples_max)  # for debugging
 
         if True:
-            #self.ransacline_distance_threshold = 15  # Distance between current point and estimated line
-            self.utm_distance_threshold = 5  # Distance between current point and average of points
+            self.valid_dist_thre = valid_dist_thre  # Distance in meter between current point and average of points
+            self.outlier_dist_thre = outlier_dist_thre
             #self.utm_differential_threshold = 30  # Differential in the previous ponits. If there is large disarity and not back to be small, then it means noisy data.
         else:  # Large number means disabling this filter
             self.ransacline_distance_threshold = 500 # noisy postion difference in meters
-            self.utm_distance_threshold = 500
+            self.valid_dist_thre = 500
             self.utm_differential_threshold = 500
 
-    def set_utm_distance_threshold(self, thre=500):  # Large number, 500 meter, means filter off.
-        self.utm_distance_threshold = thre
+    def set_valid_dist_thre(self, thre=5):  # Large number, 500 meter, means filter off.
+        self.valid_dist_thre = thre
 
-    def get_utm_distance_threshold(self, thre=500):  # Large number, 500 meter, means filter off.
-        return self.utm_distance_threshold
+    def set_outlier_dist_thre(self, thre=25):  # Large number, 500 meter, means filter off.
+        self.outlier_dist_thre = thre
+
+    def get_valid_dist_thre(self):
+        return self.valid_dist_thre
+
+    def get_outlier_dist_thre(self):
+        return self.outlier_dist_thre
 
     def get_samples_toy_example(self, n_samples=10, n_outliers_ratio=0.4):  # For toy example
         if n_samples <= 0:
@@ -74,11 +80,16 @@ class vps_filter:
         d = abs((a * x1 + b * y1 + c)) / (np.sqrt(a * a + b * b)+1e-7)
         return d
 
-    def update_samples(self, x, y):
+    def update_samples(self, x, y):  # add new data to last position
         if self.n_sample_count < self.n_samples_max:
             self.n_sample_count += 1
         self.utm_xys[:-1] = self.utm_xys[1:]
         self.utm_xys[-1,:] = [x, y]
+
+    def undo_update_samples(self): # remove last one
+        if self.n_sample_count > self.n_samples + 1:  # larger than kernel size
+            self.n_sample_count -= 1
+            self.utm_xys[1:] = self.utm_xys[:-1]
 
     def get_samples(self, n_samples=0):
         if n_samples <= 0:
@@ -103,10 +114,13 @@ class vps_filter:
             return False, mean_xys
         utm_distance = np.sqrt(np.sum((mean_xys - [new_x, new_y])**2))  # meter
         ## Check 2 : distance average point and current point in the small window
-        if utm_distance < self.utm_distance_threshold:  # Check new point is near to mean of previous point.
+        if utm_distance > self.outlier_dist_thre:
+            self.undo_update_samples()
+            #print("[vps] Reject outlier ==========================> Reject outlier : {}".format(utm_distance))
+        if utm_distance < self.valid_dist_thre:  # Check new point is near to mean of previous point.
             return True, mean_xys
         else:
-            #print("[vps] Filter out ==========================> distance to utm : {}".format(utm_distance))
+            #print("[vps] Filter out ==========================> Filter out utm : {}".format(utm_distance))
             return False, mean_xys
 
     def check_valid_ori(self, new_x, new_y):
@@ -129,7 +143,7 @@ class vps_filter:
                 mean_xys = np.median(utm_xys[inliers][(inliers_count-n_mean_samples):,:], axis=0)
                 utm_distance = np.sqrt(np.sum((mean_xys - [new_x, new_y])**2))  # meter
                 ## Check 2 : distance average point and current point in the small window
-                if utm_distance < self.utm_distance_threshold:  # Check new point is near to mean of previous point.
+                if utm_distance < self.valid_dist_thre:  # Check new point is near to mean of previous point.
                     ## Check 3 : differential in the large window (noise to change to anohter road)
                     differential1 = np.sqrt(np.sum(np.sum(np.diff(utm_xys, axis=0), axis=0)**2))
                     #differential2 = np.sqrt(np.sum(np.sum(np.diff(np.diff(utm_xys, axis=0), axis=0), axis=0)**2))

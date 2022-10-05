@@ -107,7 +107,6 @@ namespace dg
         {
             cv::Mat sv_image;
             dg::ID sv_id = getViewID();
-			printf("[vps] Entered getView Image.");
             if (m_use_custom_image_server)
             {
                 std::string fpath;
