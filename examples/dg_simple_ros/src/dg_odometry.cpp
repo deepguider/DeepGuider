@@ -194,8 +194,10 @@ bool DGNodeOdometry::runOnce(double timestamp)
 {
 	// Parameter obtained near NoBrand at Coex with error of 0.35m in x, 0.25m in y in 10 meters.
     double wheelbase = 0.588;            // distance between left and right wheel, 0.588
-    double wL = 0.000271377664092;     // pulse to meter for left wheel
-    double wR = 0.000267372000397;   // pulse to meter for right wheel
+    //double wL = 0.000271377664092;     // pulse to meter for left wheel
+    //double wR = 0.000267372000397;   // pulse to meter for right wheel
+    double wL = 15.68/56338;
+    double wR = 15.68/56802;    
 
     double pulse_left, pulse_right;
     bool left_initialized, right_initialized;
