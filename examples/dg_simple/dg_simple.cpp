@@ -1532,7 +1532,7 @@ bool DeepGuider::procIntersectionClassifier()
     dg::Point2 xy;
     double confidence;
     bool valid_xy = false;
-    if (m_intersection.apply(cam_image, capture_time, xy, confidence, valid_xy))
+    if (m_intersection.apply(cam_image_for_draw, capture_time, xy, confidence, valid_xy))
     {
         if(m_apply_intersection && valid_xy) m_localizer.applyIntersectCls(xy, capture_time, confidence);
         m_intersection.print();
