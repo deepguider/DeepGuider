@@ -189,7 +189,7 @@ public:
             view_sx = (vx.x < view_iw* center_margin_ratio) ? view_sx - update_x : view_sx + update_x;
             update_view = true;
         }
-        if (vx.y < view_ih * center_margin_ratio || vx.y > view_ih * (1 - center_margin_ratio*2))
+        if (vx.y < view_ih * center_margin_ratio || vx.y > view_ih * (1 - center_margin_ratio*2.5))
         {
             if(vx.y < view_ih * center_margin_ratio)
             {
