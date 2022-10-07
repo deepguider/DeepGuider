@@ -120,7 +120,7 @@ Bucheon:
   map_data_path: "data/Bucheon/TopoMap_Bucheon.csv"
   map_ref_point_latlon: [37.517337, 126.764761]
   map_ref_point_pixel: [2225, 880]
-  map_pixel_per_meter: 1.056
+  map_pixel_per_meter: 3.95
   map_image_rotation: 1.3
   image_server_port: "10002"
   gps_input_path: "data/Sensor_record_20210513_Bucheon_AndroSensor.csv"
