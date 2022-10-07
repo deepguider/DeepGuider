@@ -46,6 +46,7 @@ class IntersectionClassifier:
 
     ##### Process one frame
     def apply(self, image, timestamp):
+        #print("intersection image size", image.shape)
         self.image = image
 
         ##### Process Input #####
