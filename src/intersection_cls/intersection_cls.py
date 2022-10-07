@@ -21,11 +21,14 @@ class IntersectionClassifier:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # initialize network
-        network_type = 'resnet18'
+        network_type = 'densenet121'
         self.network, _ = initialize_network(network_type, output_class=2)
 
         # load network
         resume_load = torch.load('./data_intersection_cls/weight.pth')
+
+        print('loaded network state dict', resume_load['model_state_dict'])
+
         self.network.load_state_dict(resume_load['model_state_dict'])
 
         self.network.eval()
