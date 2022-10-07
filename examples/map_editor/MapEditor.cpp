@@ -79,6 +79,7 @@ int MapEditor::configure(std::string site)
     Bucheon.map_image_rotation = cx::cvtDeg2Rad(1.3);
     Bucheon.map_ref_point_latlon = dg::LatLon(37.517337, 126.764761);
     Bucheon.map_ref_point_pixel = cv::Point2d(2225, 880);
+    Bucheon.map_view_offset = cv::Point(1289, 371);
     Bucheon.map_radius = 2000; // meter
     Bucheon.grid_unit_pos = cv::Point(-215, -6);
     Bucheon.map_file = "data/Bucheon/TopoMap_Bucheon.csv";
