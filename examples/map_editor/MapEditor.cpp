@@ -74,11 +74,11 @@ int MapEditor::configure(std::string site)
 
     MapGUIProp Bucheon;
     Bucheon.server_port = "10002";
-    Bucheon.image_file = "data/NaverMap_Bucheon(Satellite).png";
-    Bucheon.map_pixel_per_meter = 1.056;
-    Bucheon.map_image_rotation = cx::cvtDeg2Rad(0);
-    Bucheon.map_ref_point_latlon = dg::LatLon(37.510928, 126.764344);
-    Bucheon.map_ref_point_pixel = cv::Point2d(1535, 1157);
+    Bucheon.image_file = "data/Bucheon/NaverMap_Bucheon(Satellite).png";
+    Bucheon.map_pixel_per_meter = 3.95;
+    Bucheon.map_image_rotation = cx::cvtDeg2Rad(1.3);
+    Bucheon.map_ref_point_latlon = dg::LatLon(37.517337, 126.764761);
+    Bucheon.map_ref_point_pixel = cv::Point2d(2225, 880);
     Bucheon.map_radius = 2000; // meter
     Bucheon.grid_unit_pos = cv::Point(-215, -6);
     Bucheon.map_file = "data/Bucheon/TopoMap_Bucheon.csv";
