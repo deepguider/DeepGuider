@@ -32,16 +32,16 @@ namespace dg
         * Run once the module for a given input
         * @return true if successful (false if failed)
         */
-        bool _apply(cv::Mat image360, dg::Timestamp ts)
+        bool _apply(cv::Mat image, dg::Timestamp ts)
         {
             // Set function arguments
             int arg_idx = 0;
             PyObject* pArgs = PyTuple_New(2);
 
-            // Image360
+            // Image
             import_array();
-            npy_intp dimensions[3] = { image360.rows, image360.cols, image360.channels() };
-            PyObject* pValue = PyArray_SimpleNewFromData(image360.dims + 1, (npy_intp*)&dimensions, NPY_UINT8, image360.data);
+            npy_intp dimensions[3] = { image.rows, image.cols, image.channels() };
+            PyObject* pValue = PyArray_SimpleNewFromData(image.dims + 1, (npy_intp*)&dimensions, NPY_UINT8, image.data);
             if (!pValue) {
                 fprintf(stderr, "Intersection3CameraClassifier::apply() - Cannot convert argument1\n");
                 return false;
@@ -103,17 +103,17 @@ namespace dg
             m_processing_time = proc_time;
         }
 
-        void draw(cv::Mat& image360, double drawing_scale = 1.0, cv::Scalar color = cv::Scalar(0, 255, 0)) const
+        void draw(cv::Mat& image, double drawing_scale = 1.0, cv::Scalar color = cv::Scalar(0, 255, 0)) const
         {
             cv::AutoLock lock(m_mutex);
-            cv::Point2d pt(image360.cols / 2 - 180 * drawing_scale, 100 * drawing_scale);
-            std::string msg = cv::format("Intersection: %d (%.2lf)", m_result.cls, m_result.confidence);
-            cv::putText(image360, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, color, (int)(6 * drawing_scale));
-            cv::putText(image360, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 0, 0), (int)(2 * drawing_scale));
+            cv::Point2d pt(image.cols / 2 - 180 * drawing_scale, 100 * drawing_scale);
+            std::string msg = cv::format("Intersection3Cam: %d (%.2lf)", m_result.cls, m_result.confidence);
+            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, color, (int)(6 * drawing_scale));
+            cv::putText(image, msg, pt, cv::FONT_HERSHEY_PLAIN, 2.2 * drawing_scale, cv::Scalar(0, 0, 0), (int)(2 * drawing_scale));
             if(m_result.cls > 0)
             {
-                cv::Rect image360_rc(0, 0, image360.cols, image360.rows);
-                cv::rectangle(image360, image360_rc, color, (int)(20 * drawing_scale));
+                cv::Rect image_rc(0, 0, image.cols, image.rows);
+                cv::rectangle(image, image_rc, color, (int)(20 * drawing_scale));
             }
         }
 

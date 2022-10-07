@@ -4,6 +4,7 @@
 cd ../../bin
 
 ln -sf ../src/intersection_cls/data_intersection_cls
+ln -sf ../src/intersection3camera_cls/data_intersection3camera_cls
 ln -sf ../src/ocr_recog/data_ocr
 ln -sf ../src/vps/data_vps
 ln -sf ../src/roadlr/data_roadlr

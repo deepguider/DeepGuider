@@ -4,6 +4,7 @@
 enable_360cam: 0
 enable_360cam_crop: 0
 enable_intersection: 0
+enable_intersection3camera: 0
 enable_ocr: 0
 enable_vps: 0
 enable_roadlr: 0
