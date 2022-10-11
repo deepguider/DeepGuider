@@ -18,9 +18,7 @@
     - Torchvision 0.4.0
     - Dropblock 0.3.0
     
-- Download weight file from this. (Currently by default, using outdoor model)
-outdoor model: [link](https://drive.google.com/file/d/1gA2z28QPA0W0UbtC7J2kX3QXLOYCKIvz/view?usp=sharing) 
-indoor models: [link](https://drive.google.com/drive/folders/1bTBlOEDoHgPm0ot3hyOXwgtK1lV2Mo-w?usp=sharing) extract all weights into one folder "v1indoor_resnet18_3camera"
+- Download weight file from this [link](https://drive.google.com/file/d/1JJyd4ddWpESEcDMgw1thj6TjKZdom53-/view?usp=sharing) 
 
     
 ### Run demo
