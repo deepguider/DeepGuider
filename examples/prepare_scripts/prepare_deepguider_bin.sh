@@ -57,7 +57,7 @@ if [ -e ${TARGET} ]; then
     ln -sf ${SRCPATH}/data_intersection_cls/weight.pth ${TARGET}/data_intersection_cls/.
     
     ## Intersection3camera weight
-    ln -sf ${SRCPATH}/data_intersection3camera_cls/outdoor_3camera_bestrecall.pth ${TARGET}/data_intersection3camera_cls/.
+    ln -sf ${SRCPATH}/data_intersection3camera_cls/weight.pth ${TARGET}/data_intersection3camera_cls/.
 
 	## Localizer
 
