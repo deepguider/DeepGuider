@@ -193,6 +193,7 @@ namespace dg
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
         Guidance getGuidance() const { return m_curguidance; };
         cv::Point2d getGuidancePoint();
+        RobotStatus getRobotStatus(){ return m_robot_status; };
         void setRobotStatus(RobotStatus status) 
         { 
                 /*
