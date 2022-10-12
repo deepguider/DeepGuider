@@ -32,7 +32,7 @@ class IntersectionClassifier:
             print('intersection using 1 camera')
             self.init_1camera()
         else:
-            if self.intersection_cam == 1:
+            if self.intersection_cam != 3:
                 print('intersection using 1 camera')
                 self.init_1camera()
             else:
@@ -85,11 +85,9 @@ class IntersectionClassifier:
 
     def parsing_dg_ros_yml(self):
         ## You can access dg_ros.yml directly with follwing yml API
-        #self.intersection_cam = self.dg_ros_yml.read("intersection_cam")
-        #self.enable_360cam_crop = self.dg_ros_yml.read("enable_360cam_crop")
-        self.intersection_cam = 3
-        self.enable_360cam_crop = 1
-
+        self.intersection_cam = self.dg_ros_yml.read("intersection_cam")
+        self.enable_360cam_crop = self.dg_ros_yml.read("enable_360cam_crop")
+        
     def run_1camera(self):
         ##### Process Input #####
         # convert cv::Mat image to PIL image (https://stackoverflow.com/a/43234001)
@@ -159,7 +157,7 @@ class IntersectionClassifier:
             self.imagecenter = image[:, width:width*2, :]  
             self.imageright =  image[:, width*2:width*3, :]
             
-            if self.intersection_cam == 1:
+            if self.intersection_cam != 1:
                 self.run_1camera()
             else:
                 self.run_3camera()
