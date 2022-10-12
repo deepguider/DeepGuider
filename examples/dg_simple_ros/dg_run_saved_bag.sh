@@ -60,6 +60,9 @@ set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" --
 #set_site_idx 4; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/coex.bag
 #set_site_idx 3; set_topic_idx 2; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 600 -r 10 ./recordings/etri.bag
 #set_site_idx 5; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/indoor.bag
+#set_site_idx 2; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/_2022-10-06-14-40-21.bag
+#set_site_idx 2; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/_2022-10-06-13-49-15.bag
+#set_site_idx 2; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/_2022-10-06-14-18-35.bag
 
 ## Start dg_simple_ros package (working directory: devel/lib/dg_simple_ros/)
 CWD=`pwd`

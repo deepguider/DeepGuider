@@ -2,9 +2,8 @@
 ---
 ## Activate/deactivate submodules
 enable_360cam: 0  # not required.
-enable_360cam_crop: 0
+enable_360cam_crop: 1
 enable_intersection: 0
-enable_intersection3camera: 0
 enable_ocr: 0    # 0: disable, 1: run as internal module, 2: run as external ros node 
 enable_vps: 0    # 0: disable, 1: run as internal module, 2: run as external ros node
 enable_roadlr: 0
@@ -47,6 +46,9 @@ vps_filter_size: 11  # 11 for coex indoor, window size of median filter ( 1 mean
 vps_filter_valid_thre: 3 # 1st threshold to check valid of vps result in median filter in metric (Large numger, (ex) 1000, means off)
 vps_filter_outlier_thre: 25  # 2nd threshold to reject outlier sample in median filter in metric (Large numger, (ex) 1000, means off)
 vps_filter_conf_thre: 0.81
+
+## Intersection
+intersection_cam: 3 # 1 or 3. 1: 1 camera; 3: 3 camera (require enable_360cam_crop: 1. If not enable_360cam_crop, 1 camera will be run)
 
 ## Odometry Specific Options
 enable_simulated_encoder: 0

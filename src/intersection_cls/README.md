@@ -18,9 +18,11 @@
     - Torchvision 0.4.0
     - Dropblock 0.3.0
     
-- Download weight file from this 
+- Download 1 camera weight file from this 
 [link](https://drive.google.com/file/d/1iNyxXq_Ex01kbCBukpHNo8T_m0gyzXpN/view?usp=sharing) 
-, put it inside *data_intersection_cls* folder and rename it as *weight.pth*
+, put it inside **data_intersection_cls** folder and rename it as **weight_1camera.pth**
+
+- Download 3 camera weight file from this [link](https://drive.google.com/file/d/1JJyd4ddWpESEcDMgw1thj6TjKZdom53-/view?usp=sharing) to **data_intersection_cls** folder. Rename the weight file to **weight_3camera.pth**.
     
 ### Run demo
 - Run demo from this current folder `python intersection_cls.py`
