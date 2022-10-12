@@ -67,7 +67,8 @@ protected:
     double m_map_image_rotation = cx::cvtDeg2Rad(1.0);
     std::string m_gps_input_path = "data/191115_ETRI_asen_fix.csv";
     std::string m_video_input_path = "data/ETRI/191115_151140_images.avi";
-    cv::Vec3b m_gui_vps_color = cv::Vec3b(229, 204, 255); // bright pink
+    //cv::Vec3b m_gui_vps_color = cv::Vec3b(229, 204, 255); // bright pink
+    cv::Vec3b m_gui_vps_color = cx::COLOR_CYAN;
     cv::Vec3b m_gui_vps_rpose_color = cv::Vec3b(127, 0, 255);  // pink
     bool m_gui_auto_scroll = true;
 
@@ -1058,11 +1059,11 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             double sv_distance = norm(pose_m - sv_xy);
             if (sv_distance <= m_vps_max_error_distance)
             {
-                m_painter.drawPoint(image, sv_xy, 20, m_gui_vps_color, view_offset, view_zoom);  // sky color for streetview position
+                m_painter.drawPoint(image, sv_xy, 6, m_gui_vps_color, view_offset, view_zoom);  // sky color for streetview position
             }
             else
             {
-                m_painter.drawPoint(image, sv_xy, 20, cv::Vec3b(128, 128, 128), view_offset, view_zoom);  // sky color for streetview position
+                m_painter.drawPoint(image, sv_xy, 6, cv::Vec3b(128, 128, 128), view_offset, view_zoom);  // sky color for streetview position
             }
 
             // Draw virtual robot position computed from relative pose
@@ -1070,7 +1071,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             double poi_theta = pose.theta + sv_relative.ang;
             double rx = sv_xy.x - sv_relative.lin * cos(poi_theta);
             double ry = sv_xy.y - sv_relative.lin * sin(poi_theta);
-            m_painter.drawPoint(image, Point2(rx,ry), 20, m_gui_vps_rpose_color, view_offset, view_zoom); // light black for  streetview position with relative pose
+            //m_painter.drawPoint(image, Point2(rx,ry), 20, m_gui_vps_rpose_color, view_offset, view_zoom); // light black for  streetview position with relative pose
         }
     }
 
