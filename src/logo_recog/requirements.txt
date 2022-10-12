@@ -2,7 +2,7 @@ requests
 tqdm
 sklearn
 scikit-learn
-pillow==6.2.2
+pillow==9.0.1
 tensorflow-gpu==1.15.0
 keras==2.2.4
 opencv-contrib-python==3.4.2.17
