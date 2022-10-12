@@ -55,6 +55,9 @@ if [ -e ${TARGET} ]; then
     # ln -sf ${SRCPATH}/data_intersection_cls ${TARGET}/data_intersection_cls  ## This was done in examples/setup_intersection.sh
     ln -sf ${SRCPATH}/data_intersection_cls/v5.0-3_2wbg_densenet121_best.pth ${TARGET}/data_intersection_cls/.
     ln -sf ${SRCPATH}/data_intersection_cls/weight.pth ${TARGET}/data_intersection_cls/.
+    
+    ## Intersection3camera weight
+    ln -sf ${SRCPATH}/data_intersection3camera_cls/weight.pth ${TARGET}/data_intersection3camera_cls/.
 
 	## Localizer
 
