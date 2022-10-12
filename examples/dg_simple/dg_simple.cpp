@@ -453,8 +453,8 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("enable_backtracking_ekf", true); // default : true, for demo : false
     m_localizer.setParamValue("enable_gps_smoothing", false);
     m_localizer.setParamValue("enable_stop_filtering", true);
-    m_localizer.setParamValue("max_observation_error", 20);         // meter
-    m_localizer.setParamValue("odometry_stabilization_d", 0.5);     // meter
+    m_localizer.setParamValue("max_observation_error", 20);       // meter
+    m_localizer.setParamValue("odometry_stabilization_d", 3);     // meter
     m_localizer.setParamValue("gps_reverse_vel", -0.5);
     m_localizer.setParamValue("search_turn_weight", 100);
     m_localizer.setParamValue("track_near_radius", 20);

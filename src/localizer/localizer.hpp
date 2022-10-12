@@ -318,7 +318,7 @@ namespace dg
 
         virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
-            if(m_enable_stop_filtering && m_odometry_active && m_odometry_stabilized && m_robot_stopped) return false;
+            if(m_enable_stop_filtering && m_odometry_active && m_robot_stopped) return false;
 
             cv::AutoLock lock(m_mutex);
             Point2 smoothed_xy = xy;
@@ -353,22 +353,10 @@ namespace dg
                 m_odometry_active = true;
             }
 
-            // check odometry displacement
-            Point2 initial_displacement(odometry_pose.x - m_initial_odometry_pose.x, odometry_pose.y - m_initial_odometry_pose.y);
-            if(!m_odometry_stabilized && norm(initial_displacement) < m_odometry_stabilization_d)
-            {
-                m_prev_odometry_pose = odometry_pose;
-                m_prev_odometry_time = time;
-                return false;
-            }
-            m_odometry_stabilized = true;
-
-            if(!isPoseStabilized()) return false;
-
-            // check odometry velocity
+            // check robot stop by odometry velocity
             Point2 odo_delta(odometry_pose.x - m_prev_odometry_pose.x, odometry_pose.y - m_prev_odometry_pose.y);
             double odo_dt = time - m_prev_odometry_time;
-            double odo_velocity = (odo_dt>0) ? norm(odo_delta) / odo_dt : norm(odo_delta);
+            double odo_velocity = (odo_dt>0) ? norm(odo_delta) / odo_dt : 0;
             if(norm(odo_delta) <= m_stop_min_velocity)
             {
                 if(m_stopped_time<0)
@@ -386,8 +374,20 @@ namespace dg
                 m_robot_stopped = false;
                 m_stopped_time = -1;
             }
+
+            // check odometry displacement
+            Point2 initial_displacement(odometry_pose.x - m_initial_odometry_pose.x, odometry_pose.y - m_initial_odometry_pose.y);
+            if(!m_odometry_stabilized && norm(initial_displacement) < m_odometry_stabilization_d)
+            {
+                m_prev_odometry_pose = odometry_pose;
+                m_prev_odometry_time = time;
+                return false;
+            }
+            m_odometry_stabilized = true;
             m_prev_odometry_pose = odometry_pose;
             m_prev_odometry_time = time;
+
+            if(!isPoseStabilized()) return false;
 
             cv::AutoLock lock(m_mutex);
             if (m_ekf_pose_history.empty()) return false;
