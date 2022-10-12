@@ -3,7 +3,7 @@ import cv2
 import torch
 from torchvision import transforms
 from lib_intersection_cls.initialize_network import initialize_network
-from lib_intersection_cls.load_cv2_yaml import load_cv2_yaml
+from load_cv2_yaml import load_cv2_yaml
 
 from lib_intersection_cls.modules.resnet_network_3cam import ResNetDropblock
 from lib_intersection_cls.convert_ricohtheta_to_3camera import RicohthetaTo3CameraConverter
@@ -85,8 +85,10 @@ class IntersectionClassifier:
 
     def parsing_dg_ros_yml(self):
         ## You can access dg_ros.yml directly with follwing yml API
-        self.intersection_cam = self.dg_ros_yml.read("intersection_cam")
-        self.enable_360cam_crop = self.dg_ros_yml.read("enable_360cam_crop")
+        #self.intersection_cam = self.dg_ros_yml.read("intersection_cam")
+        #self.enable_360cam_crop = self.dg_ros_yml.read("enable_360cam_crop")
+        self.intersection_cam = 3
+        self.enable_360cam_crop = 1
 
     def run_1camera(self):
         ##### Process Input #####
