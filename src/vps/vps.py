@@ -624,6 +624,7 @@ class vps:
         load_dbfeat= self.dg_ros_yml.read("vps_load_dbfeat")
         save_dbfeat= self.dg_ros_yml.read("vps_save_dbfeat")
         use_custom_image_server = self.dg_ros_yml.read("vps_use_custom_image_server")
+        self.enable_filter = self.dg_ros_yml.read("vps_enable_filter")
         self.filter_size = self.dg_ros_yml.read("vps_filter_size")
         self.filter_valid_thre = self.dg_ros_yml.read("vps_filter_valid_thre")
         self.filter_outlier_thre = self.dg_ros_yml.read("vps_filter_outlier_thre")
@@ -862,17 +863,18 @@ class vps:
 #                    Confs[0] = -1
 
         ## Filter out noisy result with median filter for top-1 for indoor test
-        if Confs[0] >= self.filter_conf_thre :
-            valid, mean_utm_xy = self.mVps_filter.check_valid(utm_x, utm_y)
-        else:
-            valid = False
+        if self.enable_filter > 0:
+            if Confs[0] >= self.filter_conf_thre :
+                valid, mean_utm_xy = self.mVps_filter.check_valid(utm_x, utm_y)
+            else:
+                valid = False
 
-        if valid is True:
-            utm_x, utm_y = mean_utm_xy[0], mean_utm_xy[1]
-        else:
-            utm_x, utm_y = -1, -1
-            IDs[0] = -1
-            Confs[0] = -1
+            if valid is True:
+                utm_x, utm_y = mean_utm_xy[0], mean_utm_xy[1]
+            else:
+                utm_x, utm_y = -1, -1
+                IDs[0] = -1
+                Confs[0] = -1
 
         R, t = self.get_relativePose('zero')
 
