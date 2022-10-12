@@ -427,7 +427,6 @@ bool DeepGuider::initialize(std::string config_file)
     //if (!m_localizer.setParamVPSNoise(5, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
     if (!m_localizer.setParamVPSNoise(1, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
     if (!m_localizer.setParamIntersectClsNoise(0.1)) return false;  // position error(m)
-    //if (!m_localizer.setParamIntersect3CameraClsNoise(0.1)) return false;  // position error(m)
     if (!m_localizer.setParamRoadThetaNoise(50)) return false;      // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin
     m_localizer.setParamValue("enable_path_projection", true);
@@ -699,7 +698,7 @@ int DeepGuider::run()
             // process vision modules
             if(!m_threaded_run_modules)
             {
-                if (m_enable_intersection==1) && intersection_file.empty()) procIntersectionClassifier();
+                if (m_enable_intersection==1 && intersection_file.empty()) procIntersectionClassifier();
                 if (m_enable_ocr==1 && ocr_file.empty()) procOcr();
                 if (m_enable_vps==1 && vps_file.empty()) procVps();
                 if (m_enable_roadlr==1 && roadlr_file.empty()) procRoadLR();
