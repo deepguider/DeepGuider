@@ -457,7 +457,7 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	//if robot has arrived at the node, update m_guide_idx 	
 	//printf("[GUIDANCE] gidx: %d, m_guide_idx: %d\n", gidx, m_guide_idx);
 	//printf("[GUIDANCE] updateWithRobot: %d, %zd\n", isNodeInPastGuides(m_curguidance.heading_node_id), m_curguidance.heading_node_id);
-	printf("[GUIDANCE] m_robot_guide_idx: %d\n", m_robot_guide_idx);
+	printf("[GUIDANCE] m_robot_guide_idx: %d, isRobotArrived2Node: %d\n", m_robot_guide_idx, isRobotArrived2Node());
 	if (m_robot_status == RobotStatus::ARRIVED_NODE)
 	//if((m_robot_status == RobotStatus::ARRIVED_NODE) && !isNodeInPastGuides(m_curguidance.heading_node_id))
 	{
@@ -649,6 +649,13 @@ bool GuidanceManager::setArrivalGuide()
 	m_curguidance = guide;
 
 	return true;
+}
+
+bool GuidanceManager::isRobotArrived2Node()
+{
+	double remain_dist = norm(m_robot_heading_node_pose - m_robot_pose);
+	printf("isRobotArrived2Node-norm: %f\n", remain_dist);
+	return (remain_dist < 2.0) ? true : false;
 }
 
 GuidanceManager::ExtendedPathElement GuidanceManager::getCurExtendedPath(int idx)
@@ -973,7 +980,8 @@ int GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
 	return -1;
 }
 
-cv::Point2d GuidanceManager::cvtValue2Pixel4Guidance(cv::Point2d& val, double deg, cv::Point2d px_per_val, cv::Point2d offset)
+
+cv::Point2d GuidanceManager::cvtWorld2Image(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset)
 {	
 	cv::Point2d px;
 	double cost = cos(-cx::cvtDeg2Rad(deg));
@@ -984,6 +992,40 @@ cv::Point2d GuidanceManager::cvtValue2Pixel4Guidance(cv::Point2d& val, double de
 	return px;
 }
 
+cv::Point2d GuidanceManager::cvtWorld2ImageRad(cv::Point2d val, double rad, cv::Point2d px_per_val, cv::Point2d offset)
+{	
+	cv::Point2d px;
+	double cost = cos(-rad);
+	double sint = sin(-rad);
+	px.x = (val.x * px_per_val.x) * cost - (-val.y * px_per_val.y) * sint + offset.x;
+	px.y = (val.x * px_per_val.x) * sint + (-val.y * px_per_val.y) * cost + offset.y;
+
+	return px;
+}
+
+cv::Point2d GuidanceManager::cvtImage2World(cv::Point2d px, double deg, cv::Point2d px_per_val, cv::Point2d offset)
+{
+	CV_DbgAssert(px_per_val.x > 0 && px_per_val.y > 0);
+
+	cv::Point2d val;
+	double cost = cos(-cx::cvtDeg2Rad(deg));
+	double sint = sin(-cx::cvtDeg2Rad(deg));
+	val.x = ((px.x - px_per_val.x) * cost + (px.y - px_per_val.y) * sint) / px_per_val.x  + offset.x;
+	val.y = -(-(px.x - px_per_val.x) * sint + (px.y - px_per_val.y) * cost) / px_per_val.y + offset.y;
+
+	return val;
+}
+
+cv::Point2d GuidanceManager::cvtRobot2World(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset)
+{	
+	cv::Point2d px;
+	double cost = cos(-cx::cvtDeg2Rad(deg));
+	double sint = sin(-cx::cvtDeg2Rad(deg));
+	px.x = (val.x * px_per_val.x) * cost - (val.y * px_per_val.y) * sint + offset.x;
+	px.y = (val.x * px_per_val.x) * sint + (val.y * px_per_val.y) * cost + offset.y;
+
+	return px;
+}
 
 void GuidanceManager::makeLostValue(double prevconf, double curconf)
 {
