@@ -318,7 +318,7 @@ namespace dg
 
         virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
-            if(m_enable_stop_filtering && m_odometry_active && m_robot_stopped) return false;
+            if(m_enable_stop_filtering && m_odometry_active && m_odometry_stabilized && m_robot_stopped) return false;
 
             cv::AutoLock lock(m_mutex);
             Point2 smoothed_xy = xy;
@@ -357,7 +357,7 @@ namespace dg
             Point2 odo_delta(odometry_pose.x - m_prev_odometry_pose.x, odometry_pose.y - m_prev_odometry_pose.y);
             double odo_dt = time - m_prev_odometry_time;
             double odo_velocity = (odo_dt>0) ? norm(odo_delta) / odo_dt : 0;
-            if(norm(odo_delta) <= m_stop_min_velocity)
+            if(odo_velocity <= m_stop_min_velocity)
             {
                 if(m_stopped_time<0)
                 {
