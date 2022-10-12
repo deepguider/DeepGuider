@@ -304,7 +304,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "site_names", site_names, n_read);
     CX_LOAD_PARAM_COUNT(fn, "site_index", site_index, n_read);
     if (site_index >= 0 && site_index < site_names.size()) site_tagname = site_names[site_index];
-    m_guider.setSiteName(site_tagname);
+    // m_guider.setRobotMap(site_tagname);
 	printf("site_tagname: %s\n", site_tagname.c_str());
 
     CX_LOAD_PARAM_COUNT(fn, "dg_srcdir", m_srcdir, n_read);
@@ -434,8 +434,8 @@ bool DeepGuider::initialize(std::string config_file)
     m_localizer.setParamValue("enable_backtracking_ekf", true); // default : true, for demo : false
     m_localizer.setParamValue("enable_gps_smoothing", false);
     m_localizer.setParamValue("enable_stop_filtering", true);
-    m_localizer.setParamValue("max_observation_error", 20);         // meter
-    m_localizer.setParamValue("odometry_stabilization_d", 0.5);     // meter
+    m_localizer.setParamValue("max_observation_error", 20);       // meter
+    m_localizer.setParamValue("odometry_stabilization_d", 3);     // meter
     m_localizer.setParamValue("gps_reverse_vel", -0.5);
     m_localizer.setParamValue("search_turn_weight", 100);
     m_localizer.setParamValue("track_near_radius", 20);

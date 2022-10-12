@@ -16,6 +16,7 @@
 #include "dg_simple_ros/guidance.h"
 #include "dg_simple_ros/action.h"
 #include "dg_simple_ros/dg_status.h"
+#include "utils/utm_converter.hpp"
 
 
 class DeepGuiderROS : public DeepGuider
@@ -98,13 +99,29 @@ protected:
     double m_timestamp_offset = -1;
 
     //Robot parameters
-    bool robot_map_onoff;
-    dg::LatLon m_robotmap_ref_point_latlon  = dg::LatLon(37.515838, 126.764309);
-    dg::Point2 m_robotmap_ref_point_pixel = dg::Point2(2420, 5142);
-    double m_robotmap_pixel_per_meter = 10.0;
-    double m_robotmap_image_rotation = 1.4;
-    double m_robot_map_rotation = -90.0;
-    cv::Point2d m_robot_map_origin = cv::Point2d(-311, -257.6);
+    std::string m_robotmap_path = "data/Bucheon/bucheon_220922/occumap_bucheon.png";
+    dg::LatLon m_dx_map_ref_latlon = dg::LatLon(37.5177542, 126.7651744);
+    dg::Point2 m_dx_map_ref_pixel = dg::Point2(715, 650);
+    double m_dx_map_meter_per_pixel = 0.1;
+    double m_dx_map_rotation_radian = -0.8;
+    double m_robotmap_scale = 10.0;
+    cv::Point2d m_dx_map_origin_pixel = cv::Point2d(345, 1110);
+    bool m_pub_flag = 0;
+    GuidanceManager::RobotStatus m_prev_state = GuidanceManager::RobotStatus::READY;
+    ros::Time m_begin_time = ros::Time::now();
+
+    // DX 로봇 부천 지도 origin 계산
+    dg::LatLon m_dx_map_origin_latlon;
+    dg::LatLon m_dg_map_origin_latlon; // 딥가이더 부천 원점 (dg_simple.yml 참조)
+    dg::UTMConverter m_dx_converter;
+    dg::UTMConverter m_dg_converter;
+
+    //robot related functions
+    std::vector<Point2> m_undrivable_points;
+    Point2 findDrivablePoint(cv::Mat &image, Point2 robot_dx, Point2 node_dx);
+    void initialize_DG_DX_conversion();
+    geometry_msgs::PoseStamped makeRosPubPoseMsg(ID nid, dg::Point2 xy);
+    Point2 reselectDrivablePoint(cv::Mat &image, Point2 robot_dx, Point2 node_dx);
 };
 
 DeepGuiderROS::DeepGuiderROS(ros::NodeHandle& nh) : nh_dg(nh)
@@ -163,24 +180,30 @@ int DeepGuiderROS::readRosParam(const cv::FileNode& fn)
         }
     }
 
-    //read robot configuration
-    CX_LOAD_PARAM_COUNT(fn, "robot_map_onoff", robot_map_onoff, n_read);
-    m_guider.setRobotMapOnOff(robot_map_onoff);
-    cv::Vec2d ref_point = cv::Vec2d(m_robotmap_ref_point_latlon.lat, m_robotmap_ref_point_latlon.lon);
-    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_latlon", ref_point, n_read);
-    m_robotmap_ref_point_latlon = dg::LatLon(ref_point[0], ref_point[1]);
-    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_pixel", m_robotmap_ref_point_pixel, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "map_pixel_per_meter", m_robotmap_pixel_per_meter, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "map_image_rotation", m_robotmap_image_rotation, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "robot_map_rotation", m_robot_map_rotation, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "robot_map_origin", m_robot_map_origin, n_read);
 
-    int robot_site_index = -1;
+    //read robot configuration
+    CX_LOAD_PARAM_COUNT(fn, "robotmap_path", m_robotmap_path, n_read);
+    cv::Vec2d dx_ref_point = cv::Vec2d(m_dx_map_ref_latlon.lat, m_dx_map_ref_latlon.lon);
+    CX_LOAD_PARAM_COUNT(fn, "robotmap_ref_point_latlon", dx_ref_point, n_read);
+    m_dx_map_ref_latlon = dg::LatLon(dx_ref_point[0], dx_ref_point[1]);
+    CX_LOAD_PARAM_COUNT(fn, "robotmap_ref_point_pixel", m_dx_map_ref_pixel, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "robotmap_ref_point_pixel_per_meter", m_dx_map_meter_per_pixel, n_read);
+    double robotmap_rotation;
+    CX_LOAD_PARAM_COUNT(fn, "robotmap_rotation", robotmap_rotation, n_read);
+    m_dx_map_rotation_radian = cx::cvtDeg2Rad(robotmap_rotation); // 로봇 지도 rotation
+    CX_LOAD_PARAM_COUNT(fn, "robotmap_scale", m_robotmap_scale, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "robotmap_origin_pixel", m_dx_map_origin_pixel, n_read);
+    cv::Vec2d dg_ref_point = cv::Vec2d(m_map_ref_point.lat, m_map_ref_point.lon);
+    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_latlon", dg_ref_point, n_read);
+    m_dg_map_origin_latlon = dg::LatLon(dg_ref_point[0], dg_ref_point[1]);
+
+    int robot_map_index = -1;
     std::string robot_site_tagname;
-    std::vector<cv::String> robot_site_set;
-    CX_LOAD_PARAM_COUNT(fn, "robot_site_set", robot_site_set, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "robot_site_index", robot_site_index, n_read);
-    if (robot_site_index >= 0 && robot_site_index < robot_site_set.size()) robot_site_tagname = robot_site_set[robot_site_index];
+    std::vector<cv::String> robot_map_set;
+    CX_LOAD_PARAM_COUNT(fn, "robot_map_set", robot_map_set, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "robot_map_index", robot_map_index, n_read);
+    if (robot_map_index >= 0 && robot_map_index < robot_map_set.size())
+        robot_site_tagname = robot_map_set[robot_map_index];
 
     // Read Robot Setting
     if (!robot_site_tagname.empty())
@@ -191,15 +214,14 @@ int DeepGuiderROS::readRosParam(const cv::FileNode& fn)
             n_read += readRosParam(fn_robot);
         }
     }
+    m_guider.setRobotMap(robot_site_tagname);
     m_guider.setRobotUsage(topicset_tagname);
-	printf("topicset_tagname: %s\n", topicset_tagname.c_str());
-    m_guider.setRobotMapOnOff(false);
+    printf("topicset_tagname: %s\n", topicset_tagname.c_str());
+    printf("m_dx_map_ref_pixel.x: %f, m_dx_map_ref_pixel.y: %f\n", m_dx_map_ref_pixel.x, m_dx_map_ref_pixel.y);
+    printf("m_dx_map_origin_pixel: %f, %f\n", m_dx_map_origin_pixel.x, m_dx_map_origin_pixel.y);
+    printf("m_dg_map_origin_latlon: %f, %f\n", m_dg_map_origin_latlon.lat, m_dg_map_origin_latlon.lon);
+    printf("robotmap_rotation: %f\n", robotmap_rotation);
 
-
-	printf("m_robotmap_ref_point_pixel.x: %f, m_robotmap_ref_point_pixel.y: %f\n", m_robotmap_ref_point_pixel.x, m_robotmap_ref_point_pixel.y);
-	printf("m_robotmap_pixel_per_meter: %f\n", m_robotmap_pixel_per_meter);
-	printf("map_image_rotation: %f\n", m_robotmap_image_rotation);
-    
     return n_read;
 }
 
@@ -221,6 +243,7 @@ bool DeepGuiderROS::initialize(std::string config_file)
     if(!m_topic_rgbd_depth.empty()) sub_image_realsense_depth = nh_dg.subscribe(m_topic_rgbd_depth, 1, &DeepGuiderROS::callbackRealsenseDepth, this);
 
     // Initialize deepguider subscribers
+    // sub_robot_status = nh_dg.subscribe("/keti_robot_state", 1, &DeepGuiderROS::callbackRobotStatus, this);
     sub_robot_status = nh_dg.subscribe("/keti_robot/state", 1, &DeepGuiderROS::callbackRobotStatus, this);
     sub_robot_heading = nh_dg.subscribe("/keti_robot/heading_node", 1, &DeepGuiderROS::callbackRobotHeading, this);
     sub_robot_pose = nh_dg.subscribe("/mcl3d/current/pose", 1, &DeepGuiderROS::callbackRobotPose, this);
@@ -235,6 +258,9 @@ bool DeepGuiderROS::initialize(std::string config_file)
     pub_pose = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_pose", 1, true);
     pub_subgoal = nh_dg.advertise<geometry_msgs::PoseStamped>("dg_subgoal", 1, true);
     pub_status = nh_dg.advertise<dg_simple_ros::dg_status>("dg_status", 1, true);
+
+    // Initialize robot parameters
+    initialize_DG_DX_conversion();
 
     return true;
 }
@@ -638,6 +664,10 @@ void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
     {
         m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_GOAL);
     } 
+    else if (!strcmp(str, "no_path"))
+    {
+        m_guider.setRobotStatus(GuidanceManager::RobotStatus::NO_PATH);
+    }
 }
 
 
@@ -646,8 +676,7 @@ void DeepGuiderROS::callbackRobotHeading(const std_msgs::String::ConstPtr& msg)
     const char* str = msg->data.c_str();
     ROS_INFO_THROTTLE(1.0, "%s", str);
 
-    m_guider.m_robot_heading = stoi(str);
-
+    m_guider.m_robot_heading_node_id = stoi(str);
 }
 
 void DeepGuiderROS::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& map)
@@ -681,57 +710,9 @@ void DeepGuiderROS::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& ma
         }
     }
 
-    // if (image.empty() == false)
-    // {
-    //     cv::imshow("occumap_kaist",image);
-    //     cv::waitKey();
-    //     cv::imwrite("occumap_kaist.png", image);
-    // }
-    // else
-    // {
-    //     ROS_INFO_THROTTLE(1.0, "No occumap");
-    // }
-
     m_robotmap_image = image;  
-    m_robotmap_mutex.unlock();
-     
-
-
-/**
-    // try
-    {
-        m_robotmap_mutex.lock();
-        std_msgs::Header header = map->header;
-        nav_msgs::MapMetaData info = map->info;
-        ROS_INFO_THROTTLE(1.0, "Got robot map (timestamp: %f [sec], W:%d, H:%d).", map->header.stamp.toSec(), info.width, info.height);
-        
-        cv::Mat image(size_y, size_x, CV_8UC1);
-        image = cv::imdecode(cv::Mat(map->data), 1);
-        if (image.empty() == false)
-        {
-            cv::imshow("occumap_kaist",image);
-            cv::waitKey();
-            cv::imwrite("occumap_kaist2.png", image);
-        }
-        else
-        {
-            ROS_INFO_THROTTLE(1.0, "No occumap");
-        }
-
-        m_robotmap_image = image;  
-        m_robotmap_capture_time = map->header.stamp.toSec();
-        m_robotmap_mutex.unlock();
-
-    }
-    // catch (cv_bridge::Exception& e)
-    // {
-    //     ROS_ERROR("exception @ callbackRobotMap(): %s", e.what());
-    //     return;
-    // }
-
-    */
+    m_robotmap_mutex.unlock();     
 }
-
 
 void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
@@ -752,30 +733,22 @@ void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr
         procOdometryData(x, y, theta, timestamp);
     }
 
-    dg::Pose2 robot_pose;
-    robot_pose.x = msg->pose.position.x;
-    robot_pose.y = msg->pose.position.y;
+    dg::Timestamp capture_time = msg->header.stamp.toSec();
 
-    //Align robot pose to image point
-	ROS_INFO_THROTTLE(1.0, "m_guider.m_site_name: %d", m_guider.m_site_name);
-	if(m_guider.m_site_name >= 1) // "KETI_ROBOT"
-    {    //Aligned to "bucheon_robotmap(flipudlr).png"
+    //Align robot pose rostopic to display image point
+    // 4. DX 로봇 좌표 --> 딥가이더 좌표
+    double x_rotation_corrected = x * cos(m_dx_map_rotation_radian) - y * sin(m_dx_map_rotation_radian);
+    double y_rotation_corrected = x * sin(m_dx_map_rotation_radian) + y * cos(m_dx_map_rotation_radian);
+    dg::LatLon latlon = m_dx_converter.toLatLon(dg::Point2(x_rotation_corrected, y_rotation_corrected));
+    dg::Point2 dg_metric2 = m_dg_converter.toMetric(latlon);
+    dg::Point2 robot_display = m_painter.cvtValue2Pixel(dg_metric2);
+    ROS_INFO_THROTTLE(1.0, "Robot_img: %f,%f", robot_display.x, robot_display.y);
+    cv::circle(m_map_image, robot_display, 10, cv::Vec3b(0, 255, 0));
 
-        // double img_deg_dx1 = -90;
-        // cv::Point2d img_scale_dx1 = cv::Point2d(10.0, 10.0);
-        // cv::Point2d img_offset_dx1 = cv::Point2d(2576, 3110);
-        // cv::Point2d img_pt_dx1 = m_guider.cvtValue2Pixel4Guidance(robot_pose, img_deg_dx1, img_scale_dx1, img_offset_dx1);
-        // ROS_INFO_THROTTLE(1.0, "[before]callbackRobotPose-robot2image: %f,%f", img_pt_dx1.x, img_pt_dx1.y);
-
-        double img_deg_dx = m_robot_map_rotation;
-        cv::Point2d img_scale_dx = cv::Point2d(m_robotmap_pixel_per_meter, m_robotmap_pixel_per_meter);
-        cv::Point2d img_offset_dx = m_guider.cvtValue2Pixel4Guidance(m_robot_map_origin, -img_deg_dx, img_scale_dx, cv::Point2d(0.0,0.0));
-        cv::Point2d img_pt_dx = m_guider.cvtValue2Pixel4Guidance(robot_pose, img_deg_dx, img_scale_dx, img_offset_dx);
-        ROS_INFO_THROTTLE(1.0, "callbackRobotPose-robot2image: %f,%f", img_pt_dx.x, img_pt_dx.y);
-   
-        m_guider.m_robot_pose = img_pt_dx;
-        cv::circle(m_map_image, img_pt_dx, 10, cv::Vec3b(0, 255, 0));
-    }        
+    m_guider_mutex.lock();
+    m_guider.m_robot_pose = cv::Point2d(x, y);
+    m_guider.m_robot_on_image = robot_display;
+    m_guider_mutex.unlock();
 }
 
 
@@ -825,78 +798,228 @@ void DeepGuiderROS::publishDGPose()
 
 void DeepGuiderROS::publishSubGoal()
 {
-    geometry_msgs::PoseStamped rosps;
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
     ID nid = cur_guide.heading_node_id;
     double angle = cur_guide.relative_angle;
     double dist = cur_guide.distance_to_remain;
-     
-    Node* hNode = m_map.getNode(nid);
-    if(hNode == nullptr) return;
-    cv::Point2d pt;
+    Node *hNode = m_map.getNode(nid);
+    if (hNode == nullptr)
+        return;
+    
+    Pose2 node_metric = Pose2(hNode->x, hNode->y);
+    dg::LatLon latlon = m_map.toLatLon(node_metric);
+    if (m_guider.m_dxrobot_usage)
+    {
+        ROS_INFO_THROTTLE(1.0, "heading_node_id: %zu, lat:%f, lon:%f", nid, latlon.lat, latlon.lon);
+        ROS_INFO_THROTTLE(1.0, "heading_node_id: %zu, node_metric->x:%f, node_metric->y:%f", nid, hNode->x, hNode->y);
 
-    //Align KAIST's Bucheon map 2022-03-10 to DG map
-	if(m_guider.m_site_name >= 1) // 1:"Bucheon_KETI"
-    {    //Aligned to "bucheon_robotmap(flipudlr).png"
+        // 1. 딥가이더 좌표 --> DX 로봇 좌표
+        // dg::LatLon latlon = m_dg_converter.toLatLon(node_metric);
+        dg::Point2 dx_metric_rotated = m_dx_converter.toMetric(latlon);
+        double dx_x = dx_metric_rotated.x * cos(m_dx_map_rotation_radian) + dx_metric_rotated.y * sin(m_dx_map_rotation_radian);
+        double dx_y = -dx_metric_rotated.x * sin(m_dx_map_rotation_radian) + dx_metric_rotated.y * cos(m_dx_map_rotation_radian);
 
-        Pose2 node_pt = Pose2(hNode->x, hNode->y);
-        //ROS_INFO_THROTTLE(1.0, "heading_node_id: %zd<==============", nid);
+        dg::Point2 node_dx_metric(dx_x, dx_y);
+        ROS_INFO_THROTTLE(1.0, "publishSubGoal-node2robot: %f,%f", node_dx_metric.x, node_dx_metric.y);
 
-        // double img_deg1 = 1.4;
-        // cv::Point2d img_scale1 = cv::Point2d(10.2, 10.2);
-        // cv::Point2d img_offset1 = cv::Point2d(2400, 5142);
-        // cv::Point2d img_pt1 = m_guider.cvtValue2Pixel4Guidance(node_pt, img_deg1, img_scale1, img_offset1);;
-        // ROS_INFO_THROTTLE(1.0, "[before] publishSubGoal-node2img: %f,%f", img_pt1.x, img_pt1.y);
+        //Projecting node point to drivable area
+        cv::Mat image;
+        cv::Point2d node_dx_pixel, robot_dx_pixel, robot_dx_metric;
 
+        m_robotmap_mutex.lock();
+        image = m_robotmap_image;
+        robot_dx_metric = m_guider.m_robot_pose;
+        m_guider.m_robot_heading_node_id = nid;
+        m_robotmap_mutex.unlock();
 
-        double img_deg = m_robotmap_image_rotation;
-        cv::Point2d img_scale = cv::Point2d(m_robotmap_pixel_per_meter, m_robotmap_pixel_per_meter);
-        cv::Point2d img_offset = m_robotmap_ref_point_pixel;
-        cv::Point2d img_pt = m_guider.cvtValue2Pixel4Guidance(node_pt, img_deg, img_scale, img_offset);
-        // ROS_INFO_THROTTLE(1.0, "[after] publishSubGoal-node2img: %f,%f", img_pt.x, img_pt.y);
+        // 2. DX 로봇 좌표 --> DX 로봇맵 픽셀좌표
+        node_dx_pixel.x = m_dx_map_origin_pixel.x + node_dx_metric.x / m_dx_map_meter_per_pixel;
+        node_dx_pixel.y = m_dx_map_origin_pixel.y - node_dx_metric.y / m_dx_map_meter_per_pixel;
 
-        //translation to image to robot's coordintate
-        // double r_deg1 = -90;
-        // cv::Point2d r_scale1 = cv::Point2d(0.1, 0.1);
-        // cv::Point2d r_offset1 = cv::Point2d(-311, -257.6);
-        // cv::Point2d pt1 = m_guider.cvtValue2Pixel4Guidance(img_pt1, r_deg1, r_scale1, r_offset1);
-        // ROS_INFO_THROTTLE(1.0, "[before] publishSubGoal-img2robot: %f,%f", pt1.x, pt1.y);
+        robot_dx_pixel.x = m_dx_map_origin_pixel.x + robot_dx_metric.x / m_dx_map_meter_per_pixel;
+        robot_dx_pixel.y = m_dx_map_origin_pixel.y - robot_dx_metric.y / m_dx_map_meter_per_pixel;
 
-        double r_deg = m_robot_map_rotation;
-        cv::Point2d r_scale = cv::Point2d(1/m_robotmap_pixel_per_meter, 1/m_robotmap_pixel_per_meter);
-        cv::Point2d r_offset = cv::Point2d(m_robot_map_origin.x, m_robot_map_origin.y);
-        pt = m_guider.cvtValue2Pixel4Guidance(img_pt, r_deg, r_scale, r_offset);
+        if (image.empty()) //on robot occumap
+        {
+            ROS_INFO_THROTTLE(1.0, "No occumap");
+            image = cv::imread(m_robotmap_path);
 
-        // if (m_guider.m_use_online_map)
-        // {
-        //     //translated robot's pose
-        //     //translated heading node's pose
-        //     pt;
-        // } 
-  
+            if (image.channels() != 1)
+            {
+                ROS_INFO_THROTTLE(1.0, "publishSubGoal-image.channels:%d", image.channels());
+                cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+            }
+
+            ROS_INFO_THROTTLE(1.0, "publishSubGoal[No occumap]-node_on_robotmap: %f,%f", node_dx_pixel.x, node_dx_pixel.y);
+            ROS_INFO_THROTTLE(1.0, "publishSubGoal[No occumap]-robot_on_robotmap: %f,%f", robot_dx_pixel.x, robot_dx_pixel.y);
+
+            if ((node_dx_pixel.x < 1 && node_dx_pixel.x > image.cols) || (node_dx_pixel.y < 1 && node_dx_pixel.y > image.cols) || (robot_dx_pixel.x < 1 && robot_dx_pixel.x > image.rows) || (robot_dx_pixel.y < 1 && robot_dx_pixel.y > image.rows))
+            {
+                ROS_INFO_THROTTLE(1.0, "publishSubGoal[No occumap]-cannot find drivable point");
+                return;
+            }
+        }
+
+        ROS_INFO_THROTTLE(1.0, "publishSubGoal-image value:%d",image.at<uchar>((int)node_dx_pixel.y, (int)node_dx_pixel.x));
+        if (image.at<uchar>((int)node_dx_pixel.y, (int)node_dx_pixel.x) < 200) //if node is in black area
+        {
+            //find drivable area on the line from robot_pt
+            robot_dx_metric = findDrivablePoint(image, robot_dx_pixel, node_dx_pixel);
+        }
+
+        ROS_INFO_THROTTLE(1.0, "publishSubGoal-final node xy to robot: %f,%f", robot_dx_metric.x, robot_dx_metric.y);
+
+        GuidanceManager::RobotStatus cur_state = m_guider.getRobotStatus();
+        ros::Time cur_time = ros::Time::now();
+        ros::Duration duration = cur_time - m_begin_time;
+        ROS_INFO_THROTTLE(1.0, "Duration seconds: %d", duration.sec);
+        if (!m_pub_flag || cur_state == GuidanceManager::RobotStatus::ARRIVED_NODE || cur_state == GuidanceManager::RobotStatus::ARRIVED_GOAL || cur_state == GuidanceManager::RobotStatus::READY || cur_state == GuidanceManager::RobotStatus::NO_PATH)
+        {
+            geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(nid, robot_dx_metric);
+            pub_subgoal.publish(rosps);
+            m_guider.m_subgoal_pose = robot_dx_metric;
+            ROS_INFO_THROTTLE(1.0, "SubGoal published!: %f, %f", robot_dx_metric.x, robot_dx_metric.y);
+            m_begin_time = ros::Time::now();
+            m_pub_flag = true;
+            m_prev_state = cur_state;
+        }
+        else if (m_pub_flag || m_prev_state == cur_state)
+        {
+            if (duration > ros::Duration(5.0))
+            {
+                if (cur_state == GuidanceManager::RobotStatus::NO_PATH) //if robot cannot generate path with the subgoal
+                {
+                    robot_dx_metric = reselectDrivablePoint(image, robot_dx_pixel, node_dx_pixel);
+                }
+                geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(nid, robot_dx_metric);
+                pub_subgoal.publish(rosps);
+                m_guider.m_subgoal_pose = robot_dx_metric;
+                ROS_INFO_THROTTLE(1.0, "SubGoal published, again!: %f, %f", robot_dx_metric.x, robot_dx_metric.y);
+                m_begin_time = ros::Time::now();
+            }
+        }
+        else if (cur_state == GuidanceManager::RobotStatus::RUN_MANUAL || cur_state == GuidanceManager::RobotStatus::RUN_AUTO)
+        {
+            m_prev_state = cur_state;
+            m_pub_flag == false;
+            m_begin_time = ros::Time::now();
+        }    
     }
     else
     {
-        Pose2 metric = Pose2(hNode->x, hNode->y);
-        pt = cvtLatLon2UTM(toLatLon(metric));
+        cv::Point2d pt = cvtLatLon2UTM(toLatLon(node_metric));
+        geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(nid, pt);
+        pub_subgoal.publish(rosps);
     }
+    
+    
+}
 
-    //m_guider.getGuidancePoint();
 
-    dg::Timestamp  timestamp;
-    dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&timestamp);
-    if (timestamp < 0) return;
-    rosps.header.stamp.fromSec(timestamp);
-    rosps.header.frame_id = to_string(cur_guide.heading_node_id);
-
-    rosps.pose.position.x = pt.x;
-    rosps.pose.position.y = pt.y;
+geometry_msgs::PoseStamped DeepGuiderROS::makeRosPubPoseMsg(ID nid, dg::Point2 xy)
+{
+    //check publish time
+    geometry_msgs::PoseStamped rosps;
+    rosps.header.stamp = ros::Time::now();
+    rosps.header.frame_id = to_string(nid);
+    rosps.pose.position.x = xy.x;
+    rosps.pose.position.y = xy.y;
     rosps.pose.position.z = 0;
 
-    ROS_INFO_THROTTLE(1.0, "publishSubGoal-img2robot: %f,%f", pt.x, pt.y);
-    
-    pub_subgoal.publish(rosps);  
-    m_guider.m_goal_pose = pt;
+    return rosps;
+}
+
+Point2 DeepGuiderROS::reselectDrivablePoint(cv::Mat &image, Point2 robot_dx, Point2 node_dx)
+{
+    Point2 dx_metric = m_guider.m_subgoal_pose;
+    m_undrivable_points.push_back(dx_metric);
+
+    for (int i = 0; i < m_undrivable_points.size(); i++)
+    {
+        dg::Point2 dx_pixel = m_undrivable_points[i];
+        dx_pixel.x = m_dx_map_origin_pixel.x + dx_metric.x / m_dx_map_meter_per_pixel;
+        dx_pixel.y = m_dx_map_origin_pixel.y - dx_metric.y / m_dx_map_meter_per_pixel;
+        image.at<uchar>((int)dx_pixel.y, (int)dx_pixel.x) = 0;
+    }
+
+    dx_metric = findDrivablePoint(image, robot_dx, node_dx);
+
+    return dx_metric;
+}
+
+Point2 DeepGuiderROS::findDrivablePoint(cv::Mat &image, Point2 robot_dx, Point2 node_dx)
+{
+    Point2 jump, dx_metric;
+    cv::Mat img_erode;
+    if (!image.empty())
+    {
+        //find drivable area on the line from robot_pt
+        double jump_deg = atan2(robot_dx.y - node_dx.y, robot_dx.x - node_dx.x);
+        double jump_dist = norm(robot_dx - node_dx);
+        int jump_step = (int)m_robotmap_scale;
+        int max_count = (int)jump_dist / jump_step;
+        ROS_INFO_THROTTLE(1.0, "publishSubGoal-jump_deg: %f\n", cx::cvtRad2Deg(jump_deg));
+        ROS_INFO_THROTTLE(1.0, "publishSubGoal-max_count: %d", max_count);
+
+        //for display map
+        erode(image, img_erode, cv::Mat::ones(cv::Size(m_robotmap_scale, m_robotmap_scale), CV_8UC1), cv::Point(-1, -1), 1);
+
+        int i;
+        for (i = 0; i < max_count; i++)
+        {
+            jump.x = node_dx.x + i * jump_step * cos(jump_deg);
+            jump.y = node_dx.y + i * jump_step * sin(jump_deg);
+            if (img_erode.at<uchar>((int)jump.y, (int)jump.x) > 200)
+            {
+                printf("publishSubGoal-img_erode-%d <%.1f, %.1f>: %d\n", i, jump.x, jump.y, img_erode.at<uchar>((int)jump.y, (int)jump.x));
+                break;
+            }
+        }
+        if (i >= max_count - 1)
+        {
+            ROS_INFO_THROTTLE(1.0, "publishSubGoal-Cannot find drivable area");
+            jump = node_dx;
+        }
+    }
+
+    //save to image
+    cv::Mat img_color;
+    // img_erode.copyTo(img_color);
+    cv::cvtColor(img_erode, img_color, cv::COLOR_GRAY2BGR);
+    cv::line(img_color, robot_dx, node_dx, cv::Vec3b(50, 50, 50), 5);
+    cv::circle(img_color, node_dx, 10, cv::Vec3b(0, 0, 255), 10);
+    cv::circle(img_color, robot_dx, 10, cv::Vec3b(0, 255, 0), 10);
+    cv::circle(img_color, jump, 10, cv::Vec3b(0, 255, 255), 10);
+    cv::imwrite("occumap_origin.png", img_erode);
+    cv::imwrite("occumap_erode.png", img_color);
+
+    // 3. DX 로봇맵 픽셀좌표 --> DX 로봇 좌표
+    dx_metric.x = (jump.x - m_dx_map_origin_pixel.x) * m_dx_map_meter_per_pixel;
+    dx_metric.y = (m_dx_map_origin_pixel.y - jump.y) * m_dx_map_meter_per_pixel;
+    return dx_metric;
+}
+
+void DeepGuiderROS::initialize_DG_DX_conversion()
+{
+    // DX 로봇 부천 지도 origin 계산
+    double ref_x_rotated = (m_dx_map_ref_pixel.x - m_dx_map_origin_pixel.x) * m_dx_map_meter_per_pixel;
+    double ref_y_rotated = (m_dx_map_origin_pixel.y - m_dx_map_ref_pixel.y) * m_dx_map_meter_per_pixel;
+    double ref_x = ref_x_rotated * cos(m_dx_map_rotation_radian) - ref_y_rotated * sin(m_dx_map_rotation_radian);
+    double ref_y = ref_x_rotated * sin(m_dx_map_rotation_radian) + ref_y_rotated * cos(m_dx_map_rotation_radian);
+
+    dg::UTMConverter converter;
+    dg::Point2UTM dx_map_ref_utm = converter.cvtLatLon2UTM(m_dx_map_ref_latlon);
+    dg::Point2UTM dx_map_origin_utm;
+    dx_map_origin_utm.x = dx_map_ref_utm.x - ref_x;
+    dx_map_origin_utm.y = dx_map_ref_utm.y - ref_y;
+    dx_map_origin_utm.zone = dx_map_ref_utm.zone;
+    m_dx_map_origin_latlon = converter.cvtUTM2LatLon(dx_map_origin_utm);
+    printf("Robot map origin: lat = %lf, lon = %lf\n", m_dx_map_origin_latlon.lat, m_dx_map_origin_latlon.lon);
+
+    // 딥가이더 부천 좌표 --> DX 부천 로봇 좌표 --> DX 부천 로봇맵 픽셀좌표
+    // 1. 딥가이더 좌표 --> DX 로봇 좌표
+    m_dx_converter.setReference(m_dx_map_origin_latlon);
+    m_dg_converter.setReference(m_dg_map_origin_latlon);
 }
 
 void DeepGuiderROS::publishPath()

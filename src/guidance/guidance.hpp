@@ -48,6 +48,7 @@ namespace dg
             RUN_AUTO,
             ARRIVED_NODE,
             ARRIVED_GOAL,
+            NO_PATH,
 
             TYPE_NUM
         };
@@ -174,12 +175,14 @@ namespace dg
         GuidanceManager() { }
 
         bool m_dxrobot_usage = 0;
-        int m_site_name = 0;
-        ID m_robot_heading;
+        int m_robot_map_idx = -1;
+        ID m_robot_heading_node_id;
         bool m_use_online_map = 0;
         cv::Mutex m_robot_mutex;
         cv::Point2d m_robot_pose;
-        cv::Point2d m_goal_pose;
+        cv::Point2d m_robot_on_image;
+        cv::Point2d m_subgoal_pose;
+        cv::Point2d m_robot_heading_node_pose;
         bool initialize(dg::SharedInterface* shared);
         bool initiateNewGuidance();
         bool initiateNewGuidance(Point2F gps_start, Point2F gps_des);
@@ -190,6 +193,7 @@ namespace dg
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
         Guidance getGuidance() const { return m_curguidance; };
         cv::Point2d getGuidancePoint();
+        RobotStatus getRobotStatus(){ return m_robot_status; };
         void setRobotStatus(RobotStatus status) 
         { 
                 /*
@@ -209,21 +213,31 @@ namespace dg
 	        if (name.compare(robot)==0) m_dxrobot_usage = true;
             else m_dxrobot_usage = false; 
         };
-        void setSiteName(cv::String name)
+        //from dg_ros.yml: 0:"Bucheon_KETI", 1:"Bucheon_Robot", 2:"COEX_KETI", 3:"COEX_KETI_220824"
+        void setRobotMap(cv::String name)
         {
             if (name.compare("Bucheon_KETI")==0)
-                m_site_name = 1;
+                m_robot_map_idx = 0;
+            else if (name.compare("Bucheon_Robot")==0)
+                m_robot_map_idx = 1;
             else if (name.compare("COEX_KETI")==0)
-                m_site_name = 2;
+                m_robot_map_idx = 2;
             else if (name.compare("COEX_KETI_220824")==0)
-                m_site_name = 3;
-
+                m_robot_map_idx = 3;
+            else
+            {
+                m_robot_map_idx = -1;
+            }
+            
         };
         void setRobotMapOnOff(bool flag){
             if(flag) m_use_online_map = true;
             else m_use_online_map = false;
         };
-        cv::Point2d cvtValue2Pixel4Guidance(cv::Point2d& val, double deg, cv::Point2d px_per_val, cv::Point2d offset);
+        cv::Point2d cvtWorld2Image(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset);
+        cv::Point2d cvtWorld2ImageRad(cv::Point2d val, double rad, cv::Point2d px_per_val, cv::Point2d offset);
+        cv::Point2d cvtImage2World(cv::Point2d px, double deg, cv::Point2d px_per_val, cv::Point2d offset);
+        cv::Point2d cvtRobot2World(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset);
 
 
     protected:
@@ -301,6 +315,7 @@ namespace dg
         Action setActionGo(ID nid_next, ID eid_cur, int degree = 0);
         bool setHeadingPoint();
 
+        bool isRobotArrived2Node();
         bool isNodeInPath(ID nodeid);
         bool isEdgeInPath(ID edgeid);
         bool isNodeInPastGuides(ID nodeid);

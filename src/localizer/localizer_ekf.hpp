@@ -93,7 +93,8 @@ namespace dg
             m_pose_stabilized = false;
             m_time_last_update = -1;
 
-            initialize(cv::Mat::zeros(5, 1, CV_64F), cv::Mat::eye(5, 5, CV_64F));
+            cv::Mat pose_cov = cv::Mat::eye(5, 5, CV_64F) * 10; // initial uncertainty is high
+            initialize(cv::Mat::zeros(5, 1, CV_64F), pose_cov);
         }
 
         virtual int readParam(const cv::FileNode& fn)
