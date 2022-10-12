@@ -4,7 +4,6 @@
 enable_360cam: 0  # not required.
 enable_360cam_crop: 0
 enable_intersection: 0
-enable_intersection3camera: 0  # need enable_360cam_crop: 1
 enable_ocr: 0    # 0: disable, 1: run as internal module, 2: run as external ros node 
 enable_vps: 0    # 0: disable, 1: run as internal module, 2: run as external ros node
 enable_roadlr: 0
@@ -23,8 +22,9 @@ server_ip_list: ["127.0.0.1", "129.254.81.204"]
 image_server_port: "10000"  # etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
 topic_name_index: 0         # 0: ETRI CART_VER2_ANDROIDGPS, 1: ETRI CART_VER2, 2:KETI ROBOT
 topic_names_set: ["ETRI_CART_VER2_ANDROIDGPS", "ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
-robot_site_index: 0      #0:"Bucheon_KETI", 1:"COEX_KETI"
-robot_site_set: ["Bucheon_KETI", "COEX_KETI"]
+robot_map_index: 1      #0:"Bucheon_KETI", 1:"Bucheon_Robot", 2:"COEX_KETI", 3:"COEX_KETI_220824"
+robot_map_set: ["Bucheon_KETI", "Bucheon_Robot", "COEX_KETI","COEX_KETI_220824"]
+robot_map_onoff: 1       #0:offline map, 1:online map
 
 dg_srcdir: "/home/dgtest/deepguider/src"  # path of deepguider/src folder (required for python embedding)
 enable_tts: 1
@@ -48,6 +48,9 @@ vps_filter_size: 11  # 11 for coex indoor, window size of median filter ( 1 mean
 vps_filter_valid_thre: 3 # 1st threshold to check valid of vps result in median filter in metric (Large numger, (ex) 1000, means off)
 vps_filter_outlier_thre: 25  # 2nd threshold to reject outlier sample in median filter in metric (Large numger, (ex) 1000, means off)
 vps_filter_conf_thre: 0.81
+
+## Intersection
+intersection_cam: 3 # 1 or 3. 1: 1 camera; 3: 3 camera (require enable_360cam_crop: 1. If not enable_360cam_crop, 1 camera will be run)
 
 ## Odometry Specific Options
 enable_simulated_encoder: 0
@@ -220,6 +223,15 @@ Bucheon_KETI:
   video_input_path: ""
   robot_map_rotation: -90
   robot_map_origin: [3110, 2576]
+
+Bucheon_Robot:
+  robotmap_path: "data/Bucheon/bucheon_220922/occumap_bucheon.png" 
+  robotmap_ref_point_latlon: [37.5177542, 126.7651744]
+  robotmap_ref_point_pixel: [715, 650] 
+  robotmap_ref_point_meter_per_pixel: 0.1
+  robotmap_rotation: -0.8
+  robotmap_scale: 10.0
+  robotmap_origin_pixel: [345, 1110] #-34.5, -126.5 -> transform to latlon align. ex) margin-y
 
 COEX_KETI:
   map_image_path: "data/COEX/occumap_mcl(fliplr).png"
