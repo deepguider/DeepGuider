@@ -5,7 +5,7 @@ from torchvision import transforms
 from lib_intersection_cls.initialize_network import initialize_network
 from load_cv2_yaml import load_cv2_yaml
 
-from lib_intersection_cls.modules.resnet_network_3cam import ResNetDropblock
+from lib_intersection_cls.modules.resnet_network_3cam import ResNetDropblock, ResNetDropblockOneInput
 from lib_intersection_cls.convert_ricohtheta_to_3camera import RicohthetaTo3CameraConverter
 
 from PIL import Image
@@ -67,7 +67,12 @@ class IntersectionClassifier:
     def init_3camera(self):
         # initialize network
         network_type = 'resnet18'
-        self.network = ResNetDropblock(resnet_type=18, from_scratch=True)
+        self.network_selection = 0  # 0: feature fusion, 1: late fusion
+
+        if self.network_selection == 0:        
+            self.network = ResNetDropblock(resnet_type=18, from_scratch=True)
+        else:
+            self.network = ResNetDropblockOneInput(resnet_type=18, from_scratch=True)
 
         # load network
         resume_load = torch.load('./data_intersection_cls/weight_3camera.pth')
@@ -87,6 +92,8 @@ class IntersectionClassifier:
         ## You can access dg_ros.yml directly with follwing yml API
         self.intersection_cam = self.dg_ros_yml.read("intersection_cam")
         self.enable_360cam_crop = self.dg_ros_yml.read("enable_360cam_crop")
+        #self.intersection_cam = 3
+        #self.enable_360cam_crop = 1
         
     def run_1camera(self):
         ##### Process Input #####
@@ -128,13 +135,31 @@ class IntersectionClassifier:
 
         # forward to the network
         with torch.no_grad():
-            outputs = self.network(inputs_left, inputs_center, inputs_right)
-            outputs = self.softmax(outputs)
+            if self.network_selection == 0:
+                outputs = self.network(inputs_left, inputs_center, inputs_right)
+                outputs = self.softmax(outputs)
 
-        conf, preds = torch.max(outputs, 1)
+                conf, preds = torch.max(outputs, 1)
 
-        self.cls = preds[0].cpu().detach().item()
-        self.prob = conf[0].cpu().detach().item()
+                self.cls = preds[0].cpu().detach().item()
+                self.prob = conf[0].cpu().detach().item()
+            else:
+                combined_inputs = torch.cat([inputs_left, inputs_center, inputs_right], 0)
+                outputs = self.network(combined_inputs)
+                outputs = self.softmax(outputs)
+                left_outputs = outputs[0]
+                center_outputs = outputs[1]
+                right_outputs = outputs[2] 
+                left_conf, left_preds = torch.max(left_outputs, 0)
+                center_conf, center_preds = torch.max(center_outputs, 0)
+                right_conf, right_preds = torch.max(right_outputs, 0)
+
+                num_roads = left_preds.cpu().detach().item() + center_preds.cpu().detach().item() + right_preds.cpu().detach().item() 
+                mean_conf = (left_conf.cpu().detach().item() + center_conf.cpu().detach().item() + right_conf.cpu().detach().item()) / 3
+
+                self.cls = 1 if num_roads >= 2 else 0
+                self.prob = mean_conf
+
 
     ##### Process one frame
     def apply(self, image, timestamp):
