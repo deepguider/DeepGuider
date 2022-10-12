@@ -157,7 +157,7 @@ class IntersectionClassifier:
             self.imagecenter = image[:, width:width*2, :]  
             self.imageright =  image[:, width*2:width*3, :]
             
-            if self.intersection_cam != 1:
+            if self.intersection_cam != 3:
                 self.run_1camera()
             else:
                 self.run_3camera()
