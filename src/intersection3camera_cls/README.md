@@ -18,7 +18,7 @@
     - Torchvision 0.4.0
     - Dropblock 0.3.0
     
-- Download weight file from this [link](https://drive.google.com/file/d/1JJyd4ddWpESEcDMgw1thj6TjKZdom53-/view?usp=sharing) to **data_intersection3camera_cls** folder. Rename the weight file to **weight.pth**.
+- Download weight file from this [link](https://drive.google.com/file/d/1BF8YNGHVPPGkFdiIxyzTBxQgFfpfIRy7/view?usp=sharing) to **data_intersection3camera_cls** folder. Rename the weight file to **weight.pth**.
 
     
 ### Run demo
