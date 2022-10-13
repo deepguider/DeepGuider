@@ -9,7 +9,6 @@
 #include "dg_logo.hpp"
 #include "dg_ocr.hpp"
 #include "dg_intersection.hpp"
-#include "dg_intersection3camera.hpp"
 #include "dg_vps.hpp"
 #include "dg_roadlr.hpp"
 #include "dg_guidance.hpp"
@@ -29,7 +28,6 @@ protected:
     int m_enable_360cam = 0;
     int m_enable_360cam_crop = 0;
     int m_enable_intersection = 0;
-    int m_enable_intersection3camera = 0;
     int m_enable_ocr = 0;
     int m_enable_vps = 0;
     int m_enable_roadlr = 0;
@@ -41,7 +39,6 @@ protected:
     int m_enable_mapserver = 1;
 
     bool m_apply_intersection = true;
-    bool m_apply_intersection3camera = true;
     bool m_apply_imu = true;
     bool m_apply_ocr = true;
     bool m_apply_vps = true;
@@ -70,7 +67,8 @@ protected:
     double m_map_image_rotation = cx::cvtDeg2Rad(1.0);
     std::string m_gps_input_path = "data/191115_ETRI_asen_fix.csv";
     std::string m_video_input_path = "data/ETRI/191115_151140_images.avi";
-    cv::Vec3b m_gui_vps_color = cv::Vec3b(229, 204, 255); // bright pink
+    //cv::Vec3b m_gui_vps_color = cv::Vec3b(229, 204, 255); // bright pink
+    cv::Vec3b m_gui_vps_color = cx::COLOR_CYAN;
     cv::Vec3b m_gui_vps_rpose_color = cv::Vec3b(127, 0, 255);  // pink
     bool m_gui_auto_scroll = true;
 
@@ -127,7 +125,6 @@ protected:
     void procOdometryData(double x, double y, double theta, dg::Timestamp ts);
     void procGuidance(dg::Timestamp ts);
     bool procIntersectionClassifier();
-    bool procIntersection3CameraClassifier();
     bool procExploration();
     bool procLogo();
     bool procOcr();
@@ -140,7 +137,6 @@ protected:
     dg::MapManager m_map_manager;
     dg::DGLocalizer m_localizer;
     dg::IntersectionLocalizer m_intersection;
-    dg::Intersection3CameraLocalizer m_intersection3camera;
     dg::OCRLocalizer m_ocr;
     dg::VPSLocalizer m_vps;
     dg::RoadLRLocalizer m_roadlr;
@@ -183,7 +179,6 @@ protected:
 
     // Thread routines
     std::thread* intersection_thread = nullptr;
-    std::thread* intersection3camera_thread = nullptr;
     std::thread* ocr_thread = nullptr;
     std::thread* vps_thread = nullptr;
     std::thread* roadlr_thread = nullptr;
@@ -191,7 +186,6 @@ protected:
     std::thread* exploration_thread = nullptr;
     std::thread* logo_thread = nullptr;
     static void threadfunc_intersection(DeepGuider* guider);
-    static void threadfunc_intersection3camera(DeepGuider* guider);
     static void threadfunc_ocr(DeepGuider* guider);
     static void threadfunc_vps(DeepGuider* guider);
     static void threadfunc_roadlr(DeepGuider* guider);
@@ -199,7 +193,6 @@ protected:
     static void threadfunc_exploration(DeepGuider* guider);
     static void threadfunc_logo(DeepGuider* guider);
     bool is_intersection_running = false;
-    bool is_intersection3camera_running = false;
     bool is_ocr_running = false;
     bool is_vps_running = false;
     bool is_roadlr_running = false;
@@ -237,9 +230,6 @@ protected:
     cv::Mutex m_intersection_mutex;
     cv::Mat m_intersection_image;
 
-    cv::Mutex m_intersection3camera_mutex;
-    cv::Mat m_intersection3camera_image;
-
     cv::Mutex m_roadtheta_mutex;
     cv::Mat m_roadtheta_image;
 
@@ -273,7 +263,6 @@ void onMouseEvent(int event, int x, int y, int flags, void* param)
 DeepGuider::~DeepGuider()
 {
     m_intersection.clear();
-    m_intersection3camera.clear();
     m_ocr.clear();
     m_vps.clear();
     m_roadlr.clear();
@@ -292,7 +281,6 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "enable_360cam", m_enable_360cam, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_360cam_crop", m_enable_360cam_crop, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_intersection", m_enable_intersection, n_read);
-    CX_LOAD_PARAM_COUNT(fn, "enable_intersection3camera", m_enable_intersection3camera, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_ocr", m_enable_ocr, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_vps", m_enable_vps, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_roadlr", m_enable_roadlr, n_read);
@@ -376,7 +364,7 @@ bool DeepGuider::initialize(std::string config_file)
     if(ok) printf("\tConfiguration %s loaded!\n", config_file.c_str());
 
     // initialize python
-    bool enable_python = (m_enable_intersection==1) || (m_enable_intersection3camera==1) || (m_enable_ocr==1) || (m_enable_vps==1) || (m_enable_roadlr==1) || (m_enable_exploration==1) || (m_enable_logo==1);
+    bool enable_python = (m_enable_intersection==1) || (m_enable_ocr==1) || (m_enable_vps==1) || (m_enable_roadlr==1) || (m_enable_exploration==1) || (m_enable_logo==1);
     if (enable_python && !init_python_environment("python3", "", m_threaded_run_modules)) return false;
     if (enable_python) printf("\tPython environment initialized!\n");
 
@@ -389,11 +377,6 @@ bool DeepGuider::initialize(std::string config_file)
     std::string py_module_path = m_srcdir + "/intersection_cls";
     if (m_enable_intersection==1 && !m_intersection.initialize(this, py_module_path)) return false;
     if (m_enable_intersection==1) printf("\tIntersection initialized in %.3lf seconds!\n", m_intersection.procTime());
-
-    // initialize Intersection3Camera
-    py_module_path = m_srcdir + "/intersection3camera_cls";
-    if (m_enable_intersection3camera==1 && !m_intersection3camera.initialize(this, py_module_path)) return false;
-    if (m_enable_intersection3camera==1) printf("\tIntersection 3 camera initialized in %.3lf seconds!\n", m_intersection3camera.procTime());
 
     // initialize OCR
     py_module_path = m_srcdir + "/ocr_recog";
@@ -445,7 +428,6 @@ bool DeepGuider::initialize(std::string config_file)
     //if (!m_localizer.setParamVPSNoise(5, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
     if (!m_localizer.setParamVPSNoise(1, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
     if (!m_localizer.setParamIntersectClsNoise(0.1)) return false;  // position error(m)
-    //if (!m_localizer.setParamIntersect3CameraClsNoise(0.1)) return false;  // position error(m)
     if (!m_localizer.setParamRoadThetaNoise(50)) return false;      // angle arror(deg), angle offset(deg)
     if (!m_localizer.setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin
     m_localizer.setParamValue("enable_path_projection", true);
@@ -532,7 +514,6 @@ bool DeepGuider::initialize(std::string config_file)
     m_logo_image.release();
     m_ocr_image.release();
     m_intersection_image.release();
-    m_intersection3camera_image.release();
     m_exploration_image.release();
     m_roadtheta_image.release();
     m_guidance_cmd = dg::GuidanceManager::Motion::STOP;
@@ -568,17 +549,15 @@ int DeepGuider::run()
 {
     // load test dataset    
     dg::DataLoader data_loader;
-    std::string odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, intersection3camera_file, roadlr_file, roadtheta_file, exploration_file;
+    std::string odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file, exploration_file;
     std::string data_header = "data/ETRI/191115_151140";
     //ahrs_file = data_header + "_imu_data.csv";
     //ocr_file = data_header + "_ocr.csv";
     //poi_file = data_header + "_poi.csv";
     //vps_file = data_header + "_vps.csv";
     //intersection_file = data_header + "_intersect.csv";
-    //intersection3camera_file = data_header + "_intersect3camera.csv";
     //lr_file = data_header + "_roadlr.csv";
     //roadtheta_file = data_header + "_roadtheta.csv";
-    //if (!data_loader.load(m_video_input_path, m_gps_input_path, odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, intersection3camera_file, roadlr_file, roadtheta_file))
     if (!data_loader.load(m_video_input_path, m_gps_input_path, odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
     {
         printf("DeepGuider::run() - Fail to load test data. Exit program...\n");
@@ -590,7 +569,6 @@ int DeepGuider::run()
     if(m_threaded_run_modules)
     {
         if (m_enable_intersection==1) intersection_thread = new std::thread(threadfunc_intersection, this);
-        if (m_enable_intersection3camera==1) intersection3camera_thread = new std::thread(threadfunc_intersection3camera, this);
         if (m_enable_ocr==1) ocr_thread = new std::thread(threadfunc_ocr, this);    
         if (m_enable_vps==1) vps_thread = new std::thread(threadfunc_vps, this);
         if (m_enable_roadlr==1) roadlr_thread = new std::thread(threadfunc_roadlr, this);
@@ -682,21 +660,6 @@ int DeepGuider::run()
                 if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
             }
         }
-/*
-        else if (type == dg::DATA_Intersect3CameraCls)
-        {
-            double cls = vdata[1];
-            double cls_conf = vdata[2];
-            dg::Point2 xy;
-            double xy_confidence;
-            bool xy_valid = false;
-            if (m_intersection3camera.applyPreprocessed(cls, cls_conf, data_time, xy, xy_confidence, xy_valid) && xy_valid)
-            {
-                bool success = m_localizer.applyIntersect3CameraCls(xy, data_time, xy_confidence);
-                if (!success) fprintf(stderr, "applyIntersect3CameraCls() was failed.\n");
-            }
-        }
-*/
         else if (type == dg::DATA_RoadLR)
         {
             double cls = vdata[1];
@@ -737,7 +700,6 @@ int DeepGuider::run()
             if(!m_threaded_run_modules)
             {
                 if (m_enable_intersection==1 && intersection_file.empty()) procIntersectionClassifier();
-                if (m_enable_intersection3camera==1 && intersection3camera_file.empty()) procIntersection3CameraClassifier();
                 if (m_enable_ocr==1 && ocr_file.empty()) procOcr();
                 if (m_enable_vps==1 && vps_file.empty()) procVps();
                 if (m_enable_roadlr==1 && roadlr_file.empty()) procRoadLR();
@@ -984,7 +946,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::Rect video_rect = win_rect;
 
     // draw 360cam image
-    if (m_enable_360cam)
+    if (m_enable_360cam and false)
     {
         cv::Mat result_image;
         m_360cam_mutex.lock();
@@ -1002,7 +964,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     }
 
     // draw 360cam_crop image
-    if (m_enable_360cam_crop)
+    if (m_enable_360cam_crop and true)
     {
         cv::Mat result_image;
         m_360cam_crop_mutex.lock();
@@ -1030,25 +992,6 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             cv::resize(m_intersection_image, result_image, cv::Size((int)(win_rect.height * 0.9), win_rect.height));
         }
         m_intersection_mutex.unlock();
-
-        if (!result_image.empty())
-        {
-            win_rect = cv::Rect(win_rect.x + win_rect.width + m_video_win_gap, win_rect.y, result_image.cols, result_image.rows);
-            if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
-        }
-    }
-
-
-    // draw intersection 3 camera result
-    if (m_enable_intersection3camera)
-    {
-        cv::Mat result_image;
-        m_intersection3camera_mutex.lock();
-        if(!m_intersection3camera_image.empty())
-        {
-            cv::resize(m_intersection3camera_image, result_image, cv::Size((int)(win_rect.height * 0.9), win_rect.height));
-        }
-        m_intersection3camera_mutex.unlock();
 
         if (!result_image.empty())
         {
@@ -1100,10 +1043,19 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_vps_mutex.lock();
         dg::Point2 sv_xy = m_vps_xy;
         dg::Polar2 sv_relative = m_vps_relative;          
+		float fy_ratio;
         if (!m_vps_image.empty())
         {
+			if (m_enable_360cam_crop)
+			{
+				fy_ratio = 0.2;
+			}
+			else
+			{
+				fy_ratio = 0.7;
+			}
             double fy = (double)win_rect.height / m_vps_image.rows;
-            cv::resize(m_vps_image, result_image, cv::Size(), fy * 0.7, fy);
+            cv::resize(m_vps_image, result_image, cv::Size(), fy * fy_ratio, fy);
         }
         m_vps_mutex.unlock();
 
@@ -1116,11 +1068,11 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             double sv_distance = norm(pose_m - sv_xy);
             if (sv_distance <= m_vps_max_error_distance)
             {
-                m_painter.drawPoint(image, sv_xy, 20, m_gui_vps_color, view_offset, view_zoom);  // sky color for streetview position
+                m_painter.drawPoint(image, sv_xy, 6, m_gui_vps_color, view_offset, view_zoom);  // sky color for streetview position
             }
             else
             {
-                m_painter.drawPoint(image, sv_xy, 20, cv::Vec3b(128, 128, 128), view_offset, view_zoom);  // sky color for streetview position
+                m_painter.drawPoint(image, sv_xy, 6, cv::Vec3b(128, 128, 128), view_offset, view_zoom);  // sky color for streetview position
             }
 
             // Draw virtual robot position computed from relative pose
@@ -1128,7 +1080,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             double poi_theta = pose.theta + sv_relative.ang;
             double rx = sv_xy.x - sv_relative.lin * cos(poi_theta);
             double ry = sv_xy.y - sv_relative.lin * sin(poi_theta);
-            m_painter.drawPoint(image, Point2(rx,ry), 20, m_gui_vps_rpose_color, view_offset, view_zoom); // light black for  streetview position with relative pose
+            //m_painter.drawPoint(image, Point2(rx,ry), 20, m_gui_vps_rpose_color, view_offset, view_zoom); // light black for  streetview position with relative pose
         }
     }
 
@@ -1285,13 +1237,6 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
 
     gui_msg = "Intersect(I)";
     active = m_enable_intersection && m_apply_intersection;
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
-    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
-    gui_xy.y += 40;
-
-    gui_msg = "Intersect3Cam(N)";
-    active = m_enable_intersection3camera && m_apply_intersection3camera;
     cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
     if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
     else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
@@ -1594,8 +1539,6 @@ bool DeepGuider::procIntersectionClassifier()
 	    return false;
 	}
 
-    cam_image = cam_image_for_draw.clone();
-
     dg::Point2 xy;
     double confidence;
     bool valid_xy = false;
@@ -1613,39 +1556,6 @@ bool DeepGuider::procIntersectionClassifier()
     else
     {
         m_intersection.print();
-    }
-    return false;
-}
-
-bool DeepGuider::procIntersection3CameraClassifier()
-{
-	cv::Mat cam_image;
-	cv::Mat cam_image_for_draw;
-	dg::Timestamp capture_time;
-	double txt_scale;
-
-	if(!get_cam_image(cam_image, cam_image_for_draw, 1, txt_scale, capture_time, m_intersection3camera.timestamp()))
-	{
-	    return false;
-	}
-
-    dg::Point2 xy;
-    double confidence;
-    bool valid_xy = false;
-    if (m_intersection3camera.apply(cam_image, capture_time, xy, confidence, valid_xy))
-    {
-        //if(m_apply_intersection3camera && valid_xy) m_localizer.applyIntersect3CameraCls(xy, capture_time, confidence);
-        m_intersection3camera.print();
-
-        m_intersection3camera.draw(cam_image_for_draw, txt_scale);  // 2.0 when w is 1280(webcam), 1.0 when w is 640(360cam_crop)
-        m_intersection3camera_mutex.lock();
-        m_intersection3camera_image = cam_image_for_draw;
-        m_intersection3camera_mutex.unlock();
-        return true;
-    }
-    else
-    {
-        m_intersection3camera.print();
     }
     return false;
 }
@@ -2082,19 +1992,6 @@ void DeepGuider::threadfunc_intersection(DeepGuider* guider)
     printf("\tintersection thread ends\n");
 }
 
-// Thread fnuction for Intersection3CameraClassifier
-void DeepGuider::threadfunc_intersection3camera(DeepGuider* guider)
-{
-    guider->is_intersection3camera_running = true;
-    printf("\tintersection 3 camera thread starts\n");
-    while (guider->m_enable_intersection3camera)
-    {
-        guider->procIntersection3CameraClassifier();
-    }
-    guider->is_intersection3camera_running = false;
-    printf("\tintersection 3 camera thread ends\n");
-}
-
 // Thread fnuction for RoadTheta
 void DeepGuider::threadfunc_roadtheta(DeepGuider* guider)
 {
@@ -2172,11 +2069,10 @@ void DeepGuider::procTTS()
 
 void DeepGuider::terminateThreadFunctions()
 {
-    if (vps_thread == nullptr && roadlr_thread == nullptr && ocr_thread == nullptr && logo_thread == nullptr && intersection_thread == nullptr && intersection3camera_thread == nullptr && roadtheta_thread == nullptr && tts_thread == nullptr && exploration_thread == nullptr) return;
+    if (vps_thread == nullptr && roadlr_thread == nullptr && ocr_thread == nullptr && logo_thread == nullptr && intersection_thread == nullptr && roadtheta_thread == nullptr && tts_thread == nullptr && exploration_thread == nullptr) return;
 
     // disable all thread running
     m_enable_intersection = 0;
-    m_enable_intersection3camera = 0;
     m_enable_ocr = 0;
     m_enable_vps = 0;
     m_enable_roadlr = 0;
@@ -2188,7 +2084,6 @@ void DeepGuider::terminateThreadFunctions()
 
     // wait child thread to terminate
     if (intersection_thread && is_intersection_running) intersection_thread->join();
-    if (intersection3camera_thread && is_intersection3camera_running) intersection3camera_thread->join();
     if (ocr_thread && is_ocr_running) ocr_thread->join();
     if (vps_thread && is_vps_running) vps_thread->join();
     if (roadlr_thread && is_roadlr_running) roadlr_thread->join();
@@ -2199,7 +2094,6 @@ void DeepGuider::terminateThreadFunctions()
 
     // clear threads
     intersection_thread = nullptr;
-    intersection3camera_thread = nullptr;
     ocr_thread = nullptr;
     vps_thread = nullptr;
     roadlr_thread = nullptr;

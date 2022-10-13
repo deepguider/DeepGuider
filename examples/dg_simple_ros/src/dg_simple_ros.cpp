@@ -276,7 +276,6 @@ int DeepGuiderROS::run()
 
     // start internal recognizer threads
     if (m_enable_intersection==1) intersection_thread = new std::thread(threadfunc_intersection, this);
-    if (m_enable_intersection3camera==1) intersection3camera_thread = new std::thread(threadfunc_intersection3camera, this);
     if (m_enable_ocr==1) ocr_thread = new std::thread(threadfunc_ocr, this);
     if (m_enable_vps==1) vps_thread = new std::thread(threadfunc_vps, this);
     if (m_enable_roadlr==1) roadlr_thread = new std::thread(threadfunc_roadlr, this);
@@ -361,7 +360,6 @@ bool DeepGuiderROS::runOnce(double timestamp)
     if (key == 'v' || key == 'V') m_apply_vps = !m_apply_vps;
     if (key == 'p' || key == 'P') m_apply_ocr = !m_apply_ocr;
     if (key == 'i' || key == 'I') m_apply_intersection = !m_apply_intersection;
-    if (key == 'n' || key == 'N') m_apply_intersection3camera = !m_apply_intersection3camera;
     if (key == 'l' || key == 'L') m_apply_roadlr = !m_apply_roadlr;
     if (key == 't' || key == 'T') m_apply_roadtheta = !m_apply_roadtheta;    
     if (key == 'a') m_gui_auto_scroll = !m_gui_auto_scroll;  // toggle auto scroll of the map view

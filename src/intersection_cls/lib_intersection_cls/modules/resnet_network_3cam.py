@@ -156,3 +156,116 @@ class ResNetDropblock(nn.Module):  # fusion after GAP
         else:
             return out
 
+
+class ResNetDropblockOneInput(nn.Module):  # road non road classifier. fusion in the post processing
+    def __init__(self, output_class=2, model_path=None, resnet_type=18, drop_block=False, drop_prob=0.5, drop_pos=None, layer_depth=4, drop_block_size=3, from_scratch=False, drop_step=500000):
+        super(ResNetDropblockOneInput, self).__init__()
+
+        assert resnet_type in [18, 34, 50]
+        assert layer_depth in [1, 2, 3, 4]
+        if resnet_type == 18:
+            self.base = resnet18(pretrained=False, num_classes=1000)
+            if not from_scratch:
+                state_dict = torch.load('resnet18.pth')
+            if layer_depth == 4:
+                last_fc_in_channel = 512 * 1
+            elif layer_depth == 3:
+                last_fc_in_channel = 256 * 1
+            elif layer_depth == 2:
+                last_fc_in_channel = 128 * 1
+            else:  # elif layer_depth == 1:
+                last_fc_in_channel = 64 * 1
+
+        elif resnet_type == 34:
+            self.base = resnet34(pretrained=False, num_classes=1000)
+            if not from_scratch:
+                state_dict = torch.load('resnet34.pth')
+            if layer_depth == 4:
+                last_fc_in_channel = 512 * 1
+            elif layer_depth == 3:
+                last_fc_in_channel = 256 * 1
+            elif layer_depth == 2:
+                last_fc_in_channel = 128 * 1
+            else:  # elif layer_depth == 1:
+                last_fc_in_channel = 64 * 1
+        else:  # elif resnet_type == 50:
+            self.base = resnet50(pretrained=False, num_classes=1000)
+            if not from_scratch:
+                state_dict = torch.load('resnet50.pth')
+            if layer_depth == 4:
+                last_fc_in_channel = 512 * 4
+            elif layer_depth == 3:
+                last_fc_in_channel = 256 * 4
+            elif layer_depth == 2:
+                last_fc_in_channel = 128 * 4
+            else:  # elif layer_depth == 1:
+                last_fc_in_channel = 64 * 4
+
+        if not from_scratch:
+            self.base.load_state_dict(state_dict)
+
+        self.base.fc = nn.Linear(in_features=last_fc_in_channel, out_features=output_class, bias=True)
+
+        if drop_block:
+            self.dropblock = LinearScheduler(
+                DropBlock2D(drop_prob=drop_prob, block_size=drop_block_size),
+                start_value=0.,
+                stop_value=drop_prob,
+                nr_steps=drop_step
+            )
+        else:
+            self.dropblock = nn.Sequential()
+
+        self.drop_pos = drop_pos
+        self.layer_depth = layer_depth
+
+        if model_path is not None:
+            self.model_path = model_path
+            assert '.pth' in self.model_path or '.pkl' in self.model_path
+            self.init_weight()
+
+    def init_weight(self):
+        print('Loading weights into state dict...')
+        self.load_state_dict(torch.load(self.model_path, map_location=lambda storage, loc: storage))
+        print('Finished!')
+
+    def forward(self, x, return_feat=False):
+
+        x = self.base.conv1(x)
+        x = self.base.bn1(x)
+        x = self.base.relu(x)
+        x = self.base.maxpool(x)
+
+
+        if self.drop_pos == 1 or self.drop_pos is None:
+            x = self.dropblock(self.base.layer1(x))
+        else:
+            x = self.base.layer1(x)
+
+        if self.layer_depth > 1:
+            if self.drop_pos == 2 or self.drop_pos is None:
+                x = self.dropblock(self.base.layer2(x))
+            else:
+                x = self.base.layer2(x)
+
+            if self.layer_depth > 2:
+                if self.drop_pos == 3 or self.drop_pos is None:
+                    x = self.dropblock(self.base.layer3(x))
+                else:
+                    x = self.base.layer3(x)
+
+                if self.layer_depth > 3:
+                    if self.drop_pos == 4 or self.drop_pos is None:
+                        x = self.dropblock(self.base.layer4(x))
+                    else:
+                        x = self.base.layer4(x)
+
+        x = self.base.avgpool(x)
+        feat = torch.flatten(x, 1)
+
+        out = self.base.fc(feat)
+
+        if return_feat:
+            return out, feat
+        else:
+            return out

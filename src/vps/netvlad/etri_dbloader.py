@@ -175,7 +175,6 @@ def input_transform_db_indoor():  # Input shape changes, 2592*2048 for indoor st
 
 #input_transform = input_transform_db()
 
-
 def get_dg_test_set_using_matfile(dbDir='dbImg',qDir='qImg'):
     ## Usage : whole_db_set,whole_q_set = dataset.get_dg_test_set_using_matfile()
     #datasetDir = './netvlad_etri_datasets'

@@ -31,7 +31,6 @@ ln -sf $DGDIR/bin/recordings $ROSDIR/
 ln -sf $DGDIR/bin/data $ROSDIR/
 #ln -sf $DGDIR/bin/data_localizer $ROSDIR/
 ln -sf $DGDIR/src/intersection_cls/data_intersection_cls $ROSDIR/
-ln -sf $DGDIR/src/intersection3camera_cls/data_intersection3camera_cls $ROSDIR/
 ln -sf $DGDIR/src/ocr_recog/data_ocr $ROSDIR/
 ln -sf $DGDIR/src/vps/data_vps $ROSDIR/
 ln -sf $DGDIR/src/roadlr/data_roadlr $ROSDIR/
