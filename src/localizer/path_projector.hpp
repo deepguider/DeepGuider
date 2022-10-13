@@ -77,6 +77,17 @@ public:
         return n_read;
     }
 
+    bool checkOutOfPath(dg::Map* map, Path* path, const Pose2& pose)
+    {
+        if (map == nullptr || map->isEmpty() || path == nullptr || path->empty()) return false;
+
+        Pose2 path_pose = map->getNearestPathPose(*path, pose);
+        Point2 delta = path_pose - pose;
+        if (norm(delta) > 10) return true;
+
+        return false;
+    }
+
     /**
      * Estimate best map-projected pose of a given pose
      * @param map Map data

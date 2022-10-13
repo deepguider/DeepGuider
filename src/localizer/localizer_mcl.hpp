@@ -35,7 +35,7 @@ namespace dg
     {
     protected:
         int m_particle_numbers = 400;
-        double m_initial_error_bound = 50;      // meter
+        double m_initial_error_bound = 30;      // meter
         int m_odometry_history_size = 1000;
         double m_odometry_linear_std_err = 1;
         double m_odometry_angular_std_err = cx::cvtDeg2Rad(5);
@@ -88,7 +88,7 @@ namespace dg
             if (m_mcl_initialized)
             {
                 if (!m_odometry_active) predictParticles(m_ekf->getPose(), m_prev_gps_pose, time - m_prev_gps_time, m_robot_stopped);
-                evaluateParticlesHistory();
+                //evaluateParticlesHistory();
                 evaluateParticlesPose(m_ekf->getPose());
                 resampleParticles();
                 if (!m_odometry_active) m_pose_mcl = estimateMclPose();
@@ -97,11 +97,13 @@ namespace dg
             m_prev_gps_pose = m_ekf->getPose();
             m_prev_gps_time = time;
 
-            return true;
+            return applyPathLocalizer(m_pose, time);
         }
 
         virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)
         {
+            cv::AutoLock lock(m_mutex);
+
             // initialization
             if (!m_odometry_active)
             {
@@ -122,6 +124,11 @@ namespace dg
             m_odometry_stabilized = true;
 
             if (!isPoseStabilized()) return false;
+
+            if (m_ekf_pose_history.empty()) return false;
+            if (!m_ekf->applyOdometry(odometry_pose, time, confidence)) return false;
+            saveObservation(ObsData::OBS_ODO, odometry_pose, time, confidence);
+            saveEKFState(m_ekf, time);
 
             // check odometry velocity
             Point2 odo_delta(odometry_pose.x - m_prev_odometry_pose.x, odometry_pose.y - m_prev_odometry_pose.y);
@@ -150,7 +157,13 @@ namespace dg
             {
                 predictParticles(odometry_pose, m_prev_odometry_pose, time - m_prev_odometry_time, m_robot_stopped);
                 m_pose_mcl = estimateMclPose();
+                m_pose = m_pose_mcl;
             }
+            else
+            {
+                m_pose = m_ekf->getPose();
+            }
+            m_timestamp = time;
 
             // save odometry
             if (m_odometry_history.empty()) m_odometry_history.push_back(OdometryData(m_pose_mcl, odometry_pose.x, odometry_pose.y, odometry_pose.theta, 0, 0, time));
@@ -167,16 +180,10 @@ namespace dg
                 m_odometry_history.push_back(odo_new);
             }
 
-            cv::AutoLock lock(m_mutex);
-            if (m_ekf_pose_history.empty()) return false;
-            if (!m_ekf->applyOdometry(odometry_pose, time, confidence)) return false;
-            saveObservation(ObsData::OBS_ODO, odometry_pose, time, confidence);
-            saveEKFState(m_ekf, time);
-
             m_prev_odometry_pose = odometry_pose;
             m_prev_odometry_time = time;
 
-            return applyPathLocalizer(m_ekf->getPose(), time);
+            return applyPathLocalizer(m_pose, time);
         }
 
         const std::vector<Particle>& getParticles() { return m_particles; }
@@ -203,8 +210,7 @@ namespace dg
             if (map)
             {
                 Path path = m_shared->getPath();
-                if (!path.empty() && m_enable_path_projection) m_pose = getPathPose(map, &path, pose, m_ekf_pose_history, m_projected_pose_history, out_of_path);
-                else if (m_enable_map_projection) m_pose = getMapPose(map, pose, m_ekf_pose_history, m_projected_pose_history);
+                if (!path.empty()) out_of_path = checkOutOfPath(map, &path, pose);
             }
             m_shared->releaseMapLock();
             if (out_of_path) m_shared->procOutOfPath(m_pose);
