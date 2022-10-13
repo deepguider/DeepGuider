@@ -946,7 +946,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::Rect video_rect = win_rect;
 
     // draw 360cam image
-    if (m_enable_360cam)
+    if (m_enable_360cam and false)
     {
         cv::Mat result_image;
         m_360cam_mutex.lock();
@@ -964,7 +964,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     }
 
     // draw 360cam_crop image
-    if (m_enable_360cam_crop)
+    if (m_enable_360cam_crop and true)
     {
         cv::Mat result_image;
         m_360cam_crop_mutex.lock();
@@ -1043,10 +1043,19 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         m_vps_mutex.lock();
         dg::Point2 sv_xy = m_vps_xy;
         dg::Polar2 sv_relative = m_vps_relative;          
+		float fy_ratio;
         if (!m_vps_image.empty())
         {
+			if (m_enable_360cam_crop)
+			{
+				fy_ratio = 0.2;
+			}
+			else
+			{
+				fy_ratio = 0.7;
+			}
             double fy = (double)win_rect.height / m_vps_image.rows;
-            cv::resize(m_vps_image, result_image, cv::Size(), fy * 0.7, fy);
+            cv::resize(m_vps_image, result_image, cv::Size(), fy * fy_ratio, fy);
         }
         m_vps_mutex.unlock();
 
