@@ -946,7 +946,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::Rect video_rect = win_rect;
 
     // draw 360cam image
-    if (m_enable_360cam and false)
+    bool draw_360cam = false;
+    if (m_enable_360cam && draw_360cam)
     {
         cv::Mat result_image;
         m_360cam_mutex.lock();
@@ -964,7 +965,8 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     }
 
     // draw 360cam_crop image
-    if (m_enable_360cam_crop and true)
+    bool draw_360cam_crop = true;
+    if (m_enable_360cam_crop && draw_360cam_crop)
     {
         cv::Mat result_image;
         m_360cam_crop_mutex.lock();
