@@ -54,8 +54,9 @@ class IntersectionClassifier:
         self.network.load_state_dict(resume_load['model_state_dict'])
 
         self.network.eval()
+        self.network = self.network.to(self.device)
 
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax = nn.Softmax(dim=1).to(self.device)
 
         # define data transforms
         self.data_transforms = transforms.Compose([transforms.Resize(230),
@@ -79,8 +80,9 @@ class IntersectionClassifier:
         self.network.load_state_dict(resume_load['model_state_dict'])
 
         self.network.eval()
+        self.network = self.network.to(self.device)
 
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax = nn.Softmax(dim=1).to(self.device)
 
         # define data transforms
         self.data_transforms = transforms.Compose([transforms.Resize((224, 224)),
@@ -107,7 +109,7 @@ class IntersectionClassifier:
 
         # forward to the network
         with torch.no_grad():
-            outputs = self.network(inputs)
+            outputs = self.network(inputs.to(self.device))
             outputs = self.softmax(outputs)
 
         conf, preds = torch.max(outputs, 1)
@@ -136,7 +138,7 @@ class IntersectionClassifier:
         # forward to the network
         with torch.no_grad():
             if self.network_selection == 0:
-                outputs = self.network(inputs_left, inputs_center, inputs_right)
+                outputs = self.network(inputs_left.to(self.device), inputs_center.to(self.device), inputs_right.to(self.device))
                 outputs = self.softmax(outputs)
 
                 conf, preds = torch.max(outputs, 1)
