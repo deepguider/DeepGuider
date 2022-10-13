@@ -111,7 +111,7 @@
     <ClInclude Include="..\..\src\localizer\localizer_ekf.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_ekf_variants.hpp" />
     <ClInclude Include="..\..\src\localizer\localizer_interface.hpp" />
-    <ClInclude Include="..\..\src\localizer\localizer_odometry.hpp" />
+    <ClInclude Include="..\..\src\localizer\localizer_mcl.hpp" />
     <ClInclude Include="..\..\src\localizer\path_projector.hpp" />
     <ClInclude Include="..\..\src\lrpose_recog\lrpose_localizer.hpp" />
     <ClInclude Include="..\..\src\lrpose_recog\lrpose_recognizer.hpp" />

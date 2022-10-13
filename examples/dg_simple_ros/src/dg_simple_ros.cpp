@@ -325,7 +325,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     publishDGStatus();
 
     // process path generation
-    if(m_dest_defined && m_path_generation_pended && m_localizer.isPoseInitialized())
+    if(m_dest_defined && m_path_generation_pended && m_localizer->isPoseInitialized())
     {
         if(updateDeepGuiderPath(getPose(), m_dest)) m_path_generation_pended = false;        
     }
@@ -333,7 +333,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     // draw GUI display
     cv::Mat gui_image;
     dg::Pose2 px = m_painter.cvtValue2Pixel(getPose());
-    if (m_gui_auto_scroll && m_localizer.isPoseInitialized()) m_viewport.centerizeViewportTo(px);
+    if (m_gui_auto_scroll && m_localizer->isPoseInitialized()) m_viewport.centerizeViewportTo(px);
 
     m_viewport.getViewportImage(gui_image);
     drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
@@ -354,8 +354,8 @@ bool DeepGuiderROS::runOnce(double timestamp)
     if (key == 'o' || key == 'O')
     {
         m_apply_odometry = !m_apply_odometry;
-        if(m_enable_odometry && m_apply_odometry) m_localizer.resetOdometry();
-        if(m_enable_odometry && !m_apply_odometry) m_localizer.resetOdometryActivated();
+        if(m_enable_odometry && m_apply_odometry) m_localizer->resetOdometry();
+        if(m_enable_odometry && !m_apply_odometry) m_localizer->resetOdometryActivated();
     }
     if (key == 'v' || key == 'V') m_apply_vps = !m_apply_vps;
     if (key == 'p' || key == 'P') m_apply_ocr = !m_apply_ocr;
@@ -364,7 +364,7 @@ bool DeepGuiderROS::runOnce(double timestamp)
     if (key == 't' || key == 'T') m_apply_roadtheta = !m_apply_roadtheta;    
     if (key == 'a') m_gui_auto_scroll = !m_gui_auto_scroll;  // toggle auto scroll of the map view
     if (key == 'k') m_show_ekf_pose = !m_show_ekf_pose;
-    if (key == 'j') m_localizer.toggleEnablePathProjection();
+    if (key == 'j') m_localizer->toggleEnablePathProjection();
 
     if (key == cx::KEY_ESC) return false;
 
@@ -588,7 +588,7 @@ void DeepGuiderROS::callbackOCR(const dg_simple_ros::ocr_info::ConstPtr& msg)
         relative.lin = msg->ocrs[i].rel_r;
         relative.ang = msg->ocrs[i].rel_pi;
         poi_confidence = msg->ocrs[i].confidence;
-        m_localizer.applyPOI(poi_xy, relative, capture_time, poi_confidence);
+        m_localizer->applyPOI(poi_xy, relative, capture_time, poi_confidence);
     }
 }
 
@@ -620,7 +620,7 @@ void DeepGuiderROS::callbackVPS(const dg_simple_ros::vps::ConstPtr& msg)
     double sv_confidence = msg->confidence;
     dg::Timestamp capture_time = msg->timestamp;
     double proc_time = msg->processingtime;
-    m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
+    m_localizer->applyVPS(sv_xy, relative, capture_time, sv_confidence);
 
     dg::ID sv_id = msg->id;
     cv::Mat sv_image;
@@ -792,7 +792,7 @@ void DeepGuiderROS::publishDGPose()
 {
     geometry_msgs::PoseStamped rosps;
     dg::Timestamp  timestamp;
-    dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&timestamp);
+    dg::Point2UTM cur_pose = m_localizer->getPoseUTM(&timestamp);
     if (timestamp < 0) return;
 
     rosps.header.stamp.fromSec(timestamp);
@@ -1161,16 +1161,16 @@ void DeepGuiderROS::publishDGStatus(bool system_shutdown)
     dg_simple_ros::dg_status msg;
 
     dg::Timestamp  timestamp;
-    dg::Point2UTM cur_pose = m_localizer.getPoseUTM(&timestamp);
+    dg::Point2UTM cur_pose = m_localizer->getPoseUTM(&timestamp);
     if (timestamp < 0) return;
 
-    dg::LatLon ll = m_localizer.getPoseGPS();
+    dg::LatLon ll = m_localizer->getPoseGPS();
     msg.dg_shutdown = system_shutdown;
     msg.x = cur_pose.x;
     msg.y = cur_pose.y;
     msg.lat = ll.lat;
     msg.lon = ll.lon;
-    msg.confidence = m_localizer.getPoseConfidence();
+    msg.confidence = m_localizer->getPoseConfidence();
     msg.timestamp = timestamp;
 
     pub_status.publish(msg);

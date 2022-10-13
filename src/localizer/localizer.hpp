@@ -577,7 +577,7 @@ namespace dg
             m_ekf_pose_history.push_back(Pose2TLR(ekf->getPose(), timestamp));
         }
 
-        bool applyPathLocalizer(Pose2 pose, Timestamp timestamp)
+        virtual bool applyPathLocalizer(Pose2 pose, Timestamp timestamp)
         {
             m_pose = pose;
             m_timestamp = timestamp;

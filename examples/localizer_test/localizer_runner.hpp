@@ -9,6 +9,8 @@
 #include "ocr_recog/ocr_localizer.hpp"
 #include "dg_roadtheta.hpp"
 #include "utils/viewport.hpp"
+#include "localizer/localizer_mcl.hpp"
+
 
 void onMouseEventLocalizer(int event, int x, int y, int flags, void* param);
 
@@ -56,7 +58,7 @@ public:
         return true;
     }
 
-    int runLocalizer(cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader)
+    int runLocalizer(cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader, bool use_mcl)
     {
         bool show_projected_history = true; // debugging purpose
 
@@ -64,6 +66,7 @@ public:
         m_localizer = localizer;
         m_localizer->setShared(this);
         cv::Ptr<dg::DGLocalizer> dg_localizer = localizer.dynamicCast<dg::DGLocalizer>();
+        cv::Ptr<dg::DGLocalizerMCL> mcl_localizer = localizer.dynamicCast<dg::DGLocalizerMCL>();
 
         // initialize module localizers
         m_intersection_localizer.initialize_without_python(this);
@@ -224,9 +227,37 @@ public:
             // Visualize and show the current state as an image
             if (show_gui && update_gui)
             {
-                dg::Pose2 pose = localizer->getPose();
-                if (gui_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, gui_traj_radius, gui_robot_color);
-                cv::Mat out_image = genStateImage(bg_image, localizer, data_time - timestart);
+                cv::Mat out_image = bg_image.clone();
+
+                // Draw Particles
+                if (use_mcl)
+                {
+                    const std::vector<dg::Particle>& particles = mcl_localizer->getParticles();
+                    if (!particles.empty())
+                    {
+                        dg::Pose2 robot_pose = localizer->getPose();
+
+                        int nradius = 2;
+                        const cv::Vec3b ncolor = cv::Vec3b(0, 255, 0);
+                        dg::MapPainter* painter = (dg::MapPainter*)gui_painter;
+                        dg::Map* map = dg_localizer->getMap();
+                        for (auto itr = particles.begin(); itr != particles.end(); itr++)
+                        {
+                            dg::Node* from = itr->start_node;
+                            dg::Edge* edge = itr->edge;
+                            dg::Node* to = map->getConnectedNode(from, edge->id);
+
+                            dg::Point2 v = *to - *from;
+                            dg::Point2 pose_m = *from + itr->dist * v / edge->length;
+
+                            double theta = atan2(v.y, v.x);
+                            if (fabs(cx::trimRad(theta - robot_pose.theta)) < CV_PI / 2)
+                                painter->drawNode(out_image, dg::Point2ID(0, pose_m), nradius, 0, ncolor);
+                            else
+                                painter->drawNode(out_image, dg::Point2ID(0, pose_m), nradius, 0, cv::Vec3b(0, 0, 0));
+                        }
+                    }
+                }
 
                 // show sensor status
                 cv::Scalar color_bg(255, 255, 255);
@@ -245,22 +276,6 @@ public:
                 if (apply_odo) cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_active, 2);
                 else cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_deactive, 2);
                 gui_xy.y += 40;
-
-                // Draw the current state on the bigger background
-                if (show_zoom)
-                {
-                    if (zoom_user_drag)
-                    {
-                        cv::Point2d pos = gui_painter->cvtPixel2Value(zoom_user_point);
-                        pasteZoomedImage(out_image, pos, zoom_background);
-                    }
-                    else
-                    {
-                        if (gui_traj_radius > 0) zoom_painter->drawPoint(zoom_bg_image, pose, gui_traj_radius, gui_robot_color);
-                        cv::Mat zoom_image = genStateImage(zoom_bg_image, localizer, data_time - timestart, zoom_painter);
-                        pasteZoomedImage(out_image, pose, zoom_image);
-                    }
-                }
 
                 // Draw the image given from the camera
                 if (!cam_image.empty() && video_resize > 0)
@@ -301,6 +316,30 @@ public:
                         }
                     }
                 }
+
+                // Draw Robot
+                dg::Pose2 pose = localizer->getPose();
+                if (gui_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, gui_traj_radius, gui_robot_color);
+                genStateImage(out_image, localizer, data_time - timestart);
+
+                // Draw the current state on the bigger background
+                if (show_zoom)
+                {
+                    if (zoom_user_drag)
+                    {
+                        cv::Point2d pos = gui_painter->cvtPixel2Value(zoom_user_point);
+                        pasteZoomedImage(out_image, pos, zoom_background);
+                    }
+                    else
+                    {
+                        if (gui_traj_radius > 0) zoom_painter->drawPoint(zoom_bg_image, pose, gui_traj_radius, gui_robot_color);
+
+                        cv::Mat zoom_image = zoom_bg_image.clone();
+                        genStateImage(zoom_image, localizer, data_time - timestart, zoom_painter);
+                        pasteZoomedImage(out_image, pose, zoom_image);
+                    }
+                }
+
                 // Record the current visualization on the AVI file
                 if (out_video.isConfigured() && rec_video_resize > 0)
                 {
@@ -365,15 +404,16 @@ public:
         }
     }
 
-    cv::Mat genStateImage(const cv::Mat& bg_image, const cv::Ptr<dg::BaseLocalizer> localizer, double timestamp, cx::Painter* painter = nullptr)
+    void genStateImage(cv::Mat& image, const cv::Ptr<dg::BaseLocalizer> localizer, double timestamp, cx::Painter* painter = nullptr)
     {
         if (painter == nullptr) painter = gui_painter;
         CV_DbgAssert(!localizer.empty() && painter != nullptr);
-        cv::Mat image = bg_image.clone();
-        if (image.empty()) return cv::Mat();
 
         // Get pose
         dg::Pose2 pose_m = localizer->getPose();
+        cv::Ptr<dg::DGLocalizerMCL> mcl_localizer = localizer.dynamicCast<dg::DGLocalizerMCL>();
+        if(mcl_localizer) pose_m = mcl_localizer->getPoseMCL();
+
         cv::Ptr<dg::EKFLocalizerSinTrack> localizer_topo = localizer.dynamicCast<dg::EKFLocalizerSinTrack>();
         dg::TopometricPose pose_t;
         if (!localizer_topo.empty()) pose_t = localizer_topo->getPoseTopometric();
@@ -447,7 +487,6 @@ public:
                 cv::putText(image, topo_text, gui_text_offset + cv::Point(0, topo_text_offset), cv::FONT_HERSHEY_PLAIN, gui_text_scale, gui_text_color, gui_text_thickness);
             }
         }
-        return image;
     }
 
     bool pasteZoomedImage(cv::Mat& image, const dg::Pose2& pose, const cv::Mat& zoom_image)

@@ -42,8 +42,8 @@ protected:
     // configuable parameters
     double m_branchmap_search_radius = 100;         // Unit: [m]
     double m_projection_search_radius = 100;        // Unit: [m]
-    double m_normal_alignscore_gap = 10;             // Unit: [m], ï¿½ï¿½ï¿½ï¿½ pathï¿½ï¿½ ï¿½Å±ï¿½ pathï¿½ï¿½ score ï¿½ï¿½ï¿½Ì°ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½Ì³ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ pathï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
-    double m_abnormal_alignscore_gap = 20;          // Unit: [m], ï¿½ï¿½ï¿½ï¿½ pathï¿½ï¿½ ï¿½Å±ï¿½ pathï¿½ï¿½ score ï¿½ï¿½ï¿½Ì°ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ¾î¼­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Å»ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    double m_normal_alignscore_gap = 10;             // Unit: [m], ±âÁ¸ path¿Í ½Å±Ô pathÀÇ score Â÷ÀÌ°¡ ÀÌ °ª ÀÌ³»¸é Åë»óÀûÀÎ ¹üÀ§·Î °£ÁÖ (ÇöÀç path¿¡ ÇÁ·ÎÁ§¼Ç)
+    double m_abnormal_alignscore_gap = 20;          // Unit: [m], ±âÁ¸ path¿Í ½Å±Ô pathÀÇ score Â÷ÀÌ°¡ ÀÌ °ªÀ» ³Ñ¾î¼­¸é °æ·ÎÀÌÅ»·Î °¨Áö
     double m_max_robot_velocity = 2.0;              // Unit: [m/sec]
     double m_length_align_weight = 0.5;
     double m_error_tolerance = 0.01;                // Unit: [m]
@@ -300,7 +300,7 @@ public:
             }
         }
 
-        // estimate heading (ï¿½ï¿½ï¿½ï¿½ map edge ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
+        // estimate heading (ÇöÀç map edge ¹æÇâÀ¸·Î ¼öÁ¤)
         dg::Path best_path;
         bool ok = m_localmap.getPath(mappose_start, best_map_pose, best_path);
         if ((int)best_path.pts.size()>=2)
@@ -329,11 +329,11 @@ public:
     }
 
     /**
-     * ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ý°ï¿½ ï¿½ï¿½ï¿½ï¿½ local branch mapï¿½ï¿½ ï¿½ï¿½È¯ (ï¿½ï¿½ Node ï¿½ï¿½ï¿½Ì¿ï¿½ ï¿½Ü¹ï¿½ï¿½ï¿½ edgeï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
-     * @param map ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-     * @param center_nid ï¿½ß½ï¿½ Node ID
-     * @param localmap Å½ï¿½ï¿½ï¿½ï¿½ local branch map
-     * @param search_radius Å½ï¿½ï¿½ ï¿½Ý°ï¿½
+     * ÇöÀç À§Ä¡¿Í ¿¬°áµÈ ¹Ý°æ ³»ÀÇ local branch mapÀ» ¹ÝÈ¯ (µÎ Node »çÀÌ¿¡ ´Ü¹æÇâ edge°¡ Á¸ÀçÇÏ´Â °æ¿ì´Â µ¿ÀÛÇÏÁö ¾ÊÀ½)
+     * @param map ¸Ê µ¥ÀÌÅÍ
+     * @param center_nid Áß½É Node ID
+     * @param localmap Å½»öµÈ local branch map
+     * @param search_radius Å½»ö ¹Ý°æ
      * @return Return True if successful
      */
     static bool getLocalBranchMap(dg::Map* map, ID center_nid, dg::Map& localmap, double search_radius)
@@ -383,7 +383,7 @@ public:
     }
 
     /**
-     * ï¿½Ö¾ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ï¿½ï¿½ ï¿½Ý°ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯ (nodeï¿½ï¿½ or edgeï¿½ï¿½ï¿½ï¿½)
+     * ÁÖ¾îÁø ±âÁØ À§Ä¡¿¡¼­ ¹Ý°æ ³» °¡´ÉÇÑ ¸ðµç ¸Ê Åõ¿µÁ¡µéÀ» ¹ÝÈ¯ (nodeÁ¡ or edgeÁ¡µé)
      * @param map Given map
      * @param p Give reference point
      * @param search_radius Search radius
@@ -403,7 +403,7 @@ public:
             double d = norm(*from - p);
             if (d > search_radius) continue;
 
-            // check edge projection: ï¿½Ø´ï¿½ edge(from)ï¿½ï¿½ gpsï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+            // check edge projection: ÇØ´ç edge(from)°¡ gpsÀÇ Åõ¿µÁ¡ÀÌ µÉ ¼ö ÀÖ´ÂÁö Á¶»ç
             Point2 nv = p - *from;
             bool proj_node = true;
             for (auto it = from->edge_ids.begin(); it != from->edge_ids.end(); it++)
@@ -435,7 +435,7 @@ public:
             }
 
 
-            // check edge projection: ï¿½Ø´ï¿½ edge(from)ï¿½ï¿½ gpsï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+            // check edge projection: ÇØ´ç edge(from)°¡ gpsÀÇ Åõ¿µÁ¡ÀÌ µÉ ¼ö ÀÖ´ÂÁö Á¶»ç
             double min_dist2 = DBL_MAX;
             Node* min_to = nullptr;
             ID min_eid = 0;

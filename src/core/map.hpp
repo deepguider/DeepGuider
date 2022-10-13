@@ -904,6 +904,22 @@ public:
     const Edge* getNearestEdge(const Point2& p, Point2& nearest_edge_point) const;
 
     /**
+     * Find edges within a search radius from a point (time complexity: O(|N|))
+     * @param p A given point
+     * @param search_radius A given search radius
+     * @return A list of found edge (empty list if no edge found)
+     */
+    std::vector<Edge*> getNearEdges(const Point2& p, double search_radius);
+
+    /**
+     * Find edges within a search radius from a point (time complexity: O(|N|))
+     * @param p A given point
+     * @param search_radius A given search radius
+     * @return A list of found edge (empty list if no edge found)
+     */
+    std::vector<const Edge*> getNearEdges(const Point2& p, double search_radius) const;
+
+    /**
      * Find a nearest map-projected pose of a given pose (time complexity: O(|E|))
      * @param pose_m A given metric pose
      * @return The found map pose

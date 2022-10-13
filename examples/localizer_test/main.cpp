@@ -150,7 +150,7 @@ int drawGPSData(const MapGUIProp& gui, const std::vector<std::string>& gps_files
     return 0;
 }
 
-int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader, const std::string& rec_traj_file = "", const std::string& rec_video_file = "", double rec_video_fps = 10)
+int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer, dg::DataLoader& data_loader, const std::string& rec_traj_file = "", const std::string& rec_video_file = "", double rec_video_fps = 10, bool use_mcl = true)
 {
     if (localizer.empty()) return -1;
 
@@ -224,7 +224,7 @@ int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer
     experiment.rec_video_name = rec_video_file;
     experiment.rec_video_resize = 0.5;
     experiment.rec_video_fps = rec_video_fps;
-    return experiment.runLocalizer(localizer, data_loader);
+    return experiment.runLocalizer(localizer, data_loader, use_mcl);
 }
 
 int testUTMConverter()
@@ -310,6 +310,8 @@ int runLocalizer()
     bool enable_lr = false;
     bool enable_roadtheta = false;
     bool draw_gps = false;
+    bool use_mcl = true;
+    //use_mcl = false;
 
     // Define GUI properties for ETRI and COEX sites
     MapGUIProp ETRI;
@@ -364,7 +366,8 @@ int runLocalizer()
     //localizer = cv::makePtr<dg::EKFLocalizer>();
     //localizer = cv::makePtr<dg::EKFLocalizerHyperTan>();
     //localizer = cv::makePtr<dg::EKFLocalizerSinTrack>();
-    localizer = cv::makePtr<dg::DGLocalizer>("EKFLocalizerHyperTan");
+    if(use_mcl) localizer = cv::makePtr<dg::DGLocalizerMCL>("EKFLocalizerHyperTan");
+    else localizer = cv::makePtr<dg::DGLocalizer>("EKFLocalizerHyperTan");
 
     if (!localizer->setParamMotionNoise(1, 10)) return -1;      // linear_velocity(m), angular_velocity(deg)
     if (!localizer->setParamMotionBounds(1, 20)) return -1;     // max. linear_velocity(m), max. angular_velocity(deg)
@@ -390,7 +393,7 @@ int runLocalizer()
 
     enable_odometry = true;
     //enable_imu = true;
-    use_andro_gps = true;
+    //use_andro_gps = true;
     //use_novatel = true;
     //enable_ocr = true;
     //enable_poi = true;
@@ -399,6 +402,7 @@ int runLocalizer()
     //enable_lr = true;
     //enable_roadtheta = true;
     //draw_gps = true;
+
 
     int data_sel = 0;
     double start_time = 0;     // skip time (seconds)
@@ -450,7 +454,7 @@ int runLocalizer()
         return drawGPSData(PROP, gps_file, { cx::COLOR_RED }, 1, gps_smoothing_n);
     }
 
-    return runLocalizerReal(PROP, localizer, data_loader, rec_traj_file, rec_video_file, rec_video_fps);
+    return runLocalizerReal(PROP, localizer, data_loader, rec_traj_file, rec_video_file, rec_video_fps, use_mcl);
 }
 
 int main()

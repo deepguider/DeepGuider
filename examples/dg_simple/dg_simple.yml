@@ -11,6 +11,7 @@ enable_roadtheta: 0
 enable_exploration: 0
 enable_logo: 0
 enable_imu: 0
+enable_mcl: 0
 enable_mapserver: 0    # 0: use saved offline map, 1: online mapserver
 
 ### Main Options

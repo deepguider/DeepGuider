@@ -15,6 +15,7 @@
 #include "dg_exploration.hpp"
 #include "dg_utils.hpp"
 #include "localizer/data_loader.hpp"
+#include "localizer/localizer_mcl.hpp"
 #include "utils/viewport.hpp"
 #include <chrono>
 
@@ -37,6 +38,7 @@ protected:
     int m_enable_imu = 0;
     int m_enable_odometry = 0;
     int m_enable_mapserver = 1;
+    int m_enable_mcl = 0;
 
     bool m_apply_intersection = true;
     bool m_apply_imu = true;
@@ -135,7 +137,7 @@ protected:
     // sub modules
     dg::GuidanceManager m_guider;
     dg::MapManager m_map_manager;
-    dg::DGLocalizer m_localizer;
+    cv::Ptr<dg::DGLocalizer> m_localizer;
     dg::IntersectionLocalizer m_intersection;
     dg::OCRLocalizer m_ocr;
     dg::VPSLocalizer m_vps;
@@ -289,6 +291,7 @@ int DeepGuider::readParam(const cv::FileNode& fn)
     CX_LOAD_PARAM_COUNT(fn, "enable_logo", m_enable_logo, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_imu", m_enable_imu, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_odometry", m_enable_odometry, n_read);
+    CX_LOAD_PARAM_COUNT(fn, "enable_mcl", m_enable_mcl, n_read);
     CX_LOAD_PARAM_COUNT(fn, "enable_mapserver", m_enable_mapserver, n_read);
 
     // Read Main Options
@@ -417,35 +420,36 @@ bool DeepGuider::initialize(std::string config_file)
     }
 
     // initialize localizer
-    if (!m_localizer.initialize(this, "EKFLocalizerHyperTan")) return false;
-    if (!m_localizer.setParamMotionNoise(1, 10)) return false;      // linear_velocity(m/sec), angular_velocity(deg/sec)
-    if (!m_localizer.setParamMotionBounds(1, 20)) return false;     // max_linear_velocity(m/sec), max_angular_velocity(deg/sec)
-    if (!m_localizer.setParamGPSNoise(5)) return false;            // position error(m)
-    if (!m_localizer.setParamGPSOffset(1, 0)) return false;         // displacement(lin,ang) from robot origin
-    if (!m_localizer.setParamOdometryNoise(0.1, 2)) return false;  // position error(m), orientation error(deg)
-    if (!m_localizer.setParamIMUCompassNoise(1, 0)) return false;   // angle arror(deg), angle offset(deg)
-    if (!m_localizer.setParamPOINoise(5, 20, 25)) return false;    // position error(m), orientation error(deg), max error (m)
-    //if (!m_localizer.setParamVPSNoise(5, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
-    if (!m_localizer.setParamVPSNoise(1, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
-    if (!m_localizer.setParamIntersectClsNoise(0.1)) return false;  // position error(m)
-    if (!m_localizer.setParamRoadThetaNoise(50)) return false;      // angle arror(deg), angle offset(deg)
-    if (!m_localizer.setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin
-    m_localizer.setParamValue("enable_path_projection", true);
-    m_localizer.setParamValue("enable_map_projection", false);
-    m_localizer.setParamValue("enable_backtracking_ekf", true); // default : true, for demo : false
-    m_localizer.setParamValue("enable_gps_smoothing", false);
-    m_localizer.setParamValue("enable_stop_filtering", true);
-    m_localizer.setParamValue("max_observation_error", 20);       // meter
-    m_localizer.setParamValue("odometry_stabilization_d", 3);     // meter
-    m_localizer.setParamValue("gps_reverse_vel", -0.5);
-    m_localizer.setParamValue("search_turn_weight", 100);
-    m_localizer.setParamValue("track_near_radius", 20);
-    m_localizer.setParamValue("lr_mismatch_cost", 50);
-    m_localizer.setParamValue("enable_lr_reject", false);
-    m_localizer.setParamValue("lr_reject_cost", 20);             // 20
-    m_localizer.setParamValue("enable_discontinuity_cost", true);
-    m_localizer.setParamValue("discontinuity_weight", 0.5);      // 0.5
-    m_localizer.setParamValue("enable_debugging_display", false);
+    if (m_enable_mcl) m_localizer = cv::makePtr<dg::DGLocalizerMCL>("EKFLocalizerHyperTan");
+    else m_localizer = cv::makePtr<dg::DGLocalizer>("EKFLocalizerHyperTan");
+    if (!m_localizer->initialize(this, "EKFLocalizerHyperTan")) return false;
+    if (!m_localizer->setParamMotionNoise(1, 10)) return false;      // linear_velocity(m/sec), angular_velocity(deg/sec)
+    if (!m_localizer->setParamMotionBounds(1, 20)) return false;     // max_linear_velocity(m/sec), max_angular_velocity(deg/sec)
+    if (!m_localizer->setParamGPSNoise(5)) return false;            // position error(m)
+    if (!m_localizer->setParamGPSOffset(1, 0)) return false;         // displacement(lin,ang) from robot origin
+    if (!m_localizer->setParamOdometryNoise(0.1, 2)) return false;  // position error(m), orientation error(deg)
+    if (!m_localizer->setParamIMUCompassNoise(1, 0)) return false;   // angle arror(deg), angle offset(deg)
+    if (!m_localizer->setParamPOINoise(20, 20, 25)) return false;    // position error(m), orientation error(deg), max error (m)
+    if (!m_localizer->setParamVPSNoise(20, 20, m_vps_max_error_distance)) return false;    // position error(m), orientation error(deg), max error (m)
+    if (!m_localizer->setParamIntersectClsNoise(20)) return false;  // position error(m)
+    if (!m_localizer->setParamRoadThetaNoise(50)) return false;      // angle arror(deg), angle offset(deg)
+    if (!m_localizer->setParamCameraOffset(1, 0)) return false;      // displacement(lin,ang) from robot origin
+    m_localizer->setParamValue("enable_path_projection", true);
+    m_localizer->setParamValue("enable_map_projection", false);
+    m_localizer->setParamValue("enable_backtracking_ekf", true); // default : true, for demo : false
+    m_localizer->setParamValue("enable_gps_smoothing", false);
+    m_localizer->setParamValue("enable_stop_filtering", true);
+    m_localizer->setParamValue("max_observation_error", 20);       // meter
+    m_localizer->setParamValue("odometry_stabilization_d", 3);     // meter
+    m_localizer->setParamValue("gps_reverse_vel", -0.5);
+    m_localizer->setParamValue("search_turn_weight", 100);
+    m_localizer->setParamValue("track_near_radius", 20);
+    m_localizer->setParamValue("lr_mismatch_cost", 50);
+    m_localizer->setParamValue("enable_lr_reject", false);
+    m_localizer->setParamValue("lr_reject_cost", 20);             // 20
+    m_localizer->setParamValue("enable_discontinuity_cost", true);
+    m_localizer->setParamValue("discontinuity_weight", 0.5);      // 0.5
+    m_localizer->setParamValue("enable_debugging_display", false);
     printf("\tLocalizer initialized!\n");
 
     // initialize guidance
@@ -579,7 +583,7 @@ int DeepGuider::run()
 
     cv::Mat video_image;
     cv::Mat gui_image;
-    int wait_msec = 200;
+    int wait_msec = 1;
     int itr = 0;
     double start_time = 500;
     data_loader.setStartSkipTime(start_time);
@@ -619,7 +623,7 @@ int DeepGuider::run()
             dg::Point2 clue_xy(vdata[2], vdata[3]);
             dg::Polar2 relative(vdata[4], vdata[5]);
             double confidence = vdata[6];
-            bool success = m_localizer.applyPOI(clue_xy, relative, data_time, confidence);
+            bool success = m_localizer->applyPOI(clue_xy, relative, data_time, confidence);
             if (!success) fprintf(stderr, "applyPOI() was failed.\n");
         }
         else if (type == dg::DATA_OCR)
@@ -635,7 +639,7 @@ int DeepGuider::run()
             double confidence;
             if (m_ocr.applyPreprocessed(name, xmin, ymin, xmax, ymax, conf, data_time, poi, relative, confidence))
             {
-                bool success = m_localizer.applyPOI(*poi, relative, data_time, confidence);
+                bool success = m_localizer->applyPOI(*poi, relative, data_time, confidence);
                 if (!success) fprintf(stderr, "applyOCR() was failed.\n");
             }
         }
@@ -644,7 +648,7 @@ int DeepGuider::run()
             dg::Point2 clue_xy = toMetric(dg::LatLon(vdata[3], vdata[4]));
             dg::Polar2 relative(vdata[5], vdata[6]);
             double confidence = vdata[7];
-            bool success = m_localizer.applyVPS(clue_xy, relative, data_time, confidence);
+            bool success = m_localizer->applyVPS(clue_xy, relative, data_time, confidence);
             if (!success) fprintf(stderr, "applyVPS() was failed.\n");
         }
         else if (type == dg::DATA_IntersectCls)
@@ -656,7 +660,7 @@ int DeepGuider::run()
             bool xy_valid = false;
             if (m_intersection.applyPreprocessed(cls, cls_conf, data_time, xy, xy_confidence, xy_valid) && xy_valid)
             {
-                bool success = m_localizer.applyIntersectCls(xy, data_time, xy_confidence);
+                bool success = m_localizer->applyIntersectCls(xy, data_time, xy_confidence);
                 if (!success) fprintf(stderr, "applyIntersectCls() was failed.\n");
             }
         }
@@ -668,7 +672,7 @@ int DeepGuider::run()
             double lr_confidence;
             if (m_roadlr.applyPreprocessed(cls, cls_conf, data_time, lr_cls, lr_confidence))
             {
-                bool success = m_localizer.applyRoadLR(lr_cls, data_time, lr_confidence);
+                bool success = m_localizer->applyRoadLR(lr_cls, data_time, lr_confidence);
                 if (!success) fprintf(stderr, "applyRoadLR() was failed.\n");
             }
         }
@@ -676,12 +680,12 @@ int DeepGuider::run()
         {
             double theta = vdata[3];
             double confidence = vdata[4];
-            bool success = m_localizer.applyRoadTheta(theta, data_time, confidence);
+            bool success = m_localizer->applyRoadTheta(theta, data_time, confidence);
             if (!success) fprintf(stderr, "applyRoadTheta() was failed.\n");
         }
 
         // process path generation
-        if(m_dest_defined && m_path_generation_pended && m_localizer.isPoseInitialized())
+        if(m_dest_defined && m_path_generation_pended && m_localizer->isPoseInitialized())
         {
             printf("[run]]\n");
             if(updateDeepGuiderPath(getPose(), m_dest)) m_path_generation_pended = false;
@@ -714,7 +718,7 @@ int DeepGuider::run()
             // draw GUI display
             dg::Pose2 pose_m = getPose();
             dg::Pose2 pose_px = m_painter.cvtValue2Pixel(pose_m);
-            if (m_gui_auto_scroll && m_localizer.isPoseInitialized()) m_viewport.centerizeViewportTo(pose_px);
+            if (m_gui_auto_scroll && m_localizer->isPoseInitialized()) m_viewport.centerizeViewportTo(pose_px);
             m_viewport.getViewportImage(gui_image);
             drawGuiDisplay(gui_image, m_viewport.offset(), m_viewport.zoom());
 
@@ -740,8 +744,8 @@ int DeepGuider::run()
             if (key == 'o' || key == 'O')
             {
                 m_apply_odometry = !m_apply_odometry;
-                if(m_enable_odometry && m_apply_odometry) m_localizer.resetOdometry();
-                if(m_enable_odometry && !m_apply_odometry) m_localizer.resetOdometryActivated();
+                if(m_enable_odometry && m_apply_odometry) m_localizer->resetOdometry();
+                if(m_enable_odometry && !m_apply_odometry) m_localizer->resetOdometryActivated();
             }
             if (key == 'v' || key == 'V') m_apply_vps = !m_apply_vps;
             if (key == 'p' || key == 'P') m_apply_ocr = !m_apply_ocr;
@@ -749,7 +753,7 @@ int DeepGuider::run()
             if (key == 'l' || key == 'L') m_apply_roadlr = !m_apply_roadlr;
             if (key == 't' || key == 'T') m_apply_roadtheta = !m_apply_roadtheta;
             if (key == 'k') m_show_ekf_pose = !m_show_ekf_pose;
-            if (key == 'j') m_localizer.toggleEnablePathProjection();
+            if (key == 'j') m_localizer->toggleEnablePathProjection();
             if (key == 83) itr += 30;   // Right Key
 
             // update iteration
@@ -771,22 +775,22 @@ int DeepGuider::run()
 
 Pose2 DeepGuider::getPose(Timestamp* timestamp) const
 {
-    return m_localizer.getPose(timestamp);
+    return m_localizer->getPose(timestamp);
 }
 
 LatLon DeepGuider::getPoseGPS(Timestamp* timestamp) const
 {
-    return m_localizer.getPoseGPS(timestamp);
+    return m_localizer->getPoseGPS(timestamp);
 }
 
 TopometricPose DeepGuider::getPoseTopometric(Timestamp* timestamp) const
 {
-    return m_localizer.getPoseTopometric(timestamp);
+    return m_localizer->getPoseTopometric(timestamp);
 }
 
 double DeepGuider::getPoseConfidence(Timestamp* timestamp) const
 {
-    return m_localizer.getPoseConfidence(timestamp);
+    return m_localizer->getPoseConfidence(timestamp);
 }
 
 bool DeepGuider::procOutOfPath(const Point2& curr_pose)
@@ -799,7 +803,7 @@ void DeepGuider::procGpsData(dg::LatLon gps_datum, dg::Timestamp ts)
 {
     if (!m_apply_gps) return;
 
-    VVS_CHECK_TRUE(m_localizer.applyGPS(gps_datum, ts));
+    VVS_CHECK_TRUE(m_localizer->applyGPS(gps_datum, ts));
 }
 
 void DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double ori_z, dg::Timestamp ts)
@@ -807,14 +811,14 @@ void DeepGuider::procImuData(double ori_w, double ori_x, double ori_y, double or
     if (!m_apply_imu) return;
 
     auto euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
-    VVS_CHECK_TRUE(m_localizer.applyIMUCompass(euler.z, ts));
+    VVS_CHECK_TRUE(m_localizer->applyIMUCompass(euler.z, ts));
 }
 
 void DeepGuider::procOdometryData(double x, double y, double theta, dg::Timestamp ts)
 {
     if (!m_apply_odometry) return;
 
-    VVS_CHECK_TRUE(m_localizer.applyOdometry(Pose2(x,y,theta), ts));
+    VVS_CHECK_TRUE(m_localizer->applyOdometry(Pose2(x,y,theta), ts));
 }
 
 void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
@@ -845,7 +849,7 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
         pose.x = val.x;
         pose.y = val.y;
         if(time<0) time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        m_localizer.setPose(pose, time);
+        m_localizer->setPose(pose, time);
         printf("[Localizer] set user pose: x = %lf, y = %lf\n", val.x, val.y);
     }
     else if (evt == cv::EVENT_RBUTTONUP)
@@ -858,7 +862,7 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
 
 bool DeepGuider::setDeepGuiderDestination(dg::Point2F dest)
 {
-    if(!m_localizer.isPoseInitialized())
+    if(!m_localizer->isPoseInitialized())
     {
         m_dest = dest;
         m_dest_defined = true;
@@ -891,8 +895,8 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
             printf("[MapManager] fail to find path to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
             return false;
         }
-        dg::Pose2 pose = m_localizer.getPose();
-        m_localizer.setPose(pose);
+        dg::Pose2 pose = m_localizer->getPose();
+        m_localizer->setPose(pose);
         setPath(path);
         printf("[MapManager] New path generated to (lat=%lf, lon=%lf)\n", gps_dest.lat, gps_dest.lon);
     }
@@ -1050,11 +1054,11 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
         {
 			if (m_enable_360cam_crop)
 			{
-				fy_ratio = 0.2;
+				fy_ratio = 0.2f;
 			}
 			else
 			{
-				fy_ratio = 0.7;
+				fy_ratio = 0.7f;
 			}
             double fy = (double)win_rect.height / m_vps_image.rows;
             cv::resize(m_vps_image, result_image, cv::Size(), fy * fy_ratio, fy);
@@ -1146,12 +1150,43 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     dg::Pose2 pose_metric = getPose();
     dg::TopometricPose pose_topo = getPoseTopometric();
     dg::LatLon pose_gps = toLatLon(pose_metric);
-    double pose_confidence = m_localizer.getPoseConfidence();
+    double pose_confidence = m_localizer->getPoseConfidence();
+
+    // draw mcl particles
+    if (m_enable_mcl)
+    {
+        cv::Ptr<dg::DGLocalizerMCL> mcl_localizer = m_localizer.dynamicCast<dg::DGLocalizerMCL>();
+        if (mcl_localizer)
+        {
+            const std::vector<dg::Particle>& particles = mcl_localizer->getParticles();
+            if (!particles.empty())
+            {
+                int nradius = 2;
+                const cv::Vec3b ncolor = cv::Vec3b(0, 255, 255);
+                dg::Map* map = getMap();
+                for (auto itr = particles.begin(); itr != particles.end(); itr++)
+                {
+                    dg::Node* from = itr->start_node;
+                    dg::Edge* edge = itr->edge;
+                    dg::Node* to = map->getConnectedNode(from, edge->id);
+
+                    dg::Point2 v = *to - *from;
+                    dg::Point2 pose_m = *from + itr->dist * v / edge->length;
+
+                    double theta = atan2(v.y, v.x);
+                    if (fabs(cx::trimRad(theta - pose_metric.theta)) < CV_PI / 2)
+                        m_painter.drawNode(image, dg::Point2ID(0, pose_m), nradius, 0, ncolor, view_offset, view_zoom);
+                    else
+                        m_painter.drawNode(image, dg::Point2ID(0, pose_m), nradius, 0, cv::Vec3b(0, 0, 0), view_offset, view_zoom);
+                }
+            }
+        }
+    }
 
     // draw robot on the map
     if (m_show_ekf_pose)
     {
-        dg::Pose2 pose_ekf = m_localizer.getEkfPose();
+        dg::Pose2 pose_ekf = m_localizer->getEkfPose();
         m_painter.drawPoint(image, pose_ekf, 10 * 2, cx::COLOR_WHITE, view_offset, view_zoom);
         m_painter.drawPoint(image, pose_ekf, 8 * 2, cx::COLOR_BLUE, view_offset, view_zoom);
         cv::Point2d px = (m_painter.cvtValue2Pixel(pose_ekf) - view_offset) * view_zoom;
@@ -1415,7 +1450,7 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     // get updated pose & localization confidence
     dg::TopometricPose pose_topo = getPoseTopometric();
     dg::Pose2 pose_metric = getPose();
-    double pose_confidence = m_localizer.getPoseConfidence();
+    double pose_confidence = m_localizer->getPoseConfidence();
 
     // Guidance: generate navigation guidance
     dg::GuidanceManager::GuideStatus cur_status;
@@ -1546,7 +1581,7 @@ bool DeepGuider::procIntersectionClassifier()
     bool valid_xy = false;
     if (m_intersection.apply(cam_image, capture_time, xy, confidence, valid_xy))
     {
-        if(m_apply_intersection && valid_xy) m_localizer.applyIntersectCls(xy, capture_time, confidence);
+        if(m_apply_intersection && valid_xy) m_localizer->applyIntersectCls(xy, capture_time, confidence);
         m_intersection.print();
 
         m_intersection.draw(cam_image_for_draw, txt_scale);  // 2.0 when w is 1280(webcam), 1.0 when w is 640(360cam_crop)
@@ -1581,7 +1616,7 @@ bool DeepGuider::procLogo()
     {
         for (int k = 0; k < (int)poi_xys.size(); k++)
         {
-            m_localizer.applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
+            m_localizer->applyPOI(poi_xys[k], relatives[k], capture_time, poi_confidences[k]);
         }
         m_logo.print();
         return true;
@@ -1615,7 +1650,7 @@ bool DeepGuider::procOcr()
         {
             for (int k = 0; k < (int)pois.size(); k++)
             {
-                m_localizer.applyPOI(*(pois[k]), relatives[k], capture_time, poi_confidences[k]);
+                m_localizer->applyPOI(*(pois[k]), relatives[k], capture_time, poi_confidences[k]);
             }
         }
     }
@@ -1651,7 +1686,7 @@ bool DeepGuider::procRoadTheta()
     double theta, confidence;
     if (m_roadtheta.apply(cam_image, capture_time, theta, confidence))
     {
-        if (m_apply_roadtheta) m_localizer.applyRoadTheta(theta, capture_time, confidence);
+        if (m_apply_roadtheta) m_localizer->applyRoadTheta(theta, capture_time, confidence);
         m_roadtheta.print();
 
         m_roadtheta.draw(cam_image, 4);
@@ -1713,7 +1748,7 @@ bool DeepGuider::procVps()
     double sv_confidence;
     if (m_vps.apply(cam_image, capture_time, sv_xy, relative, sv_confidence, m_vps_gps_accuracy))
     {
-        if (m_apply_vps) m_localizer.applyVPS(sv_xy, relative, capture_time, sv_confidence);
+        if (m_apply_vps) m_localizer->applyVPS(sv_xy, relative, capture_time, sv_confidence);
         m_vps.print();
 
 		if (sv_confidence < 0)
@@ -1804,7 +1839,7 @@ bool DeepGuider::procRoadLR()
 
     if (m_roadlr.apply(cam_image, capture_time, lr_pose, lr_confidence))
     {
-        if (m_apply_roadlr) m_localizer.applyRoadLR(lr_pose, capture_time, lr_confidence);
+        if (m_apply_roadlr) m_localizer->applyRoadLR(lr_pose, capture_time, lr_confidence);
         m_roadlr.print();
 
         m_roadlr.draw(cam_image_for_draw, txt_scale);  // 2.0 when w is 1280(webcam), 1.0 when w is 640(360cam_crop)

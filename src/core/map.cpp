@@ -553,6 +553,56 @@ const Edge* Map::getNearestEdge(const Point2& p, Point2& nearest_edge_point) con
     return min_edge;
 }
 
+std::vector<Edge*> Map::getNearEdges(const Point2& p, double search_radius)
+{
+    std::map<ID, int> lookup_tmp;
+    int idx = 0;
+    std::vector<Edge*> results;
+    double radius2 = search_radius * search_radius;
+    for (auto it = nodes.begin(); it != nodes.end(); it++)
+    {
+        double d2 = (p.x - it->x) * (p.x - it->x) + (p.y - it->y) * (p.y - it->y);
+        if (d2 <= radius2)
+        {
+            for (auto eid = it->edge_ids.begin(); eid != it->edge_ids.end(); eid++)
+            {
+                // check duplication
+                auto found = lookup_tmp.find(*eid);
+                if (found != lookup_tmp.end()) continue;
+
+                results.push_back(getEdge(*eid));
+                lookup_tmp.insert(std::make_pair(*eid, idx++));
+            }
+        }
+    }
+    return results;
+}
+
+std::vector<const Edge*> Map::getNearEdges(const Point2& p, double search_radius) const
+{
+    std::map<ID, int> lookup_tmp;
+    int idx = 0;
+    std::vector<const Edge*> results;
+    double radius2 = search_radius * search_radius;
+    for (auto it = nodes.begin(); it != nodes.end(); it++)
+    {
+        double d2 = (p.x - it->x) * (p.x - it->x) + (p.y - it->y) * (p.y - it->y);
+        if (d2 <= radius2)
+        {
+            for (auto eid = it->edge_ids.begin(); eid != it->edge_ids.end(); eid++)
+            {
+                // check duplication
+                auto found = lookup_tmp.find(*eid);
+                if (found == lookup_tmp.end()) continue;
+
+                results.push_back(getEdge(*eid));
+                lookup_tmp.insert(std::make_pair(*eid, idx++));
+            }
+        }
+    }
+    return results;
+}
+
 Pose2 Map::getNearestMapPose(const Pose2& pose_m, double turn_weight) const
 {
     std::pair<double, Point2> min_dist2 = std::make_pair(DBL_MAX, Point2());
