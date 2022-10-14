@@ -39,6 +39,24 @@ namespace dg
     protected:
         bool getAbsoluteOrientation(double theta_relative, const dg::Pose2& pose, double& theta_absolute)
         {
+            double d_thr = 15;
+
+            // discard roadtheta near map branch point
+            Map* map = m_shared->getMap();
+            if (map == nullptr || map->isEmpty()) return false;
+            cv::Point2d ep;
+            dg::Edge* edge = map->getNearestEdge(pose, ep);
+            dg::Node* node1 = map->getNode(edge->node_id1);
+            dg::Node* node2 = map->getNode(edge->node_id2);
+            if (norm(ep - *node1) < d_thr)
+            {
+                if (node1->edge_ids.size() > 2) return false;
+            }
+            if (norm(ep - *node2) < d_thr)
+            {
+                if (node2->edge_ids.size() > 2) return false;
+            }
+
             // path-based orientation if path defined
             Path path = m_shared->getPath();
             if (!path.empty())
@@ -49,8 +67,6 @@ namespace dg
             }
 
             // map-based orientation if no path
-            Map* map = m_shared->getMap();
-            if (map == nullptr || map->isEmpty()) return false;
             double turn_weight = 1.0;
             Pose2 map_pose = map->getNearestMapPose(pose, turn_weight);
             theta_absolute = cx::trimRad(map_pose.theta + theta_relative);
