@@ -35,7 +35,9 @@ namespace dg
     {
     protected:
         int m_particle_numbers = 400;
+        int m_resample_numbers = 30;
         double m_initial_error_bound = 30;      // meter
+        double m_ekf_error_bound = 20;      // meter
         int m_odometry_history_size = 1000;
         double m_odometry_linear_std_err = 1;
         double m_odometry_angular_std_err = cx::cvtDeg2Rad(5);
@@ -43,6 +45,7 @@ namespace dg
         double m_gps_theta_sigma = cx::cvtDeg2Rad(50);
         double m_odometry_save_interval = 1;
         double m_corner_cosine = cos(CV_PI / 4);
+        double m_path_particle_weight = 1.1;
 
         Pose2 m_prev_gps_pose;
         Timestamp m_prev_gps_time = -1;
@@ -91,7 +94,7 @@ namespace dg
                 //evaluateParticlesHistory();
                 evaluateParticlesPose(m_ekf->getPose());
                 resampleParticles();
-                if (!m_odometry_active) m_pose_mcl = estimateMclPose();
+                m_pose_mcl = estimateMclPose();
                 m_pose = m_pose_mcl;
             }
             m_prev_gps_pose = m_ekf->getPose();
@@ -193,7 +196,7 @@ namespace dg
         void initialize_mcl(const Pose2& pose)
         {
             Point2 p(pose.x, pose.y);
-            create_uniform_particles(p, m_initial_error_bound, m_particles);
+            create_uniform_particles(p, m_initial_error_bound, m_particles, m_particle_numbers);
             m_odometry_history.resize(m_odometry_history_size);
             m_mcl_initialized = true;
         }
@@ -221,7 +224,7 @@ namespace dg
             return true;
         }
 
-        void create_uniform_particles(const Point2 p, double radius, std::vector<Particle>& particles)
+        void create_uniform_particles(const Point2 p, double radius, std::vector<Particle>& particles, int n)
         {
             particles.resize(m_particle_numbers);
             int idx = 0;
@@ -238,7 +241,7 @@ namespace dg
 
                 for (size_t i = 0; i < edges.size(); i++)
                 {
-                    int cnt = (int)(m_particle_numbers * edges[i]->length / total_length + 0.5);
+                    int cnt = (int)(n * edges[i]->length / total_length + 0.5);
                     int k = 0;
                     while (k < cnt)
                     {
@@ -248,7 +251,7 @@ namespace dg
                         particles[idx].head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
                         idx++;
                         k++;
-                        if (k>=cnt || idx >= m_particle_numbers) break;
+                        if (k>=cnt || idx >= n) break;
 
                         particles[idx].start_node = map->getNode(edges[i]->node_id2);
                         particles[idx].edge = edges[i];
@@ -256,13 +259,13 @@ namespace dg
                         particles[idx].head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
                         idx++;
                         k++;
-                        if (k>=cnt || idx >= m_particle_numbers) break;
+                        if (k>=cnt || idx >= n) break;
 
                     }
-                    if (idx >= m_particle_numbers) break;
+                    if (idx >= n) break;
                 }
 
-                while (idx < m_particle_numbers)
+                while (idx < n)
                 {
                     Edge* edge = edges[rand() % ((int)(edges.size()))];
 
@@ -271,14 +274,109 @@ namespace dg
                     particles[idx].dist = (double)rand() * edge->length / RAND_MAX;
                     particles[idx].head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
                     idx++;
-                    if (idx >= m_particle_numbers) break;
+                    if (idx >= n) break;
 
                     particles[idx].start_node = map->getNode(edge->node_id2);
                     particles[idx].edge = edge;
                     particles[idx].dist = (double)rand() * edge->length / RAND_MAX;
                     particles[idx].head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
                     idx++;
-                    if (idx >= m_particle_numbers) break;
+                    if (idx >= n) break;
+                }
+            }
+            m_shared->releaseMapLock();
+        }
+
+        void add_uniform_particles(const Pose2 p, double radius, std::vector<Particle>& particles, int n, double w)
+        {
+            Map* map = m_shared->getMapLocked();
+            int added = 0;
+            if (map)
+            {
+                std::vector<Edge*> edges = map->getNearEdges(p, radius);
+                double total_length = 0;
+                for (size_t i = 0; i < edges.size(); i++)
+                {
+                    total_length += edges[i]->length;
+                }
+
+                for (size_t i = 0; i < edges.size(); i++)
+                {
+                    int cnt = (int)(n * edges[i]->length / total_length + 0.5);
+
+                    dg::Node* from = map->getNode(edges[i]->node_id1);
+                    dg::Edge* edge = edges[i];
+                    dg::Node* to = map->getNode(edges[i]->node_id2);
+
+                    dg::Point2 v = *to - *from;
+                    double theta = atan2(v.y, v.x);
+                    bool use_node1 = true;
+                    if (fabs(cx::trimRad(theta - p.theta)) < CV_PI / 2) use_node1 = true;
+                    else use_node1 = false;
+
+                    int k = 0;
+                    while (k < cnt)
+                    {
+                        Particle particle;
+                        if(use_node1)
+                        {
+                            particle.start_node = map->getNode(edges[i]->node_id1);
+                            particle.edge = edges[i];
+                            particle.dist = (double)rand() * edges[i]->length / RAND_MAX;
+                            particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
+                            particle.weight = w;
+                            particles.push_back(particle);
+                        }
+                        else
+                        {
+                            particle.start_node = map->getNode(edges[i]->node_id2);
+                            particle.edge = edges[i];
+                            particle.dist = (double)rand() * edges[i]->length / RAND_MAX;
+                            particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
+                            particle.weight = w;
+                            particles.push_back(particle);
+                        }
+                        k++;
+                        added++;
+                        if (k>=cnt || added >= n) break;
+                    }
+                    if (added >= n) break;
+                }
+
+                while (added < n)
+                {
+                    Edge* edge = edges[rand() % ((int)(edges.size()))];
+
+                    dg::Node* from = map->getNode(edge->node_id1);
+                    dg::Node* to = map->getNode(edge->node_id2);
+
+                    dg::Point2 v = *to - *from;
+                    double theta = atan2(v.y, v.x);
+                    bool use_node1 = true;
+                    if (fabs(cx::trimRad(theta - p.theta)) < CV_PI / 2) use_node1 = true;
+                    else use_node1 = false;
+
+                        Particle particle;
+                        if(use_node1)
+                        {
+                            particle.start_node = map->getNode(edge->node_id1);
+                            particle.edge = edge;
+                            particle.dist = (double)rand() * edge->length / RAND_MAX;
+                            particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
+                            particle.weight = w;
+                            particles.push_back(particle);
+                        }
+                        else
+                        {
+                            particle.start_node = map->getNode(edge->node_id2);
+                            particle.edge = edge;
+                            particle.dist = (double)rand() * edge->length / RAND_MAX;
+                            particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
+                            particle.weight = w;
+                            particles.push_back(particle);
+                        }
+                    added++;
+                    if (added >= n) break;
                 }
             }
             m_shared->releaseMapLock();
@@ -370,6 +468,9 @@ namespace dg
         {
             int N = (int)m_particles.size();
 
+            Path path = m_shared->getPath();
+            int path_n = (int)path.pts.size();
+
             Map* map = m_shared->getMapLocked();
             double w_sum = 0;
             double err_theta_s = 0;
@@ -384,6 +485,18 @@ namespace dg
                 Pose2 pose_m = *from + m_particles[i].dist * v / edge->length;
                 pose_m.theta = cx::trimRad(atan2(v.y, v.x) + m_particles[i].head);
 
+                // path weight
+                double path_weight = 1;
+                for (size_t k = 0; k < path_n; k++)
+                {
+                    if (edge->id == path.pts[k].edge_id)
+                    {
+                        path_weight = m_path_particle_weight;
+                        break;
+                    }
+                }
+
+                // reference pose weight
                 double dx = pose.x - pose_m.x;
                 double dy = pose.y - pose_m.y;
                 double err_d = sqrt(dx * dx + dy * dy);
@@ -394,7 +507,7 @@ namespace dg
                 double pdf1 = exp(-err_d * err_d / (2 * m_gps_pos_sigma * m_gps_pos_sigma)) / (m_gps_pos_sigma * sqrt(2 * CV_PI));
                 double pdf2 = exp(-err_theta * err_theta / (2 * m_gps_theta_sigma * m_gps_theta_sigma)) / (m_gps_theta_sigma * sqrt(2 * CV_PI));
 
-                m_particles[i].weight *= (pdf1 * pdf2);
+                m_particles[i].weight *= (pdf1 * pdf2 * path_weight);
                 w_sum += m_particles[i].weight;
             }
             m_shared->releaseMapLock();
@@ -407,8 +520,8 @@ namespace dg
 
         double alignProbPath2Odometry(const std::vector<PathNode>& path_pts, const std::vector<int>& path_corner_pts_index, const std::vector<double>& path_len_cumulated, RingBuffer<OdometryData>& odometry, Particle& particle)
         {
-            // path_pts, path_len_cumulated: Ãâ¹ßÁ¡ºÎÅÍ particleÀÌ ¼ÓÇÑ edgeÀÇ start node±îÁöÀÇ path
-            // particle À§Ä¡´Â path¿¡ Æ÷ÇÔµÇÁö ¾ÊÀ½¿¡ ÁÖÀÇ!!
+            // path_pts, path_len_cumulated: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ particleï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ edgeï¿½ï¿½ start nodeï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ path
+            // particle ï¿½ï¿½Ä¡ï¿½ï¿½ pathï¿½ï¿½ ï¿½ï¿½ï¿½Ôµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½!!
 
             //double m_odometry_save_interval = 1;
 
@@ -423,7 +536,7 @@ namespace dg
             Point2 v = *to - *from;
             Point2 particle_pos = *from + particle.dist * v / edge->length;
 
-            // theta correction: ¿Àµµ¸ÞÆ®¸® ½ÃÁ¡ Á¾Á¡ °Å¸®°¡ pathÀÇ ½ÃÁ¡ Á¾Á¡ °Å¸®¿Í ÀÏÄ¡
+            // theta correction: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Å¸ï¿½ï¿½ï¿½ pathï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Å¸ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡
             double path_distance = norm(path_pts[0] - particle_pos);
             Point2 odo_start(odometry[0].x, odometry[0].y);
             Point2 odo_end(odometry.back().x, odometry.back().y);
@@ -544,6 +657,8 @@ namespace dg
             Map* map = m_shared->getMapLocked();
 
             int N = (int)m_particles.size();
+
+            /*
             int K = m_mixture_centroid_n;
             if (m_mixture_centroids.empty())
             {
@@ -577,6 +692,7 @@ namespace dg
                     m_mixture_centroids.push_back(pos_m);
                 }
             }
+            */
 
             Point2 mean_p(0, 0);
             double mean_theta = 0;
@@ -606,7 +722,7 @@ namespace dg
 
         void resampleParticles()
         {
-            int N = (int)m_particles.size();
+            int N = (int)m_particles.size();            
             if (N < 1) return;
 
             std::vector<double> cumulative_sum;
@@ -618,7 +734,7 @@ namespace dg
             }
 
             // resampling
-            int M = m_particle_numbers;
+            int M = m_particle_numbers - m_resample_numbers;
             if (M > N) M = N;
             std::vector<int> indexes;
             indexes.resize(M);
@@ -644,6 +760,7 @@ namespace dg
                 else
                     j++;
             }
+
             std::vector<Particle> tmp;
             tmp.resize(M);
             double w_sum = 0;
@@ -652,6 +769,8 @@ namespace dg
                 tmp[i] = m_particles[indexes[i]];
                 w_sum += tmp[i].weight;
             }
+            add_uniform_particles(m_ekf->getPose(), m_ekf_error_bound, tmp, m_resample_numbers, w_sum/M/2);
+            w_sum += (m_resample_numbers * w_sum / M);
 
             m_particles = tmp;
             for (int i = 0; i < M; i++)
