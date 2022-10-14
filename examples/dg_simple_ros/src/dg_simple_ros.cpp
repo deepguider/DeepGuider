@@ -106,7 +106,7 @@ protected:
     double m_dx_map_rotation_radian = -0.8;
     double m_robotmap_scale = 10.0;
     cv::Point2d m_dx_map_origin_pixel = cv::Point2d(345, 1110);
-    bool m_pub_flag = 0;
+    bool m_pub_flag = false;
     GuidanceManager::RobotStatus m_prev_state = GuidanceManager::RobotStatus::READY;
     ros::Time m_begin_time = ros::Time::now();
 
@@ -120,7 +120,7 @@ protected:
     std::vector<Point2> m_undrivable_points;
     void initialize_DG_DX_conversion();
     Point2 makeSubgoal();
-    bool makeImagePixels(cv::Mat& image, Point2& robot_dx_pixel, Point2& node_dx_pixel);
+    Point2 makeImagePixels(cv::Mat& image, Point2& robot_dx_pixel, Point2& node_dx_pixel);
     geometry_msgs::PoseStamped makeRosPubPoseMsg(ID nid, Point2 xy);
     Point2 findDrivablePoint(cv::Mat &image, Point2 robot_px, Point2 node_px);
     Point2 findDrivableNearPoint(cv::Mat &image, Point2 robot_px, Point2 node_px);
@@ -747,8 +747,8 @@ void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr
     dg::LatLon latlon = m_dx_converter.toLatLon(dg::Point2(x_rotation_corrected, y_rotation_corrected));
     dg::Point2 dg_metric2 = m_dg_converter.toMetric(latlon);
     dg::Point2 robot_display = m_painter.cvtValue2Pixel(dg_metric2);
-    ROS_INFO_THROTTLE(1.0, "Robot_img: %f,%f", robot_display.x, robot_display.y);
-    cv::circle(m_map_image, robot_display, 10, cv::Vec3b(0, 255, 0));
+    // ROS_INFO_THROTTLE(1.0, "Robot_img: %f,%f", robot_display.x, robot_display.y);
+    cv::circle(m_map_image, robot_display, 3, cv::Vec3b(0, 255, 255));
 
     m_guider_mutex.lock();
     m_guider.m_robot_pose = cv::Point2d(x, y);
@@ -805,16 +805,19 @@ void DeepGuiderROS::publishSubGoal()
 {
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
     ID nid = cur_guide.heading_node_id;
+    ROS_INFO_THROTTLE(1.0, "Will publish guide of node: %zu", nid);
+
     Node *hNode = m_map.getNode(nid);
     if (hNode == nullptr)
         return;
     
+    Pose2 pub_pose = m_guider.m_subgoal_pose;
     Pose2 node_metric = Pose2(hNode->x, hNode->y);
-    Point2 pub_pose = m_guider.m_subgoal_pose;
     if (!m_guider.m_dxrobot_usage)
     {
         Point2 pt = cvtLatLon2UTM(toLatLon(node_metric));
         geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(nid, pt);
+        m_guider.m_subgoal_pose = pt;
         pub_subgoal.publish(rosps);
     }
     else
@@ -837,7 +840,7 @@ void DeepGuiderROS::publishSubGoal()
             m_pub_flag = true;
             m_prev_state = cur_state;
         }
-        else if (m_pub_flag || m_prev_state == cur_state)
+        else if (m_pub_flag && m_prev_state == cur_state)
         {
             ros::Time cur_time = ros::Time::now();
             ros::Duration duration = cur_time - m_begin_time;
@@ -864,49 +867,62 @@ void DeepGuiderROS::publishSubGoal()
         else if (cur_state == GuidanceManager::RobotStatus::RUN_MANUAL || cur_state == GuidanceManager::RobotStatus::RUN_AUTO)
         {
             m_prev_state = cur_state;
-            m_pub_flag == false;
+            m_pub_flag = false;
             m_begin_time = ros::Time::now();
         }    
     }
 }
 
-Point2 DeepGuiderROS::reselectDrivablePoint()
+Point2 DeepGuiderROS::makeSubgoal()
 {
     cv::Mat image;
-    Point2 pub_pose, robot_dx_pixel, node_dx_pixel;
-    if(makeImagePixels(image, robot_dx_pixel, node_dx_pixel))
+    Point2 robot_dx_pixel, node_dx_pixel;
+    Point2 pub_pose = makeImagePixels(image, robot_dx_pixel, node_dx_pixel);
+
+    if (image.at<uchar>((int)node_dx_pixel.y, (int)node_dx_pixel.x) < 200) //if node is in black area
     {
-        Point2 undrivable_pose = m_guider.m_subgoal_pose;
-        m_undrivable_points.push_back(undrivable_pose);
-        Point2 dx_metric, dx_pixel;
-        for (int i = 0; i < m_undrivable_points.size(); i++)
-        {
-            dx_metric = m_undrivable_points[i];
-            // 2. DX 로봇 좌표 --> DX 로봇맵 픽셀좌표
-            dx_pixel.x = m_dx_map_origin_pixel.x + dx_metric.x / m_dx_map_meter_per_pixel;
-            dx_pixel.y = m_dx_map_origin_pixel.y - dx_metric.y / m_dx_map_meter_per_pixel;
-            image.at<uchar>((int)dx_pixel.y, (int)dx_pixel.x) = 0;
-        }
-
+        //find drivable area on the line from robot_pt
+        ROS_INFO_THROTTLE(1.0, "publishSubGoal-current node is black. find drivable area. value:%d",image.at<uchar>((int)node_dx_pixel.y, (int)node_dx_pixel.x));
         pub_pose = findDrivablePoint(image, robot_dx_pixel, node_dx_pixel);
-
     }
 
     return pub_pose;
-
 }
 
-bool DeepGuiderROS::makeImagePixels(cv::Mat& image, Point2& robot_dx_pixel, Point2& node_dx_pixel)
+Point2 DeepGuiderROS::reselectDrivablePoint()
 {
+    cv::Mat image;
+    Point2 robot_dx_pixel, node_dx_pixel, dx_metric, dx_pixel;
+    Point2 pub_pose = makeImagePixels(image, robot_dx_pixel, node_dx_pixel);
+
+    Point2 undrivable_pose = m_guider.m_subgoal_pose;
+    m_undrivable_points.push_back(undrivable_pose);
+
+    for (int i = 0; i < m_undrivable_points.size(); i++)
+    {
+        dx_metric = m_undrivable_points[i];
+        // 2. DX 로봇 좌표 --> DX 로봇맵 픽셀좌표
+        dx_pixel.x = m_dx_map_origin_pixel.x + dx_metric.x / m_dx_map_meter_per_pixel;
+        dx_pixel.y = m_dx_map_origin_pixel.y - dx_metric.y / m_dx_map_meter_per_pixel;
+        image.at<uchar>((int)dx_pixel.y, (int)dx_pixel.x) = 0;
+    }
+
+    pub_pose = findDrivablePoint(image, robot_dx_pixel, node_dx_pixel);
+
+    return pub_pose;
+}
+
+Point2 DeepGuiderROS::makeImagePixels(cv::Mat& image, Point2& robot_dx_pixel, Point2& node_dx_pixel)
+{
+    Point2 pub_pose;
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
     ID nid = cur_guide.heading_node_id;
     Node *hNode = m_map.getNode(nid);
     if (hNode == nullptr)
-        return false;
+        return pub_pose;
     
     Pose2 node_metric = Pose2(hNode->x, hNode->y);
     LatLon latlon = m_map.toLatLon(node_metric);
-    ROS_INFO_THROTTLE(1.0, "heading_node_id: %zu, lat:%f, lon:%f", nid, latlon.lat, latlon.lon);
 
     cv::Mat onlinemap, offlinemap;
     Point2 robot_dx_metric;
@@ -924,6 +940,7 @@ bool DeepGuiderROS::makeImagePixels(cv::Mat& image, Point2& robot_dx_pixel, Poin
     onlinemap = m_robotmap_image;
     robot_dx_metric = m_guider.m_robot_pose;
     m_guider.m_robot_heading_node_id = nid;
+    m_guider.m_robot_heading_node_pose = node_dx_metric;
     m_robotmap_mutex.unlock();
 
     // 2. DX 로봇 좌표 --> DX 로봇맵 픽셀좌표
@@ -936,47 +953,40 @@ bool DeepGuiderROS::makeImagePixels(cv::Mat& image, Point2& robot_dx_pixel, Poin
     ROS_INFO_THROTTLE(1.0, "publishSubGoal-node_on_robotmap: %f,%f", node_dx_pixel.x, node_dx_pixel.y);
     ROS_INFO_THROTTLE(1.0, "publishSubGoal-robot_on_robotmap: %f,%f", robot_dx_pixel.x, robot_dx_pixel.y);
 
+    offlinemap = cv::imread(m_robotmap_path);
     if (onlinemap.empty()) //on robot occumap
     {
         ROS_INFO_THROTTLE(1.0, "No occumap");
-        offlinemap = cv::imread(m_robotmap_path);
         image = offlinemap;
     }
     else
     {
         ROS_INFO_THROTTLE(1.0, "Receiving robotmap");
         cv::flip(onlinemap,image,0);
+        //robot map is expanded
+        if (onlinemap.cols > offlinemap.cols || onlinemap.rows > offlinemap.rows)
+        {
+            ROS_INFO_THROTTLE(1.0, "publishSubGoal-the robot map is expanded");
+            // return false;
+        }
     }
 
     if (image.channels() != 1)
         cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
 
-    //robot map is expanded
+
     if (node_dx_pixel.x < 1 || node_dx_pixel.x > image.cols || node_dx_pixel.y < 1 || node_dx_pixel.y > image.rows 
     || robot_dx_pixel.x < 1 || robot_dx_pixel.x > image.cols || robot_dx_pixel.y < 1 || robot_dx_pixel.y > image.rows)
     {
-        ROS_INFO_THROTTLE(1.0, "publishSubGoal-pixel exceeds image size");
-        return false;
+        ROS_INFO_THROTTLE(1.0, "publishSubGoal-the pixel exceeds image size");
+        // return false;
     }     
 
-    return true;   
-}
+    // 3. DX 로봇맵 픽셀좌표 --> DX 로봇 좌표
+    pub_pose.x = (node_dx_pixel.x - m_dx_map_origin_pixel.x) * m_dx_map_meter_per_pixel;
+    pub_pose.y = (m_dx_map_origin_pixel.y - node_dx_pixel.y) * m_dx_map_meter_per_pixel;
 
-Point2 DeepGuiderROS::makeSubgoal()
-{
-    cv::Mat image;
-    Point2 robot_dx_pixel, node_dx_pixel, pub_pose;
-    if(makeImagePixels(image, robot_dx_pixel, node_dx_pixel))
-    {
-        if (image.at<uchar>((int)node_dx_pixel.y, (int)node_dx_pixel.x) < 200) //if node is in black area
-        {
-            //find drivable area on the line from robot_pt
-            ROS_INFO_THROTTLE(1.0, "publishSubGoal-current node is black. find drivable area. value:%d",image.at<uchar>((int)node_dx_pixel.y, (int)node_dx_pixel.x));
-            pub_pose = findDrivablePoint(image, robot_dx_pixel, node_dx_pixel);
-        }
-    }
-
-    return pub_pose;
+    return pub_pose;   
 }
 
 geometry_msgs::PoseStamped DeepGuiderROS::makeRosPubPoseMsg(ID nid, dg::Point2 xy)
@@ -1089,8 +1099,8 @@ Point2 DeepGuiderROS::findDrivablePoint(cv::Mat &image, Point2 robot_px, Point2 
         }
         if (i >= max_count - 1) //no drivble area on the line
         {
-            ROS_INFO_THROTTLE(1.0, "publishSubGoal-Find drivable point near goal");
             jump_px = findDrivableNearPixel(img_erode, robot_px, node_px);
+            ROS_INFO_THROTTLE(1.0, "publishSubGoal-Find drivable point near goal: %f, %f", jump_px.x, jump_px.y);
         }
     }
 
