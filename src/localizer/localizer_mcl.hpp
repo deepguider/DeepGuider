@@ -97,7 +97,7 @@ namespace dg
             m_prev_gps_pose = m_ekf->getPose();
             m_prev_gps_time = time;
 
-            return applyPathLocalizer(m_pose, time);
+            return applyPathLocalizerMCL(m_pose, time);
         }
 
         virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)
@@ -183,7 +183,7 @@ namespace dg
             m_prev_odometry_pose = odometry_pose;
             m_prev_odometry_time = time;
 
-            return applyPathLocalizer(m_pose, time);
+            return applyPathLocalizerMCL(m_pose, time);
         }
 
         const std::vector<Particle>& getParticles() { return m_particles; }
@@ -198,11 +198,8 @@ namespace dg
             m_mcl_initialized = true;
         }
 
-        virtual bool applyPathLocalizer(Pose2 pose, Timestamp timestamp)
+        virtual bool applyPathLocalizerMCL(Pose2 pose, Timestamp timestamp)
         {
-            m_pose = pose;
-            m_timestamp = timestamp;
-            if (!m_enable_path_projection && !m_enable_map_projection) return true;
             if (m_shared == nullptr) return false;
 
             bool out_of_path = false;
@@ -210,12 +207,17 @@ namespace dg
             if (map)
             {
                 Path path = m_shared->getPath();
-                if (!path.empty()) out_of_path = checkOutOfPath(map, &path, pose);
+                if (!path.empty()) out_of_path = checkOutOfPath(map, &path, m_pose_mcl);
             }
             m_shared->releaseMapLock();
             if (out_of_path) m_shared->procOutOfPath(m_pose);
-            m_projected_pose_history.push_back(m_pose);
+            m_projected_pose_history.push_back(pose);
 
+            return true;
+        }
+
+        virtual bool applyPathLocalizer(Pose2 pose, Timestamp timestamp)
+        {
             return true;
         }
 
