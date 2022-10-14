@@ -43,6 +43,7 @@ namespace dg
         double m_gps_theta_sigma = cx::cvtDeg2Rad(50);
         double m_odometry_save_interval = 1;
         double m_corner_cosine = cos(CV_PI / 4);
+        double m_path_particle_weight = 1.1;
 
         Pose2 m_prev_gps_pose;
         Timestamp m_prev_gps_time = -1;
@@ -370,6 +371,9 @@ namespace dg
         {
             int N = (int)m_particles.size();
 
+            Path path = m_shared->getPath();
+            int path_n = (int)path.pts.size();
+
             Map* map = m_shared->getMapLocked();
             double w_sum = 0;
             double err_theta_s = 0;
@@ -384,6 +388,18 @@ namespace dg
                 Pose2 pose_m = *from + m_particles[i].dist * v / edge->length;
                 pose_m.theta = cx::trimRad(atan2(v.y, v.x) + m_particles[i].head);
 
+                // path weight
+                double path_weight = 1;
+                for (size_t k = 0; k < path_n; k++)
+                {
+                    if (edge->id == path.pts[k].edge_id)
+                    {
+                        path_weight = m_path_particle_weight;
+                        break;
+                    }
+                }
+
+                // reference pose weight
                 double dx = pose.x - pose_m.x;
                 double dy = pose.y - pose_m.y;
                 double err_d = sqrt(dx * dx + dy * dy);
@@ -394,7 +410,7 @@ namespace dg
                 double pdf1 = exp(-err_d * err_d / (2 * m_gps_pos_sigma * m_gps_pos_sigma)) / (m_gps_pos_sigma * sqrt(2 * CV_PI));
                 double pdf2 = exp(-err_theta * err_theta / (2 * m_gps_theta_sigma * m_gps_theta_sigma)) / (m_gps_theta_sigma * sqrt(2 * CV_PI));
 
-                m_particles[i].weight *= (pdf1 * pdf2);
+                m_particles[i].weight *= (pdf1 * pdf2 * path_weight);
                 w_sum += m_particles[i].weight;
             }
             m_shared->releaseMapLock();
