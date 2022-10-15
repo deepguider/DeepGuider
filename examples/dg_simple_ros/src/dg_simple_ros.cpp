@@ -109,6 +109,7 @@ protected:
     bool m_pub_flag = false;
     GuidanceManager::RobotStatus m_prev_state = GuidanceManager::RobotStatus::READY;
     ros::Time m_begin_time = ros::Time::now();
+    bool m_first_robot_pose = true;
 
     // DX 로봇 부천 지도 origin 계산
     dg::LatLon m_dx_map_origin_latlon;
@@ -721,6 +722,7 @@ void DeepGuiderROS::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& ma
 
 void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
+    dg::Timestamp timestamp = msg->header.stamp.toSec();
     double x = msg->pose.position.x;
     double y = msg->pose.position.y;
     ROS_INFO_THROTTLE(1.0, "Robot: %f,%f", x, y);
@@ -732,13 +734,17 @@ void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr
     cv::Point3d euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
     double theta = euler.z;
 
-    dg::Timestamp timestamp = msg->header.stamp.toSec();
-    if (m_enable_odometry)
+    // Reset deepguider pose by first arrived robot pose
+    if(m_first_robot_pose)
+    {
+        m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
+        m_first_robot_pose = false;
+    }
+    // Use robot pose as odometry data
+    else if (m_enable_odometry)
     {
         procOdometryData(x, y, theta, timestamp);
     }
-
-    dg::Timestamp capture_time = msg->header.stamp.toSec();
 
     //Align robot pose rostopic to display image point
     // 4. DX 로봇 좌표 --> 딥가이더 좌표

@@ -204,6 +204,8 @@ namespace dg
             m_projected_pose_history.resize(m_history_size);
             m_ekf_pose_history.push_back(Pose2TLR(pose, time));
             m_projected_pose_history.push_back(pose);
+
+            m_odometry_stabilized = true;
             m_pose = pose;
         }
 
