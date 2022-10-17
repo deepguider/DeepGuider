@@ -263,7 +263,7 @@ namespace dg
         //fixed parameter
         int m_guide_interval = 10; //m
         double m_uncertain_dist = 1.0;
-        double m_arrived_threshold = 1.0;
+        double m_arrived_threshold = 2.0;
         double m_start_exploration_dist = 5.0;
         int m_max_arrival_cnt = 10;
 

@@ -805,8 +805,6 @@ void DeepGuiderROS::publishSubGoal()
 {
     GuidanceManager::Guidance cur_guide = m_guider.getGuidance();
     ID nid = cur_guide.heading_node_id;
-    ROS_INFO_THROTTLE(1.0, "Will publish guide of node: %zu", nid);
-
     Node *hNode = m_map.getNode(nid);
     if (hNode == nullptr)
         return;

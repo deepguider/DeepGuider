@@ -407,7 +407,7 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	Edge* curEdge = getMap()->getEdge(cureid);
 	if (curEdge == nullptr)
 	{
-		printf("[Error] Gunext_junction_idxidanceManager::update - curEdge: %zu == nullptr!\n", cureid);
+		printf("[Error] GuidanceManager::update - curEdge: %zu == nullptr!\n", cureid);
 		return false;
 	}
 
@@ -421,6 +421,7 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 			m_arrival_cnt = 0;
 			m_gstatus = GuideStatus::GUIDE_NOPATH;
 			setEmptyGuide();
+			printf("[GUIDANCE] Arrived to the goal\n");
 			return true;
 		}
 		m_arrival_cnt++;
@@ -457,20 +458,21 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	//if robot has arrived at the node, update m_guide_idx 	
 	//printf("[GUIDANCE] gidx: %d, m_guide_idx: %d\n", gidx, m_guide_idx);
 	//printf("[GUIDANCE] updateWithRobot: %d, %zd\n", isNodeInPastGuides(m_curguidance.heading_node_id), m_curguidance.heading_node_id);
-	printf("[GUIDANCE] m_robot_guide_idx: %d, isRobotArrived2Node: %d\n", m_robot_guide_idx, isRobotArrived2Node());
-	if (m_robot_status == RobotStatus::ARRIVED_NODE)
+	// printf("[GUIDANCE] m_robot_guide_idx: %d, isRobotArrived2Node: %d\n", m_robot_guide_idx, isRobotArrived2Node());
+	if (m_robot_status == RobotStatus::ARRIVED_NODE && isRobotArrived2Node())
+	// if (m_robot_status == RobotStatus::ARRIVED_NODE)
 	//if((m_robot_status == RobotStatus::ARRIVED_NODE) && !isNodeInPastGuides(m_curguidance.heading_node_id))
 	{
-		printf("[GUIDANCE] updateWithRobot::ARRIVED_NODE, gidx: %d, m_guide_idx: %d\n", gidx, m_guide_idx);
+		printf("[GUIDANCE] updateWithRobot::ARRIVED_NODE, gidx: %d, m_guide_idx: %d, m_robot_guide_idx:%d\n", gidx, m_guide_idx, m_robot_guide_idx);
 		m_past_guides.push_back(m_curguidance); //save past guidances
 		m_last_announce_dist = -1;	//reset m_last_announce_dist
 		m_guide_idx = m_robot_guide_idx + 1 ;
-		//m_robot_change_node = 0;
+		printf("[GUIDANCE] updateWithRobot::ARRIVED_NODE, gidx: %d, m_guide_idx: %d, m_robot_guide_idx:%d\n", gidx, m_guide_idx, m_robot_guide_idx);
 	}
 	
-	if (gidx > m_guide_idx)
+	if (gidx > m_guide_idx) //dg_pose is ahead of robot
 	{
-		printf("[GUIDANCE] gidx > m_guide_idx, gidx: %d, m_guide_idx: %d\n", gidx, m_guide_idx);
+		printf("[GUIDANCE] gidx != m_guide_idx, gidx: %d, m_guide_idx: %d\n", gidx, m_guide_idx);
 		m_past_guides.push_back(m_curguidance); //save past guidances
 		m_last_announce_dist = -1;	//reset m_last_announce_dist
 		m_guide_idx = gidx;
@@ -512,7 +514,7 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	{
 		m_last_announce_dist = -1;	//reset m_last_announce_dist
 		announce = false;
-		setEmptyGuide();
+		setSimpleGuide();
 	}
 	//near junction
 	else if (remain_dist <= m_uncertain_dist)// || (curNode->type == Node::NODE_JUNCTION && passsed_dist < m_uncertain_dist))
@@ -654,8 +656,13 @@ bool GuidanceManager::setArrivalGuide()
 bool GuidanceManager::isRobotArrived2Node()
 {
 	double remain_dist = norm(m_robot_heading_node_pose - m_robot_pose);
-	printf("isRobotArrived2Node-norm: %f\n", remain_dist);
-	return (remain_dist < 2.0) ? true : false;
+	if (remain_dist < 1.0)
+	{
+		printf("isRobotArrived2Node-norm: %f\n", remain_dist);
+		return true;
+	}
+	
+	return false;
 }
 
 GuidanceManager::ExtendedPathElement GuidanceManager::getCurExtendedPath(int idx)
