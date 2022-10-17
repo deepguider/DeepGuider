@@ -35,7 +35,7 @@ class Model(nn.Module):
         self.Transformation = TPS_SpatialTransformerNetwork(
             F=opt.num_fiducial, I_size=(opt.imgH, opt.imgW), I_r_size=(opt.imgH, opt.imgW), I_channel_num=opt.input_channel)
 
-        """ FeatureExtraction VGG"""
+        """ FeatureExtraction ResNet"""
         #self.FeatureExtraction = VGG_FeatureExtractor(opt.input_channel, opt.output_channel)
         self.FeatureExtraction = ResNet_FeatureExtractor(opt.input_channel, opt.output_channel)
         self.FeatureExtraction_output = opt.output_channel  # int(imgH/16-1) * 512
