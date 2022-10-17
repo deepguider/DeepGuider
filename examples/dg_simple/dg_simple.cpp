@@ -170,6 +170,7 @@ protected:
     int m_video_win_height = 288;   // pixels
     int m_video_win_margin = 10;    // pixels
     int m_video_win_gap = 10;       // pixels
+    dg::Point2 m_user_point;
 
     // TTS
     cv::Mutex m_tts_mutex;
@@ -843,17 +844,27 @@ void DeepGuider::procMouseEvent(int evt, int x, int y, int flags)
     else if (evt == cv::EVENT_RBUTTONDOWN)
     {
         cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
-        cv::Point2d val = m_painter.cvtPixel2Value(px);
-        dg::Timestamp time = -1;
-        dg::Pose2 pose = getPose(&time);
-        pose.x = val.x;
-        pose.y = val.y;
-        if(time<0) time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
-        m_localizer->setPose(pose, time);
-        printf("[Localizer] set user pose: x = %lf, y = %lf\n", val.x, val.y);
+        m_user_point = m_painter.cvtPixel2Value(px);
     }
     else if (evt == cv::EVENT_RBUTTONUP)
     {
+        dg::Timestamp time = -1;
+        dg::Pose2 pose = getPose(&time);
+        pose.x = m_user_point.x;
+        pose.y = m_user_point.y;
+        if(time<0) time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+
+        cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+        cv::Point2d metric = m_painter.cvtPixel2Value(px);
+        dg::Point2 dx = metric - m_user_point;
+        if(norm(dx)>0.1)
+        {
+            double theta = atan2(dx.y, dx.x);
+            pose.theta = theta;
+        }
+
+        m_localizer->setPose(pose, time);
+        printf("[Localizer] set user pose: x = %lf, y = %lf\n", pose.x, pose.y);
     }
     else if (evt == cv::EVENT_MOUSEWHEEL)
     {
