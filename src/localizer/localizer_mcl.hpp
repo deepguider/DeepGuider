@@ -35,14 +35,14 @@ namespace dg
     {
     protected:
         int m_particle_numbers = 400;
-        int m_resample_numbers = 30;
+        int m_resample_numbers = 10;
         double m_initial_error_bound = 30;      // meter
         double m_ekf_error_bound = 20;      // meter
         int m_odometry_history_size = 1000;
         double m_odometry_linear_std_err = 1;
         double m_odometry_angular_std_err = cx::cvtDeg2Rad(5);
         double m_gps_pos_sigma = 30;
-        double m_gps_theta_sigma = cx::cvtDeg2Rad(50);
+        double m_gps_theta_sigma = cx::cvtDeg2Rad(30);
         double m_odometry_save_interval = 1;
         double m_corner_cosine = cos(CV_PI / 4);
         double m_path_particle_weight = 1.1;
@@ -83,6 +83,8 @@ namespace dg
             if (!m_mcl_initialized && m_ekf->isPoseStabilized())
             {
                 initialize_mcl(m_ekf->getPose());
+                m_pose_mcl = m_ekf->getPose();
+                m_mcl_initialized = true;
                 m_prev_gps_pose = m_ekf->getPose();
                 m_prev_gps_time = time;
                 return true;
@@ -92,9 +94,12 @@ namespace dg
             {
                 if (!m_odometry_active) predictParticles(m_ekf->getPose(), m_prev_gps_pose, time - m_prev_gps_time, m_robot_stopped);
                 //evaluateParticlesHistory();
-                evaluateParticlesPose(m_ekf->getPose());
-                resampleParticles();
-                m_pose_mcl = estimateMclPose();
+                if(!m_robot_stopped)
+                {
+                    evaluateParticlesPose(m_ekf->getPose());
+                    resampleParticles();
+                    m_pose_mcl = estimateMclPose();
+                }
                 m_pose = m_pose_mcl;
             }
             m_prev_gps_pose = m_ekf->getPose();
@@ -115,23 +120,6 @@ namespace dg
                 m_prev_odometry_time = time;
                 m_odometry_active = true;
             }
-
-            // check odometry displacement
-            Point2 initial_displacement(odometry_pose.x - m_initial_odometry_pose.x, odometry_pose.y - m_initial_odometry_pose.y);
-            if (!m_odometry_stabilized && norm(initial_displacement) < m_odometry_stabilization_d)
-            {
-                m_prev_odometry_pose = odometry_pose;
-                m_prev_odometry_time = time;
-                return false;
-            }
-            m_odometry_stabilized = true;
-
-            if (!isPoseStabilized()) return false;
-
-            if (m_ekf_pose_history.empty()) return false;
-            if (!m_ekf->applyOdometry(odometry_pose, time, confidence)) return false;
-            saveObservation(ObsData::OBS_ODO, odometry_pose, time, confidence);
-            saveEKFState(m_ekf, time);
 
             // check odometry velocity
             Point2 odo_delta(odometry_pose.x - m_prev_odometry_pose.x, odometry_pose.y - m_prev_odometry_pose.y);
@@ -155,12 +143,32 @@ namespace dg
                 m_stopped_time = -1;
             }
 
+            // check odometry displacement
+            Point2 initial_displacement(odometry_pose.x - m_initial_odometry_pose.x, odometry_pose.y - m_initial_odometry_pose.y);
+            if (!m_odometry_stabilized && norm(initial_displacement) < m_odometry_stabilization_d)
+            {
+                m_prev_odometry_pose = odometry_pose;
+                m_prev_odometry_time = time;
+                return false;
+            }
+            m_odometry_stabilized = true;
+
+            if (!isPoseStabilized()) return false;
+
+            if (m_ekf_pose_history.empty()) return false;
+            if (!m_ekf->applyOdometry(odometry_pose, time, confidence)) return false;
+            saveObservation(ObsData::OBS_ODO, odometry_pose, time, confidence);
+            saveEKFState(m_ekf, time);
+
             // update particle
             if (m_mcl_initialized)
             {
-                predictParticles(odometry_pose, m_prev_odometry_pose, time - m_prev_odometry_time, m_robot_stopped);
-                m_pose_mcl = estimateMclPose();
-                m_pose = m_pose_mcl;
+                if(!m_robot_stopped)
+                {
+                    predictParticles(odometry_pose, m_prev_odometry_pose, time - m_prev_odometry_time, m_robot_stopped);
+                    m_pose_mcl = estimateMclPose();
+                    m_pose = m_pose_mcl;
+                }
             }
             else
             {
@@ -289,11 +297,13 @@ namespace dg
 
         void add_uniform_particles(const Pose2 p, double radius, std::vector<Particle>& particles, int n, double w)
         {
-            Map* map = m_shared->getMapLocked();
+            Map* map = m_shared->getMap();
             int added = 0;
             if (map)
             {
                 std::vector<Edge*> edges = map->getNearEdges(p, radius);
+                if(edges.empty()) return;
+
                 double total_length = 0;
                 for (size_t i = 0; i < edges.size(); i++)
                 {
@@ -345,7 +355,8 @@ namespace dg
 
                 while (added < n)
                 {
-                    Edge* edge = edges[rand() % ((int)(edges.size()))];
+                    int ei = rand() % ((int)(edges.size()));
+                    Edge* edge = edges[ei];
 
                     dg::Node* from = map->getNode(edge->node_id1);
                     dg::Node* to = map->getNode(edge->node_id2);
@@ -379,7 +390,6 @@ namespace dg
                     if (added >= n) break;
                 }
             }
-            m_shared->releaseMapLock();
         }
 
         void predictParticles(Pose2 cur, Pose2 prev, double dtime, bool robot_stopped)
@@ -409,7 +419,6 @@ namespace dg
                 m_particles[i].head += dthi;
                 m_particles[i].head *= angular_modifier;
                 m_particles[i].head = cx::trimRad(m_particles[i].head);
-                //m_particles[i].head = 0;
             }
 
             // edge transition
@@ -444,7 +453,6 @@ namespace dg
                         particle.edge = new_edge;
                         particle.dist = m_particles[i].dist - m_particles[i].edge->length;
                         particle.head = cx::trimRad(new_head);
-                        //particle.head = 0;
                         particle.weight = m_particles[i].weight;
                         particle.centroid_idx = m_particles[i].centroid_idx;
 
@@ -473,9 +481,6 @@ namespace dg
 
             Map* map = m_shared->getMapLocked();
             double w_sum = 0;
-            double err_theta_s = 0;
-            double head_s = 0;
-            double d_s = 0;
             for (int i = 0; i < N; i++)
             {
                 Node* from = m_particles[i].start_node;
@@ -501,9 +506,6 @@ namespace dg
                 double dy = pose.y - pose_m.y;
                 double err_d = sqrt(dx * dx + dy * dy);
                 double err_theta = cx::trimRad(pose.theta - pose_m.theta);
-                err_theta_s += fabs(err_theta);
-                head_s += fabs(m_particles[i].head);
-                d_s += m_particles[i].dist;
                 double pdf1 = exp(-err_d * err_d / (2 * m_gps_pos_sigma * m_gps_pos_sigma)) / (m_gps_pos_sigma * sqrt(2 * CV_PI));
                 double pdf2 = exp(-err_theta * err_theta / (2 * m_gps_theta_sigma * m_gps_theta_sigma)) / (m_gps_theta_sigma * sqrt(2 * CV_PI));
 
@@ -552,6 +554,163 @@ namespace dg
 
 
             return 1;
+        }
+
+        Pose2 estimateMclPose()
+        {
+            Map* map = m_shared->getMapLocked();
+
+            int N = (int)m_particles.size();
+
+            /*
+            int K = m_mixture_centroid_n;
+            if (m_mixture_centroids.empty())
+            {
+                int i = 0;
+                std::vector<int> index;
+                while (i < K)
+                {
+                    int idx = rand() % N;
+                    bool duplicate = false;
+                    for (auto itr = index.begin(); itr != index.end(); itr++)
+                    {
+                        if (idx == *itr)
+                        {
+                            duplicate = true;
+                            break;
+                        }
+                    }
+                    if (!duplicate)
+                    {
+                        index.push_back(idx);
+                        i++;
+                    }
+                }
+                for (int i = 0; i < K; i++)
+                {
+                    Node* from = m_particles[index[i]].start_node;
+                    Edge* edge = m_particles[index[i]].edge;
+                    Node* to = map->getConnectedNode(from, edge->id);
+                    Point2 v = *to - *from;
+                    Point2 pos_m = *from + m_particles[index[i]].dist * v / edge->length;
+                    m_mixture_centroids.push_back(pos_m);
+                }
+            }
+            */
+
+           // average of theta --> assume they are on unit circle --> average coordinate of unit circle position
+            Point2 mean_p(0, 0);
+            double mean_x = 0;
+            double mean_y = 0;
+            double w_sum = 0;
+            for (int i = 0; i < N; i++)
+            {
+                Node* from = m_particles[i].start_node;
+                Edge* edge = m_particles[i].edge;
+                Node* to = map->getConnectedNode(from, edge->id);
+                Point2 v = *to - *from;
+                Point2 pos_m = *from + m_particles[i].dist * v / edge->length;
+                double theta = cx::trimRad(atan2(v.y, v.x) + m_particles[i].head);
+                mean_x += (cos(theta) * m_particles[i].weight);
+                mean_y += (sin(theta) * m_particles[i].weight);
+                mean_p += (pos_m * m_particles[i].weight);
+                w_sum += m_particles[i].weight;
+            }
+            mean_p /= w_sum;
+            mean_x /= w_sum;
+            mean_y /= w_sum;
+            double mean_theta = atan2(mean_y, mean_x);
+            m_shared->releaseMapLock();
+
+            Point2 ep;
+            map->getNearestEdge(mean_p, ep);
+
+            return Pose2(ep, mean_theta);
+        }
+
+        void resampleParticles()
+        {
+            int N = (int)m_particles.size();            
+            if (N < 1) return;
+
+            std::vector<double> cumulative_sum;
+            cumulative_sum.resize(N);
+            cumulative_sum[0] = m_particles[0].weight;
+            for (int i = 1; i < N; i++)
+            {
+                cumulative_sum[i] = cumulative_sum[i - 1] + m_particles[i].weight;
+            }
+
+            // resampling
+            int M = m_particle_numbers - m_resample_numbers;
+            if (M > N) M = N;
+            std::vector<int> indexes;
+            indexes.resize(M);
+            for (int i = 0; i < M; i++)
+                indexes[i] = 0;
+
+            std::vector<double> positions;
+            positions.resize(M);
+            for (int i = 0; i < M; i++)
+            {
+                positions[i] = (i + (double)rand() / ((double)RAND_MAX + 1)) / M;
+            }
+
+            int i = 0;
+            int j = 0;
+            while (i < M && j < N)
+            {
+                if (positions[i] < cumulative_sum[j])
+                {
+                    indexes[i] = j;
+                    i++;
+                }
+                else
+                    j++;
+            }
+
+            std::vector<Particle> tmp;
+            tmp.resize(M);
+            double w_sum = 0;
+            for (int i = 0; i < M; i++)
+            {
+                tmp[i] = m_particles[indexes[i]];
+                w_sum += tmp[i].weight;
+            }
+            add_uniform_particles(m_ekf->getPose(), m_ekf_error_bound, tmp, m_resample_numbers, w_sum/M);
+            w_sum += (m_resample_numbers * w_sum / M);
+
+            m_particles = tmp;
+            for (int i = 0; i < (int)m_particles.size(); i++)
+            {
+                m_particles[i].weight /= w_sum;
+            }
+        }
+
+        double create_normal_number(double sigma = 1)
+        {
+            double s = 0;
+            for (int k = 0; k < 12; k++)
+            {
+                s += (double)rand() / RAND_MAX * 2 - 1;
+            }
+            return (s / 2) * sigma;
+        }
+
+        std::vector<double> create_normal_numbers(int N, double sigma = 1)
+        {
+            std::vector<double> samples;
+            samples.resize(N);
+            for (int i = 0; i < N; i++)
+            {
+                double s = 0;
+                for (int k = 0; k < 12; k++)
+                {
+                    s += ((double)rand() / RAND_MAX) * 2 - 1;
+                }
+                samples[i] = (s / 2) * sigma;
+            }
+            return samples;
         }
 
         void evaluateParticlesHistory()
@@ -650,159 +809,6 @@ namespace dg
             {
                 m_particles[i].weight /= w_sum;
             }
-        }
-
-        Pose2 estimateMclPose()
-        {
-            Map* map = m_shared->getMapLocked();
-
-            int N = (int)m_particles.size();
-
-            /*
-            int K = m_mixture_centroid_n;
-            if (m_mixture_centroids.empty())
-            {
-                int i = 0;
-                std::vector<int> index;
-                while (i < K)
-                {
-                    int idx = rand() % N;
-                    bool duplicate = false;
-                    for (auto itr = index.begin(); itr != index.end(); itr++)
-                    {
-                        if (idx == *itr)
-                        {
-                            duplicate = true;
-                            break;
-                        }
-                    }
-                    if (!duplicate)
-                    {
-                        index.push_back(idx);
-                        i++;
-                    }
-                }
-                for (int i = 0; i < K; i++)
-                {
-                    Node* from = m_particles[index[i]].start_node;
-                    Edge* edge = m_particles[index[i]].edge;
-                    Node* to = map->getConnectedNode(from, edge->id);
-                    Point2 v = *to - *from;
-                    Point2 pos_m = *from + m_particles[index[i]].dist * v / edge->length;
-                    m_mixture_centroids.push_back(pos_m);
-                }
-            }
-            */
-
-            Point2 mean_p(0, 0);
-            double mean_theta = 0;
-            double w_sum = 0;
-            for (int i = 0; i < N; i++)
-            {
-                Node* from = m_particles[i].start_node;
-                Edge* edge = m_particles[i].edge;
-                Node* to = map->getConnectedNode(from, edge->id);
-                Point2 v = *to - *from;
-                Point2 pos_m = *from + m_particles[i].dist * v / edge->length;          
-
-                mean_p += (pos_m * m_particles[i].weight);
-                mean_theta += (atan2(v.y, v.x) + m_particles[i].head) * m_particles[i].weight;
-                w_sum += m_particles[i].weight;
-            }
-            mean_p /= w_sum;
-            mean_theta /= w_sum;
-            mean_theta = cx::trimRad(mean_theta);
-            m_shared->releaseMapLock();
-
-            Point2 ep;
-            map->getNearestEdge(mean_p, ep);
-
-            return Pose2(ep, mean_theta);
-        }
-
-        void resampleParticles()
-        {
-            int N = (int)m_particles.size();            
-            if (N < 1) return;
-
-            std::vector<double> cumulative_sum;
-            cumulative_sum.resize(N);
-            cumulative_sum[0] = m_particles[0].weight;
-            for (int i = 1; i < N; i++)
-            {
-                cumulative_sum[i] = cumulative_sum[i - 1] + m_particles[i].weight;
-            }
-
-            // resampling
-            int M = m_particle_numbers - m_resample_numbers;
-            if (M > N) M = N;
-            std::vector<int> indexes;
-            indexes.resize(M);
-            for (int i = 0; i < M; i++)
-                indexes[i] = 0;
-
-            std::vector<double> positions;
-            positions.resize(M);
-            for (int i = 0; i < M; i++)
-            {
-                positions[i] = (i + (double)rand() / ((double)RAND_MAX + 1)) / M;
-            }
-
-            int i = 0;
-            int j = 0;
-            while (i < M && j < N)
-            {
-                if (positions[i] < cumulative_sum[j])
-                {
-                    indexes[i] = j;
-                    i++;
-                }
-                else
-                    j++;
-            }
-
-            std::vector<Particle> tmp;
-            tmp.resize(M);
-            double w_sum = 0;
-            for (int i = 0; i < M; i++)
-            {
-                tmp[i] = m_particles[indexes[i]];
-                w_sum += tmp[i].weight;
-            }
-            add_uniform_particles(m_ekf->getPose(), m_ekf_error_bound, tmp, m_resample_numbers, w_sum/M/2);
-            w_sum += (m_resample_numbers * w_sum / M);
-
-            m_particles = tmp;
-            for (int i = 0; i < M; i++)
-            {
-                m_particles[i].weight /= w_sum;
-            }
-        }
-
-        double create_normal_number(double sigma = 1)
-        {
-            double s = 0;
-            for (int k = 0; k < 12; k++)
-            {
-                s += (double)rand() / RAND_MAX * 2 - 1;
-            }
-            return (s / 2) * sigma;
-        }
-
-        std::vector<double> create_normal_numbers(int N, double sigma = 1)
-        {
-            std::vector<double> samples;
-            samples.resize(N);
-            for (int i = 0; i < N; i++)
-            {
-                double s = 0;
-                for (int k = 0; k < 12; k++)
-                {
-                    s += ((double)rand() / RAND_MAX) * 2 - 1;
-                }
-                samples[i] = (s / 2) * sigma;
-            }
-            return samples;
         }
 
     }; // End of 'DGLocalizerMCL'
