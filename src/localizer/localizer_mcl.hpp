@@ -35,7 +35,7 @@ namespace dg
     {
     protected:
         int m_particle_numbers = 400;
-        int m_resample_numbers = 10;
+        int m_resample_numbers = 0;
         double m_initial_error_bound = 30;      // meter
         double m_ekf_error_bound = 20;      // meter
         int m_odometry_history_size = 1000;
