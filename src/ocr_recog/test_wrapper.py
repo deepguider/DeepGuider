@@ -4,7 +4,10 @@ import glob
 from ocr_recognizer import OCRRecognizer
 from tqdm import tqdm
 
-imagepath = 'demo_image'
+imagepath = './demo_image'
+result_path = './result'
+os.mkdir(result_path)
+
 language = 'kr'
 if language == 'kr':
     saved_model = './data_ocr/best_accuracy_kr.pth'
@@ -13,7 +16,7 @@ else: # language == 'en'
 
 start = time.time()
 
-test = OCRRecognizer(language=language)
+test = OCRRecognizer(language=language, result_folder=result_path)
 test.initialize(saved_model=saved_model)
 
 imgs = glob.glob(os.path.join(imagepath, '*.png'))

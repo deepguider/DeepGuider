@@ -188,7 +188,7 @@ def train(opt):
             # with open(f'./saved_models/{opt.experiment_name}/log_train.txt', 'a') as log:
                 model.eval()
                 with torch.no_grad():
-                    valid_loss, current_accuracy, current_norm_ED, preds, confidence_score, labels, infer_time, length_of_data = validation(
+                    valid_loss, current_accuracy, current_norm_ED, preds, confidence_score, labels, infer_time, length_of_data, _ = validation(
                         model, criterion, valid_loader, converter, opt)
 
                 model.train()
