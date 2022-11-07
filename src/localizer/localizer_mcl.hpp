@@ -1022,7 +1022,9 @@ namespace dg
                     edge_len = (path_pts_idx < n_path - 1) ? norm(path_pts[path_pts_idx + 1] - path_pts[path_pts_idx]) : 0;
                 }
                 double target_edge_len = target_path_len - path_len_upto;
-                Point2 path_point = (edge_len > 0 && path_pts_idx < n_path - 1) ? path_pts[path_pts_idx] + (path_pts[path_pts_idx + 1] - path_pts[path_pts_idx]) * target_edge_len / edge_len : path_pts[path_pts_idx];
+                Point2 path_p1 = path_pts[path_pts_idx];
+                Point2 path_p2 = path_pts[path_pts_idx + 1];
+                Point2 path_point = (edge_len > 0 && path_pts_idx < n_path - 1) ? path_p1 + (path_p2 - path_p1) * target_edge_len / edge_len : path_p1;
                 eval_path_pts.push_back(path_point);
                 mean_path_point += path_point;
             }
