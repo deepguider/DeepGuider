@@ -40,7 +40,7 @@ namespace dg
         double m_resample_sigma = 10;      // meter
         int m_eval_history_length = 50;
         int m_odometry_history_size = 1000;
-        double m_odometry_linear_std_err = 0.1;                 // 1 meter
+        double m_odometry_linear_std_err = 0.5;                 // 1 meter
         double m_odometry_angular_std_err = cx::cvtDeg2Rad(1);  // 5 degree
         double m_gps_pos_sigma = 50;
         double m_gps_theta_sigma = cx::cvtDeg2Rad(30);
@@ -65,9 +65,9 @@ namespace dg
     public:
         DGLocalizerMCL(std::string baselocalizer_name = "EKFLocalizer")
         {
-            initialize(nullptr, baselocalizer_name);
-
             srand((unsigned)time(NULL));
+            initialize(nullptr, baselocalizer_name);
+            m_odometry_history.resize(m_odometry_history_size);
         }
 
         Particle m_best_particle;
@@ -93,10 +93,9 @@ namespace dg
 
             if (!m_mcl_initialized)
             {
-                if (m_ekf->isPoseStabilized())
+                if (m_ekf->isPoseStabilized() && m_odometry_stabilized)
                 {
                     initialize_mcl(m_ekf->getPose());
-                    m_mcl_initialized = true;
                 }
                 m_pose_mcl = m_ekf->getPose();
                 m_prev_gps_pose = m_ekf->getPose();
@@ -245,6 +244,14 @@ namespace dg
             return applyPathLocalizerMCL(m_pose, time);
         }
 
+        virtual void setPose(const Pose2 pose, Timestamp time = -1, bool reset_velocity = true, bool reset_cov = true)
+        {
+            DGLocalizer::setPose(pose, time, reset_velocity, reset_cov);
+            cv::AutoLock lock(m_mutex);
+            reset_particles(pose, m_particles, m_particle_numbers);
+            m_mcl_initialized = true;
+        }
+
         const std::vector<Particle>& getParticles() { return m_particles; }
 
         Pose2 getPoseMCL() { return m_pose_mcl; }
@@ -309,10 +316,10 @@ namespace dg
     protected:
         void initialize_mcl(const Pose2& pose)
         {
-            Point2 p(pose.x, pose.y);
             create_duplicated_particles(pose, m_particles, m_particle_numbers);
             m_odometry_history.resize(m_odometry_history_size);
             m_mcl_initialized = true;
+            printf("\n*** MCL initialized\n\n");
         }
 
         virtual bool applyPathLocalizerMCL(Pose2 pose, Timestamp timestamp)
@@ -364,6 +371,40 @@ namespace dg
                 particles[i].edge = edge;
                 particles[i].dist = d2;
                 particles[i].head = ang_noise[i];
+            }
+        }
+
+        void reset_particles(const Pose2 p, std::vector<Particle>& particles, int n)
+        {
+            particles.resize(n);
+            Map* map = m_shared->getMap();
+            Point2 ep;
+            Edge* edge = map->getNearestEdge(p, ep);
+            Node* node1 = map->getNode(edge->node_id1);
+            Node* node2 = map->getNode(edge->node_id2);
+            double d1 = norm(ep - *node1);
+            double d2 = norm(ep - *node2);
+
+            Node* start_node = node1;
+            double dist = d1;
+
+            Point2 v = *node2 - *node1;
+            double edge_theta = atan2(v.y, v.x);
+            double dtheta = cx::trimRad(p.theta - edge_theta);
+            if(dtheta>CV_PI/2 || dtheta<-CV_PI/2)
+            {
+                start_node = node2;
+                dist = d2;
+                edge_theta = cx::trimRad(edge_theta + CV_PI);
+                dtheta = cx::trimRad(p.theta - edge_theta);
+            }
+
+            for (int i = 0; i < n; i++)
+            {
+                particles[i].start_node = start_node;
+                particles[i].edge = edge;
+                particles[i].dist = dist;
+                particles[i].head = dtheta;
             }
         }
 
