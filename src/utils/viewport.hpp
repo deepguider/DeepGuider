@@ -171,7 +171,7 @@ public:
         updateViewport(m_viewport.x, m_viewport.y, virtual_zoom);
     }
 
-    void centerizeViewportTo(cv::Point2d px, double center_margin_ratio = 0.15)
+    void centerizeViewportTo(cv::Point2d px, double margin_ratio = 0.15, double bottom_margin_ratio = 0.35)
     {
         cv::AutoLock lock(m_mutex);
 
@@ -181,23 +181,23 @@ public:
 
         double view_sx = m_viewport.x;
         double view_sy = m_viewport.y;
-        double update_x = view_iw * center_margin_ratio;
-        double update_y = view_ih * center_margin_ratio;
+        double update_x = view_iw * margin_ratio * 1.5;
+        double update_y = view_ih * margin_ratio * 1.5;
         bool update_view = false;
-        if (vx.x < view_iw * center_margin_ratio || vx.x > view_iw * (1 - center_margin_ratio))
+        if (vx.x < view_iw * margin_ratio || vx.x > view_iw * (1 - margin_ratio))
         {
-            view_sx = (vx.x < view_iw* center_margin_ratio) ? view_sx - update_x : view_sx + update_x;
+            view_sx = (vx.x < view_iw* margin_ratio) ? view_sx - update_x : view_sx + update_x;
             update_view = true;
         }
-        if (vx.y < view_ih * center_margin_ratio || vx.y > view_ih * (1 - center_margin_ratio*2.5))
+        if (vx.y < view_ih * margin_ratio || vx.y > view_ih * (1 - bottom_margin_ratio))
         {
-            if(vx.y < view_ih * center_margin_ratio)
+            if(vx.y < view_ih * margin_ratio)
             {
                 view_sy = view_sy - update_y;
             }
             else
             {
-                view_sy = view_sy + update_y * 2;
+                view_sy = view_sy + update_y;
             }            
             update_view = true;
         }

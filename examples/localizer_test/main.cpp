@@ -21,9 +21,12 @@ public:
     int         wnd_flag = cv::WindowFlags::WINDOW_AUTOSIZE;
     double      video_resize = 0;
     cv::Point   video_offset;
+    bool        show_zoom = false;
     double      zoom_level = 0;
     double      zoom_radius = 0;
     cv::Point   zoom_offset;
+    cv::Point   view_offset = cv::Point(0, 0);
+    cv::Size    view_size = cv::Size(1920, 1080);
 };
 
 cx::CSVReader::Double2D readROSGPSFix(const std::string& gps_file, const dg::LatLon& ref_pts = dg::LatLon(-1, -1), const std::vector<size_t>& cols = { 2, 3, 5, 7, 8 })
@@ -214,8 +217,11 @@ int runLocalizerReal(const MapGUIProp& gui, cv::Ptr<dg::BaseLocalizer> localizer
     experiment.gui_topo_ref_radius = 6;
     experiment.gui_topo_loc_radius = 4;
     experiment.gui_wnd_flag = gui.wnd_flag;
+    experiment.m_view_size = gui.view_size;
+    experiment.m_view_offset = gui.view_offset;
     experiment.video_resize = gui.video_resize;
     experiment.video_offset = gui.video_offset;
+    experiment.show_zoom = gui.show_zoom;
     experiment.zoom_painter = &zoom_painter;
     experiment.zoom_background = zoom_bg_image;
     experiment.zoom_radius = gui.zoom_radius;
@@ -326,6 +332,7 @@ int runLocalizer()
     ETRI.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
     ETRI.video_resize = 0.25;
     ETRI.video_offset = cv::Point(270, 638);
+    ETRI.show_zoom = false;
     ETRI.zoom_level = 5;
     ETRI.zoom_radius = 40;
     ETRI.zoom_offset = cv::Point(620, 400);
@@ -358,9 +365,30 @@ int runLocalizer()
     COEX.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
     COEX.video_resize = 0.4;
     COEX.video_offset = cv::Point(200, 50);
+    COEX.show_zoom = false;
     COEX.zoom_level = 5;
     COEX.zoom_radius = 40;
     COEX.zoom_offset = cv::Point(450, 500);
+
+    MapGUIProp Bucheon;
+    Bucheon.image_file = "data/Bucheon/NaverMap_Bucheon(Satellite).png";
+    Bucheon.map_pixel_per_meter = cv::Point2d(3.95, 3.95);
+    Bucheon.map_image_rotation = cx::cvtDeg2Rad(1.3);
+    Bucheon.map_ref_point_latlon = dg::LatLon(37.517337, 126.764761);
+    Bucheon.map_ref_point_pixel = cv::Point2d(2225, 880);
+    Bucheon.map_radius = 1500; // meter
+    Bucheon.grid_unit_pos = cv::Point(-230, -16);
+    Bucheon.map_file = "data/Bucheon/TopoMap_Bucheon.csv";
+    Bucheon.wnd_flag = cv::WindowFlags::WINDOW_NORMAL;
+    //Bucheon.view_offset = cv::Point(1289, 371);
+    Bucheon.view_offset = cv::Point(1500, 6000);
+    Bucheon.view_size = cv::Size(1800, 1012);
+    Bucheon.video_resize = 0.25;
+    Bucheon.video_offset = cv::Point(270, 638);
+    Bucheon.show_zoom = false;
+    Bucheon.zoom_level = 3;
+    Bucheon.zoom_radius = 20;
+    Bucheon.zoom_offset = cv::Point(1300, 0);
 
     cv::Ptr<dg::BaseLocalizer> localizer;
     //localizer = cv::makePtr<dg::EKFLocalizer>();
@@ -393,7 +421,7 @@ int runLocalizer()
 
     enable_odometry = true;
     //enable_imu = true;
-    //use_andro_gps = true;
+    use_andro_gps = true;
     //use_novatel = true;
     //enable_ocr = true;
     //enable_poi = true;
@@ -403,10 +431,9 @@ int runLocalizer()
     //enable_roadtheta = true;
     //draw_gps = true;
 
-
-    int data_sel = 0;
-    double start_time = 0;     // skip time (seconds)
-    //rec_video_file = "localizer_after_stop_filtering.avi";
+    int data_sel = 10;
+    double start_time = 100;     // skip time (seconds)
+    //rec_video_file = "mcl_odo_matching_problem.avi";
     double rec_video_fps = 10;
     std::vector<std::string> data_head[] = {
         {"data/ETRI/2022-08-08-13-38-04_etri_to_119", "avi", "0"},
@@ -418,11 +445,15 @@ int runLocalizer()
         {"data/COEX/2022-08-29-16-01-55", "avi", "0"}, // 6
         {"data/COEX/201007_142326", "mkv", "2.8918"},  // 7, 12435 frames, 1240 sec, video_scale = 2.8918
         {"data/COEX/201007_145022", "mkv", "2.869"},   // 8, 18730 frames, 1853 sec, video_scale = 2.869
-        {"data/COEX/201007_152840", "mkv", "2.8902"}   // 9, 20931 frames, 2086 sec, video_scale = 2.8902
+        {"data/COEX/201007_152840", "mkv", "2.8902"},   // 9, 20931 frames, 2086 sec, video_scale = 2.8902
+        {"data/Bucheon/_2022-10-06-14-40-21_subway_to_cityhall", "avi", "0"} // 10
     };
     const int coex_idx = 6;
-    MapGUIProp& PROP = (data_sel < coex_idx) ? ETRI : COEX;
+    const int bucheon_idx = 10;
+    MapGUIProp PROP = (data_sel < coex_idx) ? ETRI : COEX;
+    if (data_sel >= bucheon_idx) PROP = Bucheon;
     std::string video_file = data_head[data_sel][0] + "_images." + data_head[data_sel][1];
+    video_file = "";
     if (enable_gps)
     {
         if (use_andro_gps) gps_file = data_head[data_sel][0] + "_andro2linux_gps.csv";
@@ -459,6 +490,8 @@ int runLocalizer()
 
 int main()
 {
+    //cv::Ptr<dg::DGLocalizerMCL> localizer = cv::makePtr<dg::DGLocalizerMCL>("EKFLocalizerHyperTan");
+    //localizer->testAlignCost(); return 0;
     //return testUTMConverter();
     //return runUnitTest();
     return runLocalizer();
