@@ -1,0 +1,128 @@
+cmake_minimum_required(VERSION 2.8.12)
+project(dg_simple_ros)
+
+# set Python path
+set(PYTHON_INCLUDE_DIRS "/usr/include/python3.6m")
+set(PYTHON_LIBRARIES "/usr/lib/x86_64-linux-gnu/libpython3.6m.so")
+
+# set DeepGuider path
+set(DGDIR   "/home/jsh/dg_git/DeepGuider")
+set(BINDIR  "${DGDIR}/bin")
+set(SRCDIR  "${DGDIR}/src")
+set(EXTDIR  "${DGDIR}/EXTERNAL")
+set(RAPIDJSON_INC "${EXTDIR}/rapidjson/include")
+set(CURL_INC "${EXTDIR}/curl/include")
+set(CURL_LIBRARIES "-lcurl")
+set(JSONCPP_LIBRARIES "-ljsoncpp")
+set(FS_LIBRARIES "-lstdc++fs")
+
+add_compile_options(-std=c++17)
+add_compile_options(-pthread)
+add_compile_options(-O3)      # build optimization level 3 (comment out this line when want to build debug mode)
+
+add_definitions(-DDG_SIMPLE_ROS)
+
+#find_package( PythonInterp 3.6 REQUIRED )
+#find_package( PythonLibs 3.6 REQUIRED )
+find_package( OpenCV 3.2 REQUIRED )
+find_package( CURL REQUIRED )
+
+find_package(catkin REQUIRED COMPONENTS
+  cv_bridge
+  roscpp
+  std_msgs
+  message_generation
+)
+
+## Generate messages in the 'msg' folder
+add_message_files(
+  FILES
+  ocr.msg
+  ocr_info.msg
+  vps.msg
+  guidance.msg
+  action.msg
+  dg_status.msg
+)
+
+## Generate added messages and services with any dependencies listed here
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
+catkin_package(
+#  INCLUDE_DIRS include
+#  LIBRARIES dg_simple_ros
+   CATKIN_DEPENDS cv_bridge roscpp std_msgs message_runtime
+#  DEPENDS system_lib
+)
+
+include_directories( ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${SRCDIR} ${RAPIDJSON_INC} ${CURL_INC} ${PYTHON_INCLUDE_DIRS} ${DGDIR}/examples/dg_simple)
+
+file(GLOB SOURCES ${SRCDIR}/core/*.cpp ${SRCDIR}/roadlr/*.cpp ${SRCDIR}/exploration/*.cpp ${SRCDIR}/guidance/*.cpp ${SRCDIR}/localizer/*.cpp ${SRCDIR}/intersection_cls/*.cpp ${SRCDIR}/logo_recog/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/ocr_recog/*.cpp ${SRCDIR}/roadtheta/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp *.cpp)
+
+# dg_simple_ros
+add_executable(${PROJECT_NAME} src/dg_simple_ros.cpp ${SOURCES})
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(
+  ${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+  ${PYTHON_LIBRARIES}
+  ${CURL_LIBRARIES}
+  ${JSONCPP_LIBRARIES}
+  ${FS_LIBRARIES}
+)
+
+# dg_ocr (caution: don't remove roadtheta from sources list)
+file(GLOB SOURCES_OCR ${SRCDIR}/core/*.cpp ${SRCDIR}/ocr_recog/*.cpp ${SRCDIR}/roadtheta/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp)
+add_executable(dg_ocr src/dg_ocr.cpp ${SOURCES_OCR})
+add_dependencies(dg_ocr ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(
+  dg_ocr
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+  ${PYTHON_LIBRARIES}
+)
+
+# dg_vps
+file(GLOB SOURCES_VPS ${SRCDIR}/core/*.cpp ${SRCDIR}/vps/*.cpp ${SRCDIR}/map_manager/*.cpp ${SRCDIR}/utils/*.cpp ${EXTDIR}/qgroundcontrol/*.cpp)
+add_executable(dg_vps src/dg_vps.cpp ${SOURCES_VPS})
+add_dependencies(dg_vps ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(
+  dg_vps
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+  ${PYTHON_LIBRARIES}
+  ${CURL_LIBRARIES}
+  ${JSONCPP_LIBRARIES}
+)
+
+#dg_encoder
+add_executable(dg_encoder src/dg_encoder.cpp)
+add_dependencies(dg_ocr ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(
+  dg_encoder
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+#dg_odometry
+add_executable(dg_odometry src/dg_odometry.cpp)
+add_dependencies(dg_ocr ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(
+  dg_odometry
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
+)
+
+install(TARGETS ${PROJECT_NAME} dg_ocr dg_vps dg_encoder dg_odometry
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(FILES
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
