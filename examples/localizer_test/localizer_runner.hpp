@@ -94,20 +94,21 @@ public:
         // Prepare visualization
         bool show_gui = gui_wnd_wait_msec >= 0 && gui_painter != nullptr && !gui_background.empty();
         cv::Mat bg_image = gui_background.clone();
-        bool show_zoom = show_gui && zoom_painter != nullptr && !zoom_background.empty();
         cv::Mat zoom_bg_image = zoom_background.clone();
         m_viewport.initialize(bg_image, m_view_size, m_view_offset);
+        m_viewport.setZoom(2);
 
         // Run localization with GPS and other sensors
         if (show_gui)
         {
             cv::namedWindow("LocalizerRunner::runLocalizer()", gui_wnd_flag);
-            cv::resizeWindow("LocalizerRunner::runLocalizer()", bg_image.size());
+            cv::resizeWindow("LocalizerRunner::runLocalizer()", m_view_size);
         }
         cv::setMouseCallback("LocalizerRunner::runLocalizer()", onMouseEventLocalizer, this);
         cv::Mat cam_image;
 
         double timestart = data_loader.getStartTime();
+        cv::Mat gui_image;
         while (1)
         {
             int type;
@@ -127,19 +128,22 @@ public:
             {
                 dg::Pose2 odo_pose(vdata[1], vdata[2], vdata[3]);
                 bool success = (apply_odo) ? localizer->applyOdometry(odo_pose, data_time, 1) : true;
+                if (success) printf("applyOdometry()\n");
                 if (!success) fprintf(stderr, "applyOdometry() was failed.\n");
 
                 if (apply_odo && !apply_gps)
                 {
-                    cam_image = data_loader.getFrame(data_time);
-                    update_gui = true;
+                    //cam_image = data_loader.getFrame(data_time);
+                    //update_gui = true;
                 }
+                //update_gui = true;
             }
             else if (type == dg::DATA_GPS)
             {
                 dg::LatLon gps_datum(vdata[1], vdata[2]);
                 dg::Point2 gps_xy = toMetric(gps_datum);
                 bool success = (apply_gps) ? localizer->applyGPS(gps_xy, data_time, 1) : true;
+                if (success) printf("applyGPS()\n"); 
                 if (!success) fprintf(stderr, "applyGPS() was failed.\n");
 
                 if (gui_gps_radius > 0)
@@ -227,7 +231,11 @@ public:
             // Visualize and show the current state as an image
             if (show_gui && update_gui)
             {
-                cv::Mat out_image = bg_image.clone();
+                dg::Pose2 pose = localizer->getPose();
+                if (gui_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, gui_traj_radius, gui_robot_color);
+                dg::Pose2 pose_px = gui_painter->cvtValue2Pixel(pose);
+                m_viewport.centerizeViewportTo(pose_px, 0.2, 0.2);
+                m_viewport.getViewportImage(gui_image);
 
                 // Draw Particles
                 if (use_mcl)
@@ -237,8 +245,9 @@ public:
                     {
                         dg::Pose2 robot_pose = localizer->getPose();
 
+                        // draw particles
                         int nradius = 2;
-                        const cv::Vec3b ncolor = cv::Vec3b(0, 255, 0);
+                        cv::Vec3b ncolor = cv::Vec3b(0, 255, 0);
                         dg::MapPainter* painter = (dg::MapPainter*)gui_painter;
                         dg::Map* map = dg_localizer->getMap();
                         for (auto itr = particles.begin(); itr != particles.end(); itr++)
@@ -252,9 +261,49 @@ public:
 
                             double theta = atan2(v.y, v.x);
                             if (fabs(cx::trimRad(theta - robot_pose.theta)) < CV_PI / 2)
-                                painter->drawNode(out_image, dg::Point2ID(0, pose_m), nradius, 0, ncolor);
+                                painter->drawNode(gui_image, dg::Point2ID(0, pose_m), nradius, 0, ncolor, m_viewport.offset(), m_viewport.zoom());
                             else
-                                painter->drawNode(out_image, dg::Point2ID(0, pose_m), nradius, 0, cv::Vec3b(0, 0, 0));
+                                painter->drawNode(gui_image, dg::Point2ID(0, pose_m), nradius, 0, cv::Vec3b(0, 0, 0), m_viewport.offset(), m_viewport.zoom());
+                        }
+
+                        // draw best path points
+                        cv::Vec3b ecolor = cv::Vec3b(255, 0, 0);
+                        ncolor = cv::Vec3b(255, 0, 0);
+                        nradius = 3;
+                        int ethickness = 1;
+                        for (int idx = 1; idx < (int)mcl_localizer->m_best_path_pts.size(); idx++)
+                        {
+                            painter->drawEdge(gui_image, mcl_localizer->m_best_path_pts[idx - 1], mcl_localizer->m_best_path_pts[idx], nradius, ecolor, ethickness, m_viewport.offset(), m_viewport.zoom());
+                        }
+                        for (int idx = 1; idx < (int)mcl_localizer->m_best_path_pts.size() - 1; idx++)
+                        {
+                            painter->drawNode(gui_image, dg::Point2ID(0, mcl_localizer->m_best_path_pts[idx]), nradius, 0, ncolor, m_viewport.offset(), m_viewport.zoom());
+                        }
+
+                        // draw best odo points
+                        ecolor = cv::Vec3b(0, 255, 255);
+                        ncolor = cv::Vec3b(0, 128, 128);
+                        nradius = 3;
+                        ethickness = 1;
+                        for (int idx = 1; idx < (int)mcl_localizer->m_best_odo_pts.size(); idx++)
+                        {
+                            painter->drawEdge(gui_image, mcl_localizer->m_best_odo_pts[idx - 1], mcl_localizer->m_best_odo_pts[idx], nradius, ecolor, ethickness, m_viewport.offset(), m_viewport.zoom());
+                        }
+                        for (int idx = 1; idx < (int)mcl_localizer->m_best_odo_pts.size() - 1; idx++)
+                        {
+                            painter->drawNode(gui_image, dg::Point2ID(0, mcl_localizer->m_best_odo_pts[idx]), nradius, 0, ncolor, m_viewport.offset(), m_viewport.zoom());
+                        }
+
+                        // draw best particle
+                        dg::Particle best = mcl_localizer->m_best_particle;
+                        if (best.start_node != nullptr)
+                        {
+                            dg::Node* from = best.start_node;
+                            dg::Edge* edge = best.edge;
+                            dg::Node* to = map->getConnectedNode(from, edge->id);
+                            dg::Point2 v = *to - *from;
+                            dg::Point2 pose_best = *from + best.dist * v / edge->length;
+                            painter->drawNode(gui_image, dg::Point2ID(0, pose_best), nradius * 2, 0, cv::Vec3b(255, 0, 0), m_viewport.offset(), m_viewport.zoom());
                         }
                     }
                 }
@@ -266,15 +315,15 @@ public:
                 double gui_fscale = 0.8;
                 cv::Point gui_xy(10, 50);
                 std::string gui_msg = "GPS(G)";
-                cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_bg, 5);
-                if (apply_gps) cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_active, 2);
-                else cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_deactive, 2);
+                cv::putText(gui_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_bg, 5);
+                if (apply_gps) cv::putText(gui_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_active, 2);
+                else cv::putText(gui_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_deactive, 2);
                 gui_xy.y += 40;
 
                 gui_msg = "ODO(O)";
-                cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_bg, 5);
-                if (apply_odo) cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_active, 2);
-                else cv::putText(out_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_deactive, 2);
+                cv::putText(gui_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_bg, 5);
+                if (apply_odo) cv::putText(gui_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_active, 2);
+                else cv::putText(gui_image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, color_deactive, 2);
                 gui_xy.y += 40;
 
                 // Draw the image given from the camera
@@ -282,7 +331,7 @@ public:
                 {
                     cv::Mat resize;
                     cv::resize(cam_image, resize, cv::Size(), video_resize, video_resize);
-                    cx::Painter::pasteImage(out_image, resize, video_offset);
+                    cx::Painter::pasteImage(gui_image, resize, video_offset);
                 }
 
                 // Draw path
@@ -297,11 +346,11 @@ public:
                     int ethickness = 1;
                     for (int idx = 1; idx < (int)path.pts.size(); idx++)
                     {
-                        painter->drawEdge(out_image, path.pts[idx - 1], path.pts[idx], nradius, ecolor, ethickness);
+                        painter->drawEdge(gui_image, path.pts[idx - 1], path.pts[idx], nradius, ecolor, ethickness, m_viewport.offset(), m_viewport.zoom());
                     }
                     for (int idx = 1; idx < (int)path.pts.size() - 1; idx++)
                     {
-                        painter->drawNode(out_image, dg::Point2ID(0, path.pts[idx]), nradius, 0, ncolor);
+                        painter->drawNode(gui_image, dg::Point2ID(0, path.pts[idx]), nradius, 0, ncolor, m_viewport.offset(), m_viewport.zoom());
                     }
 
                     if (show_projected_history)
@@ -311,16 +360,14 @@ public:
                         int j = pose_history.data_count() - 1;
                         while (j >= 0)
                         {
-                            painter->drawNode(out_image, dg::Point2ID(0, pose_history[j]), nradius, 0, cv::Vec3b(255, 255, 0));
+                            painter->drawNode(gui_image, dg::Point2ID(0, pose_history[j]), nradius, 0, cv::Vec3b(255, 255, 0), m_viewport.offset(), m_viewport.zoom());
                             j--;
                         }
                     }
                 }
 
                 // Draw Robot
-                dg::Pose2 pose = localizer->getPose();
-                if (gui_traj_radius > 0) gui_painter->drawPoint(bg_image, pose, gui_traj_radius, gui_robot_color);
-                genStateImage(out_image, localizer, data_time - timestart);
+                genStateImage(gui_image, localizer, data_time - timestart, gui_painter, m_viewport.offset(), m_viewport.zoom());
 
                 // Draw the current state on the bigger background
                 if (show_zoom)
@@ -328,7 +375,7 @@ public:
                     if (zoom_user_drag)
                     {
                         cv::Point2d pos = gui_painter->cvtPixel2Value(zoom_user_point);
-                        pasteZoomedImage(out_image, pos, zoom_background);
+                        pasteZoomedImage(gui_image, pos, zoom_background);
                     }
                     else
                     {
@@ -336,21 +383,42 @@ public:
 
                         cv::Mat zoom_image = zoom_bg_image.clone();
                         genStateImage(zoom_image, localizer, data_time - timestart, zoom_painter);
-                        pasteZoomedImage(out_image, pose, zoom_image);
+                        pasteZoomedImage(gui_image, pose, zoom_image);
                     }
                 }
 
                 // Record the current visualization on the AVI file
                 if (out_video.isConfigured() && rec_video_resize > 0)
                 {
-                    out_video << out_image;
+                    out_video << gui_image;
                 }
 
-                cv::imshow("LocalizerRunner::runLocalizer()", out_image);
+                cv::imshow("LocalizerRunner::runLocalizer()", gui_image);
                 int key = cv::waitKey(gui_wnd_wait_msec);
                 if (key == cx::KEY_SPACE) key = cv::waitKey(0);
                 if (key == 'g') apply_gps = !apply_gps;
                 if (key == 'o') apply_odo = !apply_odo;
+                if (key == 's')
+                {
+                    // file name
+                    time_t start_t;
+                    time(&start_t);
+                    tm _tm;
+                    localtime_s(&_tm, &start_t);
+                    char szfilename[255];
+                    strftime(szfilename, 255, "odo_path_%y%m%d_%H%M%S.yml", &_tm);
+                    std::string fname = szfilename;
+
+                    cv::FileStorage fs(fname, cv::FileStorage::WRITE);
+                    if (fs.isOpened())
+                    {
+                        std::vector<cv::Point2d> path_pts;
+                        for (size_t k = 0; k < mcl_localizer->m_best_path.pts.size(); k++)
+                            path_pts.push_back(cv::Point2d(mcl_localizer->m_best_path.pts[k].x, mcl_localizer->m_best_path.pts[k].y));
+                        fs << "odo" << mcl_localizer->m_odo_pts_original;
+                        fs << "path" << path_pts;
+                    }
+                }
                 if (key == cx::KEY_ESC) break;
             }
         }
@@ -404,7 +472,7 @@ public:
         }
     }
 
-    void genStateImage(cv::Mat& image, const cv::Ptr<dg::BaseLocalizer> localizer, double timestamp, cx::Painter* painter = nullptr)
+    void genStateImage(cv::Mat& image, const cv::Ptr<dg::BaseLocalizer> localizer, double timestamp, cx::Painter* painter = nullptr, const cv::Point2d& offset = cv::Point2d(0, 0), double zoom = 1)
     {
         if (painter == nullptr) painter = gui_painter;
         CV_DbgAssert(!localizer.empty() && painter != nullptr);
@@ -435,9 +503,9 @@ public:
                             {
                                 dg::Node* to = map->getConnectedNode(*n, *e);
                                 if (to != nullptr)
-                                    painter->drawLine(image, *(*n), *to, gui_topo_loc_color, gui_topo_loc_thickness);
+                                    painter->drawLine(image, (*(*n)-offset)*zoom, (*to-offset)*zoom, gui_topo_loc_color, (int)(gui_topo_loc_thickness * zoom+0.5));
                             }
-                            painter->drawPoint(image, *(*n), gui_topo_loc_radius, gui_topo_loc_color, gui_topo_loc_thickness);
+                            painter->drawPoint(image, (*(*n)-offset)*zoom, (int)(gui_topo_loc_radius*zoom+0.5), gui_topo_loc_color, (int)(gui_topo_loc_thickness * zoom+0.5));
                         }
                     }
                 }
@@ -445,15 +513,15 @@ public:
                 if (gui_topo_ref_radius > 0)
                 {
                     dg::Node* ref_node = map->getNode(pose_t.node_id);
-                    if (ref_node != nullptr) painter->drawPoint(image, *ref_node, gui_topo_ref_radius, gui_topo_ref_color, gui_topo_ref_thickness);
+                    if (ref_node != nullptr) painter->drawPoint(image, (*ref_node-offset)*zoom, gui_topo_ref_radius, gui_topo_ref_color, (int)(gui_topo_ref_thickness * zoom+0.5));
                 }
             }
         }
         if (gui_robot_radius > 0)
         {
-            painter->drawPoint(image, pose_m, gui_robot_radius, gui_robot_color);                                         // Robot body
-            painter->drawPoint(image, pose_m, gui_robot_radius, cv::Vec3b(255, 255, 255) - gui_robot_color, 1);           // Robot outline
-            cv::Point2d pose_px = painter->cvtValue2Pixel(pose_m);
+            cv::Point2d pose_px = (painter->cvtValue2Pixel(pose_m) - offset) * zoom;
+            cv::circle(image, pose_px, gui_robot_radius, gui_robot_color, -1);
+            cv::circle(image, pose_px, gui_robot_radius, cv::Vec3b(255, 255, 255) - gui_robot_color, 1);
             cv::Point2d head_px(gui_robot_radius * cos(pose_m.theta), -gui_robot_radius * sin(pose_m.theta));
             cv::line(image, pose_px, pose_px + head_px, cv::Vec3b(255, 255, 255) - gui_robot_color, gui_robot_thickness); // Robot heading
         }
@@ -466,11 +534,11 @@ public:
                 cv::Mat eval, evec;
                 cv::Mat covar = (ekf) ? ekf->getStateCov() : path_localizer->getStateCov();
                 cv::eigen(covar(cv::Rect(0, 0, 2, 2)), eval, evec);
-                double pixel_per_value = painter->getPixel2Value().x;
-                cv::RotatedRect covar_box(painter->cvtValue2Pixel(pose_m),
+                double pixel_per_value = painter->getPixel2Value().x * zoom;
+                cv::RotatedRect covar_box((painter->cvtValue2Pixel(pose_m)-offset)*zoom,
                     cv::Size2d(pixel_per_value * gui_covar_scale * sqrt(eval.at<double>(0)), pixel_per_value * gui_covar_scale * sqrt(eval.at<double>(1))),
                     static_cast<float>(cx::cvtRad2Deg(atan2(-evec.at<double>(1, 0), evec.at<double>(0, 0)))));
-                cv::ellipse(image, covar_box, gui_covar_color, gui_covar_thickness);                                          // EKF covariance
+                cv::ellipse(image, covar_box, gui_covar_color, (int)(gui_covar_thickness * zoom+0.5)); // EKF covariance
             }
         }
         if (gui_text_scale > 0)
@@ -479,12 +547,12 @@ public:
             dg::Polar2 velocity = dg::Polar2();
             std::string metric_text = cv::format("Time: %.2f / Pose: %.2f, %.2f, %.0f / Velocity: %.2f, %.0f",
                 timestamp, pose_m.x, pose_m.y, cx::cvtRad2Deg(pose_m.theta), velocity.lin, cx::cvtRad2Deg(velocity.ang));
-            cv::putText(image, metric_text, gui_text_offset, cv::FONT_HERSHEY_PLAIN, gui_text_scale, gui_text_color, gui_text_thickness);
+            cv::putText(image, metric_text, (gui_text_offset - offset)*zoom, cv::FONT_HERSHEY_PLAIN, gui_text_scale * zoom, gui_text_color, (int)(gui_text_thickness * zoom+0.5));
             if (!localizer_topo.empty() && pose_t.node_id > 0)
             {
                 std::string topo_text = cv::format("Node ID: %zd, Edge Idx: %d, Dist: %.2f, Head: %.0f", pose_t.node_id, pose_t.edge_idx, pose_t.dist, cx::cvtRad2Deg(pose_t.head));
                 int topo_text_offset = static_cast<int>(20 * gui_text_scale);
-                cv::putText(image, topo_text, gui_text_offset + cv::Point(0, topo_text_offset), cv::FONT_HERSHEY_PLAIN, gui_text_scale, gui_text_color, gui_text_thickness);
+                cv::putText(image, topo_text, (gui_text_offset - offset + cv::Point2d(0, topo_text_offset))*zoom, cv::FONT_HERSHEY_PLAIN, gui_text_scale * zoom, gui_text_color, (int)(gui_text_thickness*zoom+0.5));
             }
         }
     }
@@ -546,7 +614,7 @@ public:
     cv::Vec3b    gui_covar_color = cv::Vec3b(0, 255, 0);;
     int          gui_covar_thickness = 1;
     double       gui_text_scale = 1;
-    cv::Point    gui_text_offset = cv::Point(5, 15);
+    cv::Point2d  gui_text_offset = cv::Point2d(5, 15);
     cv::Vec3b    gui_text_color = cx::COLOR_MAGENTA;
     int          gui_text_thickness = 1;
     int          gui_topo_ref_radius = 0;
@@ -559,7 +627,7 @@ public:
     cv::Vec3b    gui_clue_color = cv::Vec3b(255, 0, 0);
     int          gui_clue_thickness = 2;
     int          gui_wnd_flag = cv::WindowFlags::WINDOW_AUTOSIZE;
-    int          gui_wnd_wait_msec = 5;
+    int          gui_wnd_wait_msec = 100;
     bool         gui_wnd_wait_exit = false;
 
     double       video_resize = 1;
@@ -577,6 +645,7 @@ public:
     int          zoom_box_thickness = 1;
     bool         zoom_user_drag = false;
     cv::Point    zoom_user_point;
+    bool         show_zoom = true;
 
     std::string  rec_traj_name;
     std::string  rec_video_name;
