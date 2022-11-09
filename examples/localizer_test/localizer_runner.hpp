@@ -396,8 +396,16 @@ public:
                 cv::imshow("LocalizerRunner::runLocalizer()", gui_image);
                 int key = cv::waitKey(gui_wnd_wait_msec);
                 if (key == cx::KEY_SPACE) key = cv::waitKey(0);
-                if (key == 'g') apply_gps = !apply_gps;
-                if (key == 'o') apply_odo = !apply_odo;
+                if (key == 'g')
+                {
+                    apply_gps = !apply_gps;
+                    mcl_localizer->resetGPSActivation(apply_gps);
+                }
+                if (key == 'o')
+                {
+                    apply_odo = !apply_odo;
+                    mcl_localizer->resetGPSActivation(apply_odo);
+                }
                 if (key == 's')
                 {
                     // file name

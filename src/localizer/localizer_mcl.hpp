@@ -82,6 +82,7 @@ namespace dg
 
         virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
+            if (m_gps_deactivated) return false;
             if (m_enable_stop_filtering && m_odometry_active && m_odometry_stabilized && m_robot_stopped) return false;
 
             cv::AutoLock lock(m_mutex);
@@ -202,8 +203,11 @@ namespace dg
                 {
                     dg::Pose2 prev = m_pose_mcl;
                     predictParticles(odometry_pose, m_prev_odometry_pose, time - m_prev_odometry_time, m_robot_stopped);
-                    //evaluateParticlesHistory();
-                    //resampleParticles();
+                    if (m_gps_deactivated)
+                    {
+                        evaluateParticlesHistory();
+                        resampleParticles();
+                    }
                     estimateMclPose(m_pose_mcl, m_eid_mcl);
                     m_pose = m_pose_mcl;
                 }
