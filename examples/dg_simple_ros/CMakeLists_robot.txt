@@ -20,8 +20,6 @@ add_compile_options(-std=c++17)
 add_compile_options(-pthread)
 add_compile_options(-O3)      # build optimization level 3 (comment out this line when want to build debug mode)
 
-add_definitions(-DDG_TEST_ROBOT)
-
 #find_package( PythonInterp 3.6 REQUIRED )
 #find_package( PythonLibs 3.6 REQUIRED )
 find_package( OpenCV 3.2 REQUIRED )
