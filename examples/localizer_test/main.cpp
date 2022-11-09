@@ -431,7 +431,7 @@ int runLocalizer()
     //enable_roadtheta = true;
     //draw_gps = true;
 
-    int data_sel = 10;
+    int data_sel = 11;
     double start_time = 100;     // skip time (seconds)
     //rec_video_file = "mcl_odo_matching_problem.avi";
     double rec_video_fps = 10;
@@ -446,7 +446,9 @@ int runLocalizer()
         {"data/COEX/201007_142326", "mkv", "2.8918"},  // 7, 12435 frames, 1240 sec, video_scale = 2.8918
         {"data/COEX/201007_145022", "mkv", "2.869"},   // 8, 18730 frames, 1853 sec, video_scale = 2.869
         {"data/COEX/201007_152840", "mkv", "2.8902"},   // 9, 20931 frames, 2086 sec, video_scale = 2.8902
-        {"data/Bucheon/_2022-10-06-14-40-21_subway_to_cityhall", "avi", "0"} // 10
+        {"data/Bucheon/_2022-10-06-14-40-21_subway_to_cityhall", "avi", "0"}, // 10
+        {"data/Bucheon/_2022-11-08-16-05-30_keti2nonghyup_notbad", "avi", "0"}, // 11
+        {"data/Bucheon/_2022-11-08-15-50-06_nonghyp2keti_notbad", "avi", "0"} // 12
     };
     const int coex_idx = 6;
     const int bucheon_idx = 10;
