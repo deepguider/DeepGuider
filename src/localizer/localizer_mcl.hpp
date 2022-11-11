@@ -43,9 +43,9 @@ namespace dg
         double m_odometry_linear_std_err = 0.5;                 // 1 meter
         double m_odometry_angular_std_err = cx::cvtDeg2Rad(1);  // 5 degree
         double m_gps_pos_sigma = 50;
-        double m_gps_theta_sigma = cx::cvtDeg2Rad(30);
+        double m_gps_theta_sigma = cx::cvtDeg2Rad(50);
         double m_odo_align_sigma = 50;
-        double m_odo_align_theta_sigma = cx::cvtDeg2Rad(50);
+        double m_odo_align_theta_sigma = cx::cvtDeg2Rad(20);
         double m_odometry_save_interval = 1;
         double m_corner_cosine = cos(CV_PI / 4);
         double m_path_particle_weight = 1.1;
@@ -115,8 +115,9 @@ namespace dg
                 }
                 if (!m_robot_stopped)
                 {
-                    evaluateParticlesHistory();
-                    evaluateParticlesPose(m_ekf->getPose());
+                    evaluateParticles(m_ekf->getPose());
+                    //evaluateParticlesHistory();
+                    //evaluateParticlesPose(m_ekf->getPose());
                     resampleParticles();
                     estimateMclPose(m_pose_mcl, m_eid_mcl);
                     m_mcl_pose_valid = true;
@@ -703,6 +704,7 @@ namespace dg
                 double err_theta = cx::trimRad(pose.theta - pose_m.theta);
                 double pdf1 = exp(-err_d * err_d / (2 * m_gps_pos_sigma * m_gps_pos_sigma));// / (m_gps_pos_sigma * sqrt(2 * CV_PI));
                 double pdf2 = exp(-err_theta * err_theta / (2 * m_gps_theta_sigma * m_gps_theta_sigma));// / (m_gps_theta_sigma * sqrt(2 * CV_PI));
+                //printf("GPS: pdf_d=%lf, pdf_th=%lf, pdf=%lf\n", pdf1, pdf2, pdf1*pdf2);
 
                 m_particles[i].weight *= (pdf1 * pdf2 * path_weight);
                 w_sum += m_particles[i].weight;
@@ -899,6 +901,406 @@ namespace dg
                 k--;
             }         
         }
+
+        void evaluateParticles(const Pose2& pose_ekf)
+        {
+            std::vector<double> odo_l2, odo_theta;
+            bool odo_valid = evaluateParticleHistory(odo_l2, odo_theta);
+
+            Path path = m_shared->getPath();
+            int path_n = (int)path.pts.size();
+
+            int N = (int)m_particles.size();
+            Map* map = m_shared->getMapLocked();
+            double w_sum = 0;
+            for (int i = 0; i < N; i++)
+            {
+                // particle pose
+                Node* from = m_particles[i].start_node;
+                Edge* edge = m_particles[i].edge;
+                Node* to = map->getConnectedNode(from, edge->id);
+                Point2 v = *to - *from;
+                Pose2 pose_particle = *from + m_particles[i].dist * v / edge->length;
+                pose_particle.theta = cx::trimRad(atan2(v.y, v.x) + m_particles[i].head);
+
+                // path weight
+                double path_weight = 1;
+                for (size_t k = 0; k < path_n; k++)
+                {
+                    if (edge->id == path.pts[k].edge_id)
+                    {
+                        path_weight = m_path_particle_weight;
+                        break;
+                    }
+                }
+
+                // ekf weight
+                double dx = pose_particle.x - pose_ekf.x;
+                double dy = pose_particle.y - pose_ekf.y;
+                double err_d = sqrt(dx * dx + dy * dy);
+                double err_theta = cx::trimRad(pose_particle.theta - pose_ekf.theta);
+                double pdf_ekf_d = exp(-err_d * err_d / (2 * m_gps_pos_sigma * m_gps_pos_sigma)) / (m_gps_pos_sigma * sqrt(2 * CV_PI));
+                double pdf_ekf_theta = exp(-err_theta * err_theta / (2 * m_gps_theta_sigma * m_gps_theta_sigma)) / (m_gps_theta_sigma * sqrt(2 * CV_PI));
+
+                // odometry align weight
+                double pdf_odo_d = 1;
+                double pdf_odo_theta = 1;
+                if(odo_valid)
+                {
+                    double err_l2 = odo_l2[i];
+                    err_theta = cx::trimRad(pose_particle.theta - odo_theta[i]);
+                    pdf_odo_d = exp(-err_l2 / (2 * m_odo_align_sigma * m_odo_align_sigma)) / (m_odo_align_sigma * sqrt(2 * CV_PI));
+                    pdf_odo_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma)) / (m_odo_align_theta_sigma * sqrt(2 * CV_PI));
+                }
+
+                double pdf = path_weight*(pdf_ekf_d*pdf_ekf_theta * pdf_odo_d*pdf_odo_theta);
+                printf("[%d] w=%lf, gps_d=%lf, gps_th=%lf, odo_d=%lf, odo_th=%lf\n", i, pdf, pdf_ekf_d, pdf_ekf_theta, pdf_odo_d, pdf_odo_theta);
+
+                m_particles[i].weight *= pdf;
+                w_sum += m_particles[i].weight;
+            }
+            m_shared->releaseMapLock();
+
+            for (int i = 0; i < N; i++)
+            {
+                m_particles[i].weight /= w_sum;
+            }
+        }
+
+        bool evaluateParticleHistory(std::vector<double>& odo_l2, std::vector<double>& odo_theta)
+        {
+            // check odometry length
+            int n_odo = m_odometry_history.data_count();
+            if (n_odo < 5) return false;
+            OdometryData odo = m_odometry_history.back();
+            if (odo.dist_accumulated < 20) return false;
+
+            int N = (int)m_particles.size();
+            odo_l2.resize(N);
+            odo_theta.resize(N);
+
+            // starting point
+            int odo_start_idx = n_odo - 1 - m_eval_history_length;
+            if (odo_start_idx < 0) odo_start_idx = 0;
+            double odo_length = odo.dist_accumulated - m_odometry_history[odo_start_idx].dist_accumulated;
+            Pose2 start_p = m_odometry_history[odo_start_idx].pose_mcl;
+            ID start_eid = m_odometry_history[odo_start_idx].eid_mcl;
+
+            // odometry points
+            std::vector<Point2> odo_pts;
+            odo_pts.resize(n_odo - odo_start_idx);
+            for (int i = odo_start_idx; i < n_odo; i++)
+            {
+                odo_pts[i - odo_start_idx].x = m_odometry_history[i].x;
+                odo_pts[i - odo_start_idx].y = m_odometry_history[i].y;
+            }
+
+            // theta correction
+            theta_correction_mean(m_odometry_history, odo_start_idx, odo_pts);
+
+            // whitening of odometry points
+            Point2 mean_odo_point(0, 0);
+            m_odo_pts_original.resize(n_odo - odo_start_idx);
+            for (int i = odo_start_idx; i < n_odo; i++)
+            {
+                mean_odo_point += odo_pts[i - odo_start_idx];
+
+                // sample test data recording purpose
+                m_odo_pts_original[i - odo_start_idx](0) = m_odometry_history[i].x;
+                m_odo_pts_original[i - odo_start_idx](1) = m_odometry_history[i].y;
+                m_odo_pts_original[i - odo_start_idx](2) = m_odometry_history[i].theta;
+                m_odo_pts_original[i - odo_start_idx](3) = m_odometry_history[i].dtheta;
+                m_odo_pts_original[i - odo_start_idx](4) = m_odometry_history[i].dist_accumulated;
+                m_odo_pts_original[i - odo_start_idx](5) = m_odometry_history[i].cornerness;
+            }
+            mean_odo_point /= (double)odo_pts.size();
+            for (int i = 0; i<(int)odo_pts.size(); i++)
+            {
+                odo_pts[i] -= mean_odo_point;
+            }
+
+            // list particle paths
+            std::vector<ID> nid_list;
+            std::vector<dg::Path> path_list;
+            Map* map = m_shared->getMap();
+            for (int i = 0; i < N; i++)
+            {
+                ID nid = m_particles[i].start_node->id;
+                bool found = false;
+                for (auto it = nid_list.begin(); it != nid_list.end(); it++)
+                {
+                    if (*it == nid)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    dg::Path path;
+                    bool ok = map->getPath(start_p, *m_particles[i].start_node, path);
+                    if (!ok || path.empty()) continue;
+                    int n_pts = (int)(path.pts.size());
+                    if (n_pts < 2) continue;
+
+                    nid_list.push_back(nid);
+                    path_list.push_back(path);
+                }
+            }
+
+            // evaluate particle paths
+            double w_sum = 0;
+            double best_w = -1;
+            m_best_pdf = -1;
+            for (int i = 0; i < N; i++)
+            {
+                // particle pose
+                Node* from = m_particles[i].start_node;
+                Edge* edge = m_particles[i].edge;
+                Node* to = map->getConnectedNode(from, edge->id);
+                Point2 v = *to - *from;
+                Pose2 pose_particle = *from + m_particles[i].dist * v / edge->length;
+                double particle_theta = cx::trimRad(atan2(v.y, v.x) + m_particles[i].head);
+
+                Path path;
+                if (m_particles[i].edge->id == start_eid)
+                {
+                    path.pts.push_back(start_p);
+                    path.pts.push_back(pose_particle);
+                    double err_l2, odo_aligned_theta;
+                    double w = alignCostOdometry2(m_odometry_history, odo_start_idx, odo_pts, mean_odo_point, path.pts, particle_theta, err_l2, odo_aligned_theta);
+                    odo_l2[i] = err_l2;
+                    odo_theta[i] = odo_aligned_theta;
+
+                    if (w > best_w)
+                    {
+                        m_best_particle = m_particles[i];
+                        m_best_path = path;
+                        best_w = w;
+                    }
+
+                    m_particles[i].weight *= w;
+                    w_sum += m_particles[i].weight;
+                }
+                else
+                {
+                    // path from start to particle pose
+                    ID nid = m_particles[i].start_node->id;
+                    int found_idx = -1;
+                    for (int k = 0; k < (int)nid_list.size(); k++)
+                    {
+                        if (nid_list[k] == nid)
+                        {
+                            found_idx = k;
+                            break;
+                        }
+                    }
+                    if (found_idx < 0) continue;
+
+                    path_list[found_idx].pts.push_back(pose_particle);
+                    double err_l2, odo_aligned_theta;
+                    double w = alignCostOdometry2(m_odometry_history, odo_start_idx, odo_pts, mean_odo_point, path_list[found_idx].pts, particle_theta, err_l2, odo_aligned_theta);
+                    odo_l2[i] = err_l2;
+                    odo_theta[i] = odo_aligned_theta;
+
+                    if (w > best_w)
+                    {
+                        m_best_particle = m_particles[i];
+                        m_best_path = path_list[found_idx];
+                        best_w = w;
+                    }
+
+                    path_list[found_idx].pts.pop_back();
+                    m_particles[i].weight *= w;
+                    w_sum += m_particles[i].weight;
+                }
+            }
+
+            return true;
+        }
+
+        double alignCostOdometry2(const RingBuffer<OdometryData>& odometry, int odo_start_idx, const std::vector<Point2>& eval_odo_pts, dg::Point2 mean_odo_point, const std::vector<PathNode>& path_pts, double particle_theta, double& err_l2, double& odo_aligned_theta)
+        {
+            // odometry length
+            int n_odo = odometry.data_count();
+            double odo_len_total = odometry[n_odo - 1].dist_accumulated - odometry[odo_start_idx].dist_accumulated;
+
+            // path length
+            int n_path = (int)path_pts.size();
+            double path_len_total = 0;
+            for (int i = 1; i < n_path; i++)
+            {
+                path_len_total += norm(path_pts[i] - path_pts[i - 1]);
+            }
+
+            // path points
+            std::vector<Point2> eval_path_pts;
+            eval_path_pts.push_back(path_pts[0]);
+            double path_len_upto = 0;
+            int path_pts_idx = 0;
+            double edge_len = norm(path_pts[path_pts_idx + 1] - path_pts[path_pts_idx]);
+            Point2 mean_path_point = path_pts[0];
+            for (int i = odo_start_idx + 1; i < n_odo; i++)
+            {
+                double odo_len_upto = odometry[i].dist_accumulated - odometry[odo_start_idx].dist_accumulated;
+                double target_path_len = path_len_total * odo_len_upto / odo_len_total;
+                while (path_len_upto + edge_len < target_path_len && path_pts_idx < n_path - 1)
+                {
+                    path_len_upto += edge_len;
+                    path_pts_idx++;
+                    edge_len = (path_pts_idx < n_path - 1) ? norm(path_pts[path_pts_idx + 1] - path_pts[path_pts_idx]) : 0;
+                }
+                double target_edge_len = target_path_len - path_len_upto;
+                Point2 path_p1 = path_pts[path_pts_idx];
+                Point2 path_p2 = path_pts[path_pts_idx + 1];
+                Point2 path_point = (edge_len > 0 && path_pts_idx < n_path - 1) ? path_p1 + (path_p2 - path_p1) * target_edge_len / edge_len : path_p1;
+                eval_path_pts.push_back(path_point);
+                mean_path_point += path_point;
+            }
+            mean_path_point /= (double)eval_path_pts.size();
+
+            // zero-mean path points
+            for (int i = 0; i < (int)eval_path_pts.size(); i++)
+            {
+                eval_path_pts[i] -= mean_path_point;
+            }
+
+            // estimate rigid transform
+            int n_data = (int)eval_path_pts.size();
+            cv::Mat A = cv::Mat::zeros(2, n_data, CV_64FC1);
+            cv::Mat B = cv::Mat::zeros(n_data, 2, CV_64FC1);
+            for (int i = 0; i < n_data; i++)
+            {
+                A.at<double>(0, i) = eval_odo_pts[i].x;
+                A.at<double>(1, i) = eval_odo_pts[i].y;
+                B.at<double>(i, 0) = eval_path_pts[i].x;
+                B.at<double>(i, 1) = eval_path_pts[i].y;
+            }
+            cv::Mat cov = A * B;
+            cv::Mat U, D, VT;
+            cv::SVD::compute(cov, D, U, VT);
+            cv::Mat R = VT.t() * U.t();
+            double det = cv::determinant(R);
+            if (det < 0)
+            {
+                cv::Mat W = cv::Mat::eye(2, 2, CV_64FC1);
+                W.at<double>(1, 1) = -1;
+                R = VT.t() * W * U.t();
+            }
+
+            Point2 t;
+            t.x = mean_path_point.x - (R.at<double>(0, 0) * mean_odo_point.x + R.at<double>(0, 1) * mean_odo_point.y);
+            t.y = mean_path_point.y - (R.at<double>(1, 0) * mean_odo_point.x + R.at<double>(1, 1) * mean_odo_point.y);
+
+            // compute align cost
+            cv::Mat RA = R * A;
+            cv::Mat E = RA - B.t();
+            double E_norm = cv::norm(E, cv::NORM_L2);
+            err_l2 = E_norm * E_norm / n_data;
+            double pdf_d = exp(-err_l2 / (2 * m_odo_align_sigma * m_odo_align_sigma));
+
+            int i1 = (int)eval_odo_pts.size() - 2;
+            int i2 = (int)eval_odo_pts.size() - 1;
+            double odo_x1 = RA.at<double>(0, i1) + mean_path_point.x;
+            double odo_y1 = RA.at<double>(1, i1) + mean_path_point.y;
+            double odo_x2 = RA.at<double>(0, i2) + mean_path_point.x;
+            double odo_y2 = RA.at<double>(1, i2) + mean_path_point.y;
+            odo_aligned_theta = atan2(odo_y2 - odo_y1, odo_x2 - odo_x1);
+            double err_theta = cx::trimRad(odo_aligned_theta - particle_theta);
+            double pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma));
+
+            double pdf = pdf_d * pdf_theta;
+            if (!m_use_odo_theta) pdf = pdf_d;
+            printf("pdf_d=%lf, pdf_th=%lf, pdf=%lf, odo_align_theta=%.1lf, particle_theta=%.1lf\n", pdf_d, pdf_theta, pdf, cx::cvtRad2Deg(odo_aligned_theta), cx::cvtRad2Deg(particle_theta));
+
+            if (pdf > m_best_pdf)
+            {
+                m_best_pdf = pdf;
+                m_best_odo_pts = eval_odo_pts;
+                m_best_path_pts = eval_path_pts;
+                cv::Mat RA = R * A;
+                for (int i = 0; i < (int)eval_odo_pts.size(); i++)
+                {
+                    m_best_odo_pts[i].x = RA.at<double>(0, i) + mean_path_point.x;
+                    m_best_odo_pts[i].y = RA.at<double>(1, i) + mean_path_point.y;
+                    m_best_path_pts[i] = eval_path_pts[i] + mean_path_point;
+                }
+            }
+
+            // check path cornerness
+            double corner_thr = cx::cvtDeg2Rad(60);
+            Point2 path_v = path_pts[n_path-1] - path_pts[n_path-2];
+            double path_last_theta = atan2(path_v.y, path_v.x);
+            int corner_path_idx = -1;
+            double corner_path_len = norm(path_v);
+            for (int i = n_path - 2; i > 0; i--)
+            {
+                Point2 path_v = path_pts[i] - path_pts[i - 1];
+                double path_theta = atan2(path_v.y, path_v.x);
+                double path_delta = cx::trimRad(path_theta - path_last_theta);
+                corner_path_len += norm(path_v);
+
+                if(fabs(path_delta) > corner_thr)
+                {
+                    corner_path_idx = i - 1;
+                    break;
+                }
+            }
+            if(corner_path_idx<0) return pdf;
+            return pdf;
+
+            // transform odometry points
+            std::vector<Point2> odo_aligned = eval_odo_pts;
+            double r1 = R.at<double>(0, 0);
+            double r2 = R.at<double>(0, 1);
+            double r3 = R.at<double>(1, 0);
+            double r4 = R.at<double>(1, 1);
+            for (int i = 0; i < (int)eval_odo_pts.size(); i++)
+            {
+                odo_aligned[i].x = r1 * eval_odo_pts[i].x + r2 * eval_odo_pts[i].y + t.x;
+                odo_aligned[i].y = r3 * eval_odo_pts[i].x + r4 * eval_odo_pts[i].y + t.y;
+            }
+
+            // ICP
+            int itr = ICP_align(odo_aligned, path_pts);
+
+            // compute align cost
+            err_l2 = 0;
+            for (int i = 0; i < n_data; i++)
+            {
+                double dx = odo_aligned[i].x - eval_path_pts[i].x;
+                double dy = odo_aligned[i].y - eval_path_pts[i].y;
+                err_l2 += (dx*dx + dy*dy);
+            }
+            err_l2 /= (double)n_data;
+
+            double err_l1 = norm(odo_aligned[n_data-1] - eval_path_pts[n_data-1]);
+            err_l2 = err_l1 * err_l1;
+
+            Point2 odo_last_v = odo_aligned[n_data-1] - odo_aligned[n_data-2];
+            odo_aligned_theta = atan2(odo_last_v.y, odo_last_v.x);
+
+            double l = norm(odo_aligned.back() - path_pts.back());
+            err_theta = cx::trimRad(odo_aligned_theta - particle_theta);
+            pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma));
+            pdf_d = exp(-err_l2 / (2 * m_odo_align_sigma * m_odo_align_sigma));
+
+            pdf = pdf_d * pdf_theta;
+            if (pdf > m_best_pdf)
+            {
+                m_best_pdf = pdf;
+                m_best_odo_pts = odo_aligned;
+                m_best_path_pts = eval_path_pts;
+                for (int i = 0; i < (int)odo_aligned.size(); i++)
+                {
+                    m_best_path_pts[i] = eval_path_pts[i] + mean_path_point;
+                }
+            }
+
+            return pdf;
+        }
+
+
 
         void evaluateParticlesHistory()
         {
@@ -1128,10 +1530,10 @@ namespace dg
             double odo_aligned_theta = atan2(odo_y2 - odo_y1, odo_x2 - odo_x1);
             double err_theta = cx::trimRad(odo_aligned_theta - particle_theta);
             double pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma));
-            //printf("pdf_d=%lf, pdf_th=%lf, odo_theta=%.1lf, particle_theta=%.1lf\n", pdf_d, pdf_theta, cx::cvtRad2Deg(odo_aligned_theta), cx::cvtRad2Deg(particle_theta));
 
             double pdf = pdf_d * pdf_theta;
             if (!m_use_odo_theta) pdf = pdf_d;
+            printf("pdf_d=%lf, pdf_th=%lf, pdf=%lf, odo_align_theta=%.1lf, particle_theta=%.1lf\n", pdf_d, pdf_theta, pdf, cx::cvtRad2Deg(odo_aligned_theta), cx::cvtRad2Deg(particle_theta));
 
             if (pdf > m_best_pdf)
             {
@@ -1250,6 +1652,77 @@ namespace dg
 
                 odo_corrected[i].x = x_prev + (v.x * cos_t - v.y * sin_t);
                 odo_corrected[i].y = y_prev + (v.x * sin_t + v.y * cos_t);
+            }
+        }
+
+        void theta_correction(const RingBuffer<OdometryData>& odometry, int odo_start_idx, vector<Pose2>& odo_corrected)
+        {
+            double angular_res = 1;   // degree
+            int bins = 3;             // should be odd number (-2~-1, -1~+1, +1~+2)
+
+            int nodo = odometry.data_count() - odo_start_idx;
+            vector<double> hist;
+            vector<int> cnt;
+            hist.resize(bins);
+            cnt.resize(bins);
+
+            for (int i = 0; i < bins; i++)
+            {
+                hist[i] = 0;
+                cnt[i] = 0;
+            }
+
+            for (int i = 1; i < nodo; i++)
+            {
+                double dtheta = cx::cvtRad2Deg(odometry[odo_start_idx + i].dtheta);
+                int idx = (int)(dtheta / angular_res) + (bins - 1) / 2;
+                if (idx < 0 || idx>(bins - 1)) continue;
+                hist[idx] += dtheta;
+                cnt[idx]++;
+            }
+
+            int max_idx = -1;
+            int max_cnt = 0;
+            for (int i = 0; i < bins; i++)
+            {
+                if (cnt[i] > max_cnt)
+                {
+                    max_cnt = cnt[i];
+                    max_idx = i;
+                }
+            }
+
+            double dtheta_mean = hist[max_idx];
+            int dtheta_cnt = cnt[max_idx];
+            if (max_idx < bins - 1)
+            {
+                dtheta_mean += hist[max_idx + 1];
+                dtheta_cnt += cnt[max_idx + 1];
+            }
+            if (max_idx > 0)
+            {
+                dtheta_mean += hist[max_idx - 1];
+                dtheta_cnt += cnt[max_idx - 1];
+            }
+            dtheta_mean /= (double)dtheta_cnt;
+            dtheta_mean = cx::cvtDeg2Rad(dtheta_mean);
+
+            cv::Point2d v;
+            odo_corrected.resize(nodo);
+            odo_corrected[0].x = odometry[odo_start_idx].x;
+            odo_corrected[0].y = odometry[odo_start_idx].y;
+            odo_corrected[0].theta = odometry[odo_start_idx].theta;
+
+            for (int i = 1; i < nodo; i++)
+            {
+                double cos_t = cos(-dtheta_mean * i);
+                double sin_t = sin(-dtheta_mean * i);
+                v.x = odometry[odo_start_idx + i].x - odometry[odo_start_idx + i - 1].x;
+                v.y = odometry[odo_start_idx + i].y - odometry[odo_start_idx + i - 1].y;
+
+                odo_corrected[i].x = odo_corrected[i - 1].x + (v.x * cos_t - v.y * sin_t);
+                odo_corrected[i].y = odo_corrected[i - 1].y + (v.x * sin_t + v.y * cos_t);
+                odo_corrected[i].theta = cx::trimRad(odo_corrected[i].theta - dtheta_mean * i);
             }
         }
 
