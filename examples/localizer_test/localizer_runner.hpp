@@ -396,6 +396,10 @@ public:
                 cv::imshow("LocalizerRunner::runLocalizer()", gui_image);
                 int key = cv::waitKey(gui_wnd_wait_msec);
                 if (key == cx::KEY_SPACE) key = cv::waitKey(0);
+                if (key == '1') gui_wnd_wait_msec = 1;
+                if (key == '2') gui_wnd_wait_msec = 100;
+                if (key == '3') gui_wnd_wait_msec = 500;
+                if (key == '4') gui_wnd_wait_msec = 1000;
                 if (key == 'g')
                 {
                     apply_gps = !apply_gps;
@@ -635,7 +639,7 @@ public:
     cv::Vec3b    gui_clue_color = cv::Vec3b(255, 0, 0);
     int          gui_clue_thickness = 2;
     int          gui_wnd_flag = cv::WindowFlags::WINDOW_AUTOSIZE;
-    int          gui_wnd_wait_msec = 100;
+    int          gui_wnd_wait_msec = 1;
     bool         gui_wnd_wait_exit = false;
 
     double       video_resize = 1;

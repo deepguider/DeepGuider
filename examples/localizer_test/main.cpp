@@ -431,7 +431,7 @@ int runLocalizer()
     //enable_roadtheta = true;
     //draw_gps = true;
 
-    int data_sel = 11;
+    int data_sel = 10;
     double start_time = 100;     // skip time (seconds)
     //rec_video_file = "mcl_odo_matching_problem.avi";
     double rec_video_fps = 10;

@@ -77,6 +77,7 @@ namespace dg
         double m_best_pdf = -1;
         std::vector<Point2> m_best_odo_pts;
         std::vector<Point2> m_best_path_pts;
+
         std::vector<cv::Vec6d> m_odo_pts_original;  // x,y,theta, dtheta, dist_accumulated, cornerness
         Path m_best_path;
 
@@ -1003,18 +1004,9 @@ namespace dg
 
             // whitening of odometry points
             Point2 mean_odo_point(0, 0);
-            m_odo_pts_original.resize(n_odo - odo_start_idx);
             for (int i = odo_start_idx; i < n_odo; i++)
             {
                 mean_odo_point += odo_pts[i - odo_start_idx];
-
-                // sample test data recording purpose
-                m_odo_pts_original[i - odo_start_idx](0) = m_odometry_history[i].x;
-                m_odo_pts_original[i - odo_start_idx](1) = m_odometry_history[i].y;
-                m_odo_pts_original[i - odo_start_idx](2) = m_odometry_history[i].theta;
-                m_odo_pts_original[i - odo_start_idx](3) = m_odometry_history[i].dtheta;
-                m_odo_pts_original[i - odo_start_idx](4) = m_odometry_history[i].dist_accumulated;
-                m_odo_pts_original[i - odo_start_idx](5) = m_odometry_history[i].cornerness;
             }
             mean_odo_point /= (double)odo_pts.size();
             for (int i = 0; i<(int)odo_pts.size(); i++)
@@ -1078,12 +1070,8 @@ namespace dg
                     if (w > best_w)
                     {
                         m_best_particle = m_particles[i];
-                        m_best_path = path;
                         best_w = w;
                     }
-
-                    m_particles[i].weight *= w;
-                    w_sum += m_particles[i].weight;
                 }
                 else
                 {
@@ -1109,13 +1097,9 @@ namespace dg
                     if (w > best_w)
                     {
                         m_best_particle = m_particles[i];
-                        m_best_path = path_list[found_idx];
                         best_w = w;
                     }
-
                     path_list[found_idx].pts.pop_back();
-                    m_particles[i].weight *= w;
-                    w_sum += m_particles[i].weight;
                 }
             }
 
@@ -1211,10 +1195,6 @@ namespace dg
                 R = VT.t() * W * U.t();
             }
 
-            Point2 t;
-            t.x = mean_path_point.x - (R.at<double>(0, 0) * mean_odo_point.x + R.at<double>(0, 1) * mean_odo_point.y);
-            t.y = mean_path_point.y - (R.at<double>(1, 0) * mean_odo_point.x + R.at<double>(1, 1) * mean_odo_point.y);
-
             // compute align cost
             if(corner_path_idx < 0)
             {
@@ -1262,12 +1242,13 @@ namespace dg
             double r4 = R.at<double>(1, 1);
             for (int i = 0; i < (int)eval_odo_pts.size(); i++)
             {
-                odo_aligned[i].x = r1 * eval_odo_pts[i].x + r2 * eval_odo_pts[i].y + t.x;
-                odo_aligned[i].y = r3 * eval_odo_pts[i].x + r4 * eval_odo_pts[i].y + t.y;
+                odo_aligned[i].x = r1 * eval_odo_pts[i].x + r2 * eval_odo_pts[i].y + mean_path_point.x;
+                odo_aligned[i].y = r3 * eval_odo_pts[i].x + r4 * eval_odo_pts[i].y + mean_path_point.y;
             }
 
             // ICP
-            int itr = ICP_align(odo_aligned, path_pts);
+            int max_itr = 50;
+            int itr = ICP_align(odo_aligned, path_pts, max_itr);
 
             // compute align cost
             double err_l1 = norm(odo_aligned.back() - path_pts.back());
@@ -1816,13 +1797,14 @@ namespace dg
             return dist2;
         }
 
-        int ICP_align(vector<Point2>& p_aligned, const vector<PathNode>& q)
+        int ICP_align(vector<Point2>& p_aligned, const vector<PathNode>& q, int max_itr)
         {
+            if (max_itr <= 0) return 0;
+
             int np = (int)p_aligned.size();
             int nq = (int)q.size();
 
             // ICP
-            int max_itr = 50;
             int itr = 0;
             vector<Point2> eval_q;
             eval_q.resize(np);
@@ -1869,7 +1851,7 @@ namespace dg
                 }
 
                 itr++;
-                if (itr > max_itr || max_delta2 < 1e-8) break;
+                if (itr >= max_itr || max_delta2 < 1e-8) break;
             }
 
             return itr;
