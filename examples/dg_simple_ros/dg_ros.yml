@@ -210,6 +210,9 @@ Bucheon:
   image_server_port: "10002"
   gps_input_path: "data/Sensor_record_20210513_Bucheon_AndroSensor.csv"
   video_input_path: ""
+  vps_load_dbfeat: 1
+  vps_save_dbfeat: 0
+  vps_use_custom_image_server: 1   # 0 (default) to use naver roadview, 1 to use custom images for database images
 
 Bucheon_KETI:
   map_image_path: "data/Bucheon/bucheon_robotmap(flipudlr).png" 
@@ -224,6 +227,9 @@ Bucheon_KETI:
   video_input_path: ""
   robot_map_rotation: -90
   robot_map_origin: [3110, 2576]
+  vps_load_dbfeat: 1
+  vps_save_dbfeat: 0
+  vps_use_custom_image_server: 1   # 0 (default) to use naver roadview, 1 to use custom images for database images
 
 Bucheon_Robot:
   robotmap_path: "data/Bucheon/bucheon_220922/occumap_bucheon.png" 
