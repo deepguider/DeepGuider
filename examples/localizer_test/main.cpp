@@ -431,9 +431,9 @@ int runLocalizer()
     //enable_roadtheta = true;
     //draw_gps = true;
 
-    int data_sel = 10;
+    int data_sel = 11;
     double start_time = 100;     // skip time (seconds)
-    //rec_video_file = "mcl_odo_matching_problem.avi";
+    //rec_video_file = "mcl_bucheon_course.avi";
     double rec_video_fps = 10;
     std::vector<std::string> data_head[] = {
         {"data/ETRI/2022-08-08-13-38-04_etri_to_119", "avi", "0"},

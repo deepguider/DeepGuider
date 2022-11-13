@@ -96,7 +96,7 @@ public:
         cv::Mat bg_image = gui_background.clone();
         cv::Mat zoom_bg_image = zoom_background.clone();
         m_viewport.initialize(bg_image, m_view_size, m_view_offset);
-        m_viewport.setZoom(2);
+        //m_viewport.setZoom(2);
 
         // Run localization with GPS and other sensors
         if (show_gui)
@@ -441,11 +441,13 @@ public:
 
     void procMouseEvent(int evt, int x, int y, int flags)
     {
+        m_viewport.procMouseEvent(evt, x, y, flags);
+
         if (evt == cv::EVENT_MOUSEMOVE)
         {
             if (zoom_user_drag)
             {
-                zoom_user_point = cv::Point(x, y);
+                zoom_user_point = m_viewport.cvtView2Pixel(cv::Point(x, y));
             }
         }
         else if (evt == cv::EVENT_LBUTTONDOWN)
@@ -457,7 +459,8 @@ public:
         else if (evt == cv::EVENT_LBUTTONDBLCLK)
         {
             dg::Pose2 p_start = getPose();
-            cv::Point2d p_dest = gui_painter->cvtPixel2Value(cv::Point(x, y));
+            cv::Point2d px_dest = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            cv::Point2d p_dest = gui_painter->cvtPixel2Value(px_dest);
             dg::Path path;
             bool ok = m_map.getPath(p_start, p_dest, path);
             if (ok)
@@ -469,10 +472,11 @@ public:
         }
         else if (evt == cv::EVENT_RBUTTONDOWN)
         {
-            cv::Point2d p = gui_painter->cvtPixel2Value(cv::Point(x, y));
+            cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            cv::Point2d p = gui_painter->cvtPixel2Value(px);
             printf("x = %lf, y = %lf\n", p.x, p.y);
 
-            zoom_user_point = cv::Point(x, y);
+            zoom_user_point = px;
             zoom_user_drag = true;
         }
         else if (evt == cv::EVENT_RBUTTONUP)
