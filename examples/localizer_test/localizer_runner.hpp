@@ -133,10 +133,9 @@ public:
 
                 if (apply_odo && !apply_gps)
                 {
-                    //cam_image = data_loader.getFrame(data_time);
-                    //update_gui = true;
+                    cam_image = data_loader.getFrame(data_time);
+                    update_gui = true;
                 }
-                //update_gui = true;
             }
             else if (type == dg::DATA_GPS)
             {

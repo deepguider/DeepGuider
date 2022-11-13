@@ -44,6 +44,7 @@ namespace dg
         double m_odometry_angular_std_err = cx::cvtDeg2Rad(1);  // 5 degree
         double m_gps_pos_sigma = 20;
         double m_gps_theta_sigma = cx::cvtDeg2Rad(100);
+        double m_poi_pos_sigma = 10;
         double m_odo_align_sigma = 10;
         double m_odo_align_theta_sigma = cx::cvtDeg2Rad(50);
         double m_odometry_save_interval = 1;
@@ -126,6 +127,22 @@ namespace dg
             }
             m_prev_gps_pose = m_ekf->getPose();
             m_prev_gps_time = time;
+
+            return applyPathLocalizerMCL(m_pose, time);
+        }
+
+        virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false)
+        {
+            if (!m_mcl_initialized)
+                return DGLocalizer::applyPOI(clue_xy, relative, time, confidence, use_relative_model);
+
+            cv::AutoLock lock(m_mutex);
+            evaluateParticlesPOI(clue_xy, relative);            
+            resampleParticles();
+            estimateMclPose(m_pose_mcl, m_eid_mcl);
+            m_mcl_pose_valid = true;
+            m_pose = m_pose_mcl;
+            m_timestamp = time;
 
             return applyPathLocalizerMCL(m_pose, time);
         }
@@ -1328,6 +1345,40 @@ namespace dg
             }
 
             return itr;
+        }
+
+        void evaluateParticlesPOI(const Point2& clue_xy, const Polar2& relative)
+        {
+            int N = (int)m_particles.size();
+
+            double w_sum = 0;
+            Map* map = m_shared->getMap();
+            for (int i = 0; i < N; i++)
+            {
+                // particle pose
+                Node* from = m_particles[i].start_node;
+                Edge* edge = m_particles[i].edge;
+                Node* to = map->getConnectedNode(from, edge->id);
+                Point2 v = *to - *from;
+                Pose2 pose = *from + m_particles[i].dist * v / edge->length;
+                pose.theta = cx::trimRad(atan2(v.y, v.x) + m_particles[i].head);
+
+                double poi_theta = pose.theta + relative.ang;
+                Point2 poi_xy;
+                poi_xy.x = pose.x + relative.lin * cos(poi_theta);
+                poi_xy.y = pose.y + relative.lin * sin(poi_theta);
+
+                double err_d = norm(clue_xy - poi_xy);
+                double pdf = exp(-err_d * err_d / (2 * m_poi_pos_sigma * m_poi_pos_sigma)) / (m_poi_pos_sigma * sqrt(2 * CV_PI));
+
+                m_particles[i].weight *= pdf;
+                w_sum += m_particles[i].weight;
+            }
+
+            for (int i = 0; i < N; i++)
+            {
+                m_particles[i].weight /= w_sum;
+            }
         }
 
     }; // End of 'DGLocalizerMCL'
