@@ -245,7 +245,7 @@ public:
                         dg::Pose2 robot_pose = localizer->getPose();
 
                         // draw particles
-                        int nradius = 2;
+                        int nradius = 1;
                         cv::Vec3b ncolor = cv::Vec3b(0, 255, 0);
                         dg::MapPainter* painter = (dg::MapPainter*)gui_painter;
                         dg::Map* map = dg_localizer->getMap();

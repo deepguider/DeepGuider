@@ -655,7 +655,7 @@ namespace dg
             double dtheta = cx::trimRad(cur.theta - prev.theta);
             double linear_velocity = (dtime > 0) ? d / dtime : 0;
             double angular_modifier = 1;
-            if (linear_velocity > 0.5) angular_modifier = 0.9;
+            if (linear_velocity > 0.5) angular_modifier = 0.95;
             for (int i = 0; i < N; i++)
             {
                 double di = d + lin_noise[i];
@@ -673,7 +673,7 @@ namespace dg
             }
 
             // edge transition
-            Map* map = m_shared->getMapLocked();
+            Map* map = m_shared->getMap();
             int n_added = 0;
             for (int i = 0; i < N; i++)
             {
@@ -720,7 +720,6 @@ namespace dg
                     if(first_saved) m_particles[i] = first_particle;
                 }
             }
-            m_shared->releaseMapLock();
         }
 
         bool estimateMclPose(Pose2& pose, ID& eid)
