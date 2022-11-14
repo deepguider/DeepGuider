@@ -1,5 +1,7 @@
 import numpy as np
 import cv2
+import utm
+import imutils
 from ipdb import set_trace as bp
 
 ## Author :  ccsmm@etri.re.kr
@@ -117,10 +119,44 @@ class load_cv2_yaml:
         return val
     
     def get_robot_site(self, verbose=False):
-        index = "robot_site_index"
-        lists = "robot_site_set"
+        index = "robot_map_index"
+        lists = "robot_map_set"
         val = self.get_list_at(index, lists, verbose)
         return val
+
+    def get_map_info(self, verbose=False):
+        ## Parsing map information from dg_ros.yml
+        map_img_path = self.read("map_image_path", verbose)
+        map_csv_path = self.read("map_data_path", verbose)
+        map_ref_point_latlon = self.read("map_ref_point_latlon", verbose)
+        map_ref_point_pixel = self.read("map_ref_point_pixel", verbose)
+        map_pixel_per_meter = self.read("map_pixel_per_meter", verbose)
+        map_image_rotation = self.read("map_image_rotation", verbose)
+        map_view_size = self.read("map_view_size", verbose)
+
+        ## Resize map image to view in monitor
+        map_img = cv2.imread(map_img_path)
+        img_h, img_w, _ = map_img.shape
+        resize_w = 1000  # map_view_size[0]
+        map_img = imutils.resize(map_img, width=resize_w)
+        resize_h, resize_w, _ = map_img.shape
+        resize_ratio = resize_w/img_w
+        px = map_ref_point_pixel[0]*resize_ratio
+        py = map_ref_point_pixel[1]*resize_ratio
+        img_h, img_w = resize_h, resize_w
+        map_pixel_per_meter = map_pixel_per_meter*resize_ratio
+
+
+        ## Get l-top, r-bottom points
+        ux, uy, utm_no, utm_char = utm.from_latlon(*map_ref_point_latlon)
+        ux_left = ux - px/map_pixel_per_meter
+        uy_top = uy + py/map_pixel_per_meter
+        ux_right = ux + (resize_w - px)/map_pixel_per_meter
+        uy_bottom = uy - (resize_h - py)/map_pixel_per_meter
+        utm_ltop = [ux_left, uy_top]
+        utm_rbottom = [ux_right, uy_bottom]
+    
+        return map_img, utm_ltop, utm_rbottom
 
     def close(self):
         self.fs.release()
@@ -169,9 +205,7 @@ def for_vps(yml):
     yml.read("topic_gps", verbose)
     yml.read("topic_odo", verbose)
 
-    print("\n  ** Map Info. **")
-    yml.read("map_image_path", verbose)
-    yml.read("map_data_path", verbose)
+    yml.get_map_info(verbose)
 
     print("\n  ** VPS Params. **")
     yml.read("enable_vps", verbose)
