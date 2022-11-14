@@ -37,20 +37,23 @@ namespace dg
     protected:
         int m_particle_numbers = 400;
         int m_resample_numbers = 0;
-        double m_resample_sigma = 10;      // meter
-        int m_eval_history_length = 50;
+        double m_resample_sigma = 10;       // meter
+        int m_eval_history_length = 50;     // meter
         int m_odometry_history_size = 1000;
-        double m_odometry_linear_std_err = 0.5;                 // 1 meter
-        double m_odometry_angular_std_err = cx::cvtDeg2Rad(1);  // 5 degree
-        double m_gps_pos_sigma = 20;
-        double m_gps_theta_sigma = cx::cvtDeg2Rad(100);
-        double m_poi_pos_sigma = 5;
-        double m_odo_align_sigma = 10;
-        double m_odo_align_theta_sigma = cx::cvtDeg2Rad(50);
         double m_odometry_save_interval = 1;
         double m_corner_cosine = cos(CV_PI / 4);
         double m_path_particle_weight = 2;
         int m_max_icp_itr = 20;
+
+        double m_odometry_linear_std_err = 0.5;                 // 0.5 meter
+        double m_odometry_angular_std_err = cx::cvtDeg2Rad(1);  // 1 degree
+
+        double m_gps_pos_sigma = 20;
+        double m_gps_theta_sigma = cx::cvtDeg2Rad(100);
+        double m_poi_pos_sigma = 5;
+        double m_vps_pos_sigma = 20;
+        double m_odo_align_sigma = 10;
+        double m_odo_align_theta_sigma = cx::cvtDeg2Rad(50);
 
         Pose2 m_prev_gps_pose;
         Timestamp m_prev_gps_time = -1;
@@ -148,6 +151,31 @@ namespace dg
 
             Pose2 after = m_pose_mcl;
             printf("\n[MCL-PPOI] before: x=%.1lf, y=%.1lf, after: x=%.1lf, y=%.1lf\n\n", before.x, before.y, after.x, after.y);
+
+            return applyPathLocalizerMCL(m_pose, time);
+        }
+
+        virtual bool applyVPS(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false)
+        {
+            if (!m_mcl_initialized)
+                return DGLocalizer::applyVPS(clue_xy, relative, time, confidence, use_relative_model);
+
+            cv::AutoLock lock(m_mutex);
+            if (m_enable_backtracking_ekf && time < m_ekf->getLastUpdateTime())
+            {
+                if (!backtrackingEKF(time, ObsData(ObsData::OBS_VPS, clue_xy, relative, time, confidence))) return false;
+                return applyPathLocalizer(m_ekf->getPose(), time);
+            }
+            else if (time < m_ekf->getLastUpdateTime()) time = m_ekf->getLastUpdateTime();
+            if (!m_ekf->applyVPS(clue_xy, relative, time, confidence, use_relative_model)) return false;
+            saveObservation(ObsData::OBS_VPS, clue_xy, relative, time, confidence);
+            saveEKFState(m_ekf, time);
+
+            evaluateParticlesVPS(clue_xy, relative);
+            resampleParticles();
+            estimateMclPose(m_pose_mcl, m_eid_mcl);
+            m_pose = m_pose_mcl;
+            m_timestamp = time;
 
             return applyPathLocalizerMCL(m_pose, time);
         }
@@ -1442,6 +1470,36 @@ namespace dg
                 double err_d = norm(clue_xy - poi_xy);
                 double pdf = 0.0001 + exp(-err_d * err_d / (2 * m_poi_pos_sigma * m_poi_pos_sigma)) / (m_poi_pos_sigma * sqrt(2 * CV_PI));
                 printf("POI [%d] err_d = %lf, pdf = %lf\n", i, err_d, pdf);
+
+                m_particles[i].weight *= pdf;
+                w_sum += m_particles[i].weight;
+            }
+
+            for (int i = 0; i < N; i++)
+            {
+                m_particles[i].weight /= w_sum;
+            }
+        }
+
+        void evaluateParticlesVPS(const Point2& clue_xy, const Polar2& relative)
+        {
+            int N = (int)m_particles.size();
+
+            double w_sum = 0;
+            Map* map = m_shared->getMap();
+            for (int i = 0; i < N; i++)
+            {
+                // particle pose
+                Node* from = m_particles[i].start_node;
+                Edge* edge = m_particles[i].edge;
+                Node* to = map->getConnectedNode(from, edge->id);
+                Point2 v = *to - *from;
+                Pose2 pose = *from + m_particles[i].dist * v / edge->length;
+                pose.theta = cx::trimRad(atan2(v.y, v.x) + m_particles[i].head);
+
+                double err_d = norm(clue_xy - pose);
+                double pdf = 0.0001 + exp(-err_d * err_d / (2 * m_vps_pos_sigma * m_vps_pos_sigma)) / (m_vps_pos_sigma * sqrt(2 * CV_PI));
+                //printf("VPS [%d] err_d = %lf, pdf = %lf\n", i, err_d, pdf);
 
                 m_particles[i].weight *= pdf;
                 w_sum += m_particles[i].weight;
