@@ -457,7 +457,7 @@ std::vector<const Node*> Map::getConnectedNearNodes(const Node* node, double sea
 
             // check duplication
             auto found = lookup_tmp.find(to->id);
-            if (found == lookup_tmp.end()) continue;
+            if (found != lookup_tmp.end()) continue;
 
             open.push_back(to);
             results.push_back(to);
@@ -499,7 +499,7 @@ std::vector<Node*> Map::getConnectedNearNodes(Node* node, double search_radius)
 
             // check duplication
             auto found = lookup_tmp.find(to->id);
-            if (found == lookup_tmp.end()) continue;
+            if (found != lookup_tmp.end()) continue;
 
             open.push_back(to);
             results.push_back(to);
@@ -593,7 +593,7 @@ std::vector<const Edge*> Map::getNearEdges(const Point2& p, double search_radius
             {
                 // check duplication
                 auto found = lookup_tmp.find(*eid);
-                if (found == lookup_tmp.end()) continue;
+                if (found != lookup_tmp.end()) continue;
 
                 results.push_back(getEdge(*eid));
                 lookup_tmp.insert(std::make_pair(*eid, idx++));
