@@ -42,6 +42,7 @@ class MCL():
         self.n_particle = n_particle
         self.pdf_sigma = pdf_sigma
         self.callback_count = 0
+        self.sensor_std_err = 0.1
 
     def initialize(self, disp=False):
         self.particles = self.create_uniform_particles()
@@ -70,6 +71,7 @@ class MCL():
         landmarks are np.array([[x,y]]) of best matched top-N
         '''
         ## Given, robot movement
+        #print("*********************************VPS_MCL : odo_x, odo_y, odo_theta : {}, {}, {}".format(odo_x, odo_y, heading)) # debug
         u = np.array([odo_x, odo_y])
         movement = u[0]**2 + u[1]**2
         
@@ -85,7 +87,7 @@ class MCL():
 
             if len(zs) > 0:
                 ## Get particle sample's observation
-                self.weights = self.update(self.particles, self.weights, z=zs, R=self.pdf_sigma, landmarks=self.landmarks)  # 50, The smaller the R, the better the particles are gathered.
+                self.weights = self.update(self.particles, heading, self.weights, z=zs, R=self.pdf_sigma, landmarks=self.landmarks)  # 50, The smaller the R, the better the particles are gathered.
 
                 ## Re-sampling
                 indexes = self.systematic_resample(self.weights)
@@ -168,7 +170,10 @@ class MCL():
         #self.drawCross(self.img, self.robot_pos_gt, r=255, g=0, b=0)
 
         for landmark in self.landmarks:
-            cv2.circle(self.img,tuple(landmark),10,(255,0,0),-1)
+            x,y =  [328533., 4153478] - landmark  # debug
+            if (x is not None) and (y is not None):
+                if x >= 0 and y >= 0:
+                    cv2.circle(self.img,tuple(landmark),10,(255,0,0),-1)
 
         #draw_particles:
         for particle in self.particles:
@@ -206,11 +211,10 @@ class MCL():
         theta = np.arccos(cosine)  # array([[2.69308044, 1.16742907, 1.64356718, 1.33917604, 0.3524596 ]])
         #zs = theta  # array([1.00941928, 1.87394168, 1.85178042, 2.45739235, 0.69551047])
         zs = cosine  # array([1.00941928, 1.87394168, 1.85178042, 2.45739235, 0.69551047])
-        if self.noise == True:
-            ratio = self.sensor_std_err + self.sensor_std_err_manual
-            noise_ratio = (0.5-np.random.random(len(zs))) * ratio # (-0.5 ~ 0.5) * self.sensor_std_err
-            #print("[zs] original, with noise : {} ==> {} with noise {}".format(zs, zs + zs*noise_ratio, zs*noise_ratio))
-            zs = zs + zs*noise_ratio
+        ratio = self.sensor_std_err
+        noise_ratio = (0.5-np.random.random(len(zs))) * ratio # (-0.5 ~ 0.5) * self.sensor_std_err
+        #print("[zs] original, with noise : {} ==> {} with noise {}".format(zs, zs + zs*noise_ratio, zs*noise_ratio))
+        zs = zs + zs*noise_ratio
         return zs
 
     def observation_angle(self):  # Angle metric between me (robot) and landmarks. Up-to-scale tranlation angle to heading in CCW direction.
