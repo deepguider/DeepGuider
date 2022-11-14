@@ -44,7 +44,7 @@ namespace dg
         double m_odometry_angular_std_err = cx::cvtDeg2Rad(1);  // 5 degree
         double m_gps_pos_sigma = 20;
         double m_gps_theta_sigma = cx::cvtDeg2Rad(100);
-        double m_poi_pos_sigma = 10;
+        double m_poi_pos_sigma = 5;
         double m_odo_align_sigma = 10;
         double m_odo_align_theta_sigma = cx::cvtDeg2Rad(50);
         double m_odometry_save_interval = 1;
@@ -136,6 +136,8 @@ namespace dg
             if (!m_mcl_initialized)
                 return DGLocalizer::applyPOI(clue_xy, relative, time, confidence, use_relative_model);
 
+            Pose2 before = m_pose_mcl;
+
             cv::AutoLock lock(m_mutex);
             evaluateParticlesPOI(clue_xy, relative);            
             resampleParticles();
@@ -144,13 +146,15 @@ namespace dg
             m_pose = m_pose_mcl;
             m_timestamp = time;
 
+            Pose2 after = m_pose_mcl;
+            printf("\n[MCL-PPOI] before: x=%.1lf, y=%.1lf, after: x=%.1lf, y=%.1lf\n\n", before.x, before.y, after.x, after.y);
+
             return applyPathLocalizerMCL(m_pose, time);
         }
 
         virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)
         {
             cv::AutoLock lock(m_mutex);
-
             // initialization
             if (!m_odometry_active)
             {
@@ -214,6 +218,7 @@ namespace dg
                 if(!m_robot_stopped)
                 {
                     dg::Pose2 prev = m_pose_mcl;
+
                     predictParticles(odometry_pose, m_prev_odometry_pose, time - m_prev_odometry_time, m_robot_stopped);
                     if (m_gps_deactivated)
                     {
@@ -452,6 +457,68 @@ namespace dg
         void add_uniform_particles(const Pose2 p, double radius, std::vector<Particle>& particles, int n, double w)
         {
             Map* map = m_shared->getMap();
+            Point2 ep;
+            Edge* edge = map->getNearestEdge(p, ep);
+            if(norm(p - ep)>=radius) return;
+
+            //Node* node1 = map->getNode(edge->node_id1);
+            //Node* node2 = map->getNode(edge->node_id2);
+            //double d1 = norm(ep - *node1);
+            //double d2 = norm(ep - *node2);
+
+            // find connected edges
+            std::vector<const Edge*> results;
+            std::list<const Edge*> open;
+            std::map<ID, int> lookup_tmp;
+            int idx = 0;
+            open.push_back(edge);
+            lookup_tmp.insert(std::make_pair(edge->id, idx++));                
+            results.push_back(edge);
+            while (!open.empty())
+            {
+                // pick next
+                auto e = open.front();
+                open.pop_front();
+
+                Node* n1 = map->getNode(e->node_id1);
+                Node* n2 = map->getNode(e->node_id2);
+                double d1 = norm(p - *n1);
+                double d2 = norm(p - *n2);
+
+                if(d1<radius)
+                {
+                    for (auto it = n1->edge_ids.begin(); it != n1->edge_ids.end(); it++)
+                    {
+                        const Edge* next = map->getEdge(*it);
+                        if (next == nullptr) continue;
+
+                        // check duplication
+                        auto found = lookup_tmp.find(next->id);
+                        if (found != lookup_tmp.end()) continue;
+
+                        open.push_back(next);
+                        results.push_back(next);
+                        lookup_tmp.insert(std::make_pair(next->id, idx++));
+                    }
+                }
+                if(d2<radius)
+                {
+                    for (auto it = n2->edge_ids.begin(); it != n2->edge_ids.end(); it++)
+                    {
+                        const Edge* next = map->getEdge(*it);
+                        if (next == nullptr) continue;
+
+                        // check duplication
+                        auto found = lookup_tmp.find(next->id);
+                        if (found != lookup_tmp.end()) continue;
+
+                        open.push_back(next);
+                        results.push_back(next);
+                        lookup_tmp.insert(std::make_pair(next->id, idx++));
+                    }
+                }
+            }
+
             int added = 0;
             if (map)
             {
@@ -630,6 +697,7 @@ namespace dg
 
         bool estimateMclPose(Pose2& pose, ID& eid)
         {
+
             int N = (int)m_particles.size();
 
            // average of theta --> assume they are on unit circle --> average coordinate of unit circle position
@@ -786,6 +854,7 @@ namespace dg
             int N = (int)m_particles.size();
             Map* map = m_shared->getMapLocked();
             double w_sum = 0;
+            double max_pdf = 0;
             for (int i = 0; i < N; i++)
             {
                 // particle pose
@@ -838,12 +907,14 @@ namespace dg
                 }
 
                 double pdf = path_weight*(pdf_ekf_d*pdf_ekf_theta * pdf_odo_d*pdf_odo_theta);
+                if(pdf>max_pdf) max_pdf = pdf;
                 //printf("[%d] w=%lf, gd=%.1lf(%lf), gth=%.1lf(%lf), od=%.1lf(%lf), oth=%.1lf(%lf), pth=%.1lf, alignth=%.1lf\n", i, pdf, gd, pdf_ekf_d, cx::cvtRad2Deg(gth), pdf_ekf_theta, od, pdf_odo_d, cx::cvtRad2Deg(oth), pdf_odo_theta, cx::cvtRad2Deg(pose_particle.theta), cx::cvtRad2Deg(odo_aligned_theta));
 
                 m_particles[i].weight *= pdf;
                 w_sum += m_particles[i].weight;
             }
             m_shared->releaseMapLock();
+            //printf("[MCL] max_pdf = %lf, w_sum = %lf\n", max_pdf, w_sum);
 
             for (int i = 0; i < N; i++)
             {
@@ -1369,7 +1440,8 @@ namespace dg
                 poi_xy.y = pose.y + relative.lin * sin(poi_theta);
 
                 double err_d = norm(clue_xy - poi_xy);
-                double pdf = exp(-err_d * err_d / (2 * m_poi_pos_sigma * m_poi_pos_sigma)) / (m_poi_pos_sigma * sqrt(2 * CV_PI));
+                double pdf = 0.0001 + exp(-err_d * err_d / (2 * m_poi_pos_sigma * m_poi_pos_sigma)) / (m_poi_pos_sigma * sqrt(2 * CV_PI));
+                printf("POI [%d] err_d = %lf, pdf = %lf\n", i, err_d, pdf);
 
                 m_particles[i].weight *= pdf;
                 w_sum += m_particles[i].weight;
