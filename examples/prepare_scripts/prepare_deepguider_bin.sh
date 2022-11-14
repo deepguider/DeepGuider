@@ -26,7 +26,7 @@ if [ -e ${TARGET} ]; then
     ## Test dataset
     ln -sf ${SRCPATH}/data/ETRI ${TARGET}/data/.
     ln -sf ${SRCPATH}/data/COEX ${TARGET}/data/.
-    ln -sf ${SRCPATH}/data/COEX ${TARGET}/data/.
+    ln -sf ${SRCPATH}/data/Bucheon ${TARGET}/data/.
 
     ## Video File
     ln -sf ${SRCPATH}/data/191115_ETRI.avi ${TARGET}/data/.
