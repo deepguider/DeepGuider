@@ -46,7 +46,6 @@ vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In stree
 vps_enable_mcl: 0
 vps_visible_region_radius: 7
 vps_visible_region_radius_max_ratio: 3.5
-
 vps_enable_filter: 0
 vps_filter_size: 7  # 11 for coex indoor, window size of median filter ( 1 means off)
 vps_filter_valid_thre: 3 # 1st threshold to check valid of vps result in median filter in metric (Large numger, (ex) 1000, means off)

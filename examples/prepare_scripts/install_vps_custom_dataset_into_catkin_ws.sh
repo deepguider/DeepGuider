@@ -27,12 +27,18 @@ function get_prebuilt_dir(){
 }
 
 function link_src_to_catkin(){
+	if [ ! "${1}" ]; then
+	    ROS_WS_DIR="catkin_ws"
+	else
+	    ROS_WS_DIR="${1}"
+	fi
+
     CWD=`pwd`
     User=`whoami`  # ccsmm
     cd ${CWD}
     
     SRC_TOP="$CWD"
-    DST_TOP="/home/${User}/catkin_ws/data_vps"
+    DST_TOP="/home/${User}/${ROS_WS_DIR}/data_vps"
     
     DB_SRC="${SRC_TOP}/dbImg/StreetView"
     DB_DST="${DST_TOP}/netvlad_etri_datasets/dbImg"
@@ -51,7 +57,7 @@ function link_src_to_catkin(){
         ln -sf ${FEAT_SRC} ${FEAT_DST}/.
     
     	echo ""
-    	echo "If you got ramdisk mount error, re-run this after running catkin_ws/init_vps_ramdisk.sh"
+    	echo "If you got ramdisk mount error, re-run this after running ${ROS_WS_DIR}/init_vps_ramdisk.sh"
     	
     	## Misc.
     		echo "###### Be careful to make symbolic link including large amount files in ros workspace,"
@@ -65,10 +71,20 @@ function link_src_to_catkin(){
     	fi
     else
     	echo ">>>No target directory exists : ${DB_DST}"
+		echo "Usage :"
+		echo "       $0  # means default : $0 catkin_ws"
+		echo "       $0 catkin_ws"
+		echo "       $0 ros_deepguier_ws"
     fi
 }
+
+if [ ! "${1}" ]; then
+    ROS_WS_DIR="catkin_ws"
+else
+    ROS_WS_DIR="${1}"
+fi
 
 cd data_vps
 get_prebuilt_dir # return $ret
 cd $ret
-link_src_to_catkin
+link_src_to_catkin $ROS_WS_DIR

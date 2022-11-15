@@ -16,9 +16,20 @@ else
     TARGET="${1}/bin"
 fi
 
+if [ ! "${2}" ]; then
+    ROS_WS_DIR="catkin_ws"
+else
+    ROS_WS_DIR="${2}"
+fi
+
 if [ -e ${TARGET} ]; then
 	## Initialize example's setup.
-	cd ${TARGET};cd ../examples;./clean_setup_all.sh;./setup_all.sh;cd ${CWD}
+	cd ${TARGET};
+	cd ../examples;
+		./clean_setup_all.sh
+		echo "$ROS_WS_DIR" > dg_simple_ros/.ROS_WS_DIR  # This file is refered by example/dg_simple_ros/setup_rosrun.sh
+		./setup_all.sh
+	cd ${CWD}
 
 	## dg_simple_ros
 	ln -sf ${SRCPATH}/recordings ${TARGET}/.  # rosbag data file
@@ -40,7 +51,6 @@ if [ -e ${TARGET} ]; then
 	## VPS weight
     ln -sf ${SRCPATH}/data_vps/netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint ${TARGET}/data_vps/netvlad/pretrained_checkpoint/.
     ln -sf ${SRCPATH}/data_vps/netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint_gpu4 ${TARGET}/data_vps/netvlad/pretrained_checkpoint/.
-	echo "*** [vps] You neet to run install_vps_custom_dataset_into_catkin_ws.sh at ~/dg_bin to select custom prebuilt dataset ***"
     #ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_indoor_etri12b_1way/prebuilt_dbFeat_1way.mat ${TARGET}/data_vps/prebuilt_dbFeat.mat
 
 	## VPS : Indoor streetview for VPS in prebuilt weight mode
@@ -78,10 +88,11 @@ if [ -e ${TARGET} ]; then
 
 	## Misc.
 
-        ## Door detect
-        ln -sf ${SRCPATH}/data_door_detect /home/${USER}/catkin_ws/data_door_detect
-		echo "###### Be careful to make symbolic link including large amount files in ros workspace,"
-		echo "  because ros takes times to search and index all files in package workspace at starting time. ######"
+    ## Door detect
+    ln -sf ${SRCPATH}/data_door_detect /home/${USER}/${ROS_WS_DIR}/data_door_detect
+
+	echo "###### Be careful to make symbolic link including large amount files in ros workspace,"
+	echo "  because ros takes times to search and index all files in package workspace at starting time. ######"
 
 	## Check error on return value of above commands
 	if [ $? -eq 1 ]; then # Error
@@ -91,7 +102,9 @@ else
 	echo ">>>No target directory exists : ${TARGET}"
 	echo ">>>Run at parent directory of DeepGuider or specify your own directory."
 	echo "Usage : "
-	echo "        $0 ./myDeepGuider"
+	echo "        $0 DeepGuider_git_dir catkin_ws"
+	echo "Usage (example) : "
+	echo "        $0  # Default : $0 DeepGuier catkin_ws"
+	echo "        $0 DeepGuider catkin_ws"
+	echo "        $0 deepguer ros_deepguider_ws"
 fi
-
-
