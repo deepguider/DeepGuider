@@ -44,7 +44,9 @@ protected:
     std::string m_topic_rgbd_image;
     std::string m_topic_rgbd_depth;
     std::string m_topicset_tagname;
-    bool m_first_robot_pose = true;
+    // bool m_first_robot_pose = true;
+    // cv::Mat m_robotmap_image;
+    // cv::Point2d m_dx_map_origin_pixel;
 
     // Topic subscribers (sensor data)
     ros::Subscriber sub_image_360cam;
@@ -56,10 +58,10 @@ protected:
     ros::Subscriber sub_gps_novatel;
     ros::Subscriber sub_imu_xsense;
     ros::Subscriber sub_odometry;
-    ros::Subscriber sub_robot_status;
-    ros::Subscriber sub_robot_pose;
-    ros::Subscriber sub_robot_heading;
-    ros::Subscriber sub_robot_map;
+    // ros::Subscriber sub_robot_status;
+    // ros::Subscriber sub_robot_pose;
+    // ros::Subscriber sub_robot_heading;
+    // ros::Subscriber sub_robot_map;
     void callbackThetaZ1360Image(const sensor_msgs::Image::ConstPtr& msg);
     void callbackThetaZ1360Crop(const sensor_msgs::Image::ConstPtr& msg);
     void callbackImage(const sensor_msgs::Image::ConstPtr& msg);
@@ -70,10 +72,10 @@ protected:
     void callbackGPSNovatel(const sensor_msgs::NavSatFixConstPtr& fix);
     void callbackIMU(const sensor_msgs::Imu::ConstPtr& msg);
     void callbackOdometry(const nav_msgs::Odometry::ConstPtr& msg);
-    void callbackRobotStatus(const std_msgs::String::ConstPtr& msg);
-    void callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
-    void callbackRobotHeading(const std_msgs::String::ConstPtr& msg);
-    void callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& msg);
+    // void callbackRobotStatus(const std_msgs::String::ConstPtr& msg);
+    // void callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
+    // void callbackRobotHeading(const std_msgs::String::ConstPtr& msg);
+    // void callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 
     // Topic publishers (sensor data)
     ros::Publisher pub_guide;
@@ -176,11 +178,11 @@ bool DeepGuiderROS::initialize(std::string config_file)
     if(!m_topic_rgbd_depth.empty()) sub_image_realsense_depth = nh_dg.subscribe(m_topic_rgbd_depth, 1, &DeepGuiderROS::callbackRealsenseDepth, this);
 
     // Initialize deepguider subscribers
-    sub_robot_status = nh_dg.subscribe("/keti_robot_state", 1, &DeepGuiderROS::callbackRobotStatus, this);
-    // sub_robot_status = nh_dg.subscribe("/keti_robot/state", 1, &DeepGuiderROS::callbackRobotStatus, this);
-    sub_robot_heading = nh_dg.subscribe("/keti_robot/heading_node", 1, &DeepGuiderROS::callbackRobotHeading, this);
-    sub_robot_pose = nh_dg.subscribe("/mcl3d/current/pose", 1, &DeepGuiderROS::callbackRobotPose, this);
-    sub_robot_map = nh_dg.subscribe("/deepmerge/map/occu", 1, &DeepGuiderROS::callbackRobotMap, this);
+    // // sub_robot_status = nh_dg.subscribe("/keti_robot_state", 1, &DeepGuiderROS::callbackRobotStatus, this); //run_manual
+    // sub_robot_status = nh_dg.subscribe("/keti_robot/state", 1, &DeepGuiderROS::callbackRobotStatus, this);  //run_auto
+    // sub_robot_heading = nh_dg.subscribe("/keti_robot/heading_node", 1, &DeepGuiderROS::callbackRobotHeading, this);
+    // sub_robot_pose = nh_dg.subscribe("/mcl3d/current/pose", 1, &DeepGuiderROS::callbackRobotPose, this);
+    // sub_robot_map = nh_dg.subscribe("/deepmerge/map/occu", 1, &DeepGuiderROS::callbackRobotMap, this);
     sub_ocr = nh_dg.subscribe("/dg_ocr/output", 1, &DeepGuiderROS::callbackOCR, this);
     sub_ocr_image = nh_dg.subscribe("/dg_ocr/image", 1, &DeepGuiderROS::callbackOCRImage, this);
 	if(m_enable_vps == 2)sub_vps = nh_dg.subscribe("/dg_vps/output", 1, &DeepGuiderROS::callbackVPS, this);
@@ -571,110 +573,126 @@ void DeepGuiderROS::callbackVPS(const dg_simple_ros::vps::ConstPtr& msg)
     }
 }
 
-void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
-{
-    const char* str = msg->data.c_str();
-    ROS_INFO_THROTTLE(1.0, "%s", str);
-    if (!strcmp(str, "ready"))
-    {
-        m_guider.setRobotStatus(GuidanceManager::RobotStatus::READY);
-    }
-    else if (!strcmp(str, "run_manual"))   
-    {
-        m_guider.setRobotStatus(GuidanceManager::RobotStatus::RUN_MANUAL);
-    } 
-    else if (!strcmp(str, "run_auto"))   
-    {
-        m_guider.setRobotStatus(GuidanceManager::RobotStatus::RUN_AUTO);
-    } 
-    else if (!strcmp(str, "arrived_point"))   
-    {
-        m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_NODE);
-    } 
-    else if (!strcmp(str, "arrived_goal"))   
-    {
-        m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_GOAL);
-    } 
-    else if (!strcmp(str, "no_path"))
-    {
-        m_guider.setRobotStatus(GuidanceManager::RobotStatus::NO_PATH);
-    }
-}
+// void DeepGuiderROS::callbackRobotStatus(const std_msgs::String::ConstPtr& msg)
+// {
+//     const char* str = msg->data.c_str();
+//     ROS_INFO_THROTTLE(1.0, "%s", str);
+//     if (!strcmp(str, "ready"))
+//     {
+//         m_guider.setRobotStatus(GuidanceManager::RobotStatus::READY);
+//     }
+//     else if (!strcmp(str, "run_manual"))   
+//     {
+//         m_guider.setRobotStatus(GuidanceManager::RobotStatus::RUN_MANUAL);
+//     } 
+//     else if (!strcmp(str, "run_auto"))   
+//     {
+//         m_guider.setRobotStatus(GuidanceManager::RobotStatus::RUN_AUTO);
+//     } 
+//     else if (!strcmp(str, "arrived_point"))   
+//     {
+//         m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_NODE);
+//     } 
+//     else if (!strcmp(str, "arrived_goal"))   
+//     {
+//         m_guider.setRobotStatus(GuidanceManager::RobotStatus::ARRIVED_GOAL);
+//     } 
+//     else if (!strcmp(str, "no_path"))
+//     {
+//         m_guider.setRobotStatus(GuidanceManager::RobotStatus::NO_PATH);
+//     }
+// }
 
 
-void DeepGuiderROS::callbackRobotHeading(const std_msgs::String::ConstPtr& msg)
-{
-    const char* str = msg->data.c_str();
-    ROS_INFO_THROTTLE(1.0, "%s", str);
+// void DeepGuiderROS::callbackRobotHeading(const std_msgs::String::ConstPtr& msg)
+// {
+//     const char* str = msg->data.c_str();
+//     ROS_INFO_THROTTLE(1.0, "%s", str);
 
-    m_guider.m_robot_heading_node_id = stoi(str);
-}
+//     m_guider.m_robot_heading_node_id = stoi(str);
+// }
 
-void DeepGuiderROS::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& map)
-{
-    ROS_INFO_THROTTLE(1.0, "callbackRobotMap: (timestamp=%f)", map->header.stamp.toSec());
+// void DeepGuiderROS::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& map)
+// {
+//     ROS_INFO_THROTTLE(1.0, "callbackRobotMap: (timestamp=%f)", map->header.stamp.toSec());
 
-    int size_x = map->info.width;
-    int size_y = map->info.height;
+//     int size_x = map->info.width;
+//     int size_y = map->info.height;
 
-    if ((size_x < 3) || (size_y < 3) ){
-      ROS_INFO("Map size is only x: %d,  y: %d . Not running map to image conversion", size_x, size_y);
-      return;
-    }
+//     if ((size_x < 3) || (size_y < 3) ){
+//       ROS_INFO("Map size is only x: %d,  y: %d . Not running map to image conversion", size_x, size_y);
+//       return;
+//     }
 
-    m_robotmap_mutex.lock();
+//     m_robotmap_mutex.lock();
 
-    cv::Mat image(size_y, size_x, CV_8UC1);
-    for (int i = 0; i < size_y; i++)
-    {
-        for (int j = 0; j < size_x; j++)
-        {
-            int count = i*size_x + j;
-            if (map->data[count] <= 0)
-            {
-                image.at<uchar>(i,j) = 255;
-            }
-            else
-            {
-                image.at<uchar>(i,j) = map->data[count];
-            }
-        }
-    }
+//     cv::Mat image(size_y, size_x, CV_8UC1);
+//     for (int i = 0; i < size_y; i++)
+//     {
+//         for (int j = 0; j < size_x; j++)
+//         {
+//             int index = i*size_x + j;
+//             // if (map->data[index] <= 0)
+//             // {
+//             //     image.at<uchar>(i,j) = 255;
+//             // }
+//             // else
+//             // {
+//             //     image.at<uchar>(i,j) = map->data[index];
+//             // }
+//             if (map->data[index] <= 15)
+//             {
+//                 image.at<uchar>(i,j) = 255 - map->data[index]*5;
+//             }
+//             else
+//             {
+//                 image.at<uchar>(i,j) = 0;
+//             }            
+//         }
+//     }
 
-    m_robotmap_image = image;  
-    m_robotmap_mutex.unlock();     
-}
+//     m_robotmap_image = image;  
 
-void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
-{
-    dg::Timestamp timestamp = msg->header.stamp.toSec();
-    double x = msg->pose.position.x;
-    double y = msg->pose.position.y;
-    ROS_INFO_THROTTLE(1.0, "Robot: %f,%f", x, y);
+//     //save image
+//     if (image.channels() == 1)
+//         cv::cvtColor(image,image,cv::COLOR_GRAY2BGR);
+    
+//     cv::circle(image, m_dx_map_origin_pixel, 10, cv::Vec3b(0, 255, 0), 5);
+//     imwrite("../../../online_map.png",image);
+//     imwrite("online_map.png",image);
+//     m_robotmap_mutex.unlock();     
+// // }
 
-    double ori_x = msg->pose.orientation.x;
-    double ori_y = msg->pose.orientation.y;
-    double ori_z = msg->pose.orientation.z;
-    double ori_w = msg->pose.orientation.w;
-    cv::Point3d euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
-    double theta = euler.z;
+// void DeepGuiderROS::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
+// {
+//     dg::Timestamp timestamp = msg->header.stamp.toSec();
+//     double x = msg->pose.position.x;
+//     double y = msg->pose.position.y;
+//     ROS_INFO_THROTTLE(1.0, "Robot: %f,%f", x, y);
 
-    // Reset deepguider pose by first arrived robot pose
-    if(m_first_robot_pose)
-    {
-        m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
-        m_first_robot_pose = false;
-    }
-    // Use robot pose as odometry data
-    else if (m_enable_odometry)
-    {
-        procOdometryData(x, y, theta, timestamp);
-    }
+//     double ori_x = msg->pose.orientation.x;
+//     double ori_y = msg->pose.orientation.y;
+//     double ori_z = msg->pose.orientation.z;
+//     double ori_w = msg->pose.orientation.w;
+//     cv::Point3d euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
+//     double theta = euler.z;
 
-    m_guider_mutex.lock();
-    m_guider.m_robot_pose = cv::Point2d(x, y);
-    m_guider_mutex.unlock();
-}
+//     // Reset deepguider pose by first arrived robot pose
+//     if(m_first_robot_pose)
+//     {
+//         m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
+//         m_first_robot_pose = false;
+//     }
+//     // Use robot pose as odometry data
+//     else if (m_enable_odometry)
+//     {
+//         procOdometryData(x, y, theta, timestamp);
+//     }
+
+//     m_guider_mutex.lock();
+//     m_guider.m_robot_pose = dg::Pose2(x, y, theta);
+//     m_guider_mutex.unlock();
+// }
 
 
 void DeepGuiderROS::publishGuidance()

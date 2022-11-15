@@ -179,7 +179,7 @@ namespace dg
         ID m_robot_heading_node_id;
         bool m_use_online_map = 0;
         cv::Mutex m_robot_mutex;
-        cv::Point2d m_robot_pose;
+        dg::Pose2 m_robot_pose;
         cv::Point2d m_robot_on_image;
         cv::Point2d m_subgoal_pose;
         cv::Point2d m_robot_heading_node_pose;
@@ -262,7 +262,7 @@ namespace dg
 
         //fixed parameter
         int m_guide_interval = 10; //m
-        double m_uncertain_dist = 1.0;
+        double m_uncertain_dist = 5.0;
         double m_arrived_threshold = 2.0;
         double m_start_exploration_dist = 5.0;
         int m_max_arrival_cnt = 10;
@@ -315,7 +315,7 @@ namespace dg
         Action setActionGo(ID nid_next, ID eid_cur, int degree = 0);
         bool setHeadingPoint();
 
-        bool isRobotArrived2Node();
+        bool isRobotNearArrivalNode();
         bool isNodeInPath(ID nodeid);
         bool isEdgeInPath(ID edgeid);
         bool isNodeInPastGuides(ID nodeid);

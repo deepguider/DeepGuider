@@ -544,8 +544,8 @@ class vps:
                 reranked_confidence.append([-1])
                 reranked_idx.append([-1])
                 self.visible_region_radius = self.visible_region_radius*1.1  # Increase search range
-                if self.visible_region_radius > self.visible_region_radius_default*5 : # maximum bound
-                    self.visible_region_radius = self.visible_region_radius_default*5
+                if self.visible_region_radius > self.visible_region_radius_default*self.visible_region_radius_max_ratio : # maximum bound
+                    self.visible_region_radius = self.visible_region_radius_default*self.visible_region_radius_max_ratio
             else:
                 self.visible_region_radius = self.visible_region_radius*0.9  # Decrease search range
                 if self.visible_region_radius < self.visible_region_radius_default : # minimum bound
@@ -553,10 +553,9 @@ class vps:
 
                 self.visible_region_radius = max (self.visible_region_radius_default, self.visible_region_radius)
 
-            if True:  # debugging
+            if False:  # debugging
                 self.visible_region_radius_history[:-1] = self.visible_region_radius_history[1:]
                 self.visible_region_radius_history[-1] = self.visible_region_radius
-
                 plt.cla()
                 plt.plot(self.visible_region_radius_history)
                 plt.draw()
@@ -687,6 +686,7 @@ class vps:
         save_dbfeat= self.dg_ros_yml.read("vps_save_dbfeat")
         use_custom_image_server = self.dg_ros_yml.read("vps_use_custom_image_server")
         self.visible_region_radius_default = self.dg_ros_yml.read("vps_visible_region_radius");self.reset_visible_region()
+        self.visible_region_radius_max_ratio = self.dg_ros_yml.read("vps_visible_region_radius_max_ratio");
         self.enable_filter = self.dg_ros_yml.read("vps_enable_filter")
         self.filter_size = self.dg_ros_yml.read("vps_filter_size")
         self.filter_valid_thre = self.dg_ros_yml.read("vps_filter_valid_thre")
