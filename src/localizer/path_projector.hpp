@@ -68,12 +68,13 @@ public:
         CX_LOAD_PARAM_COUNT(fn, "max_robot_velocity", m_max_robot_velocity, n_read);
         CX_LOAD_PARAM_COUNT(fn, "length_align_weight", m_length_align_weight, n_read);
         CX_LOAD_PARAM_COUNT(fn, "error_tolerance", m_error_tolerance, n_read);
-        CX_LOAD_PARAM_COUNT(fn, "enable_debugging_display", m_enable_debugging_display, n_read);
         CX_LOAD_PARAM_COUNT(fn, "lr_mismatch_cost", m_lr_mismatch_cost, n_read);
         CX_LOAD_PARAM_COUNT(fn, "enable_lr_reject", m_enable_lr_reject, n_read);
         CX_LOAD_PARAM_COUNT(fn, "lr_reject_cost", m_lr_reject_cost, n_read);
         CX_LOAD_PARAM_COUNT(fn, "enable_discontinuity_cost", m_enable_discontinuity_cost, n_read);
         CX_LOAD_PARAM_COUNT(fn, "discontinuity_weight", m_discontinuity_weight, n_read);
+        CX_LOAD_PARAM_COUNT(fn, "enable_debugging_display", m_enable_debugging_display, n_read);
+
         return n_read;
     }
 

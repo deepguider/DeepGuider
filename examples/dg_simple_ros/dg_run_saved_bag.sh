@@ -49,14 +49,16 @@ pid=`pgrep -f "python2 crop360cam_python27.py"`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
-gnome-terminal --tab --title="theta360z1_crop_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/theta360z1/publish && python2 crop360cam_python27.py'
+CWD=`pwd`
+gnome-terminal --tab --title="theta360z1_crop_pub" -- bash -c "cd ${CWD}/src/dg_cart_ros/src/theta360z1/publish && python2 crop360cam_python27.py"
 
 #set_site_idx 6; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/20220324_ETRI_and_Doryong.bag
 #set_site_idx 4; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
 #set_site_idx 4; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/220418_coex_out_to_indoor/_2022-04-18-14-08-03.bag
 #set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/220418_coex_out_to_indoor/_2022-04-18-13-20-44.bag
 #set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 1 ./recordings/220829_coex/_2022-08-29-11-52-58.bag
-set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 1 ./recordings/220829_coex/_2022-08-29-13-23-17.bag
+#set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 1 ./recordings/220829_coex/_2022-08-29-13-23-17.bag
+set_site_idx 2; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 1 ./recordings/_2022-11-08-16-05-30_keti2nonghyup_notbad.bag
 #set_site_idx 4; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/coex.bag
 #set_site_idx 3; set_topic_idx 2; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 600 -r 10 ./recordings/etri.bag
 #set_site_idx 5; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/indoor.bag
@@ -65,10 +67,10 @@ set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" --
 #set_site_idx 2; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/_2022-10-06-14-18-35.bag
 
 ## Start dg_simple_ros package (working directory: devel/lib/dg_simple_ros/)
-CWD=`pwd`
 LIBDIR="devel/lib/dg_simple_ros"
 
-cp -rf data* font logo_data model recordings ${LIBDIR}/.
+cp -rf data* font logo_data model ${LIBDIR}/.
+ln -sf ${CWD}/recordings ${LIBDIR}/.
 ln -sf ${CWD}/dg_ros.yml ${LIBDIR}/.
 
 roslaunch dg_simple_ros dg_simple_ros_test.launch

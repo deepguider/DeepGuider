@@ -86,7 +86,7 @@ protected:
 
     // VPS parameters
 	// 0.0 means "Not using", 1.0 means "Using"
-    double m_vps_max_error_distance = 75; // 25
+    double m_vps_max_error_distance = 25;
 	int m_vps_load_dbfeat = 0;
 	int m_vps_save_dbfeat = 0;
 	double m_vps_gps_accuracy = 0.9;  // Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
@@ -740,14 +740,17 @@ int DeepGuider::run()
             if (key == '4') m_viewport.setZoom(4);
             if (key == '0') m_viewport.setZoom(0.1);
             if (key == 'a') m_gui_auto_scroll = !m_gui_auto_scroll;  // toggle auto scroll of the map view
-            if (key == 'g' || key == 'G') m_apply_gps = !m_apply_gps;
-            if (key == 'm' || key == 'M') m_apply_imu = !m_apply_imu;
+            if (key == 'g' || key == 'G')
+            {
+                m_apply_gps = !m_apply_gps;
+                m_localizer->resetGPSActivation(m_apply_gps);
+            }
             if (key == 'o' || key == 'O')
             {
                 m_apply_odometry = !m_apply_odometry;
-                if(m_enable_odometry && m_apply_odometry) m_localizer->resetOdometry();
-                if(m_enable_odometry && !m_apply_odometry) m_localizer->resetOdometryActivated();
+                m_localizer->resetOdometryActivation(m_apply_odometry);
             }
+            if (key == 'm' || key == 'M') m_apply_imu = !m_apply_imu;
             if (key == 'v' || key == 'V') m_apply_vps = !m_apply_vps;
             if (key == 'p' || key == 'P') m_apply_ocr = !m_apply_ocr;
             if (key == 'i' || key == 'I') m_apply_intersection = !m_apply_intersection;
@@ -945,6 +948,201 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     {
         m_painter.drawPath(image, &m_map, &path, view_offset, view_zoom, m_gui_path_color);
     }
+
+    // current localization
+    dg::Pose2 pose_metric = getPose();
+    dg::TopometricPose pose_topo = getPoseTopometric();
+    dg::LatLon pose_gps = toLatLon(pose_metric);
+    double pose_confidence = m_localizer->getPoseConfidence();
+
+    // draw mcl particles
+    if (m_enable_mcl)
+    {
+        cv::Ptr<dg::DGLocalizerMCL> mcl_localizer = m_localizer.dynamicCast<dg::DGLocalizerMCL>();
+        if (mcl_localizer)
+        {
+            // show particles
+            dg::Map* map = getMap();
+            const std::vector<dg::Particle>& particles = mcl_localizer->getParticles();
+            if (!particles.empty())
+            {
+                int nradius = 2;
+                const cv::Vec3b ncolor = cv::Vec3b(0, 255, 255);
+                for (auto itr = particles.begin(); itr != particles.end(); itr++)
+                {
+                    dg::Node* from = itr->start_node;
+                    dg::Edge* edge = itr->edge;
+                    dg::Node* to = map->getConnectedNode(from, edge->id);
+
+                    dg::Point2 v = *to - *from;
+                    dg::Point2 pose_m = *from + itr->dist * v / edge->length;
+
+                    double theta = atan2(v.y, v.x);
+                    if (fabs(cx::trimRad(theta - pose_metric.theta)) < CV_PI / 2)
+                        m_painter.drawNode(image, dg::Point2ID(0, pose_m), nradius, 0, ncolor, view_offset, view_zoom);
+                    else
+                        m_painter.drawNode(image, dg::Point2ID(0, pose_m), nradius, 0, cv::Vec3b(0, 0, 0), view_offset, view_zoom);
+                }
+            }
+
+            bool show_mcl_trajectory = true;
+            if(show_mcl_trajectory)
+            {
+                // draw best path points
+                cv::Vec3b ecolor = cv::Vec3b(255, 0, 0);
+                cv::Vec3b ncolor = cv::Vec3b(255, 0, 0);
+                int nradius = 3;
+                int ethickness = 3;
+                for (int idx = 1; idx < (int)mcl_localizer->m_best_path_pts.size(); idx++)
+                {
+                    m_painter.drawEdge(image, mcl_localizer->m_best_path_pts[idx - 1], mcl_localizer->m_best_path_pts[idx], nradius, ecolor, ethickness, m_viewport.offset(), m_viewport.zoom());
+                }
+                for (int idx = 1; idx < (int)mcl_localizer->m_best_path_pts.size() - 1; idx++)
+                {
+                    m_painter.drawNode(image, dg::Point2ID(0, mcl_localizer->m_best_path_pts[idx]), nradius, 0, ncolor, m_viewport.offset(), m_viewport.zoom());
+                }
+
+                // draw best odo points
+                ecolor = cv::Vec3b(0, 128, 128);
+                ncolor = cv::Vec3b(0, 128, 128);
+                nradius = 3;
+                ethickness = 3;
+                for (int idx = 1; idx < (int)mcl_localizer->m_best_odo_pts.size(); idx++)
+                {
+                    m_painter.drawEdge(image, mcl_localizer->m_best_odo_pts[idx - 1], mcl_localizer->m_best_odo_pts[idx], nradius, ecolor, ethickness, m_viewport.offset(), m_viewport.zoom());
+                }
+                for (int idx = 1; idx < (int)mcl_localizer->m_best_odo_pts.size() - 1; idx++)
+                {
+                    m_painter.drawNode(image, dg::Point2ID(0, mcl_localizer->m_best_odo_pts[idx]), nradius, 0, ncolor, m_viewport.offset(), m_viewport.zoom());
+                }
+
+                // draw best particle
+                dg::Particle best = mcl_localizer->m_best_particle;
+                if (best.start_node != nullptr)
+                {
+                    dg::Node* from = best.start_node;
+                    dg::Edge* edge = best.edge;
+                    dg::Node* to = map->getConnectedNode(from, edge->id);
+                    dg::Point2 v = *to - *from;
+                    dg::Point2 pose_best = *from + best.dist * v / edge->length;
+                    m_painter.drawNode(image, dg::Point2ID(0, pose_best), nradius * 2, 0, cv::Vec3b(255, 0, 0), m_viewport.offset(), m_viewport.zoom());
+                }
+            }
+        }
+    }
+
+    // draw robot on the map
+    if (m_show_ekf_pose)
+    {
+        dg::Pose2 pose_ekf = m_localizer->getEkfPose();
+        m_painter.drawPoint(image, pose_ekf, 10 * 2, cx::COLOR_WHITE, view_offset, view_zoom, (int)(1.5 * view_zoom + 0.5));
+        //m_painter.drawPoint(image, pose_ekf, 8 * 2, cx::COLOR_BLUE, view_offset, view_zoom);
+        cv::Point2d px = (m_painter.cvtValue2Pixel(pose_ekf) - view_offset) * view_zoom;
+        cv::line(image, px, px + 10 * 2 * view_zoom * dg::Point2(cos(pose_ekf.theta), -sin(pose_ekf.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_WHITE, (int)(2 * 2 * view_zoom + 0.5));
+    }
+    else
+    {
+        m_painter.drawPoint(image, pose_metric, 10 * 2, cx::COLOR_MAGENTA, view_offset, view_zoom, (int)(1.5 * view_zoom + 0.5));
+        //m_painter.drawPoint(image, pose_metric, 8 * 2, cx::COLOR_BLUE, view_offset, view_zoom);
+        cv::Point2d px = (m_painter.cvtValue2Pixel(pose_metric) - view_offset) * view_zoom;
+        cv::line(image, px, px + 10 * 2 * view_zoom * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_MAGENTA, (int)(2 * 2 * view_zoom + 0.5));
+    }
+
+    // draw status message (localization)
+    cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
+    cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
+    cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+    std::string info_confidence = cv::format("Confidence: %.2lf", pose_confidence);
+    cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
+    cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
+
+    // draw status message (Auto Scroll & Sensor Connections)
+    cv::Point gui_xy(10, 100);
+    cv::Scalar gui_bg(255, 255, 255);
+    cv::Scalar gui_fg(200, 0, 0);
+    double gui_fscale = 0.8;
+    std::string gui_msg  = cv::format("Zoom(0~4): %.1lfx", m_viewport.zoom());
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
+    gui_xy.y += 40;
+
+    gui_msg = (m_gui_auto_scroll) ? "AutoScroll(A): On" : "AutoScroll(A): Off";
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (m_gui_auto_scroll) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, cv::Scalar(128, 128, 128), 2);
+    gui_xy.y += 40;
+
+    gui_msg = "GPS Traj: ----";
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, cx::COLOR_BLACK, 5);
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, m_gui_gps_color, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "Robot Traj: ---";
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, m_gui_robot_color, 2);
+    gui_xy.y += 40;
+ 
+    // sensor status
+    cv::Scalar gui_active(255, 0, 0);
+    cv::Scalar gui_deactive(128, 128, 128);
+    gui_msg = "GPS(G)";
+    bool active = m_apply_gps;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if(active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "IMU(M)";
+    active = m_enable_imu && m_apply_imu;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "ODO(O)";
+    active = m_enable_odometry && m_apply_odometry;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "VPS(V)";
+    active = m_enable_vps && m_apply_vps;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "POI(P)";
+    active = m_enable_ocr && m_apply_ocr;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "Intersect(I)";
+    active = m_enable_intersection && m_apply_intersection;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "RoadLR(L)";
+    active = m_enable_roadlr && m_apply_roadlr;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    gui_msg = "RoadTheta(T)";
+    active = m_enable_roadtheta && m_apply_roadtheta;
+    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
+    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
+    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
+    gui_xy.y += 40;
+
+    // print status message (localization)
+    printf("[Localizer] x=%lf, y=%lf, theta=%lf\n", pose_metric.x, pose_metric.y, pose_metric.theta);
 
     // draw cam image on the GUI map (image is a map Mat)
     if (m_cam_image.empty()) return;
@@ -1156,156 +1354,6 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
             if ((win_rect & image_rc) == win_rect) result_image.copyTo(image(win_rect));
         }
     }
-
-    // current localization
-    dg::Pose2 pose_metric = getPose();
-    dg::TopometricPose pose_topo = getPoseTopometric();
-    dg::LatLon pose_gps = toLatLon(pose_metric);
-    double pose_confidence = m_localizer->getPoseConfidence();
-
-    // draw mcl particles
-    if (m_enable_mcl)
-    {
-        cv::Ptr<dg::DGLocalizerMCL> mcl_localizer = m_localizer.dynamicCast<dg::DGLocalizerMCL>();
-        if (mcl_localizer)
-        {
-            const std::vector<dg::Particle>& particles = mcl_localizer->getParticles();
-            if (!particles.empty())
-            {
-                int nradius = 2;
-                const cv::Vec3b ncolor = cv::Vec3b(0, 255, 255);
-                dg::Map* map = getMap();
-                for (auto itr = particles.begin(); itr != particles.end(); itr++)
-                {
-                    dg::Node* from = itr->start_node;
-                    dg::Edge* edge = itr->edge;
-                    dg::Node* to = map->getConnectedNode(from, edge->id);
-
-                    dg::Point2 v = *to - *from;
-                    dg::Point2 pose_m = *from + itr->dist * v / edge->length;
-
-                    double theta = atan2(v.y, v.x);
-                    if (fabs(cx::trimRad(theta - pose_metric.theta)) < CV_PI / 2)
-                        m_painter.drawNode(image, dg::Point2ID(0, pose_m), nradius, 0, ncolor, view_offset, view_zoom);
-                    else
-                        m_painter.drawNode(image, dg::Point2ID(0, pose_m), nradius, 0, cv::Vec3b(0, 0, 0), view_offset, view_zoom);
-                }
-            }
-        }
-    }
-
-    // draw robot on the map
-    if (m_show_ekf_pose)
-    {
-        dg::Pose2 pose_ekf = m_localizer->getEkfPose();
-        m_painter.drawPoint(image, pose_ekf, 10 * 2, cx::COLOR_WHITE, view_offset, view_zoom);
-        m_painter.drawPoint(image, pose_ekf, 8 * 2, cx::COLOR_BLUE, view_offset, view_zoom);
-        cv::Point2d px = (m_painter.cvtValue2Pixel(pose_ekf) - view_offset) * view_zoom;
-        cv::line(image, px, px + 10 * 2 * view_zoom * dg::Point2(cos(pose_ekf.theta), -sin(pose_ekf.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_YELLOW, (int)(2 * 2 * view_zoom + 0.5));
-    }
-    else
-    {
-        m_painter.drawPoint(image, pose_metric, 10 * 2, cx::COLOR_YELLOW, view_offset, view_zoom);
-        m_painter.drawPoint(image, pose_metric, 8 * 2, cx::COLOR_BLUE, view_offset, view_zoom);
-        cv::Point2d px = (m_painter.cvtValue2Pixel(pose_metric) - view_offset) * view_zoom;
-        cv::line(image, px, px + 10 * 2 * view_zoom * dg::Point2(cos(pose_metric.theta), -sin(pose_metric.theta)) + cv::Point2d(0.5, 0.5), cx::COLOR_YELLOW, (int)(2 * 2 * view_zoom + 0.5));
-    }
-
-    // draw status message (localization)
-    cv::String info_topo = cv::format("Node: %zu, Edge: %d, D: %.3fm", pose_topo.node_id, pose_topo.edge_idx, pose_topo.dist);
-    cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
-    cv::putText(image, info_topo, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
-    std::string info_confidence = cv::format("Confidence: %.2lf", pose_confidence);
-    cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 5);
-    cv::putText(image, info_confidence, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 0), 2);
-
-    // draw status message (Auto Scroll & Sensor Connections)
-    cv::Point gui_xy(10, 100);
-    cv::Scalar gui_bg(255, 255, 255);
-    cv::Scalar gui_fg(200, 0, 0);
-    double gui_fscale = 0.8;
-    std::string gui_msg  = cv::format("Zoom(0~4): %.1lfx", m_viewport.zoom());
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
-    gui_xy.y += 40;
-
-    gui_msg = (m_gui_auto_scroll) ? "AutoScroll(A): On" : "AutoScroll(A): Off";
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    if (m_gui_auto_scroll) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_fg, 2);
-    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, cv::Scalar(128, 128, 128), 2);
-    gui_xy.y += 40;
-
-    gui_msg = "GPS Traj: ----";
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, cx::COLOR_BLACK, 5);
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, m_gui_gps_color, 2);
-    gui_xy.y += 40;
-
-    gui_msg = "Robot Traj: ---";
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, m_gui_robot_color, 2);
-    gui_xy.y += 40;
- 
-    // sensor status
-    cv::Scalar gui_active(255, 0, 0);
-    cv::Scalar gui_deactive(128, 128, 128);
-    gui_msg = "GPS(G)";
-    bool active = m_apply_gps;
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    if(active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
-    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
-    gui_xy.y += 40;
-
-    gui_msg = "IMU(M)";
-    active = m_enable_imu && m_apply_imu;
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
-    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
-    gui_xy.y += 40;
-
-    gui_msg = "ODO(O)";
-    active = m_enable_odometry && m_apply_odometry;
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
-    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
-    gui_xy.y += 40;
-
-    gui_msg = "VPS(V)";
-    active = m_enable_vps && m_apply_vps;
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
-    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
-    gui_xy.y += 40;
-
-    gui_msg = "POI(P)";
-    active = m_enable_ocr && m_apply_ocr;
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
-    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
-    gui_xy.y += 40;
-
-    gui_msg = "Intersect(I)";
-    active = m_enable_intersection && m_apply_intersection;
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
-    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
-    gui_xy.y += 40;
-
-    gui_msg = "RoadLR(L)";
-    active = m_enable_roadlr && m_apply_roadlr;
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
-    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
-    gui_xy.y += 40;
-
-    gui_msg = "RoadTheta(T)";
-    active = m_enable_roadtheta && m_apply_roadtheta;
-    cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_bg, 5);
-    if (active) cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_active, 2);
-    else cv::putText(image, gui_msg, gui_xy, cv::FONT_HERSHEY_SIMPLEX, gui_fscale, gui_deactive, 2);
-    gui_xy.y += 40;
-
-    // print status message (localization)
-    printf("[Localizer] x=%lf, y=%lf, theta=%lf\n", pose_metric.x, pose_metric.y, pose_metric.theta);
 
     // draw guidance info
     dg::GuidanceManager::GuideStatus cur_status;

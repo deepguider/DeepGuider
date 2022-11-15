@@ -186,11 +186,16 @@ public:
         bool update_view = false;
         if (vx.x < view_iw * margin_ratio || vx.x > view_iw * (1 - margin_ratio))
         {
+            if (vx.x < 0) update_x += -vx.x;
+            if (vx.x > view_iw) update_x += (vx.x - view_iw);
             view_sx = (vx.x < view_iw* margin_ratio) ? view_sx - update_x : view_sx + update_x;
             update_view = true;
         }
         if (vx.y < view_ih * margin_ratio || vx.y > view_ih * (1 - bottom_margin_ratio))
         {
+            if (vx.y < 0) update_y += -vx.y;
+            if (vx.y > view_ih) update_y += (vx.y - view_ih);
+
             if(vx.y < view_ih * margin_ratio)
             {
                 view_sy = view_sy - update_y;

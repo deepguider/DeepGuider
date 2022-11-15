@@ -26,6 +26,7 @@ if [ -e ${TARGET} ]; then
     ## Test dataset
     ln -sf ${SRCPATH}/data/ETRI ${TARGET}/data/.
     ln -sf ${SRCPATH}/data/COEX ${TARGET}/data/.
+    ln -sf ${SRCPATH}/data/Bucheon ${TARGET}/data/.
 
     ## Video File
     ln -sf ${SRCPATH}/data/191115_ETRI.avi ${TARGET}/data/.
@@ -39,7 +40,8 @@ if [ -e ${TARGET} ]; then
 	## VPS weight
     ln -sf ${SRCPATH}/data_vps/netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint ${TARGET}/data_vps/netvlad/pretrained_checkpoint/.
     ln -sf ${SRCPATH}/data_vps/netvlad/pretrained_checkpoint/vgg16_netvlad_checkpoint_gpu4 ${TARGET}/data_vps/netvlad/pretrained_checkpoint/.
-    ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_indoor_etri12b_1way/prebuilt_dbFeat_1way.mat ${TARGET}/data_vps/prebuilt_dbFeat.mat
+	echo "*** [vps] You neet to run install_vps_custom_dataset_into_catkin_ws.sh at ~/dg_bin to select custom prebuilt dataset ***"
+    #ln -sf ${SRCPATH}/data_vps/netvlad_etri_datasets_indoor_etri12b_1way/prebuilt_dbFeat_1way.mat ${TARGET}/data_vps/prebuilt_dbFeat.mat
 
 	## VPS : Indoor streetview for VPS in prebuilt weight mode
 	echo "Flushing and copying indoor streetview images to ${TARGET}/data_vps/netvlad_etri_datasets/dbImg/StreetView/."

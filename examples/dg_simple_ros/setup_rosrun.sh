@@ -15,6 +15,7 @@ cd $DGDIR
 
 #ROSDIR="/home/ccsmm/catkin_ws"           # path of ROS workspace
 ROSDIR="/home/${USER}/catkin_ws"         # path of ROS workspace
+#ROSDIR="/home/${USER}/ros_deepguier_ws"         # path of ROS workspace, for Dr.Lee
 
 ## Check if specified ROS workspace exists.
 if [ ! -d $ROSDIR ]; then

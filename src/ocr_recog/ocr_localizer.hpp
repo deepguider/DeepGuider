@@ -43,7 +43,7 @@ namespace dg
 	    bool m_enable_debugging_display = false;
 
 		double m_poi_match_thresh = 2.5;			// POI matching threshold (ratio_score + length_score)
-		double m_best_to_second_match_ratio = 2;	// POI match ratio threshold (best_score/second_score > ratio threshod)
+		double m_best_to_second_match_ratio = 1.5;	// POI match ratio threshold (best_score/second_score > ratio threshod)
 		double m_poi_match_ratio = 0.5;				// mimimum ratio of matched part for korean poi
 		double m_poi_match_ratio_alphabet = 0.7;	// mimimum ratio of matched part for alphanumeric poi
 		int m_poi_match_length_normalizer = 2; 			// minimum matched string length for korean poi
@@ -87,7 +87,7 @@ namespace dg
 			return (m_shared != nullptr);
 		}
 
-		void setParam(double f, double cx, double cy, double cam_vy, double cam_h, double poi_h = 3.8, double search_radius = 100)
+		void setParam(double f, double cx, double cy, double cam_vy, double cam_h, double poi_h = 3.8, double search_radius = 50)
 		{
 			cv::AutoLock lock(m_localizer_mutex);
 			m_focal_length = f;
@@ -120,7 +120,7 @@ namespace dg
 					if (it->ymax > m_vanishing_y) valid = false;								// ground POI
 					if (valid && (it->ymax - it->ymin > it->xmax - it->xmin)) valid = false;	// vertical POI
 					if (valid && it->label.length() <= 1) valid = false;						// 1-character POI
-					if (valid && isNumeric(it->label)) valid = false;					        // numeric POI
+					//if (valid && isNumeric(it->label)) valid = false;					        // numeric POI
 					if (valid) valid_ocrs.push_back(*it);
 				}
 				if (valid_ocrs.empty()) return false;
@@ -134,6 +134,14 @@ namespace dg
 			if (map == nullptr || map->isEmpty()) return false;
 			std::vector<dg::POI*> pois_near = map->getNearPOIs(pose, m_poi_search_radius);
 			if(pois_near.empty()) return false;
+			//*
+	        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+			for(auto itr=pois_near.begin(); itr!=pois_near.end(); itr++)
+			{
+				string tmp = converter.to_bytes((*itr)->name);
+				printf("near pois = %s\n", tmp.c_str());
+			}
+			//*/
 
 			// match OCR detections with nearby POIs: <ocr_index, POI*, levenshtein_distance, match_score>
 			m_match_ocrs = ocrs;
@@ -151,6 +159,11 @@ namespace dg
 				relatives.push_back(relative);
 				double conf = match_score * ocrs[ocr_idx].confidence;
 				poi_confidences.push_back(conf);
+				//*
+				string tmp = converter.to_bytes(poi->name);
+				printf("matched pois = %s\n", tmp.c_str());
+				//*/
+
             }
             return true;
         }
@@ -772,7 +785,9 @@ namespace dg
 
 			// ground distance from camera to poi
 			if (floor <= 0) floor = 1;
-			double D = (m_poi_height * floor - m_camera_height) / tan(poi_tilt);
+			double poi_height = m_poi_height * floor;
+			if (floor>100) poi_height = (double)floor/1000.0;	// convert mm to meter
+			double D = (poi_height - m_camera_height) / tan(poi_tilt);
 
 			// result
 			relative.lin = D;

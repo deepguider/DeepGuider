@@ -125,6 +125,7 @@ namespace dg
         double m_smoothing_alpha = 0.1;
         double m_smoothing_beta = 0.01;
         double m_smoothing_velocity_decaying = 0.95;
+        bool m_gps_deactivated = false;
 
         // odometry stabilization
         double m_odometry_stabilization_d = 0.5;
@@ -320,6 +321,7 @@ namespace dg
 
         virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
+            if (m_gps_deactivated) return false;
             if(m_enable_stop_filtering && m_odometry_active && m_odometry_stabilized && m_robot_stopped) return false;
 
             cv::AutoLock lock(m_mutex);
@@ -332,16 +334,23 @@ namespace dg
             return applyPathLocalizer(m_ekf->getPose(), time);
         }
 
-        virtual void resetOdometry()
+        virtual void resetOdometryActivation(bool active)
         {
             cv::AutoLock lock(m_mutex);
-            m_ekf->resetOdometry();
+            if (active)
+            {
+                m_ekf->resetOdometry();
+            }
+            else
+            {
+                m_odometry_active = false;
+            }
         }
 
-        virtual void resetOdometryActivated()
+        virtual void resetGPSActivation(bool active)
         {
             cv::AutoLock lock(m_mutex);
-            m_odometry_active = false;
+            m_gps_deactivated = !active;
         }
 
         virtual bool applyOdometry(Pose2 odometry_pose, Timestamp time = -1, double confidence = -1)

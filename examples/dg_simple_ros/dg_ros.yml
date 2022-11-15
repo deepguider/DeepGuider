@@ -44,11 +44,14 @@ vps_save_dbfeat: 0
 vps_use_custom_image_server: 0   # 0 (default) to use naver roadview, 1 to use custom images for database images
 vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_
 vps_enable_mcl: 0
+vps_visible_region_radius: 7
+vps_visible_region_radius_max_ratio: 3.5
+
 vps_enable_filter: 0
-vps_filter_size: 11  # 11 for coex indoor, window size of median filter ( 1 means off)
+vps_filter_size: 7  # 11 for coex indoor, window size of median filter ( 1 means off)
 vps_filter_valid_thre: 3 # 1st threshold to check valid of vps result in median filter in metric (Large numger, (ex) 1000, means off)
 vps_filter_outlier_thre: 25  # 2nd threshold to reject outlier sample in median filter in metric (Large numger, (ex) 1000, means off)
-vps_filter_conf_thre: 0.81
+vps_filter_conf_thre: 0.75
 
 ## Intersection
 intersection_cam: 3 # 1 or 3. 1: 1 camera; 3: 3 camera (require enable_360cam_crop: 1. If not enable_360cam_crop, 1 camera will be run)
@@ -210,6 +213,9 @@ Bucheon:
   image_server_port: "10002"
   gps_input_path: "data/Sensor_record_20210513_Bucheon_AndroSensor.csv"
   video_input_path: ""
+  vps_load_dbfeat: 1
+  vps_save_dbfeat: 0
+  vps_use_custom_image_server: 1   # 0 (default) to use naver roadview, 1 to use custom images for database images
 
 Bucheon_KETI:
   map_image_path: "data/Bucheon/bucheon_robotmap(flipudlr).png" 
@@ -224,6 +230,9 @@ Bucheon_KETI:
   video_input_path: ""
   robot_map_rotation: -90
   robot_map_origin: [3110, 2576]
+  vps_load_dbfeat: 1
+  vps_save_dbfeat: 0
+  vps_use_custom_image_server: 1   # 0 (default) to use naver roadview, 1 to use custom images for database images
 
 Bucheon_Robot:
   robotmap_path: "data/Bucheon/bucheon_220922/occumap_bucheon.png" 

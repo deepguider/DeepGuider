@@ -274,14 +274,17 @@ bool DeepGuiderROS::runOnce(double timestamp)
     if (key == '3') m_viewport.setZoom(3);
     if (key == '4') m_viewport.setZoom(4);
     if (key == '0') m_viewport.setZoom(0.1);
-    if (key == 'g' || key == 'G') m_apply_gps = !m_apply_gps;
-    if (key == 'm' || key == 'M') m_apply_imu = !m_apply_imu;
+    if (key == 'g' || key == 'G')
+    {
+        m_apply_gps = !m_apply_gps;
+        m_localizer->resetGPSActivation(m_apply_gps);
+    }
     if (key == 'o' || key == 'O')
     {
         m_apply_odometry = !m_apply_odometry;
-        if(m_enable_odometry && m_apply_odometry) m_localizer->resetOdometry();
-        if(m_enable_odometry && !m_apply_odometry) m_localizer->resetOdometryActivated();
+        m_localizer->resetOdometryActivation(m_apply_odometry);
     }
+    if (key == 'm' || key == 'M') m_apply_imu = !m_apply_imu;
     if (key == 'v' || key == 'V') m_apply_vps = !m_apply_vps;
     if (key == 'p' || key == 'P') m_apply_ocr = !m_apply_ocr;
     if (key == 'i' || key == 'I') m_apply_intersection = !m_apply_intersection;

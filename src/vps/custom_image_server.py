@@ -11,10 +11,6 @@ from collections import namedtuple
 from PIL import Image
 import utm
 
-import matplotlib
-matplotlib.use('Agg')  # https://stackoverflow.com/questions/27147300/matplotlib-tcl-asyncdelete-async-handler-deleted-by-the-wrong-thread/29172195#29172195
-import matplotlib.pyplot as plt
-
 from sklearn.neighbors import NearestNeighbors
 
 import faiss

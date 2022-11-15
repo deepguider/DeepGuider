@@ -26,6 +26,9 @@ import torchvision.models as models
 #import h5py
 import faiss
 import time
+import matplotlib
+#matplotlib.use('Agg')  # Turn on this line, when you run this file in backend
+import matplotlib.pyplot as plt
 
 import utm
 
@@ -472,7 +475,7 @@ class vps:
         if self.verbose:
             print('====> Calculating recall @',self.K)
         
-        self.pred_confidence, self.pred_idx = self.faiss_index.search(self.qFeat, self.K) # [ NumQ x K ]
+        self.pred_confidence, self.pred_idx = self.search_top_k()
   
         if self.verbose:
             print('predicted ID:\n', self.pred_idx)
@@ -501,6 +504,64 @@ class vps:
             print('Return from vps.py->apply()')
 
         return acc
+
+    def reset_visible_region(self):
+        self.visible_region_radius = copy.copy(self.visible_region_radius_default)
+        self.visible_region_radius_history = np.zeros(100)
+
+    def search_top_k(self, top_large_k=20):
+        ## Step 1: Search top_large_k
+        # confidence is L2 distance which is converted to conf by self.convert_distance_to_confidence()
+        pred_confidence, pred_idx = self.faiss_index.search(self.qFeat, top_large_k) # [ NumQ x K ]
+
+        ## Step 2: Re-rank with visible region at current position
+        reranked_confidence, reranked_idx = [], []
+        for qIx in range(len(pred_idx)):
+            pred_utmDb = self.utmDb[pred_idx[qIx]]
+            pred_dist = pred_utmDb - [self.odo_utm_x, self.odo_utm_y]
+            #bp()
+            #pred_dist = pred_utmDb - [self.utm_x, self.utm_y]
+            l2norm = np.linalg.norm(pred_dist, axis=1)
+            #sort_idx = np.argsort(l2norm)
+            valid_cnt = 0
+            ## Step 2-1 : Check distance in valid radius
+            for i, dist in enumerate(l2norm):
+                #reranked_confidence.append(pred_confidence.squeeze()[sort_idx[i]])
+                #reranked_idx.append(pred_idx.squeeze()[sort_idx[i]])
+                if dist <= self.visible_region_radius:
+                    reranked_confidence.append([pred_confidence[qIx][i]])
+                    reranked_idx.append([pred_idx[qIx][i]])
+                    valid_cnt += 1
+            ## Step 2-2 : Check direction in valid angle
+            if False:  # Do not use.
+                ## vector = end_pts - start_pts
+                vec1 = [np.cos(self.odo_heading), np.sin(self.odo_heading)]  # [ (curr_x + cos) - curr_x, (curr_y+sin) - curr_y) ]
+                vec2 = [self.odo_utm_x, self.odo_utm_y] - pred_utmDb  # [pred_x - curr_x, pred_y - curr_y]
+                inner = np.inner(vec1, vec2)
+                valid_heading = np.where(inner>0)  # Direction with -+ 90 degree from heading
+
+            if valid_cnt == 0:
+                reranked_confidence.append([-1])
+                reranked_idx.append([-1])
+                self.visible_region_radius = self.visible_region_radius*1.1  # Increase search range
+                if self.visible_region_radius > self.visible_region_radius_default*self.visible_region_radius_max_ratio : # maximum bound
+                    self.visible_region_radius = self.visible_region_radius_default*self.visible_region_radius_max_ratio
+            else:
+                self.visible_region_radius = self.visible_region_radius*0.9  # Decrease search range
+                if self.visible_region_radius < self.visible_region_radius_default : # minimum bound
+                    self.visible_region_radius = self.visible_region_radius_default
+
+                self.visible_region_radius = max (self.visible_region_radius_default, self.visible_region_radius)
+
+            if False:  # debugging
+                self.visible_region_radius_history[:-1] = self.visible_region_radius_history[1:]
+                self.visible_region_radius_history[-1] = self.visible_region_radius
+                plt.cla()
+                plt.plot(self.visible_region_radius_history)
+                plt.draw()
+                plt.pause(0.001)
+
+        return (np.asarray(reranked_confidence)), (np.asarray(reranked_idx))
 
     def db_info_from_filename(self, i):
         flist = self.dbImage[self.pred_idx[i]]
@@ -614,7 +675,7 @@ class vps:
         [IDs, Confs, custom_sv_lat, custom_sv_lon, pan, t_scaled] = self.getVpsResult(relativePose_enable)
         self.mcl_run()
         if flush_db == True:
-            self.flush_db_dir()  # Remove downloaded roadview jpg files. getVpsResult() shoud be called before this.
+            self.flush_db_dir()  # Remove downloaded roadview jpg files. getVpsResult() should be called before this.
         return [IDs, Confs, custom_sv_lat, custom_sv_lon, pan, t_scaled, self.custom_dataset_abs_path]
 
     def parsing_dg_ros_yml(self):
@@ -624,11 +685,15 @@ class vps:
         load_dbfeat= self.dg_ros_yml.read("vps_load_dbfeat")
         save_dbfeat= self.dg_ros_yml.read("vps_save_dbfeat")
         use_custom_image_server = self.dg_ros_yml.read("vps_use_custom_image_server")
+        self.visible_region_radius_default = self.dg_ros_yml.read("vps_visible_region_radius");self.reset_visible_region()
+        self.visible_region_radius_max_ratio = self.dg_ros_yml.read("vps_visible_region_radius_max_ratio");
         self.enable_filter = self.dg_ros_yml.read("vps_enable_filter")
         self.filter_size = self.dg_ros_yml.read("vps_filter_size")
         self.filter_valid_thre = self.dg_ros_yml.read("vps_filter_valid_thre")
         self.filter_outlier_thre = self.dg_ros_yml.read("vps_filter_outlier_thre")
         self.filter_conf_thre = self.dg_ros_yml.read("vps_filter_conf_thre")
+        self.map_ref_point_latlon = self.dg_ros_yml.read("map_ref_point_latlon")
+        self.map_ref_point_utm_x, self.map_ref_point_utm_y, self.utm_no, self.utm_char = utm.from_latlon(*self.map_ref_point_latlon)
         #gps_accuracy = self.dg_ros_yml.read("vps_gps_accuracy")
 
         #ipaddr = ipaddr_port.split(":")[0]
@@ -665,13 +730,14 @@ class vps:
             It seems that the number of input parameters should not exceed 10.
             #print("image[0] = {0}, K = {1}, gps = lat = {2}, gps lon = {3}, gps acc. = {4}\nts = {5}, ip = {6}, port = {7}, load = {8}, save = {9}, custom = {10}".format(image[0][0], K , gps_lat, gps_lon, gps_accuracy, timestamp, ipaddr, port, load_dbfeat, save_dbfeat, use_custom_image_server))
         '''
+        self.odo_x, self.odo_y, self.odo_heading = odo_x, odo_y, heading
 
-        self.parsing_dg_ros_yml()
+        self.odo_utm_x = self.map_ref_point_utm_x + self.odo_x
+        self.odo_utm_y = self.map_ref_point_utm_y + self.odo_y
 
-        self.odo_x, self.odo_y, self.heading = odo_x, odo_y, heading
         self.utm_x, self.utm_y, self.tilt = None, None, None
 
-        #print("[VPS]=============> odo_x, odo_y, heading : {}, {}, {}".format(odo_x, odo_y, heading))
+        #print("[VPS]=============> odo_x, odo_y, heading : {}, {}, {}{}".format(odo_x, odo_y, heading, np.rad2deg(heading)))
 
         if self.use_custom_dataset == True:
             ## This statement is executed only the first time.
@@ -700,6 +766,7 @@ class vps:
         self.gps_lat = float(gps_lat)
         self.gps_lon = float(gps_lon)
         self.gps_accuracy = min(max(gps_accuracy,0.0),1.0)
+        self.utm_x, self.utm_y, self.utm_zone_num, self.utm_zone_char = utm.from_latlon(self.gps_lat, self.gps_lon)
         self.timestamp = float(timestamp)
         self.K = int(K);
         self.init_vps_IDandConf(self.K)
@@ -770,7 +837,7 @@ class vps:
         return self.flush_db_dir_and_return_val(relativePose_enable=True)
 
     def mcl_get_landmark(self):
-        if self.utm_x is not None:
+        if (self.utm_x is not None) and (self.utm_x is not None):
             return np.array([[self.utm_x, self.utm_y]])
         else:
             return None
@@ -793,7 +860,7 @@ class vps:
         if self.vps_enable_mcl == True:
             landmarks = self.mcl_get_landmark()
             if landmarks is not None:
-                self.mMCL.run_step(self.odo_x, self.odo_y, self.heading, self.tilt, landmarks)
+                self.mMCL.run_step(self.odo_x, self.odo_y, self.odo_heading, self.tilt, landmarks)
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []
@@ -849,26 +916,9 @@ class vps:
         utm_x, utm_y = self.pred_utmDb[0], self.pred_utmDb[1]
 
         ## Filter out noisy result with median filter for top-1 for indoor test
-#        if self.port == "10003":  # 10003 means etri indoor, 10004 means coex indoor
-#            top1_id = IDs[0]
-#            _, lat, lon = GetStreetView_fromID(top1_id, roi_radius=1, ipaddr=self.ipaddr)
-#            if lat != -1:  # Image server is ready.
-#                # When image server is not available, do not filter out because it cannot get current lat, lon information.
-#                utm_x, utm_y, r_num, r_str = utm.from_latlon(lat, lon)  # (353618.4250711136, 4027830.874694569, 52, 'S')
-#                self.mVps_filter.set_utm_distance_threshold(5)  # filter radius 5 meters for etri indoor
-#                #self.mVps_filter.set_utm_distance_threshold(self.get_radius())  # filter radius 50 meters for outdoor
-#                if self.mVps_filter.check_valid(utm_x, utm_y) == False:   # Filter out noisy result with ransac of first-order line function
-#                    # Noisy result is changed to -1.
-#                    IDs[0] = 0
-#                    Confs[0] = -1
-
-        ## Filter out noisy result with median filter for top-1 for indoor test
+        valid = True
         if self.enable_filter > 0:
-            if Confs[0] >= self.filter_conf_thre :
-                valid, mean_utm_xy = self.mVps_filter.check_valid(utm_x, utm_y)
-            else:
-                valid = False
-
+            valid, mean_utm_xy = self.mVps_filter.check_valid(utm_x, utm_y)
             if valid is True:
                 utm_x, utm_y = mean_utm_xy[0], mean_utm_xy[1]
             else:
@@ -878,13 +928,12 @@ class vps:
 
         R, t = self.get_relativePose('zero')
 
-        if relativePose_enable == True:
-            if Confs[0] > self.filter_conf_thre:
-                R0, t0 = self.get_relativePose('normal')
-                pan, tilt = self.mod_rPose.get_pan_tilt(R0)
-                query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R0, t0)
-                if self.mod_rPose.check_cam2_pose(pan, tilt, query_cam2_pos) == True:
-                    R, t = R0, t0
+        if (relativePose_enable == True) and (valid == True):
+            R0, t0 = self.get_relativePose('normal')
+            pan, tilt = self.mod_rPose.get_pan_tilt(R0)
+            query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R0, t0)
+            if self.mod_rPose.check_cam2_pose(pan, tilt, query_cam2_pos) == True:
+                R, t = R0, t0
 
         query_cam2_pos = self.mod_rPose.get_cam2origin_on_cam1coordinate(R, t)
         pan, tilt = self.mod_rPose.get_pan_tilt(R)
@@ -905,7 +954,7 @@ class vps:
 
         pan = np.float64(pan)
 
-        self.utm_x, self.utm_x = utm_x, utm_y  # for mcl
+        self.utm_x, self.utm_y = utm_x, utm_y  # for mcl
         self.pan, self.tilt = pan, tilt  # mcl
 
         ## [[id1, id2, ..., idn], [conf1, conf2, ..., confn], custom_lat, custom_lon, pan, scale*[tx, ty, tz]], where pan and (tx, ty, tz) is for top-1.
@@ -966,9 +1015,6 @@ class vps:
 
     def getPosVPS(self):
         return self.GPS_Latitude, self.GPS_Longitude
-
-    def getPosVPS(self):
-        return self.VPS_Latitude, self.VPS_Longitude
 
     def getAngle(self):
         return self.angle

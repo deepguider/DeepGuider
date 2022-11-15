@@ -110,7 +110,7 @@ class vps_filter:
             return self.utm_xys[-n_samples:]
 
     def check_valid(self, new_x, new_y):
-        if new_x >0 and new_y > 0:
+        if (new_x >0) and (new_y > 0):
             self.update_samples(new_x, new_y)
         else:
             return False, None
@@ -131,11 +131,11 @@ class vps_filter:
                 self.continuous_outlier_count = self.continuous_outlier_count_min
 
             #print("[vps] Reject outlier ==========================> Reject outlier : {}".format(utm_distance))
-        if utm_distance > self.valid_dist_thre:  # Check new point is near to mean of previous point.
+        if (utm_distance > 0) and (utm_distance < self.valid_dist_thre):  # Check new point is near to mean of previous point.
+            return True, mean_xys
+        else:
             #print("[vps] Filter out ==========================> Filter out utm : {}".format(utm_distance))
             return False, mean_xys
-        else:
-            return True, mean_xys
 
     def check_valid_ori(self, new_x, new_y):
         self.update_samples(new_x, new_y)

@@ -40,15 +40,13 @@ namespace dg
         {
             // Top-1 match
             int N = 1;  // top-1
-			double odo_x=0;
-			double odo_y=0;
-			double heading=0;
+			dg::Timestamp odo_time = m_odo_time;
             if (m_shared == nullptr) return false;
             Pose2 pose = m_shared->getPose();
             LatLon ll = m_shared->toLatLon(pose);
             double pose_confidence = manual_gps_accuracy; // 0(vps search radius = 200m) ~ 1(search radius = 10m)
 			/** In streetview image server, download_radius = int(10 + 190*(1-manual_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters **/
-            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, odo_x, odo_y, heading)) return false;
+            if (!VPS::apply(image, N, ll.lat, ll.lon, pose_confidence, image_time, pose.x, pose.y, pose.theta)) return false;
 
             // matched streetview ID, confidence & image path(custom)
             cv::AutoLock lock(m_localizer_mutex);
@@ -149,6 +147,14 @@ namespace dg
             return sv_image;                
         }
 
+		bool set_odometry(double odo_x, double odo_y, double heading, dg::Timestamp odo_time)
+		{  // This feature is replaced by m_shared->getPose()
+            cv::AutoLock lock(m_localizer_mutex);
+			m_odo_pose = Pose2(odo_x, odo_y, heading);
+			m_odo_time = odo_time;
+			return true;
+		}
+
     protected:
         SharedInterface* m_shared = nullptr;
         std::string m_server_ipaddr;
@@ -157,6 +163,11 @@ namespace dg
         int m_use_custom_image_server=0;
         std::string m_custom_dataset_abs_path;
         cv::Mutex m_localizer_mutex;
+		Pose2 m_odo_pose;
+		Timestamp m_odo_time;
+		double m_odo_x = 0.0;
+		double m_odo_y = 0.0;
+		double m_heading = 0.0;
     };
 
 } // End of 'dg'

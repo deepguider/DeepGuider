@@ -96,7 +96,7 @@ public:
         cv::Mat bg_image = gui_background.clone();
         cv::Mat zoom_bg_image = zoom_background.clone();
         m_viewport.initialize(bg_image, m_view_size, m_view_offset);
-        m_viewport.setZoom(2);
+        //m_viewport.setZoom(2);
 
         // Run localization with GPS and other sensors
         if (show_gui)
@@ -133,10 +133,9 @@ public:
 
                 if (apply_odo && !apply_gps)
                 {
-                    //cam_image = data_loader.getFrame(data_time);
-                    //update_gui = true;
+                    cam_image = data_loader.getFrame(data_time);
+                    update_gui = true;
                 }
-                //update_gui = true;
             }
             else if (type == dg::DATA_GPS)
             {
@@ -246,7 +245,7 @@ public:
                         dg::Pose2 robot_pose = localizer->getPose();
 
                         // draw particles
-                        int nradius = 2;
+                        int nradius = 1;
                         cv::Vec3b ncolor = cv::Vec3b(0, 255, 0);
                         dg::MapPainter* painter = (dg::MapPainter*)gui_painter;
                         dg::Map* map = dg_localizer->getMap();
@@ -396,8 +395,20 @@ public:
                 cv::imshow("LocalizerRunner::runLocalizer()", gui_image);
                 int key = cv::waitKey(gui_wnd_wait_msec);
                 if (key == cx::KEY_SPACE) key = cv::waitKey(0);
-                if (key == 'g') apply_gps = !apply_gps;
-                if (key == 'o') apply_odo = !apply_odo;
+                if (key == '1') gui_wnd_wait_msec = 1;
+                if (key == '2') gui_wnd_wait_msec = 100;
+                if (key == '3') gui_wnd_wait_msec = 500;
+                if (key == '4') gui_wnd_wait_msec = 1000;
+                if (key == 'g')
+                {
+                    apply_gps = !apply_gps;
+                    mcl_localizer->resetGPSActivation(apply_gps);
+                }
+                if (key == 'o')
+                {
+                    apply_odo = !apply_odo;
+                    mcl_localizer->resetGPSActivation(apply_odo);
+                }
                 if (key == 's')
                 {
                     // file name
@@ -429,11 +440,13 @@ public:
 
     void procMouseEvent(int evt, int x, int y, int flags)
     {
+        m_viewport.procMouseEvent(evt, x, y, flags);
+
         if (evt == cv::EVENT_MOUSEMOVE)
         {
             if (zoom_user_drag)
             {
-                zoom_user_point = cv::Point(x, y);
+                zoom_user_point = m_viewport.cvtView2Pixel(cv::Point(x, y));
             }
         }
         else if (evt == cv::EVENT_LBUTTONDOWN)
@@ -445,7 +458,8 @@ public:
         else if (evt == cv::EVENT_LBUTTONDBLCLK)
         {
             dg::Pose2 p_start = getPose();
-            cv::Point2d p_dest = gui_painter->cvtPixel2Value(cv::Point(x, y));
+            cv::Point2d px_dest = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            cv::Point2d p_dest = gui_painter->cvtPixel2Value(px_dest);
             dg::Path path;
             bool ok = m_map.getPath(p_start, p_dest, path);
             if (ok)
@@ -457,10 +471,11 @@ public:
         }
         else if (evt == cv::EVENT_RBUTTONDOWN)
         {
-            cv::Point2d p = gui_painter->cvtPixel2Value(cv::Point(x, y));
+            cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            cv::Point2d p = gui_painter->cvtPixel2Value(px);
             printf("x = %lf, y = %lf\n", p.x, p.y);
 
-            zoom_user_point = cv::Point(x, y);
+            zoom_user_point = px;
             zoom_user_drag = true;
         }
         else if (evt == cv::EVENT_RBUTTONUP)
@@ -627,7 +642,7 @@ public:
     cv::Vec3b    gui_clue_color = cv::Vec3b(255, 0, 0);
     int          gui_clue_thickness = 2;
     int          gui_wnd_flag = cv::WindowFlags::WINDOW_AUTOSIZE;
-    int          gui_wnd_wait_msec = 100;
+    int          gui_wnd_wait_msec = 1;
     bool         gui_wnd_wait_exit = false;
 
     double       video_resize = 1;
