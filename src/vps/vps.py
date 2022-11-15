@@ -852,15 +852,14 @@ class vps:
         else:
             self.vps_enable_mcl = False
         if self.vps_enable_mcl == True:
-            img_path = "data_vps/map.png"
-            self.mMCL = vps_mcl.MCL(img_path=img_path, n_particle=400, pdf_sigma=0.1)  # angel metric
+            map_img, utm_ltop, utm_rbottom = self.dg_ros_yml.get_map_info()
+            self.mMCL = vps_mcl.MCL(map_img, utm_ltop, utm_rbottom, "utm", n_particle=400, motion_err_mu=0, motion_err_std=5, sensor_vps_err_mu=0, sensor_vps_err_std=10, pdf_std=10)
             self.mMCL.initialize(disp=True) 
 
     def mcl_run(self):
         if self.vps_enable_mcl == True:
             landmarks = self.mcl_get_landmark()
-            if landmarks is not None:
-                self.mMCL.run_step(self.odo_x, self.odo_y, self.odo_heading, self.tilt, landmarks)
+            self.mMCL.run_step(self.odo_utm_x, self.odo_utm_y, self.odo_heading, self.tilt, landmarks)
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []
