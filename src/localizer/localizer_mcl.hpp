@@ -41,9 +41,13 @@ namespace dg
         int m_eval_history_length = 50;     // meter
         int m_odometry_history_size = 1000;
         double m_odometry_save_interval = 1;
-        double m_corner_cosine = cos(CV_PI / 4);
         double m_path_particle_weight = 2;
+        bool m_enable_icp = false;
         int m_max_icp_itr = 20;
+        double m_path_corner_thr = cx::cvtDeg2Rad(60);        
+        bool m_enable_odo_theta_correction = true;
+        double m_mcl_min_update_interval = 1;       // seconds
+        double m_edge_heading_decay = 0.9;
 
         double m_odometry_linear_std_err = 0.5;                 // 0.5 meter
         double m_odometry_angular_std_err = cx::cvtDeg2Rad(1);  // 1 degree
@@ -61,8 +65,11 @@ namespace dg
         ID m_eid_mcl;
         bool m_mcl_pose_valid = false;
         Timestamp m_mcl_last_update_time = -1;  // seconds
-        double m_mcl_update_interval = 1;       // seconds
-        double m_edge_heading_decay = 0.9;
+  
+        std::vector<double> m_odo_dtheta_hist;
+        std::vector<int> m_odo_dtheta_hist_cnt;
+        double m_odo_dtheta_hist_angular_res = 1;   // degree
+        int m_odo_dtheta_hist_bins = 3;             // should be odd number (-2~-1, -1~+1, +1~+2)
 
         int m_mixture_centroid_n = 5;
         std::vector<Point2> m_mixture_centroids;
@@ -88,6 +95,7 @@ namespace dg
             srand((unsigned)time(NULL));
             initialize(nullptr, baselocalizer_name);
             m_odometry_history.resize(m_odometry_history_size);
+            initialize_odo_theta_correction();
         }
 
         virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
@@ -239,7 +247,7 @@ namespace dg
                 {
                     predictParticles(odometry_pose, m_prev_odometry_pose, time - m_prev_odometry_time, m_robot_stopped);
                     double dt = time - m_mcl_last_update_time;
-                    if(dt>m_mcl_update_interval)
+                    if (dt > m_mcl_min_update_interval)
                     {
                         evaluateParticles(m_ekf->getPose(), false, false);
                         resampleParticles();
@@ -282,6 +290,7 @@ namespace dg
                 odo_new.dist_accumulated = odo.dist_accumulated + d;
                 odo_new.eid_mcl = m_eid_mcl;
                 add_new_odometry_data(odo_new);
+                if (m_enable_odo_theta_correction) update_odo_theta_hist(dtheta);
             }
             m_prev_odometry_pose = odometry_pose;
             m_prev_odometry_time = time;
@@ -971,7 +980,7 @@ namespace dg
             }
 
             // theta correction
-            theta_correction_mean(m_odometry_history, odo_start_idx, odo_pts);
+            if(m_enable_odo_theta_correction) odo_theta_correction_mean(m_odometry_history, odo_start_idx, odo_pts);
 
             // whitening of odometry points
             Point2 mean_odo_point(0, 0);
@@ -1092,7 +1101,6 @@ namespace dg
             }
 
             // check path cornerness
-            double corner_thr = cx::cvtDeg2Rad(60);
             Point2 path_v = path_pts[n_path-1] - path_pts[n_path-2];
             double path_last_theta = atan2(path_v.y, path_v.x);
             int corner_path_idx = -1;
@@ -1104,7 +1112,7 @@ namespace dg
                 double path_delta = cx::trimRad(path_theta - path_last_theta);
                 corner_path_len += norm(path_v);
 
-                if(fabs(path_delta) > corner_thr)
+                if(fabs(path_delta) > m_path_corner_thr)
                 {
                     corner_path_idx = i - 1;
                     break;
@@ -1167,7 +1175,7 @@ namespace dg
             }
 
             // compute align cost
-            if(corner_path_idx < 0)
+            if(!m_enable_icp || corner_path_idx < 0)
             {
                 cv::Mat RA = R * A;
                 cv::Mat E = RA - B.t();
@@ -1248,54 +1256,53 @@ namespace dg
             return pdf;
         }
 
-        void theta_correction_mean(const RingBuffer<OdometryData>& odometry, int odo_start_idx, vector<Point2>& odo_corrected)
+        void initialize_odo_theta_correction()
         {
-            double angular_res = 1;   // degree
-            int bins = 3;             // should be odd number (-2~-1, -1~+1, +1~+2)
+            m_odo_dtheta_hist.resize(m_odo_dtheta_hist_bins);
+            m_odo_dtheta_hist_cnt.resize(m_odo_dtheta_hist_bins);
+            for (int i = 0; i < m_odo_dtheta_hist_bins; i++)
+            {
+                m_odo_dtheta_hist[i] = 0;
+                m_odo_dtheta_hist_cnt[i] = 0;
+            }
+        }
 
+        void update_odo_theta_hist(double dtheta_rad)
+        {
+            double dtheta_deg = cx::cvtRad2Deg(dtheta_rad);
+            int idx = (int)(dtheta_deg / m_odo_dtheta_hist_angular_res) + (m_odo_dtheta_hist_bins - 1) / 2;
+            if (idx < 0 || idx>(m_odo_dtheta_hist_bins - 1)) return;
+            m_odo_dtheta_hist[idx] += dtheta_deg;
+            m_odo_dtheta_hist_cnt[idx]++;
+        }
+
+        void odo_theta_correction_mean(const RingBuffer<OdometryData>& odometry, int odo_start_idx, vector<Point2>& odo_corrected)
+        {
             int nodo = odometry.data_count() - odo_start_idx;
-            vector<double> hist;
-            vector<int> cnt;
-            hist.resize(bins);
-            cnt.resize(bins);
-
-            for (int i = 0; i < bins; i++)
-            {
-                hist[i] = 0;
-                cnt[i] = 0;
-            }
-
-            for (int i = 1; i < nodo; i++)
-            {
-                double dtheta = cx::cvtRad2Deg(odometry[odo_start_idx + i].dtheta);
-                int idx = (int)(dtheta / angular_res) + (bins - 1) / 2;
-                if (idx < 0 || idx>(bins - 1)) continue;
-                hist[idx] += dtheta;
-                cnt[idx]++;
-            }
 
             int max_idx = -1;
             int max_cnt = 0;
-            for (int i = 0; i < bins; i++)
+            for (int i = 0; i < m_odo_dtheta_hist_bins; i++)
             {
-                if (cnt[i] > max_cnt)
+                if (m_odo_dtheta_hist_cnt[i] > max_cnt)
                 {
-                    max_cnt = cnt[i];
+                    max_cnt = m_odo_dtheta_hist_cnt[i];
                     max_idx = i;
                 }
             }
+            if (max_idx < 0) return;
 
-            double dtheta_mean = hist[max_idx];
-            int dtheta_cnt = cnt[max_idx];
-            if (max_idx < bins - 1)
+            double dtheta_mean = m_odo_dtheta_hist[max_idx];
+            int dtheta_cnt = m_odo_dtheta_hist_cnt[max_idx];
+            if (max_idx < m_odo_dtheta_hist_bins - 1)
             {
-                dtheta_mean += hist[max_idx + 1];
-                dtheta_cnt += cnt[max_idx + 1];
+                dtheta_mean += m_odo_dtheta_hist[max_idx + 1];
+                dtheta_cnt += m_odo_dtheta_hist_cnt[max_idx + 1];
             }
             if (max_idx > 0)
             {
-                dtheta_mean += hist[max_idx - 1];
-                dtheta_cnt += cnt[max_idx - 1];
+                dtheta_mean += m_odo_dtheta_hist[max_idx - 1];
+                dtheta_cnt += m_odo_dtheta_hist_cnt[max_idx - 1];
             }
             dtheta_mean /= (double)dtheta_cnt;
             dtheta_mean = cx::cvtDeg2Rad(dtheta_mean);
