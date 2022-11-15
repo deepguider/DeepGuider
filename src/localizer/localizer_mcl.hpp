@@ -241,12 +241,13 @@ namespace dg
                     double dt = time - m_mcl_last_update_time;
                     if(dt>m_mcl_update_interval)
                     {
-                        evaluateParticles(m_ekf->getPose(), false, true);
+                        evaluateParticles(m_ekf->getPose(), false, false);
                         resampleParticles();
                         m_mcl_last_update_time = time;
                     }
                     estimateMclPose(m_pose_mcl, m_eid_mcl);
                     m_pose = m_pose_mcl;
+                    m_mcl_pose_valid = true;
                 }
             }
             else
@@ -947,7 +948,7 @@ namespace dg
             int n_odo = m_odometry_history.data_count();
             if (n_odo < 5) return false;
             OdometryData odo = m_odometry_history.back();
-            if (odo.dist_accumulated < 20) return false;
+            if (odo.dist_accumulated < 10) return false;
 
             int N = (int)m_particles.size();
             align_err_l1.resize(N);
