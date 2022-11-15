@@ -19,6 +19,7 @@ class LocalizerRunner : public dg::SharedInterface
 protected:
     bool         m_dest_defined = false;
     dg::Point2   m_dest_xy;
+    dg::Point2   m_user_point;
 
     cv::Ptr<dg::BaseLocalizer> m_localizer;
     dg::IntersectionLocalizer m_intersection_localizer;
@@ -472,8 +473,8 @@ public:
         else if (evt == cv::EVENT_RBUTTONDOWN)
         {
             cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
-            cv::Point2d p = gui_painter->cvtPixel2Value(px);
-            printf("x = %lf, y = %lf\n", p.x, p.y);
+            m_user_point = gui_painter->cvtPixel2Value(px);
+            printf("x = %lf, y = %lf\n", m_user_point.x, m_user_point.y);
 
             zoom_user_point = px;
             zoom_user_drag = true;
@@ -481,6 +482,24 @@ public:
         else if (evt == cv::EVENT_RBUTTONUP)
         {
             zoom_user_drag = false;
+
+            dg::Timestamp time = -1;
+            dg::Pose2 pose = getPose(&time);
+            pose.x = m_user_point.x;
+            pose.y = m_user_point.y;
+            if (time < 0) time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+
+            cv::Point2d px = m_viewport.cvtView2Pixel(cv::Point(x, y));
+            cv::Point2d metric = gui_painter->cvtPixel2Value(px);
+            dg::Point2 dx = metric - m_user_point;
+            if (norm(dx) > 0.1)
+            {
+                double theta = atan2(dx.y, dx.x);
+                pose.theta = theta;
+            }
+            cv::Ptr<dg::DGLocalizerMCL> mcl_localizer = m_localizer.dynamicCast<dg::DGLocalizerMCL>();
+            mcl_localizer->setPose(pose, time);
+            printf("[Localizer] set user pose: x = %lf, y = %lf\n", pose.x, pose.y);
         }
         else if (evt == cv::EVENT_MOUSEWHEEL)
         {
