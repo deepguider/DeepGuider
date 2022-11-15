@@ -60,6 +60,10 @@ namespace dg
         Pose2 m_pose_mcl;
         ID m_eid_mcl;
         bool m_mcl_pose_valid = false;
+        Timestamp m_mcl_last_update_time = -1;  // seconds
+        double m_mcl_update_interval = 1;       // seconds
+        double m_edge_heading_decay = 0.9;
+
         int m_mixture_centroid_n = 5;
         std::vector<Point2> m_mixture_centroids;
 
@@ -88,6 +92,8 @@ namespace dg
 
         virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
+            printf("[GPS] x=%.1lf, y=%.1lf, timestamp = %.1lf\n", xy.x, xy.y, time);
+
             if (m_gps_deactivated) return false;
             if (m_enable_stop_filtering && m_odometry_active && m_odometry_stabilized && m_robot_stopped) return false;
 
@@ -121,10 +127,11 @@ namespace dg
                 }
                 if (!m_robot_stopped)
                 {
-                    evaluateParticles(m_ekf->getPose());
+                    evaluateParticles(m_ekf->getPose(), true, false);
                     resampleParticles();
                     estimateMclPose(m_pose_mcl, m_eid_mcl);
                     m_mcl_pose_valid = true;
+                    m_mcl_last_update_time = time;
                 }
                 m_pose = m_pose_mcl;
             }
@@ -225,33 +232,18 @@ namespace dg
                 return false;
             }
 
-            if (m_ekf_pose_history.empty())
-            {
-                m_prev_odometry_pose = odometry_pose;
-                m_prev_odometry_time = time;
-                return false;
-            }
-            if (!m_ekf->applyOdometry(odometry_pose, time, confidence))
-            {
-                m_prev_odometry_pose = odometry_pose;
-                m_prev_odometry_time = time;
-                return false;
-            }
-            saveObservation(ObsData::OBS_ODO, odometry_pose, time, confidence);
-            saveEKFState(m_ekf, time);
-
             // update particle
             if (m_mcl_initialized)
             {
                 if(!m_robot_stopped)
                 {
-                    dg::Pose2 prev = m_pose_mcl;
-
                     predictParticles(odometry_pose, m_prev_odometry_pose, time - m_prev_odometry_time, m_robot_stopped);
-                    if (m_gps_deactivated)
+                    double dt = time - m_mcl_last_update_time;
+                    if(dt>m_mcl_update_interval)
                     {
-                        evaluateParticles(m_ekf->getPose());
+                        evaluateParticles(m_ekf->getPose(), false, true);
                         resampleParticles();
+                        m_mcl_last_update_time = time;
                     }
                     estimateMclPose(m_pose_mcl, m_eid_mcl);
                     m_pose = m_pose_mcl;
@@ -655,7 +647,7 @@ namespace dg
             double dtheta = cx::trimRad(cur.theta - prev.theta);
             double linear_velocity = (dtime > 0) ? d / dtime : 0;
             double angular_modifier = 1;
-            if (linear_velocity > 0.5) angular_modifier = 0.95;
+            if (linear_velocity > 0.5) angular_modifier = m_edge_heading_decay;
             for (int i = 0; i < N; i++)
             {
                 double di = d + lin_noise[i];
@@ -870,7 +862,7 @@ namespace dg
             }         
         }
 
-        void evaluateParticles(const Pose2& pose_ekf)
+        void evaluateParticles(const Pose2& pose_ekf, bool use_ekf_pose = true, bool print_debug = false)
         {
             std::vector<double> align_err_l1, aligned_theta;
             bool odo_valid = evaluateParticleHistory(align_err_l1, aligned_theta);
@@ -908,7 +900,7 @@ namespace dg
                 double pdf_ekf_theta = 1;
                 double gd = 0;
                 double gth = 0;
-                if (!m_gps_deactivated)
+                if (use_ekf_pose && !m_gps_deactivated)
                 {
                     double dx = pose_particle.x - pose_ekf.x;
                     double dy = pose_particle.y - pose_ekf.y;
@@ -935,13 +927,13 @@ namespace dg
 
                 double pdf = path_weight*(pdf_ekf_d*pdf_ekf_theta * pdf_odo_d*pdf_odo_theta);
                 if(pdf>max_pdf) max_pdf = pdf;
-                //printf("[%d] w=%lf, gd=%.1lf(%lf), gth=%.1lf(%lf), od=%.1lf(%lf), oth=%.1lf(%lf), pth=%.1lf, alignth=%.1lf\n", i, pdf, gd, pdf_ekf_d, cx::cvtRad2Deg(gth), pdf_ekf_theta, od, pdf_odo_d, cx::cvtRad2Deg(oth), pdf_odo_theta, cx::cvtRad2Deg(pose_particle.theta), cx::cvtRad2Deg(odo_aligned_theta));
+                if(print_debug) printf("[%d] w=%lf, gd=%.1lf(%lf), gth=%.1lf(%lf), od=%.1lf(%lf), oth=%.1lf(%lf), pth=%.1lf, alignth=%.1lf\n", i, pdf, gd, pdf_ekf_d, cx::cvtRad2Deg(gth), pdf_ekf_theta, od, pdf_odo_d, cx::cvtRad2Deg(oth), pdf_odo_theta, cx::cvtRad2Deg(pose_particle.theta), cx::cvtRad2Deg(odo_aligned_theta));
 
                 m_particles[i].weight *= pdf;
                 w_sum += m_particles[i].weight;
             }
             m_shared->releaseMapLock();
-            //printf("[MCL] max_pdf = %lf, w_sum = %lf\n", max_pdf, w_sum);
+            if(print_debug) printf("[MCL] max_pdf = %lf, w_sum = %lf\n", max_pdf, w_sum);
 
             for (int i = 0; i < N; i++)
             {
