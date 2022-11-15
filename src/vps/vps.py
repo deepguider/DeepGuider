@@ -26,6 +26,9 @@ import torchvision.models as models
 #import h5py
 import faiss
 import time
+import matplotlib
+#matplotlib.use('Agg')  # Turn on this line, when you run this file in backend
+import matplotlib.pyplot as plt
 
 import utm
 
@@ -504,6 +507,7 @@ class vps:
 
     def reset_visible_region(self):
         self.visible_region_radius = copy.copy(self.visible_region_radius_default)
+        self.visible_region_radius_history = np.zeros(100)
 
     def search_top_k(self, top_large_k=20):
         ## Step 1: Search top_large_k
@@ -514,10 +518,13 @@ class vps:
         reranked_confidence, reranked_idx = [], []
         for qIx in range(len(pred_idx)):
             pred_utmDb = self.utmDb[pred_idx[qIx]]
-            pred_dist = pred_utmDb - [self.utm_x, self.utm_y]
+            pred_dist = pred_utmDb - [self.odo_utm_x, self.odo_utm_y]
+            #bp()
+            #pred_dist = pred_utmDb - [self.utm_x, self.utm_y]
             l2norm = np.linalg.norm(pred_dist, axis=1)
             #sort_idx = np.argsort(l2norm)
             valid_cnt = 0
+            ## Step 2-1 : Check distance in valid radius
             for i, dist in enumerate(l2norm):
                 #reranked_confidence.append(pred_confidence.squeeze()[sort_idx[i]])
                 #reranked_idx.append(pred_idx.squeeze()[sort_idx[i]])
@@ -525,14 +532,35 @@ class vps:
                     reranked_confidence.append([pred_confidence[qIx][i]])
                     reranked_idx.append([pred_idx[qIx][i]])
                     valid_cnt += 1
+            ## Step 2-2 : Check direction in valid angle
+            if False:  # Do not use.
+                ## vector = end_pts - start_pts
+                vec1 = [np.cos(self.odo_heading), np.sin(self.odo_heading)]  # [ (curr_x + cos) - curr_x, (curr_y+sin) - curr_y) ]
+                vec2 = [self.odo_utm_x, self.odo_utm_y] - pred_utmDb  # [pred_x - curr_x, pred_y - curr_y]
+                inner = np.inner(vec1, vec2)
+                valid_heading = np.where(inner>0)  # Direction with -+ 90 degree from heading
+
             if valid_cnt == 0:
                 reranked_confidence.append([-1])
                 reranked_idx.append([-1])
-                self.visible_region_radius = self.visible_region_radius*1.01  # Increase slowly
-                self.visible_region_radius = min (self.visible_region_radius_default, self.visible_region_radius*5)
+                self.visible_region_radius = self.visible_region_radius*1.1  # Increase search range
+                if self.visible_region_radius > self.visible_region_radius_default*5 : # maximum bound
+                    self.visible_region_radius = self.visible_region_radius_default*5
             else:
-                self.visible_region_radius = self.visible_region_radius*0.90  # Decrease rapidly
+                self.visible_region_radius = self.visible_region_radius*0.9  # Decrease search range
+                if self.visible_region_radius < self.visible_region_radius_default : # minimum bound
+                    self.visible_region_radius = self.visible_region_radius_default
+
                 self.visible_region_radius = max (self.visible_region_radius_default, self.visible_region_radius)
+
+            if True:  # debugging
+                self.visible_region_radius_history[:-1] = self.visible_region_radius_history[1:]
+                self.visible_region_radius_history[-1] = self.visible_region_radius
+
+                plt.cla()
+                plt.plot(self.visible_region_radius_history)
+                plt.draw()
+                plt.pause(0.001)
 
         return (np.asarray(reranked_confidence)), (np.asarray(reranked_idx))
 
@@ -664,6 +692,8 @@ class vps:
         self.filter_valid_thre = self.dg_ros_yml.read("vps_filter_valid_thre")
         self.filter_outlier_thre = self.dg_ros_yml.read("vps_filter_outlier_thre")
         self.filter_conf_thre = self.dg_ros_yml.read("vps_filter_conf_thre")
+        self.map_ref_point_latlon = self.dg_ros_yml.read("map_ref_point_latlon")
+        self.map_ref_point_utm_x, self.map_ref_point_utm_y, self.utm_no, self.utm_char = utm.from_latlon(*self.map_ref_point_latlon)
         #gps_accuracy = self.dg_ros_yml.read("vps_gps_accuracy")
 
         #ipaddr = ipaddr_port.split(":")[0]
@@ -700,13 +730,14 @@ class vps:
             It seems that the number of input parameters should not exceed 10.
             #print("image[0] = {0}, K = {1}, gps = lat = {2}, gps lon = {3}, gps acc. = {4}\nts = {5}, ip = {6}, port = {7}, load = {8}, save = {9}, custom = {10}".format(image[0][0], K , gps_lat, gps_lon, gps_accuracy, timestamp, ipaddr, port, load_dbfeat, save_dbfeat, use_custom_image_server))
         '''
+        self.odo_x, self.odo_y, self.odo_heading = odo_x, odo_y, heading
 
-        self.parsing_dg_ros_yml()
+        self.odo_utm_x = self.map_ref_point_utm_x + self.odo_x
+        self.odo_utm_y = self.map_ref_point_utm_y + self.odo_y
 
-        self.odo_x, self.odo_y, self.heading = odo_x, odo_y, heading
         self.utm_x, self.utm_y, self.tilt = None, None, None
 
-        #print("[VPS]=============> odo_x, odo_y, heading : {}, {}, {}".format(odo_x, odo_y, heading))
+        #print("[VPS]=============> odo_x, odo_y, heading : {}, {}, {}{}".format(odo_x, odo_y, heading, np.rad2deg(heading)))
 
         if self.use_custom_dataset == True:
             ## This statement is executed only the first time.
@@ -829,7 +860,7 @@ class vps:
         if self.vps_enable_mcl == True:
             landmarks = self.mcl_get_landmark()
             if landmarks is not None:
-                self.mMCL.run_step(self.odo_x, self.odo_y, self.heading, self.tilt, landmarks)
+                self.mMCL.run_step(self.odo_x, self.odo_y, self.odo_heading, self.tilt, landmarks)
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []

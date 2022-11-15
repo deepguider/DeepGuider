@@ -25,7 +25,7 @@ import numpy as np
 import netvlad
 
 from ipdb import set_trace as bp
-import sys;sys.path.insert(0,'netvlad/ccsmmutils');import img_utils as myiu
+#import sys;sys.path.insert(0,'netvlad/ccsmmutils');import img_utils as myiu
 
 
 parser = argparse.ArgumentParser(description='pytorch-NetVlad')
@@ -194,10 +194,10 @@ def test(eval_set, epoch=0, write_tboard=False):
             dbFeat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy() #[24,32768]
             if iteration % 50 == 0 or len(test_data_loader) <= 10:
                 print("==> Batch ({}/{})".format(iteration,len(test_data_loader)), flush=True)
-                myiu.clf()
-                myiu.imshow(input,221,'input')
-                myiu.imshow(image_encoding[:,:3,:,:],222,'encoding')
-                myiu.plot(vlad_encoding,223,'vlad')
+                #myiu.clf()
+                #myiu.imshow(input,221,'input')
+                #myiu.imshow(image_encoding[:,:3,:,:],222,'encoding')
+                #myiu.plot(vlad_encoding,223,'vlad')
 
             del input, image_encoding, vlad_encoding
     del test_data_loader
