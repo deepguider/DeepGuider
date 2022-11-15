@@ -553,10 +553,9 @@ class vps:
 
                 self.visible_region_radius = max (self.visible_region_radius_default, self.visible_region_radius)
 
-            if True:  # debugging
+            if False:  # debugging
                 self.visible_region_radius_history[:-1] = self.visible_region_radius_history[1:]
                 self.visible_region_radius_history[-1] = self.visible_region_radius
-
                 plt.cla()
                 plt.plot(self.visible_region_radius_history)
                 plt.draw()
