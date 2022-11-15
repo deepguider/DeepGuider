@@ -84,6 +84,14 @@ int MapEditor::configure(std::string site)
     Bucheon.grid_unit_pos = cv::Point(-215, -6);
     Bucheon.map_file = "data/Bucheon/TopoMap_Bucheon.csv";
 
+    /*
+    Bucheon.image_file = "data/Bucheon/bucheon_online_map.png";
+    Bucheon.map_pixel_per_meter = 10;
+    Bucheon.map_image_rotation = cx::cvtDeg2Rad(-1.3);
+    Bucheon.map_ref_point_pixel = cv::Point2d(2375, 1125);
+    */
+
+
     MapGUIProp guiprop = (site == "coex") ? COEX2 : (site == "bucheon") ? Bucheon : ETRI2;
     m_guiprop = guiprop;
     m_site = site;
