@@ -54,7 +54,8 @@ namespace dg
 
         double m_gps_pos_sigma = 20;
         double m_gps_theta_sigma = cx::cvtDeg2Rad(100);
-        double m_poi_pos_sigma = 5;
+        double m_poi_max_error = 10;        // meter
+        double m_poi_pos_sigma = 10;
         double m_vps_pos_sigma = 20;
         double m_odo_align_sigma = 10;
         double m_odo_align_theta_sigma = cx::cvtDeg2Rad(50);
@@ -151,6 +152,14 @@ namespace dg
 
         virtual bool applyPOI(const Point2& clue_xy, const Polar2& relative = Polar2(-1, CV_PI), Timestamp time = -1, double confidence = -1, bool use_relative_model = false)
         {
+            // check poi error boundary
+            double poi_theta = m_pose_mcl.theta + relative.ang;
+            Point2 poi_xy;
+            poi_xy.x = m_pose_mcl.x + relative.lin * cos(poi_theta);
+            poi_xy.y = m_pose_mcl.y + relative.lin * sin(poi_theta);
+            double err_d = norm(clue_xy - poi_xy);
+            if(err_d > m_poi_max_error) return false;
+
             if (!m_mcl_initialized)
                 return DGLocalizer::applyPOI(clue_xy, relative, time, confidence, use_relative_model);
 
@@ -165,7 +174,7 @@ namespace dg
             m_timestamp = time;
 
             Pose2 after = m_pose_mcl;
-            printf("\n[MCL-PPOI] before: x=%.1lf, y=%.1lf, after: x=%.1lf, y=%.1lf\n\n", before.x, before.y, after.x, after.y);
+            //printf("\n[MCL-PPOI] before: x=%.1lf, y=%.1lf, after: x=%.1lf, y=%.1lf\n\n", before.x, before.y, after.x, after.y);
 
             return applyPathLocalizerMCL(m_pose, time);
         }
@@ -1749,7 +1758,7 @@ namespace dg
             return itr;
         }
 
-        void evaluateParticlesPOI(const Point2& clue_xy, const Polar2& relative)
+        void evaluateParticlesPOI(const Point2& clue_xy, const Polar2& relative, bool debug_print = false)
         {
             int N = (int)m_particles.size();
 
@@ -1771,8 +1780,8 @@ namespace dg
                 poi_xy.y = pose.y + relative.lin * sin(poi_theta);
 
                 double err_d = norm(clue_xy - poi_xy);
-                double pdf = 0.0001 + exp(-err_d * err_d / (2 * m_poi_pos_sigma * m_poi_pos_sigma)) / (m_poi_pos_sigma * sqrt(2 * CV_PI));
-                printf("POI [%d] err_d = %lf, pdf = %lf\n", i, err_d, pdf);
+                double pdf = 0.00001 + exp(-err_d * err_d / (2 * m_poi_pos_sigma * m_poi_pos_sigma)) / (m_poi_pos_sigma * sqrt(2 * CV_PI));
+                if (debug_print) printf("POI [%d] err_d = %lf, pdf = %lf\n", i, err_d, pdf);
 
                 m_particles[i].weight *= pdf;
                 w_sum += m_particles[i].weight;
@@ -1784,7 +1793,7 @@ namespace dg
             }
         }
 
-        void evaluateParticlesVPS(const Point2& clue_xy, const Polar2& relative)
+        void evaluateParticlesVPS(const Point2& clue_xy, const Polar2& relative, bool debug_print = false)
         {
             int N = (int)m_particles.size();
 
@@ -1802,7 +1811,7 @@ namespace dg
 
                 double err_d = norm(clue_xy - pose);
                 double pdf = 0.0001 + exp(-err_d * err_d / (2 * m_vps_pos_sigma * m_vps_pos_sigma)) / (m_vps_pos_sigma * sqrt(2 * CV_PI));
-                //printf("VPS [%d] err_d = %lf, pdf = %lf\n", i, err_d, pdf);
+                if (debug_print) printf("VPS [%d] err_d = %lf, pdf = %lf\n", i, err_d, pdf);
 
                 m_particles[i].weight *= pdf;
                 w_sum += m_particles[i].weight;

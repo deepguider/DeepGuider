@@ -132,16 +132,22 @@ namespace dg
 			Pose2 pose = m_shared->getPose();
 			Map* map = m_shared->getMap();
 			if (map == nullptr || map->isEmpty()) return false;
-			std::vector<dg::POI*> pois_near = map->getNearPOIs(pose, m_poi_search_radius);
-			if(pois_near.empty()) return false;
-			//*
+			std::vector<dg::POI*> pois_near_all = map->getNearPOIs(pose, m_poi_search_radius);
+			if(pois_near_all.empty()) return false;
+			std::vector<dg::POI*> pois_near;
+			for(int i = 0; i<(int)pois_near_all.size(); i++)
+			{
+				if(pois_near_all[i]->floor < 100) continue;
+				pois_near.push_back(pois_near_all[i]);
+			}
+			/*
 	        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 			for(auto itr=pois_near.begin(); itr!=pois_near.end(); itr++)
 			{
 				string tmp = converter.to_bytes((*itr)->name);
 				printf("near pois = %s\n", tmp.c_str());
 			}
-			//*/
+			*/
 
 			// match OCR detections with nearby POIs: <ocr_index, POI*, levenshtein_distance, match_score>
 			m_match_ocrs = ocrs;
@@ -159,10 +165,10 @@ namespace dg
 				relatives.push_back(relative);
 				double conf = match_score * ocrs[ocr_idx].confidence;
 				poi_confidences.push_back(conf);
-				//*
+				/*
 				string tmp = converter.to_bytes(poi->name);
 				printf("matched pois = %s\n", tmp.c_str());
-				//*/
+				*/
 
             }
             return true;
