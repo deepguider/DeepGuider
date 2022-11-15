@@ -83,6 +83,13 @@ bool GuidanceManager::initiateNewGuidance(TopometricPose pose_topo, Point2F gps_
 
 		ExtendedPathElement dest_element(0, 0, 0, 0, 0, gps_dest.x, gps_dest.y);
 		m_extendedPath.push_back(dest_element);
+
+		//print path
+		for (int k = 0; k < m_extendedPath.size(); k++)
+		{
+			printf("Extendedpath[%d]-cur_node_id:%zd, next_node_id: %zd\n",k,m_extendedPath[k].cur_node_id, m_extendedPath[k].next_node_id);
+		}
+		
 			
 		return true;
 	}
@@ -430,7 +437,7 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	//finally arrived
 	double goal_dist = norm(m_extendedPath.back() - pose_metric);
 	if(m_robot_status == RobotStatus::ARRIVED_GOAL || 
-		(m_guide_idx >= m_extendedPath.size() - 2 && goal_dist < m_arrived_threshold))
+		(m_guide_idx >= m_extendedPath.size() && goal_dist < m_arrived_threshold))
 	{
 		m_gstatus = GuideStatus::GUIDE_ARRIVED;
 		m_arrival = true;
@@ -458,8 +465,8 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	//if robot has arrived at the node, update m_guide_idx 	
 	//printf("[GUIDANCE] gidx: %d, m_guide_idx: %d\n", gidx, m_guide_idx);
 	//printf("[GUIDANCE] updateWithRobot: %d, %zd\n", isNodeInPastGuides(m_curguidance.heading_node_id), m_curguidance.heading_node_id);
-	// printf("[GUIDANCE] m_robot_guide_idx: %d, isRobotArrived2Node: %d\n", m_robot_guide_idx, isRobotArrived2Node());
-	if (m_robot_status == RobotStatus::ARRIVED_NODE && isRobotArrived2Node())
+	// printf("[GUIDANCE] m_robot_guide_idx: %d, isRobotNearArrivalNode: %d\n", m_robot_guide_idx, isRobotNearArrivalNode());
+	if (m_robot_status == RobotStatus::ARRIVED_NODE && isRobotNearArrivalNode())
 	// if (m_robot_status == RobotStatus::ARRIVED_NODE)
 	//if((m_robot_status == RobotStatus::ARRIVED_NODE) && !isNodeInPastGuides(m_curguidance.heading_node_id))
 	{
@@ -653,12 +660,12 @@ bool GuidanceManager::setArrivalGuide()
 	return true;
 }
 
-bool GuidanceManager::isRobotArrived2Node()
+bool GuidanceManager::isRobotNearArrivalNode()
 {
 	double remain_dist = norm(m_robot_heading_node_pose - m_robot_pose);
-	if (remain_dist < 1.0)
+	if (remain_dist < m_uncertain_dist)
 	{
-		printf("isRobotArrived2Node-norm: %f\n", remain_dist);
+		printf("isRobotNearArrivalNode-norm: %f\n", remain_dist);
 		return true;
 	}
 	
