@@ -114,7 +114,7 @@ target_link_libraries(
   ${FS_LIBRARIES}
 )
 
-install(TARGETS dg_ocr dg_vps dg_encoder dg_odometry
+install(TARGETS dg_ocr dg_vps dg_encoder dg_odometry dg_robot
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
