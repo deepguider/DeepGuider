@@ -510,7 +510,7 @@ class vps:
         self.visible_region_radius = copy.copy(self.visible_region_radius_default)
         self.visible_region_radius_history = np.zeros(100)
 
-    def search_top_k(self, top_large_k=20):
+    def search_top_k(self, top_large_k=5):
         ## Step 1: Search top_large_k
         # confidence is L2 distance which is converted to conf by self.convert_distance_to_confidence()
         pred_confidence, pred_idx = self.faiss_index.search(self.qFeat, top_large_k) # [ NumQ x K ]
