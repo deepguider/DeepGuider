@@ -14,11 +14,11 @@ import mcl_config
 from DispMap import DispMap
 
 class MCL():
-    def __init__(self, cv_img, ltop, rbottom, incoord="utm",  n_particle=400,
-            motion_err_mu=0, motion_err_std=0.1, sensor_vps_err_mu=0, sensor_vps_err_std=0.1, pdf_std=10):
+    def __init__(self, cv_img, ltop, rbottom, incoord="utm", map_site="dg", n_particle=400,
+            motion_err_mu=0, motion_err_std=10, sensor_vps_err_mu=0, sensor_vps_err_std=7, sensor_vps_importance_pdf_std=5):
         '''
         observation_mode is one of the ["distance", "angle"]
-        pdf_std = 0.1 for angle metric, 10 for distance metric
+        sensor_vps_importance_pdf_std = 0.1 for angle metric, 10 for distance metric, smaller means more important sensor
         width, height are width and height of a map, respectively.
         n_particle is a number of particles
         n_landmark is a number of landmarks. If it is zero, it will be a random integer value between 1 and 10 every loop.
@@ -29,15 +29,18 @@ class MCL():
         self.incoord = incoord
 
         self.mMap = DispMap(cv_img, ltop, rbottom, incoord)
+        self.map_site = map_site
 
         self.WINDOW_NAME="Particle Filter"
     
-        self.x_range=np.array([0, self.width])
-        self.y_range=np.array([0, self.height])
+        self.x_range=np.array([ltop[0], rbottom[0]])
+        self.y_range=np.array([rbottom[1], ltop[1]])
+        #self.x_range=np.array([0, self.width])
+        #self.y_range=np.array([0, self.height])
         
         #MCL parameters
         self.n_particle = n_particle
-        self.pdf_std = pdf_std
+        self.sensor_vps_importance_pdf_std = sensor_vps_importance_pdf_std
         self.callback_count = 0
         self.sensor_std_err = 5  # 0.1 for cosine sim
         self.motion_err_mu = motion_err_mu
@@ -47,10 +50,26 @@ class MCL():
 
         # Color (B,G,R)
         self.color_landmark = (128,0,0)
-        self.color_particle = (0,255,0)
+        self.color_particle = (0,128,0)
+        self.color_robot_pred = (0,255,0)  # predicted robot position
         self.color_trajectory_odo = (0,0,255)
         self.color_trajectory_vps = (255,0,0)
         self.color_trajectory_mcl = (0,255,0)
+
+        # Crop image to save result into avi
+        
+    def crop(self, img):
+        return self.crop_img(img, x=self.avi_x0, y=self.avi_y0, w=self.avi_w, h=self.avi_h)
+
+    def crop_img(self, img, x=0, y=0, w=0, h=0):
+        if w == 0:
+            w = self.width
+        if h == 0:
+            h = self.height
+        x1 = min(x + w, self.width)
+        y1 = min(y + h, self.height)
+        crop = img[y:y1, x:x1]
+        return crop
 
     def initialize(self, disp=False):
         self.particles = self.create_uniform_particles()
@@ -58,6 +77,7 @@ class MCL():
 
         self.previous_x = -1
         self.previous_y = -1
+        self.previous_timestamp = -1 # timestamp
         
         # Create a black image, a window and bind the function to window
         self.disp = disp
@@ -74,10 +94,11 @@ class MCL():
         self.loop_count = 0
 
         self.draw_legend()
+        self.write_result_init()
         return 0
 
     #def run_step(self, odo_x, odo_y, heading, rPose_tx, rPose_ty, landmarks):
-    def run_step(self, odo_x, odo_y, odo_heading, rPose_tilt, landmarks):
+    def run_step(self, odo_x, odo_y, odo_heading, rPose_tilt, landmarks, timestamp):
         '''
         (odo_x, odo_y) is utm position for odometry-based motion model
         heading is the robot heading theta from x-axis of the map.
@@ -89,6 +110,7 @@ class MCL():
         self.odo_x = odo_x
         self.odo_y = odo_y
         self.odo_heading = odo_heading
+        self.timestamp = timestamp
 
         x, y = odo_x, odo_y
         center=np.array([[x,y]])
@@ -98,6 +120,7 @@ class MCL():
         NL = len(landmarks)
 
         if self.previous_x > 0:
+            dt = self.timestamp - self.previous_timestamp
             distance=np.linalg.norm(np.array([[self.previous_x, self.previous_y]])-np.array([[x, y]]) ,axis=1)
             if distance > 0.1 : # 0.1 meters
                 heading=np.arctan2(np.array([y-self.previous_y]), np.array([self.previous_x-x ]))
@@ -117,17 +140,26 @@ class MCL():
 
                 if len(zs) > 0:
                     ## Get particle sample's observation
-                    #self.weights = self.update(self.particles, self.odo_heading, self.weights, z=zs, R=self.pdf_std, landmarks=self.landmarks)  # 50, The smaller the R, the better the particles are gathered.
-                    self.weights = self.update(self.particles, self.weights, z=zs, R=self.pdf_std, landmarks=landmarks)  # 50, The smaller the R, the better the particles are gathered.
+                    #self.weights = self.update(self.particles, self.odo_heading, self.weights, z=zs, R=self.sensor_vps_importance_pdf_std, landmarks=self.landmarks)  # 50, The smaller the R, the better the particles are gathered.
+                    self.weights = self.update(self.particles, self.weights, z=zs, R=self.sensor_vps_importance_pdf_std, landmarks=landmarks)  # 50, The smaller the R, the better the particles are gathered.
 
                     ## Re-sampling
                     indexes = self.systematic_resample(self.weights)
                     self.particles, self.weights = self.resample_from_index(self.particles, self.weights, indexes)
 
+                    ## Get mean position by averaging particles position
+                    self.mcl_pose = self.averaging_particle_position(self.particles, self.weights)
+
                     self.draw_result()
 
         self.previous_x = x
         self.previous_y = y
+        self.previous_timestamp = self.timestamp
+
+    def averaging_particle_position(self, particles, weights):
+        w = np.tile(weights, (2,1)).T  # w : (400, 2), particles : (400,2)
+        mcl_pose = np.sum(w*particles, axis=0)  # [x, y] in utm coord.
+        return mcl_pose
         
     def create_uniform_particles(self):
         self.particles = np.empty((self.n_particle, 2))
@@ -173,12 +205,12 @@ class MCL():
         return valid
 
     def update(self, particles, weights, z, R, landmarks):
-        weights.fill(1.)
+        #weights.fill(1.)
         for i, landmark in enumerate(landmarks):
             if self.check_valid_landmark(landmark) == True:
                 distance=np.power((particles[:,0] - landmark[0])**2 +(particles[:,1] - landmark[1])**2,0.5)
                 #weights *= scipy.stats.norm(distance, R).pdf(z[i])  # Gaussian distribution : Norm(dist, sigma^2).pdf(input)
-                weights *= scipy.stats.norm.pdf(x=z[i], loc=distance, scale=R)  # probability density function for Gaussian distribution with loc means ans scale sigma value
+                weights *= scipy.stats.norm.pdf(x=z[i], loc=distance, scale=R)  # probability density function for Gaussian distribution with loc means and scale is sigma value
         weights += 1.e-300 # avoid round-off to zero
         weights /= sum(weights)
         return weights
@@ -229,44 +261,119 @@ class MCL():
 
         ## Draw landmarks (vps)
         if self.landmarks is not None:
-            self.mMap.draw_points_on_map(xys=self.landmarks, incoord=self.incoord, radius=3, color=self.color_landmark, thickness=1)  # BGR
+            self.mMap.draw_points_on_map(xys=self.landmarks, incoord=self.incoord, radius=3, color=self.color_landmark, thickness=-1)  # BGR
 
         ## Draw particles
-        self.mMap.draw_points_on_map(xys=self.particles, incoord="img", radius=3, color=self.color_particle, thickness=1)  # BGR
+        self.mMap.draw_points_on_map(xys=self.particles, incoord=self.incoord, radius=1, color=self.color_particle, thickness=-1)  # BGR
 
         ## Draw trajectory
         self.draw_trajectory()
 
-        #self.drawCross(self.img, self.robot_pos_gt, r=255, g=0, b=0)
+        ## Draw predicted robot position
+        self.mMap.draw_point_on_map(xy=self.mcl_pose, incoord=self.incoord, radius=10, color=self.color_robot_pred, thickness=3)  # BGR
 
+        ## Show result image
         cv2.imshow(self.WINDOW_NAME, self.get_img())
+        self.fp_avi.write(self.crop(self.get_img()))
         if cv2.waitKey(self.DELAY_MSEC) & 0xFF == 27: 
+            self.write_result_close()
             cv2.destroyAllWindows()
 
-    def update_trajectory(self, x, y, trajectory, incoord):
+    def update_trajectory_img_coord(self, x, y, trajectory, incoord):  # image coordinate trajectory
         if "img" in incoord:
             img_x, img_y = x, y
         else:
             img_x, img_y = self.mMap.get_img_coord(xy=(x, y), incoord=incoord)
         trajectory = np.vstack((trajectory, np.array([img_x, img_y])))
-        return trajectory
+        return trajectory, img_x, img_y
+
+    def update_trajectory(self, x, y, trajectory, incoord):  # utm coordinate trajectory
+        if "img" in incoord:
+            utm_x, utm_y = self.mMap.get_map_coord(xy=(x, y), outcoord="utm")
+        else:
+            utm_x, utm_y = x, y
+        trajectory = np.vstack((trajectory, np.array([utm_x, utm_y])))
+        return trajectory, utm_x, utm_y
+
+    def write_result_init(self):
+        ## Write trajectory into csv
+        timestr = time.strftime("%Y%m%d_%H%M%S")
+        prefix = "vps_mcl_{}_{}".format(self.map_site, timestr)
+        fname_odo = "{}_trajectory_odo.csv".format(prefix)
+        fname_vps = "{}_trajectory_vps.csv".format(prefix)
+        fname_mcl = "{}_trajectory_mcl.csv".format(prefix)
+        self.fp_odo = open(fname_odo, "w", newline="")
+        self.fp_vps = open(fname_vps, "w", newline="")
+        self.fp_mcl = open(fname_mcl, "w", newline="")
+        first_line = "Number,img_x,img_y,utm_x,utm_y\n"
+        self.fp_odo.write(first_line)
+        self.fp_vps.write(first_line)
+        self.fp_mcl.write(first_line)
+        self.write_idx = 0
+
+        ## Write result map image into avi
+        fname_avi = "{}.avi".format(prefix)
+        fps = 15
+
+        #self.avi_w = 1280
+        #self.avi_h = 720
+        self.avi_w = 640
+        self.avi_h = 480
+
+        if "bucheon" in self.map_site.lower():
+            self.avi_x0 = 200
+            self.avi_y0 = 50
+            self.avi_x1 = self.avi_x0 + self.avi_w
+            self.avi_y1 = self.avi_y0 + self.avi_h
+
+        if "coex" in self.map_site.lower():
+            self.avi_x0 = 500
+            self.avi_y0 = 300
+            self.avi_x1 = self.avi_x0 + self.avi_w
+            self.avi_y1 = self.avi_y0 + self.avi_h
+
+        self.fp_avi = cv2.VideoWriter(fname_avi, 0x7634706d, fps, (self.avi_w, self.avi_h))  # write as mp4
+
+        if not self.fp_avi.isOpened():
+            print('{} File open failed!'.format(fname_avi))
+
+    def write_result_close(self):
+        self.fp_odo.close()
+        self.fp_vps.close()
+        self.fp_mcl.close()
+        self.fp_avi.close()
 
     def draw_trajectory(self):
         img = self.get_img()
 
-        self.trajectory_odo = self.update_trajectory(self.odo_x, self.odo_y, self.trajectory_odo, "utm")
+        ## Draw and Write odometry position trajectory
+        self.trajectory_odo, self.odo_img_x, self.odo_img_y = self.update_trajectory_img_coord(self.odo_x, self.odo_y, self.trajectory_odo, "utm")
+        self.drawLines(img, self.trajectory_odo, self.color_trajectory_odo)
+        line_odo = "{0:06d},{1:},{2:},{3:},{4:}\n".format(self.write_idx, self.odo_img_x, self.odo_img_y, self.odo_x, self.odo_y)
 
+        ## Draw and Write landmarks (vps results) position trajectory
         if self.landmarks is not None:
             landmark = self.landmarks[0]
             if self.check_valid_landmark(landmark) == True:
-                self.trajectory_vps = self.update_trajectory(landmark[0], landmark[1], self.trajectory_vps, "utm")
+                self.trajectory_vps, self.vps_img_x, self.vps_img_y = self.update_trajectory_img_coord(landmark[0], landmark[1], self.trajectory_vps, "utm")
+            else:
+                self.vps_img_x, self.vps_img_y = -1, -1
+        self.drawLines(img, self.trajectory_vps, self.color_trajectory_vps)  # Do not display vps results
+        line_vps = "{0:06d},{1:},{2:},{3:},{4:}\n".format(self.write_idx, self.vps_img_x, self.vps_img_y, self.landmarks[0][0], self.landmarks[0][1] )
 
-        self.drawLines(img, self.trajectory_odo, self.color_trajectory_odo)
-        self.drawLines(img, self.trajectory_vps, self.color_trajectory_vps)
-
-        if False:
-            self.trajectory_mcl = self.update_trajectory(self.odo_utm_x, self.odo_utm_y, self.trajectory_mcl, "utm")
+        ## Draw and Write mcl position trajectory
+        self.trajectory_mcl, self.mcl_img_x, self.mcl_img_y = self.update_trajectory_img_coord(self.mcl_pose[0], self.mcl_pose[1], self.trajectory_mcl, "utm")
+        if True: # display line for mcl result
             self.drawLines(img, self.trajectory_mcl, self.color_trajectory_mcl)
+        else:  # display points for mcl result
+            self.mMap.draw_points_on_map(xys=self.trajectory_mcl, incoord="img", radius=1, color=self.color_trajectory_mcl, thickness=-1)  # BGR
+        line_mcl = "{0:06d},{1:},{2:},{3:},{4:}\n".format(self.write_idx, self.mcl_img_x, self.mcl_img_y, self.mcl_pose[0], self.mcl_pose[1])
+
+        self.fp_odo.write(line_odo)
+        self.fp_vps.write(line_vps)
+        self.fp_mcl.write(line_mcl)
+        self.write_idx += 1
+        #self.drawCross(img, self.rebot_pos_pred, r=255, g=0, b=0)
         self.set_img(img)
 
     def draw_legend(self):
@@ -312,7 +419,7 @@ class MCL():
         ## Vector 1 : Make a vecter 1 on a line passing through the robot position with the slope of the heading angle from the X-axis
         vec1 = self.get_vector1()
         ## Vector 2
-        vec2 = self.landmarks - self.robot_pos_gt
+        vec2 = self.landmarks - self.rebot_pos_pred
         zs = self.cosine_sim(vec1, vec2)
         return zs
 
@@ -346,13 +453,13 @@ class MCL():
     def drawLines(self, img, points, color):  # color=(b,g,r)
         cv2.polylines(img, [np.int32(points)], isClosed=False, color=color)
 
-    def drawCross(self, img, robot_pos_gt, r, g, b):
+    def drawCross(self, img, rebot_pos_pred, r, g, b):
         d = 5
         t = 2
         LINE_AA = cv2.LINE_AA if cv2.__version__[0] in ['3', '4'] else cv2.CV_AA
         color = (r, g, b)
-        ctrx = robot_pos_gt[0,0]
-        ctry = robot_pos_gt[0,1]
+        ctrx = rebot_pos_pred[0]
+        ctry = rebot_pos_pred[1]
         cv2.line(img, (ctrx - d, ctry - d), (ctrx + d, ctry + d), color, t, LINE_AA)
         cv2.line(img, (ctrx + d, ctry - d), (ctrx - d, ctry + d), color, t, LINE_AA)
 
@@ -360,7 +467,7 @@ class MCL():
 if __name__ == "__main__":
     img_path = "map.png"
     cv_img = cv2.imread(img_path)
-    mMCL = MCL(cv_img=cv_img, n_particle=400, pdf_std=0.1)  # angel metric
+    mMCL = MCL(cv_img=cv_img, n_particle=400, sensor_vps_importance_pdf_std=0.1)  # angel metric
     mMCL.initialize(disp=True)
     #mMCL.run_step(odo_x, odo_y, heading, self.tilt, landmarks)
 

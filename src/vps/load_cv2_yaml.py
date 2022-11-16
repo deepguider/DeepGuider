@@ -124,7 +124,7 @@ class load_cv2_yaml:
         val = self.get_list_at(index, lists, verbose)
         return val
 
-    def get_map_info(self, verbose=False):
+    def get_map_info(self, resize_w=1280, verbose=False):
         ## Parsing map information from dg_ros.yml
         map_img_path = self.read("map_image_path", verbose)
         map_csv_path = self.read("map_data_path", verbose)
@@ -137,7 +137,7 @@ class load_cv2_yaml:
         ## Resize map image to view in monitor
         map_img = cv2.imread(map_img_path)
         img_h, img_w, _ = map_img.shape
-        resize_w = 1000  # map_view_size[0]
+        #resize_w = 1000  # map_view_size[0]
         map_img = imutils.resize(map_img, width=resize_w)
         resize_h, resize_w, _ = map_img.shape
         resize_ratio = resize_w/img_w
@@ -145,7 +145,6 @@ class load_cv2_yaml:
         py = map_ref_point_pixel[1]*resize_ratio
         img_h, img_w = resize_h, resize_w
         map_pixel_per_meter = map_pixel_per_meter*resize_ratio
-
 
         ## Get l-top, r-bottom points
         ux, uy, utm_no, utm_char = utm.from_latlon(*map_ref_point_latlon)
