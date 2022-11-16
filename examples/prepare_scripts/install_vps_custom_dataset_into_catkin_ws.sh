@@ -71,6 +71,7 @@ function link_src_to_catkin(){
     	fi
     else
     	echo ">>>No target directory exists : ${DB_DST}"
+		mkdir -p ${DB_DST};echo "I made ${DB_DST}, You can Re-run $0"
 		echo "Usage :"
 		echo "       $0  # means default : $0 catkin_ws"
 		echo "       $0 catkin_ws"
