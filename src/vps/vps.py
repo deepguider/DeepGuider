@@ -176,6 +176,7 @@ class vps:
         self.dbFeat_fname = opt.dbFeat_fname
         self.dg_ros_yml = load_cv2_yaml("dg_ros.yml")
         self.parsing_dg_ros_yml()
+        self.mcl_initialized = False
 
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
@@ -509,7 +510,7 @@ class vps:
         self.visible_region_radius = copy.copy(self.visible_region_radius_default)
         self.visible_region_radius_history = np.zeros(100)
 
-    def search_top_k(self, top_large_k=20):
+    def search_top_k(self, top_large_k=5):
         ## Step 1: Search top_large_k
         # confidence is L2 distance which is converted to conf by self.convert_distance_to_confidence()
         pred_confidence, pred_idx = self.faiss_index.search(self.qFeat, top_large_k) # [ NumQ x K ]
@@ -696,8 +697,11 @@ class vps:
         self.map_ref_point_utm_x, self.map_ref_point_utm_y, self.utm_no, self.utm_char = utm.from_latlon(*self.map_ref_point_latlon)
         #gps_accuracy = self.dg_ros_yml.read("vps_gps_accuracy")
 
-        #ipaddr = ipaddr_port.split(":")[0]
-        #port   = ipaddr_port.split(":")[1]
+        enable_mcl = self.dg_ros_yml.read("vps_enable_mcl")
+        if enable_mcl > 0:
+            self.enable_mcl = True
+        else:
+            self.enable_mcl = False
 
         if ipaddr == USE_LOCAL_DB:
             self.use_local_db = True
@@ -846,20 +850,18 @@ class vps:
         return self.tilt
 
     def mcl_init(self):
-        vps_enable_mcl = self.dg_ros_yml.read("vps_enable_mcl")
-        if vps_enable_mcl > 0:
-            self.vps_enable_mcl = True
-        else:
-            self.vps_enable_mcl = False
-        if self.vps_enable_mcl == True:
+        if (self.enable_mcl == True) and (self.mcl_initialized == False):
             map_img, utm_ltop, utm_rbottom = self.dg_ros_yml.get_map_info()
-            self.mMCL = vps_mcl.MCL(map_img, utm_ltop, utm_rbottom, "utm", n_particle=400, motion_err_mu=0, motion_err_std=5, sensor_vps_err_mu=0, sensor_vps_err_std=10, pdf_std=10)
+            map_site = self.dg_ros_yml.get_site()
+            self.mMCL = vps_mcl.MCL(map_img, utm_ltop, utm_rbottom, "utm", map_site, n_particle=400, motion_err_mu=0, motion_err_std=10,
+                    sensor_vps_err_mu=0, sensor_vps_err_std=10, sensor_vps_importance_pdf_std=5)
             self.mMCL.initialize(disp=True) 
+            self.mcl_initialized = True
 
     def mcl_run(self):
-        if self.vps_enable_mcl == True:
+        if (self.enable_mcl == True) and (self.mcl_initialized == True):
             landmarks = self.mcl_get_landmark()
-            self.mMCL.run_step(self.odo_utm_x, self.odo_utm_y, self.odo_heading, self.tilt, landmarks)
+            self.mMCL.run_step(self.odo_utm_x, self.odo_utm_y, self.odo_heading, self.tilt, landmarks, self.timestamp)
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []
