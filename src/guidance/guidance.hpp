@@ -180,6 +180,13 @@ namespace dg
         bool m_use_online_map = 0;
         cv::Mutex m_robot_mutex;
         dg::Pose2 m_robot_pose;
+        dg::Pose2 m_dg_pose;
+        dg::Pose2 m_prev_dg_pose;
+        dg::Pose2 m_temp_prev_dg_pose;
+        dg::Pose2 m_temp2_prev_dg_pose;
+        dg::Pose2 m_prev_dx_pose;
+        dg::Pose2 m_temp_prev_dx_pose;
+        dg::Pose2 m_temp2_prev_dx_pose;
         cv::Point2d m_robot_on_image;
         cv::Point2d m_subgoal_pose;
         cv::Point2d m_robot_heading_node_pose;
@@ -192,20 +199,15 @@ namespace dg
         bool updateWithRobot(TopometricPose pose, Pose2 pose_metric);
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
         Guidance getGuidance() const { return m_curguidance; };
-        cv::Point2d getGuidancePoint();
-        RobotStatus getRobotStatus(){ return m_robot_status; };
+        RobotStatus getRobotStatus(){ return m_robot_status; }; 
+        bool isExpendedPathGenerated(){
+            if (m_extendedPath.size() > 0) return true;
+            else return false;}
+        ExtendedPathElement getCurExtendedPath() { return m_extendedPath[m_guide_idx]; };
+
         void setRobotStatus(RobotStatus status) 
         { 
-                /*
-            if ((m_robot_status == RobotStatus::RUN_AUTO || m_robot_status == RobotStatus::RUN_MANUAL)
-            && status == RobotStatus::ARIVED_NODE)  
-                m_robot_change_node = true;
-            else if((status == RobotStatus::RUN_AUTO || status == RobotStatus::RUN_MANUAL)
-            && m_robot_status == RobotStatus::ARRIVED_NODE)
-                m_robot_change_node = false;
-            else
-                m_robot_change_node = false;
-             */ m_robot_status = status; 
+            m_robot_status = status; 
         };
         void setRobotUsage(cv::String name) 
         { 
@@ -234,11 +236,7 @@ namespace dg
             if(flag) m_use_online_map = true;
             else m_use_online_map = false;
         };
-        cv::Point2d cvtWorld2Image(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset);
-        cv::Point2d cvtWorld2ImageRad(cv::Point2d val, double rad, cv::Point2d px_per_val, cv::Point2d offset);
-        cv::Point2d cvtImage2World(cv::Point2d px, double deg, cv::Point2d px_per_val, cv::Point2d offset);
-        cv::Point2d cvtRobot2World(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset);
-
+        int getDegree(Point2 p1, Point2 p2, Point2 p3);
 
     protected:
         SharedInterface* m_shared = nullptr;
@@ -278,9 +276,9 @@ namespace dg
         std::string m_modes[4] = { "MOVE_NORMAL", "MOVE_CAUTION", "MOVE_CAUTION_CHILDREN",
             "MOVE_CAUTION_CAR" };
 
-        int getDegree(Point2 p1, Point2 p2, Point2 p3);
         int getGuideIdxFromPose(TopometricPose pose);
-        ExtendedPathElement getCurExtendedPath(int idx);
+        ExtendedPathElement getExtendedPath(int idx);
+        ExtendedPathElement getLastExtendedPath(){ return m_extendedPath.back(); };
 
         std::string getStringAction(Action action);
         std::string getStringFwd(Action act, int ntype, ID nid);
@@ -316,6 +314,7 @@ namespace dg
         bool setHeadingPoint();
 
         bool isRobotNearArrivalNode();
+        bool isDGNearArrivalNode();
         bool isNodeInPath(ID nodeid);
         bool isEdgeInPath(ID edgeid);
         bool isNodeInPastGuides(ID nodeid);
@@ -338,47 +337,7 @@ namespace dg
         double m_prevconf = 1.0;
         double m_lostvalue = 0.0;
         void makeLostValue(double prevconf, double curconf);
-
-
-        /** deprected
-        std::string getStringGuidance(Guidance guidance, MovingStatus status);
-        std::string m_movestates[4] = { "ON_NODE","ON_EDGE", "APPROACHING_NODE", "STOP_WAIT" };
-        bool m_juctionguide = true;
-        TopometricPose  m_curpose;
-        MovingStatus  m_mvstatus = MovingStatus::ON_EDGE;
-        LatLon m_latlon;
-        int m_cur_head_degree = 0;
-        time_t oop_start = 0, oop_end = 0;
-        int m_finalTurn = 0;
-        int m_finalEdgeId = 0;
-        double m_confidence = 0.0;
-        // Moving status based on localization info
-        enum class MovingStatus
-        {
-            ON_NODE = 0,		//The robot has arrived at the node
-            ON_EDGE,			//The robot is 0~90% of the edge distance
-            APPROACHING_NODE,	//The robot is 90~99% of the edge distance
-            STOP_WAIT,			//not moving
-
-            TYPE_NUM			//The number of MovingStatus
-        };
-        MovingStatus getMoveStatus() { return m_mvstatus; };
-        LatLon getPoseGPS() { return m_latlon; };
-        //bool applyPoseGPS(LatLon gps);
-        Guidance getLastGuidance() { return m_past_guides.back(); };
-        bool setNormalGuide();
-        bool applyPose(TopometricPose pose);
-        bool setGuidanceWithGuideStatus();
-        bool setGuideStatus(TopometricPose pose, double conf);void setRobotStatus(RobotStatus status) { m_robot_status = status; };
-
-
-        //bool setOOPGuide();
-        //	bool setTunBackGuide();
-
-        //bool regeneratePath(double start_lat, double start_lon, double dest_lat, double dest_lon);
-        */
     };
-
 
 }
 

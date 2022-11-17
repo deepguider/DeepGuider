@@ -87,6 +87,8 @@ bool GuidanceManager::initiateNewGuidance(TopometricPose pose_topo, Point2F gps_
 		//print path
 		for (int k = 0; k < m_extendedPath.size(); k++)
 		{
+            Point2 node_metric = Point2(m_extendedPath[k]);
+			printf("[%d] node_metric.x: %f, node_metric.y: %f\n",k, node_metric.x, node_metric.y);
 			printf("Extendedpath[%d]-cur_node_id:%zd, next_node_id: %zd\n",k,m_extendedPath[k].cur_node_id, m_extendedPath[k].next_node_id);
 		}
 		
@@ -327,7 +329,7 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	}
 
 	//check remain distance
-	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
+	ExtendedPathElement curEP = getCurExtendedPath();
 	double passsed_dist = pose.dist;
 	double junction_dist = curEP.remain_distance_to_next_junction;
 	double remain_dist = junction_dist - passsed_dist; // + curedge->length;
@@ -474,7 +476,12 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 		m_past_guides.push_back(m_curguidance); //save past guidances
 		m_last_announce_dist = -1;	//reset m_last_announce_dist
 		m_guide_idx = m_robot_guide_idx + 1 ;
+		m_prev_dg_pose = m_temp_prev_dg_pose;
+		m_temp2_prev_dg_pose = pose_metric;
+		m_prev_dx_pose = m_temp_prev_dx_pose;
+		m_temp2_prev_dx_pose = m_robot_pose;
 		printf("[GUIDANCE] updateWithRobot::ARRIVED_NODE, gidx: %d, m_guide_idx: %d, m_robot_guide_idx:%d\n", gidx, m_guide_idx, m_robot_guide_idx);
+		printf("[GUIDANCE] updateWithRobot::ARRIVED_NODE, heading_node: %zd\n", m_extendedPath[m_guide_idx].cur_node_id);
 	}
 	
 	if (gidx > m_guide_idx) //dg_pose is ahead of robot
@@ -489,16 +496,23 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	{
 		printf("[GUIDANCE] RobotStatus::RUN_\n");
 		m_robot_guide_idx = m_guide_idx;
+		m_temp_prev_dg_pose = m_temp2_prev_dg_pose;
+		m_temp_prev_dx_pose = m_temp2_prev_dx_pose;
 	}
 	
 
 	//check remain distance
-	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
+	ExtendedPathElement curEP = getCurExtendedPath();
 	double passsed_dist = pose.dist;
 	double junction_dist = curEP.remain_distance_to_next_junction;
 	double remain_dist = junction_dist - passsed_dist; // + curedge->length;
 	m_remain_distance = remain_dist;
 
+	//final goal
+	if (curEP.next_node_id = 0 && curEP.x != 0)
+	{
+		printf("[GUIDANCE] Approaching Final Goal!\n");
+	}
 	//check finishing condition
 	// if (m_guide_idx >= m_extendedPath.size() - 2 && goal_dist < m_start_exploration_dist)
 	// {
@@ -512,78 +526,12 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	// }
 
 	m_gstatus = GuideStatus::GUIDE_NORMAL;
-
-	//check announce
-	int announce_dist = ((int) (remain_dist - 1 ) / m_guide_interval) * m_guide_interval;
-	bool announce = false;
-	//on junction
-	if (remain_dist < m_arrived_threshold)
-	{
-		m_last_announce_dist = -1;	//reset m_last_announce_dist
-		announce = false;
-		setSimpleGuide();
-	}
-	//near junction
-	else if (remain_dist <= m_uncertain_dist)// || (curNode->type == Node::NODE_JUNCTION && passsed_dist < m_uncertain_dist))
-	{
-		//if the edge is shorter than 2*m_uncertain_dist
-		if (junction_dist <= 2 * m_uncertain_dist)
-		{
-			//	printf("m_last_announce_dist: %d, %d, %d\n", m_last_announce_dist, announce_dist, announce);
-			if ((m_last_announce_dist != announce_dist) && !announce)
-			{
-				announce = true;
-				m_last_announce_dist = announce_dist;
-				setSimpleGuide();
-			}
-			else
-			{
-				announce = false;
-				setEmptyGuide();
-			}
-		}
-		else
-		{
-			announce = false;
-			//setEmptyGuide();
-			setSimpleGuide();
-		}
-	}
-	//normal case
-	else
-	{
-		if (announce_dist != m_last_announce_dist)
-		{
-			announce = true;
-			setSimpleGuide();
-			m_last_announce_dist = announce_dist;
-		}
-		else
-			announce = false;
-	}
-	m_curguidance.announce = announce;
+	setSimpleGuide();
+	m_curguidance.announce = false;
 	m_curguidance.distance_to_remain = m_remain_distance;
 
 	return true;
 }
-        
-// cv::Point2d GuidanceManager::getGuidancePoint()
-// {
-// 	m_robot_mutex.lock();
-// 	cv::Point2d rp = m_robot_pose;
-// 	cv::Point2d gp = m_goal_pose;
-// 	// cv::Mat robotmap = m_robotmap_image;
-// 	cv::Mat img = cv::imread("occumap.png", 0);	//이미지를 grayscale로 불러옴
-// 	m_robot_mutex.unlock();
-
-// 	cv::Mat img_threshold, img_erode;
-// 	cv::threshold(img, img_threshold, 180, 255, cv::THRESH_BINARY);
-// 	cv::erode(img_threshold, img_erode, cv::Mat::ones(cv::Size(10,10),CV_8UC1), cv::Point(-1,-1),2);
-// 	cv::circle(img_erode,rp,5,(255,0,0));
-// 	cv::circle(img_erode,gp,5,(0,255,0));
-// 	imwrite("img_erode.png",img_erode);
-
-// }
 
 bool GuidanceManager::setEmptyGuide()
 {
@@ -596,11 +544,12 @@ bool GuidanceManager::setSimpleGuide()
 	Guidance guide;
 	guide.guide_status = m_gstatus;
 
-	ExtendedPathElement curEP = getCurExtendedPath(m_guide_idx);
-	ExtendedPathElement nextJuncEP = getCurExtendedPath(curEP.next_junction_idx);
+	ExtendedPathElement curEP = getCurExtendedPath();
+	ExtendedPathElement nextJuncEP = getExtendedPath(curEP.next_junction_idx);
 			
 	if (m_remain_distance > m_uncertain_dist )
 	{
+		
 		//first action
 		guide.actions.push_back(setActionGo(curEP.next_node_id, curEP.cur_edge_id));
 	
@@ -672,7 +621,20 @@ bool GuidanceManager::isRobotNearArrivalNode()
 	return false;
 }
 
-GuidanceManager::ExtendedPathElement GuidanceManager::getCurExtendedPath(int idx)
+bool GuidanceManager::isDGNearArrivalNode()
+{
+	double remain_dist = norm(m_robot_heading_node_pose - m_dg_pose);
+	if (remain_dist < m_uncertain_dist)
+	{
+		printf("isRobotNearArrivalNode-norm: %f\n", remain_dist);
+		return true;
+	}
+	
+	return false;
+}
+
+
+GuidanceManager::ExtendedPathElement GuidanceManager::getExtendedPath(int idx)
 {
 	if (idx < 0 || idx >= (int)m_extendedPath.size())
 	{
@@ -681,6 +643,7 @@ GuidanceManager::ExtendedPathElement GuidanceManager::getCurExtendedPath(int idx
 	}
 	return m_extendedPath[idx];
 }
+
 
 /**
 * Get relative angle of p2p3 w.r.t. the direction of p1p2 (Unit: [deg])
@@ -743,15 +706,34 @@ GuidanceManager::Action GuidanceManager::setActionGo(ID nid_next, ID eid_cur, in
 {
 	Node* node = getMap()->getNode(nid_next);
 	Edge* edge = getMap()->getEdge(eid_cur);
+	Motion cmd;
+	MotionMode mode;
+	Action result;
 	if (node == nullptr || edge == nullptr)
 	{
-		printf("[Error] GuidanceManager::setActionGo - No node or edge\n");
-		return GuidanceManager::Action();
+        if (isExpendedPathGenerated())
+        {
+            Point2 node_metric = Point2(getCurExtendedPath());
+            //last guide
+            if (nid_next == 0 && node_metric.x != 0)
+            {
+				cmd = GuidanceManager::Motion::GO_FORWARD;
+				result = Action(Motion::GO_FORWARD, Node::NODE_BASIC, Edge::EDGE_SIDEWALK, 0, MotionMode::MOVE_NORMAL);
+			}
+			else
+			{
+				printf("[Error] GuidanceManager::setActionGo - No node or edge\n");
+				return GuidanceManager::Action();
+			}
+		}		
 	}
-	Motion cmd = getMotion(node->type, edge->type, degree);
-	MotionMode mode = getMode(edge->type);
-
-	Action result(cmd, node->type, edge->type, degree, mode);
+	else
+	{
+		cmd = getMotion(node->type, edge->type, degree);
+		mode = getMode(edge->type);
+		result = Action(cmd, node->type, edge->type, degree, mode);
+	}
+	
 	return result;
 }
 
@@ -995,51 +977,51 @@ int GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
 }
 
 
-cv::Point2d GuidanceManager::cvtWorld2Image(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset)
-{	
-	cv::Point2d px;
-	double cost = cos(-cx::cvtDeg2Rad(deg));
-	double sint = sin(-cx::cvtDeg2Rad(deg));
-	px.x = (val.x * px_per_val.x) * cost - (-val.y * px_per_val.y) * sint + offset.x;
-	px.y = (val.x * px_per_val.x) * sint + (-val.y * px_per_val.y) * cost + offset.y;
+// cv::Point2d GuidanceManager::cvtWorld2Image(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset)
+// {	
+// 	cv::Point2d px;
+// 	double cost = cos(-cx::cvtDeg2Rad(deg));
+// 	double sint = sin(-cx::cvtDeg2Rad(deg));
+// 	px.x = (val.x * px_per_val.x) * cost - (-val.y * px_per_val.y) * sint + offset.x;
+// 	px.y = (val.x * px_per_val.x) * sint + (-val.y * px_per_val.y) * cost + offset.y;
 
-	return px;
-}
+// 	return px;
+// }
 
-cv::Point2d GuidanceManager::cvtWorld2ImageRad(cv::Point2d val, double rad, cv::Point2d px_per_val, cv::Point2d offset)
-{	
-	cv::Point2d px;
-	double cost = cos(-rad);
-	double sint = sin(-rad);
-	px.x = (val.x * px_per_val.x) * cost - (-val.y * px_per_val.y) * sint + offset.x;
-	px.y = (val.x * px_per_val.x) * sint + (-val.y * px_per_val.y) * cost + offset.y;
+// cv::Point2d GuidanceManager::cvtWorld2ImageRad(cv::Point2d val, double rad, cv::Point2d px_per_val, cv::Point2d offset)
+// {	
+// 	cv::Point2d px;
+// 	double cost = cos(-rad);
+// 	double sint = sin(-rad);
+// 	px.x = (val.x * px_per_val.x) * cost - (-val.y * px_per_val.y) * sint + offset.x;
+// 	px.y = (val.x * px_per_val.x) * sint + (-val.y * px_per_val.y) * cost + offset.y;
 
-	return px;
-}
+// 	return px;
+// }
 
-cv::Point2d GuidanceManager::cvtImage2World(cv::Point2d px, double deg, cv::Point2d px_per_val, cv::Point2d offset)
-{
-	CV_DbgAssert(px_per_val.x > 0 && px_per_val.y > 0);
+// cv::Point2d GuidanceManager::cvtImage2World(cv::Point2d px, double deg, cv::Point2d px_per_val, cv::Point2d offset)
+// {
+// 	CV_DbgAssert(px_per_val.x > 0 && px_per_val.y > 0);
 
-	cv::Point2d val;
-	double cost = cos(-cx::cvtDeg2Rad(deg));
-	double sint = sin(-cx::cvtDeg2Rad(deg));
-	val.x = ((px.x - px_per_val.x) * cost + (px.y - px_per_val.y) * sint) / px_per_val.x  + offset.x;
-	val.y = -(-(px.x - px_per_val.x) * sint + (px.y - px_per_val.y) * cost) / px_per_val.y + offset.y;
+// 	cv::Point2d val;
+// 	double cost = cos(-cx::cvtDeg2Rad(deg));
+// 	double sint = sin(-cx::cvtDeg2Rad(deg));
+// 	val.x = ((px.x - px_per_val.x) * cost + (px.y - px_per_val.y) * sint) / px_per_val.x  + offset.x;
+// 	val.y = -(-(px.x - px_per_val.x) * sint + (px.y - px_per_val.y) * cost) / px_per_val.y + offset.y;
 
-	return val;
-}
+// 	return val;
+// }
 
-cv::Point2d GuidanceManager::cvtRobot2World(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset)
-{	
-	cv::Point2d px;
-	double cost = cos(-cx::cvtDeg2Rad(deg));
-	double sint = sin(-cx::cvtDeg2Rad(deg));
-	px.x = (val.x * px_per_val.x) * cost - (val.y * px_per_val.y) * sint + offset.x;
-	px.y = (val.x * px_per_val.x) * sint + (val.y * px_per_val.y) * cost + offset.y;
+// cv::Point2d GuidanceManager::cvtRobot2World(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset)
+// {	
+// 	cv::Point2d px;
+// 	double cost = cos(-cx::cvtDeg2Rad(deg));
+// 	double sint = sin(-cx::cvtDeg2Rad(deg));
+// 	px.x = (val.x * px_per_val.x) * cost - (val.y * px_per_val.y) * sint + offset.x;
+// 	px.y = (val.x * px_per_val.x) * sint + (val.y * px_per_val.y) * cost + offset.y;
 
-	return px;
-}
+// 	return px;
+// }
 
 void GuidanceManager::makeLostValue(double prevconf, double curconf)
 {
