@@ -12,6 +12,7 @@ from ipdb import set_trace as bp
 
 import mcl_config 
 from DispMap import DispMap
+from vps_filter import vps_filter
 
 class MCL():
     def __init__(self, cv_img, ltop, rbottom, incoord="utm", map_site="dg", n_particle=400,
@@ -40,21 +41,22 @@ class MCL():
         
         #MCL parameters
         self.n_particle = n_particle
-        self.sensor_vps_importance_pdf_std = sensor_vps_importance_pdf_std
+        self.sensor_vps_importance_pdf_std = sensor_vps_importance_pdf_std  # Low value : heigh weight for particle with excatly same observation, High std : relative uniform weight for all particle
         self.callback_count = 0
         self.sensor_std_err = 5  # 0.1 for cosine sim
-        self.motion_err_mu = motion_err_mu
-        self.motion_err_std = motion_err_std
-        self.sensor_vps_err_mu = sensor_vps_err_mu
-        self.sensor_vps_err_std = sensor_vps_err_std
+        self.motion_err_mu = motion_err_mu  # 0
+        self.motion_err_std = motion_err_std  # Low std for accurate encoder, High std for noisy encoder
+        self.sensor_vps_err_mu = sensor_vps_err_mu  #0
+        self.sensor_vps_err_std = sensor_vps_err_std  # Low std for an accurate sensor(vpr results), High std for a noisy vps
 
         # Color (B,G,R)
         self.color_landmark = (128,0,0)
-        self.color_particle = (0,128,0)
-        self.color_robot_pred = (0,255,0)  # predicted robot position
+        self.color_particle = (0,255,0)
         self.color_trajectory_odo = (0,0,255)
-        self.color_trajectory_vps = (255,0,0)
-        self.color_trajectory_mcl = (0,255,0)
+        self.color_trajectory_vps = (0,0,0)  # black
+        self.color_trajectory_mcl = (255,0,0)
+        self.color_robot_pred = (255,0,0)
+        self.color_green = (0,255,0)
 
         # Crop image to save result into avi
         
@@ -78,23 +80,31 @@ class MCL():
         self.previous_x = -1
         self.previous_y = -1
         self.previous_timestamp = -1 # timestamp
+
+        self.previous_lm_x = -1  # landmark 
+        self.previous_lm_y = -1  # landmark 
         
         # Create a black image, a window and bind the function to window
         self.disp = disp
 
         if self.disp == True:
             cv2.namedWindow(self.WINDOW_NAME)
+
+        self.mcl_pose = [-1, -1]
         
         self.trajectory_odo = np.zeros(shape=(0,2))
         self.trajectory_vps = np.zeros(shape=(0,2))
         self.trajectory_mcl = np.zeros(shape=(0,2))
         self.robot_pos = np.zeros(shape=(0,2))
 
+        self.draw_result_count = 0
         self.DELAY_MSEC = 10
         self.loop_count = 0
 
-        self.draw_legend()
+        self.mSimple_filter = vps_filter(5, mode="mean") 
+
         self.write_result_init()
+
         return 0
 
     #def run_step(self, odo_x, odo_y, heading, rPose_tx, rPose_ty, landmarks):
@@ -119,9 +129,11 @@ class MCL():
         self.landmarks = landmarks
         NL = len(landmarks)
 
+        mcl_pose_valid = False
+
         if self.previous_x > 0:
             dt = self.timestamp - self.previous_timestamp
-            distance=np.linalg.norm(np.array([[self.previous_x, self.previous_y]])-np.array([[x, y]]) ,axis=1)
+            distance = np.linalg.norm(np.array([[self.previous_x, self.previous_y]])-np.array([[x, y]]) ,axis=1)
             if distance > 0.1 : # 0.1 meters
                 heading=np.arctan2(np.array([y-self.previous_y]), np.array([self.previous_x-x ]))
                 if heading>0:
@@ -136,7 +148,10 @@ class MCL():
                 ## Get robot's observation
                 #zs = np.array([[rPose_tilt]])
                 #zs = (np.linalg.norm(landmarks - center, axis=1) + (np.random.randn(NL) * sensor_std_err))
-                zs = (np.linalg.norm(landmarks - center, axis=1) + np.random.normal(self.sensor_vps_err_mu, self.sensor_vps_err_std, NL))
+
+                #zs = (np.linalg.norm(landmarks - center, axis=1) + np.random.normal(self.sensor_vps_err_mu, self.sensor_vps_err_std, NL))
+                ## Landmark is postion
+                zs = np.random.normal(self.sensor_vps_err_mu, self.sensor_vps_err_std, NL)
 
                 if len(zs) > 0:
                     ## Get particle sample's observation
@@ -148,13 +163,26 @@ class MCL():
                     self.particles, self.weights = self.resample_from_index(self.particles, self.weights, indexes)
 
                     ## Get mean position by averaging particles position
-                    self.mcl_pose = self.averaging_particle_position(self.particles, self.weights)
+                    mcl_pose = self.averaging_particle_position(self.particles, self.weights)
+                    mcl_time_pose, mcl_time_std = self.mSimple_filter.get_mean(mcl_pose[0], mcl_pose[1])
+                    self.mcl_pose = mcl_time_pose
 
                     self.draw_result()
 
         self.previous_x = x
         self.previous_y = y
         self.previous_timestamp = self.timestamp
+        if self.get_particles_std() < self.initial_particles_std*0.3:
+            mcl_pose_valid = True
+
+        return self.get_mcl_pose(), mcl_pose_valid
+
+    def get_mcl_pose(self):
+        return self.mcl_pose
+
+    def get_particles_std(self):
+        std = np.linalg.norm(np.std(self.particles, axis=0))
+        return std
 
     def averaging_particle_position(self, particles, weights):
         w = np.tile(weights, (2,1)).T  # w : (400, 2), particles : (400,2)
@@ -165,6 +193,7 @@ class MCL():
         self.particles = np.empty((self.n_particle, 2))
         self.particles[:, 0] = uniform(self.x_range[0], self.x_range[1], size=self.n_particle)
         self.particles[:, 1] = uniform(self.y_range[0], self.y_range[1], size=self.n_particle)
+        self.initial_particles_std = self.get_particles_std()
         return self.particles
     
     def predict(self, particles, u, dt=1.):
@@ -174,9 +203,17 @@ class MCL():
         '''
         N = len(particles)
         #dist = (u[1] * dt) + (np.random.randn(N) * std[1])
-        dist = (u[1] * dt) + np.random.normal(self.motion_err_mu, self.motion_err_std, N)
-        particles[:, 0] += np.cos(u[0]) * dist
-        particles[:, 1] += np.sin(u[0]) * dist
+        if True:  # Add Noise in heading direction
+            dist = (u[1] * dt) + np.random.normal(self.motion_err_mu, self.motion_err_std, N)
+            heading = u[0]+np.random.normal(0, np.deg2rad(10), N)
+            cos = np.cos(heading)
+            sin = np.sin(heading)
+            particles[:, 0] += cos * dist
+            particles[:, 1] += sin * dist
+        else: # Add Noise in 2D space
+            dist = (u[1] * dt)
+            particles[:, 0] += np.cos(u[0]) * dist + np.random.normal(self.motion_err_mu, self.motion_err_std, N)
+            particles[:, 1] += np.sin(u[0]) * dist + np.random.normal(self.motion_err_mu, self.motion_err_std, N)
         #particles[:, 0] += u[0] + np.random.normal(self.motion_err_mu, self.motion_err_std, N)  # Gaussian Normal Distribution
         #particles[:, 1] += u[1] + np.random.normal(self.motion_err_mu, self.motion_err_std, N)  # Gaussian Normal Distribution
         return particles
@@ -205,10 +242,11 @@ class MCL():
         return valid
 
     def update(self, particles, weights, z, R, landmarks):
-        #weights.fill(1.)
+        weights.fill(1.)
         for i, landmark in enumerate(landmarks):
             if self.check_valid_landmark(landmark) == True:
-                distance=np.power((particles[:,0] - landmark[0])**2 +(particles[:,1] - landmark[1])**2,0.5)
+                distance = np.linalg.norm(landmarks - particles, axis=1)
+                #distance=np.power((particles[:,0] - landmark[0])**2 +(particles[:,1] - landmark[1])**2,0.5)
                 #weights *= scipy.stats.norm(distance, R).pdf(z[i])  # Gaussian distribution : Norm(dist, sigma^2).pdf(input)
                 weights *= scipy.stats.norm.pdf(x=z[i], loc=distance, scale=R)  # probability density function for Gaussian distribution with loc means and scale is sigma value
         weights += 1.e-300 # avoid round-off to zero
@@ -255,22 +293,24 @@ class MCL():
     def draw_result(self):
         ## Get clean map image
         self.refresh_img()
+        self.draw_result_count += 1
 
         ## Draw legened
         self.draw_legend()
 
-        ## Draw landmarks (vps)
-        if self.landmarks is not None:
-            self.mMap.draw_points_on_map(xys=self.landmarks, incoord=self.incoord, radius=3, color=self.color_landmark, thickness=-1)  # BGR
-
         ## Draw particles
         self.mMap.draw_points_on_map(xys=self.particles, incoord=self.incoord, radius=1, color=self.color_particle, thickness=-1)  # BGR
 
+        ## Draw landmarks (vps)
+        if self.landmarks is not None:
+            self.mMap.draw_points_on_map(xys=self.landmarks, incoord=self.incoord, radius=3, color=self.color_landmark, thickness=2)  # BGR
+
         ## Draw trajectory
-        self.draw_trajectory()
+        if self.draw_result_count > 40:  # It's noisy before stablizing
+            self.draw_trajectory()
 
         ## Draw predicted robot position
-        self.mMap.draw_point_on_map(xy=self.mcl_pose, incoord=self.incoord, radius=10, color=self.color_robot_pred, thickness=3)  # BGR
+        self.mMap.draw_point_on_map(xy=self.mcl_pose, incoord=self.incoord, radius=10, color=self.color_robot_pred, thickness=1)  # BGR
 
         ## Show result image
         cv2.imshow(self.WINDOW_NAME, self.get_img())
@@ -298,7 +338,8 @@ class MCL():
     def write_result_init(self):
         ## Write trajectory into csv
         timestr = time.strftime("%Y%m%d_%H%M%S")
-        prefix = "vps_mcl_{}_{}".format(self.map_site, timestr)
+        prefix = "vps_mcl_{}_mostd{}_sestd{}_pdfstd{}".format(self.map_site, timestr, self.motion_err_std, self.sensor_vps_err_std, self.sensor_vps_importance_pdf_std)
+
         fname_odo = "{}_trajectory_odo.csv".format(prefix)
         fname_vps = "{}_trajectory_vps.csv".format(prefix)
         fname_mcl = "{}_trajectory_mcl.csv".format(prefix)
@@ -358,7 +399,8 @@ class MCL():
                 self.trajectory_vps, self.vps_img_x, self.vps_img_y = self.update_trajectory_img_coord(landmark[0], landmark[1], self.trajectory_vps, "utm")
             else:
                 self.vps_img_x, self.vps_img_y = -1, -1
-        self.drawLines(img, self.trajectory_vps, self.color_trajectory_vps)  # Do not display vps results
+        if True:
+            self.drawLines(img, self.trajectory_vps, self.color_trajectory_vps)  # Do not display vps results
         line_vps = "{0:06d},{1:},{2:},{3:},{4:}\n".format(self.write_idx, self.vps_img_x, self.vps_img_y, self.landmarks[0][0], self.landmarks[0][1] )
 
         ## Draw and Write mcl position trajectory
@@ -378,14 +420,16 @@ class MCL():
 
     def draw_legend(self):
         img = self.get_img()
-        cv2.circle(img, (10,10), 10, self.color_landmark, -1)
-        cv2.putText(img, "Landmarks", (30,20), 1, 1.0, self.color_landmark)
-
-        cv2.circle(img, (10,30), 3, self.color_particle,-1)
-        cv2.putText(img, "Particles", (30,40), 1,1.0, self.color_particle)
-        cv2.putText(img, "Odometry", (30,60), 1, 1.0, self.color_trajectory_odo)
-        cv2.putText(img, "VPR", (30,80), 1, 1.0, self.color_trajectory_vps)
-        cv2.putText(img, "MCL", (30,100), 1, 1.0, self.color_trajectory_mcl)
+        font = cv2.FONT_HERSHEY_DUPLEX
+        fontScale = 1.0
+        cv2.circle(img,               (10, 10), 10, self.color_landmark, -1)
+        cv2.putText(img, "Landmarks", (30, 30), font, fontScale, self.color_landmark)
+        cv2.circle(img,               (10, 40), 3, self.color_particle,-1)
+        cv2.putText(img, "Particles", (30, 60), font, fontScale, self.color_particle)
+        cv2.putText(img, "Odometry",  (30, 90), font, fontScale, self.color_trajectory_odo)
+        cv2.putText(img, "VPR",       (30, 120), font, fontScale, self.color_trajectory_vps)
+        cv2.putText(img, "MCL",       (30, 150), font, fontScale, self.color_trajectory_mcl)
+        cv2.putText(img, "Step : {}".format(self.draw_result_count), (30,180), font, fontScale, self.color_green)
         #self.drawLines(img, np.array([[10,55],[25,55]]), self.color_trajectory)
         self.set_img(img)
 

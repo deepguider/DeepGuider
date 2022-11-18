@@ -177,6 +177,7 @@ class vps:
         self.dg_ros_yml = load_cv2_yaml("dg_ros.yml")
         self.parsing_dg_ros_yml()
         self.mcl_initialized = False
+        self.mcl_result_reset()
 
         restore_var = ['lr', 'lrStep', 'lrGamma', 'weightDecay', 'momentum', 
                 'runsPath', 'savePath', 'arch', 'num_clusters', 'pooling', 'optim',
@@ -519,7 +520,10 @@ class vps:
         reranked_confidence, reranked_idx = [], []
         for qIx in range(len(pred_idx)):
             pred_utmDb = self.utmDb[pred_idx[qIx]]
-            pred_dist = pred_utmDb - [self.odo_utm_x, self.odo_utm_y]
+            if (self.enable_mcl == True) and (self.mcl_pose is not [-1, -1]) and (self.mcl_pose_valid == True):
+                pred_dist = pred_utmDb - self.mcl_pose
+            else:
+                pred_dist = pred_utmDb - [self.odo_utm_x, self.odo_utm_y]
             #bp()
             #pred_dist = pred_utmDb - [self.utm_x, self.utm_y]
             l2norm = np.linalg.norm(pred_dist, axis=1)
@@ -853,15 +857,20 @@ class vps:
         if (self.enable_mcl == True) and (self.mcl_initialized == False):
             map_img, utm_ltop, utm_rbottom = self.dg_ros_yml.get_map_info()
             map_site = self.dg_ros_yml.get_site()
-            self.mMCL = vps_mcl.MCL(map_img, utm_ltop, utm_rbottom, "utm", map_site, n_particle=400, motion_err_mu=0, motion_err_std=10,
-                    sensor_vps_err_mu=0, sensor_vps_err_std=10, sensor_vps_importance_pdf_std=5)
+            self.mMCL = vps_mcl.MCL(map_img, utm_ltop, utm_rbottom, "utm", map_site, n_particle=400, motion_err_mu=0, motion_err_std=4,
+                    sensor_vps_err_mu=0, sensor_vps_err_std=0.5, sensor_vps_importance_pdf_std=50)
             self.mMCL.initialize(disp=True) 
             self.mcl_initialized = True
 
+    def mcl_result_reset(self):
+        self.mcl_pose = [-1, -1]  # [utm_x, utm_y]
+        self.mcl_pose_valid = False
+
     def mcl_run(self):
+        self.mcl_result_reset()
         if (self.enable_mcl == True) and (self.mcl_initialized == True):
             landmarks = self.mcl_get_landmark()
-            self.mMCL.run_step(self.odo_utm_x, self.odo_utm_y, self.odo_heading, self.tilt, landmarks, self.timestamp)
+            self.mcl_pose, self.mcl_pose_valid = self.mMCL.run_step(self.odo_utm_x, self.odo_utm_y, self.odo_heading, self.tilt, landmarks, self.timestamp)
 
     def convert_distance_to_confidence(self, distances, sigma=0.2):  # distances is list type
         confidences = []
