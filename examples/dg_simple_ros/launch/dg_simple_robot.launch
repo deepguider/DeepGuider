@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<launch>
+
+  <!-- dg_ocr -->
+  <node pkg="dg_simple_ros" name="dg_ocr" type="dg_ocr" required="false"  cwd="node" output="screen" />
+
+  <!-- dg_vps -->
+  <node pkg="dg_simple_ros" name="dg_vps" type="dg_vps" required="false"  cwd="node" output="screen" />
+
+  <!-- dg_odometry -->
+  <node pkg="dg_simple_ros" name="dg_odometry" type="dg_odometry" required="false"  cwd="node" output="screen" />
+
+  <!-- dg_robot -->
+  <node pkg="dg_simple_ros" name="dg_robot" type="dg_robot" required="false" cwd="node" output="screen" />
+  
+</launch>
