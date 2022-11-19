@@ -44,7 +44,7 @@ namespace dg
         double m_path_particle_weight = 2;
         bool m_enable_icp = true;
         int m_max_icp_itr = 5;
-        double m_path_corner_thr = cx::cvtDeg2Rad(40);        
+        double m_path_corner_thr = cx::cvtDeg2Rad(40);
         bool m_enable_odo_theta_correction = true;
         double m_mcl_min_update_interval = 1;       // seconds
         double m_edge_heading_decay = 0.9;
@@ -55,10 +55,11 @@ namespace dg
         double m_gps_pos_sigma = 20;
         double m_gps_theta_sigma = cx::cvtDeg2Rad(100);
         double m_poi_max_error = 10;        // meter
-        double m_poi_pos_sigma = 10;
+        double m_poi_pos_sigma = 5;
         double m_vps_pos_sigma = 20;
         double m_odo_align_sigma = 10;
-        double m_odo_align_theta_sigma = cx::cvtDeg2Rad(50);
+        double m_odo_align_theta_sigma = cx::cvtDeg2Rad(40);
+        double m_pdf_additive_min = 0.1;
 
         Pose2 m_prev_gps_pose;
         Timestamp m_prev_gps_time = -1;
@@ -66,7 +67,7 @@ namespace dg
         ID m_eid_mcl;
         bool m_mcl_pose_valid = false;
         Timestamp m_mcl_last_update_time = -1;  // seconds
-  
+
         std::vector<double> m_odo_dtheta_hist;
         std::vector<int> m_odo_dtheta_hist_cnt;
         double m_odo_dtheta_hist_angular_res = 1;   // degree
@@ -158,7 +159,7 @@ namespace dg
             poi_xy.x = m_pose_mcl.x + relative.lin * cos(poi_theta);
             poi_xy.y = m_pose_mcl.y + relative.lin * sin(poi_theta);
             double err_d = norm(clue_xy - poi_xy);
-            if(err_d > m_poi_max_error) return false;
+            if (err_d > m_poi_max_error) return false;
 
             if (!m_mcl_initialized)
                 return DGLocalizer::applyPOI(clue_xy, relative, time, confidence, use_relative_model);
@@ -166,7 +167,7 @@ namespace dg
             Pose2 before = m_pose_mcl;
 
             cv::AutoLock lock(m_mutex);
-            evaluateParticlesPOI(clue_xy, relative);            
+            evaluateParticlesPOI(clue_xy, relative);
             resampleParticles();
             estimateMclPose(m_pose_mcl, m_eid_mcl);
             m_mcl_pose_valid = true;
@@ -252,7 +253,7 @@ namespace dg
             // update particle
             if (m_mcl_initialized)
             {
-                if(!m_robot_stopped)
+                if (!m_robot_stopped)
                 {
                     predictParticles(odometry_pose, m_prev_odometry_pose, time - m_prev_odometry_time, m_robot_stopped);
                     double dt = time - m_mcl_last_update_time;
@@ -322,7 +323,7 @@ namespace dg
 
         Pose2 getPoseMCL()
         {
-            return m_pose_mcl; 
+            return m_pose_mcl;
         }
 
     protected:
@@ -403,7 +404,7 @@ namespace dg
             Point2 v = *node2 - *node1;
             double edge_theta = atan2(v.y, v.x);
             double dtheta = cx::trimRad(p.theta - edge_theta);
-            if(dtheta>CV_PI/2 || dtheta<-CV_PI/2)
+            if (dtheta > CV_PI / 2 || dtheta < -CV_PI / 2)
             {
                 start_node = node2;
                 dist = d2;
@@ -447,7 +448,7 @@ namespace dg
                         particles[idx].head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
                         idx++;
                         k++;
-                        if (k>=cnt || idx >= n) break;
+                        if (k >= cnt || idx >= n) break;
 
                         particles[idx].start_node = map->getNode(edges[i]->node_id2);
                         particles[idx].edge = edges[i];
@@ -455,7 +456,7 @@ namespace dg
                         particles[idx].head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
                         idx++;
                         k++;
-                        if (k>=cnt || idx >= n) break;
+                        if (k >= cnt || idx >= n) break;
 
                     }
                     if (idx >= n) break;
@@ -498,7 +499,7 @@ namespace dg
             Map* map = m_shared->getMap();
             Point2 ep;
             Edge* edge = map->getNearestEdge(p, ep);
-            if(norm(p - ep)>=radius) return;
+            if (norm(p - ep) >= radius) return;
 
             //Node* node1 = map->getNode(edge->node_id1);
             //Node* node2 = map->getNode(edge->node_id2);
@@ -511,7 +512,7 @@ namespace dg
             std::map<ID, int> lookup_tmp;
             int idx = 0;
             open.push_back(edge);
-            lookup_tmp.insert(std::make_pair(edge->id, idx++));                
+            lookup_tmp.insert(std::make_pair(edge->id, idx++));
             results.push_back(edge);
             while (!open.empty())
             {
@@ -524,7 +525,7 @@ namespace dg
                 double d1 = norm(p - *n1);
                 double d2 = norm(p - *n2);
 
-                if(d1<radius)
+                if (d1 < radius)
                 {
                     for (auto it = n1->edge_ids.begin(); it != n1->edge_ids.end(); it++)
                     {
@@ -540,7 +541,7 @@ namespace dg
                         lookup_tmp.insert(std::make_pair(next->id, idx++));
                     }
                 }
-                if(d2<radius)
+                if (d2 < radius)
                 {
                     for (auto it = n2->edge_ids.begin(); it != n2->edge_ids.end(); it++)
                     {
@@ -562,7 +563,7 @@ namespace dg
             if (map)
             {
                 std::vector<Edge*> edges = map->getNearEdges(p, radius);
-                if(edges.empty()) return;
+                if (edges.empty()) return;
 
                 double total_length = 0;
                 for (size_t i = 0; i < edges.size(); i++)
@@ -588,7 +589,7 @@ namespace dg
                     while (k < cnt)
                     {
                         Particle particle;
-                        if(use_node1)
+                        if (use_node1)
                         {
                             particle.start_node = map->getNode(edges[i]->node_id1);
                             particle.edge = edges[i];
@@ -608,7 +609,7 @@ namespace dg
                         }
                         k++;
                         added++;
-                        if (k>=cnt || added >= n) break;
+                        if (k >= cnt || added >= n) break;
                     }
                     if (added >= n) break;
                 }
@@ -627,25 +628,25 @@ namespace dg
                     if (fabs(cx::trimRad(theta - p.theta)) < CV_PI / 2) use_node1 = true;
                     else use_node1 = false;
 
-                        Particle particle;
-                        if(use_node1)
-                        {
-                            particle.start_node = map->getNode(edge->node_id1);
-                            particle.edge = edge;
-                            particle.dist = (double)rand() * edge->length / RAND_MAX;
-                            particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
-                            particle.weight = w;
-                            particles.push_back(particle);
-                        }
-                        else
-                        {
-                            particle.start_node = map->getNode(edge->node_id2);
-                            particle.edge = edge;
-                            particle.dist = (double)rand() * edge->length / RAND_MAX;
-                            particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
-                            particle.weight = w;
-                            particles.push_back(particle);
-                        }
+                    Particle particle;
+                    if (use_node1)
+                    {
+                        particle.start_node = map->getNode(edge->node_id1);
+                        particle.edge = edge;
+                        particle.dist = (double)rand() * edge->length / RAND_MAX;
+                        particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
+                        particle.weight = w;
+                        particles.push_back(particle);
+                    }
+                    else
+                    {
+                        particle.start_node = map->getNode(edge->node_id2);
+                        particle.edge = edge;
+                        particle.dist = (double)rand() * edge->length / RAND_MAX;
+                        particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
+                        particle.weight = w;
+                        particles.push_back(particle);
+                    }
                     added++;
                     if (added >= n) break;
                 }
@@ -676,7 +677,7 @@ namespace dg
                     di = d;
                     dthi = dtheta;
                 }
-                m_particles[i].dist += di*cos(m_particles[i].head + dthi/2);
+                m_particles[i].dist += di * cos(m_particles[i].head + dthi / 2);
                 if (m_particles[i].dist < 0) m_particles[i].dist = 0;
                 m_particles[i].head += dthi;
                 m_particles[i].head *= angular_modifier;
@@ -728,7 +729,7 @@ namespace dg
                             m_particles.push_back(particle);
                         }
                     }
-                    if(first_saved) m_particles[i] = first_particle;
+                    if (first_saved) m_particles[i] = first_particle;
                 }
             }
         }
@@ -738,7 +739,7 @@ namespace dg
 
             int N = (int)m_particles.size();
 
-           // average of theta --> assume they are on unit circle --> average coordinate of unit circle position
+            // average of theta --> assume they are on unit circle --> average coordinate of unit circle position
             Point2 mean_p(0, 0);
             double mean_x = 0;
             double mean_y = 0;
@@ -773,7 +774,7 @@ namespace dg
 
         void resampleParticles()
         {
-            int N = (int)m_particles.size();            
+            int N = (int)m_particles.size();
             if (N < 1) return;
 
             std::vector<double> cumulative_sum;
@@ -820,7 +821,7 @@ namespace dg
                 tmp[i] = m_particles[indexes[i]];
                 w_sum += tmp[i].weight;
             }
-            add_uniform_particles(m_ekf->getPose(), m_resample_sigma, tmp, m_resample_numbers, w_sum/M);
+            add_uniform_particles(m_ekf->getPose(), m_resample_sigma, tmp, m_resample_numbers, w_sum / M);
             w_sum += (m_resample_numbers * w_sum / M);
 
             m_particles = tmp;
@@ -865,7 +866,7 @@ namespace dg
             int cornerness_delta = 5;
             int k = n - 2;
             Point2 v1, v2;
-            while (k >= n - 1 - cornerness_delta && k >= n-1-k)
+            while (k >= n - 1 - cornerness_delta && k >= n - 1 - k)
             {
                 int delta = n - 1 - k;
                 v1.x = m_odometry_history[k - delta].x - m_odometry_history[k].x;
@@ -878,7 +879,7 @@ namespace dg
                 else                    // left turn
                     m_odometry_history[k].cornerness = (1 + cos_t);
                 k--;
-            }         
+            }
         }
 
         void evaluateParticles(const Pose2& pose_ekf, bool use_ekf_pose = true, bool print_debug = false)
@@ -925,8 +926,8 @@ namespace dg
                     double dy = pose_particle.y - pose_ekf.y;
                     gd = sqrt(dx * dx + dy * dy);
                     gth = cx::trimRad(pose_particle.theta - pose_ekf.theta);
-                    pdf_ekf_d = exp(-gd * gd / (2 * m_gps_pos_sigma * m_gps_pos_sigma)) / (m_gps_pos_sigma * sqrt(2 * CV_PI));
-                    pdf_ekf_theta = exp(-gth * gth / (2 * m_gps_theta_sigma * m_gps_theta_sigma)) / (m_gps_theta_sigma * sqrt(2 * CV_PI));
+                    pdf_ekf_d = exp(-gd * gd / (2 * m_gps_pos_sigma * m_gps_pos_sigma)) + m_pdf_additive_min;
+                    pdf_ekf_theta = exp(-gth * gth / (2 * m_gps_theta_sigma * m_gps_theta_sigma)) + m_pdf_additive_min;
                 }
 
                 // odometry align weight
@@ -935,24 +936,24 @@ namespace dg
                 double od = 0;
                 double oth = 0;
                 double odo_aligned_theta = 0;
-                if(odo_valid)
+                if (odo_valid)
                 {
                     odo_aligned_theta = aligned_theta[i];
                     od = align_err_l1[i];
                     oth = cx::trimRad(pose_particle.theta - aligned_theta[i]);
-                    pdf_odo_d = exp(-od * od / (2 * m_odo_align_sigma * m_odo_align_sigma)) / (m_odo_align_sigma * sqrt(2 * CV_PI));
-                    pdf_odo_theta = exp(-oth * oth / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma)) / (m_odo_align_theta_sigma * sqrt(2 * CV_PI));
+                    pdf_odo_d = exp(-od * od / (2 * m_odo_align_sigma * m_odo_align_sigma)) + m_pdf_additive_min;
+                    pdf_odo_theta = exp(-oth * oth / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma)) + m_pdf_additive_min;
                 }
 
-                double pdf = path_weight*(pdf_ekf_d*pdf_ekf_theta * pdf_odo_d*pdf_odo_theta);
-                if(pdf>max_pdf) max_pdf = pdf;
-                if(print_debug) printf("[%d] w=%lf, gd=%.1lf(%lf), gth=%.1lf(%lf), od=%.1lf(%lf), oth=%.1lf(%lf), pth=%.1lf, alignth=%.1lf\n", i, pdf, gd, pdf_ekf_d, cx::cvtRad2Deg(gth), pdf_ekf_theta, od, pdf_odo_d, cx::cvtRad2Deg(oth), pdf_odo_theta, cx::cvtRad2Deg(pose_particle.theta), cx::cvtRad2Deg(odo_aligned_theta));
+                double pdf = path_weight * (pdf_ekf_d * pdf_ekf_theta * pdf_odo_d * pdf_odo_theta);
+                if (pdf > max_pdf) max_pdf = pdf;
+                if (print_debug) printf("[%d] w=%lf, gd=%.1lf(%lf), gth=%.1lf(%lf), od=%.1lf(%lf), oth=%.1lf(%lf), pth=%.1lf, alignth=%.1lf\n", i, pdf, gd, pdf_ekf_d, cx::cvtRad2Deg(gth), pdf_ekf_theta, od, pdf_odo_d, cx::cvtRad2Deg(oth), pdf_odo_theta, cx::cvtRad2Deg(pose_particle.theta), cx::cvtRad2Deg(odo_aligned_theta));
 
                 m_particles[i].weight *= pdf;
                 w_sum += m_particles[i].weight;
             }
             m_shared->releaseMapLock();
-            if(print_debug) printf("[MCL] max_pdf = %lf, w_sum = %lf\n", max_pdf, w_sum);
+            if (print_debug) printf("[MCL] max_pdf = %lf, w_sum = %lf\n", max_pdf, w_sum);
 
             for (int i = 0; i < N; i++)
             {
@@ -989,7 +990,7 @@ namespace dg
             }
 
             // theta correction
-            if(m_enable_odo_theta_correction) odo_theta_correction_mean(m_odometry_history, odo_start_idx, odo_pts);
+            if (m_enable_odo_theta_correction) odo_theta_correction_mean(m_odometry_history, odo_start_idx, odo_pts);
 
             // whitening of odometry points
             Point2 mean_odo_point(0, 0);
@@ -998,7 +999,7 @@ namespace dg
                 mean_odo_point += odo_pts[i - odo_start_idx];
             }
             mean_odo_point /= (double)odo_pts.size();
-            for (int i = 0; i<(int)odo_pts.size(); i++)
+            for (int i = 0; i < (int)odo_pts.size(); i++)
             {
                 odo_pts[i] -= mean_odo_point;
             }
@@ -1110,7 +1111,7 @@ namespace dg
             }
 
             // check path cornerness
-            Point2 path_v = path_pts[n_path-1] - path_pts[n_path-2];
+            Point2 path_v = path_pts[n_path - 1] - path_pts[n_path - 2];
             double path_last_theta = atan2(path_v.y, path_v.x);
             int corner_path_idx = -1;
             double corner_path_len = norm(path_v);
@@ -1121,7 +1122,7 @@ namespace dg
                 double path_delta = cx::trimRad(path_theta - path_last_theta);
                 corner_path_len += norm(path_v);
 
-                if(fabs(path_delta) > m_path_corner_thr)
+                if (fabs(path_delta) > m_path_corner_thr)
                 {
                     corner_path_idx = i - 1;
                     break;
@@ -1183,7 +1184,7 @@ namespace dg
             cv::Mat RA = R * A;
 
             // compute align cost
-            if(!m_enable_icp || corner_path_idx < 0)
+            if (!m_enable_icp || corner_path_idx < 0)
             {
                 cv::Mat E = RA - B.t();
                 double dx, dy;
@@ -1195,7 +1196,7 @@ namespace dg
                     err2_s += (dx * dx + dy * dy);
                 }
                 err_l1 = sqrt(err2_s / n_data) + fabs(odo_len_total - path_len_total);
-                double pdf_d = exp(-err_l1 * err_l1 / (2 * m_odo_align_sigma * m_odo_align_sigma));
+                double pdf_d = exp(-err_l1 * err_l1 / (2 * m_odo_align_sigma * m_odo_align_sigma)) + m_pdf_additive_min;
 
                 int i1 = (int)eval_odo_pts.size() - 2;
                 int i2 = (int)eval_odo_pts.size() - 1;
@@ -1205,7 +1206,7 @@ namespace dg
                 double odo_y2 = RA.at<double>(1, i2) + mean_path_point.y;
                 odo_aligned_theta = atan2(odo_y2 - odo_y1, odo_x2 - odo_x1);
                 double err_theta = cx::trimRad(odo_aligned_theta - particle_theta);
-                double pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma));
+                double pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma)) + m_pdf_additive_min;
                 double pdf = pdf_d * pdf_theta;
                 //printf("x1=%.1lf,y1=%.1lf,x2=%.1lf,y2=%.1lf, odo_len=%lf, path_len=%lf, err_l1=%lf, odo_theta=%lf\n", odo_x1, odo_y1, odo_x2, odo_y2, odo_len_total, path_len_total, err_l1, odo_aligned_theta);
 
@@ -1334,11 +1335,11 @@ namespace dg
             }
 
             err_l1 = norm(odo_aligned.back() - path_pts.back()) + icp_align_err;
-            Point2 odo_last_v = odo_aligned[n_data-1] - odo_aligned[n_data-2];
+            Point2 odo_last_v = odo_aligned[n_data - 1] - odo_aligned[n_data - 2];
             odo_aligned_theta = atan2(odo_last_v.y, odo_last_v.x);
-            double err_theta = cx::trimRad(odo_aligned_theta - particle_theta);
-            double pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma));
-            double pdf_d = exp(-err_l1*err_l1 / (2 * m_odo_align_sigma * m_odo_align_sigma));
+            double err_theta = cx::trimRad(odo_aligned_theta - particle_theta) + m_pdf_additive_min;
+            double pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma)) + m_pdf_additive_min;
+            double pdf_d = exp(-err_l1 * err_l1 / (2 * m_odo_align_sigma * m_odo_align_sigma));
 
             double pdf = pdf_d * pdf_theta;
             if (pdf > m_best_pdf)
@@ -1388,12 +1389,12 @@ namespace dg
             tmp.resize(bins);
             for (int itr = 0; itr < blur_n; itr++)
             {
-                for (int i = 1; i < bins-1; i++)
+                for (int i = 1; i < bins - 1; i++)
                 {
                     tmp[i] = (2 * phist[i] + phist[i - 1] + phist[i + 1]) / 4;
                 }
                 tmp[0] = (2 * phist[0] + phist[bins - 1] + phist[1]) / 4;
-                tmp[bins-1] = (2 * phist[bins-1] + phist[bins - 2] + phist[0]) / 4;
+                tmp[bins - 1] = (2 * phist[bins - 1] + phist[bins - 2] + phist[0]) / 4;
                 phist = tmp;
 
                 for (int i = 1; i < bins - 1; i++)
@@ -1510,7 +1511,7 @@ namespace dg
             }
 
             // check path cornerness
-            Point2 path_v = path_pts[n_path-1] - path_pts[n_path-2];
+            Point2 path_v = path_pts[n_path - 1] - path_pts[n_path - 2];
             double path_last_theta = atan2(path_v.y, path_v.x);
             int corner_path_idx = -1;
             double corner_path_len = norm(path_v);
@@ -1521,7 +1522,7 @@ namespace dg
                 double path_delta = cx::trimRad(path_theta - path_last_theta);
                 corner_path_len += norm(path_v);
 
-                if(fabs(path_delta) > m_path_corner_thr)
+                if (fabs(path_delta) > m_path_corner_thr)
                 {
                     corner_path_idx = i - 1;
                     break;
@@ -1584,7 +1585,7 @@ namespace dg
             }
 
             // compute align cost
-            if(!m_enable_icp || corner_path_idx < 0)
+            if (!m_enable_icp || corner_path_idx < 0)
             {
                 cv::Mat RA = R * A;
                 cv::Mat E = RA - B.t();
@@ -1606,8 +1607,8 @@ namespace dg
                 double odo_x2 = RA.at<double>(0, i2) + mean_path_point.x;
                 double odo_y2 = RA.at<double>(1, i2) + mean_path_point.y;
                 odo_aligned_theta = atan2(odo_y2 - odo_y1, odo_x2 - odo_x1);
-                double err_theta = cx::trimRad(odo_aligned_theta - particle_theta);
-                double pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma));
+                double err_theta = cx::trimRad(odo_aligned_theta - particle_theta) + m_pdf_additive_min;
+                double pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma)) + m_pdf_additive_min;
                 double pdf = pdf_d * pdf_theta;
                 //printf("x1=%.1lf,y1=%.1lf,x2=%.1lf,y2=%.1lf, odo_len=%lf, path_len=%lf, err_l1=%lf, odo_theta=%lf\n", odo_x1, odo_y1, odo_x2, odo_y2, odo_len_total, path_len_total, err_l1, odo_aligned_theta);
 
@@ -1644,11 +1645,11 @@ namespace dg
 
             // compute align cost
             err_l1 = norm(odo_aligned.back() - path_pts.back()) + fabs(odo_len_total - path_len_total);
-            Point2 odo_last_v = odo_aligned[n_data-1] - odo_aligned[n_data-2];
+            Point2 odo_last_v = odo_aligned[n_data - 1] - odo_aligned[n_data - 2];
             odo_aligned_theta = atan2(odo_last_v.y, odo_last_v.x);
             double err_theta = cx::trimRad(odo_aligned_theta - particle_theta);
-            double pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma));
-            double pdf_d = exp(-err_l1*err_l1 / (2 * m_odo_align_sigma * m_odo_align_sigma));
+            double pdf_theta = exp(-err_theta * err_theta / (2 * m_odo_align_theta_sigma * m_odo_align_theta_sigma)) + m_pdf_additive_min;
+            double pdf_d = exp(-err_l1 * err_l1 / (2 * m_odo_align_sigma * m_odo_align_sigma)) + m_pdf_additive_min;
 
             double pdf = pdf_d * pdf_theta;
             if (pdf > m_best_pdf)
@@ -1876,7 +1877,7 @@ namespace dg
                 poi_xy.y = pose.y + relative.lin * sin(poi_theta);
 
                 double err_d = norm(clue_xy - poi_xy);
-                double pdf = 0.00001 + exp(-err_d * err_d / (2 * m_poi_pos_sigma * m_poi_pos_sigma)) / (m_poi_pos_sigma * sqrt(2 * CV_PI));
+                double pdf = exp(-err_d * err_d / (2 * m_poi_pos_sigma * m_poi_pos_sigma)) + m_pdf_additive_min;
                 if (debug_print) printf("POI [%d] err_d = %lf, pdf = %lf\n", i, err_d, pdf);
 
                 m_particles[i].weight *= pdf;
@@ -1906,7 +1907,7 @@ namespace dg
                 pose.theta = cx::trimRad(atan2(v.y, v.x) + m_particles[i].head);
 
                 double err_d = norm(clue_xy - pose);
-                double pdf = 0.0001 + exp(-err_d * err_d / (2 * m_vps_pos_sigma * m_vps_pos_sigma)) / (m_vps_pos_sigma * sqrt(2 * CV_PI));
+                double pdf = exp(-err_d * err_d / (2 * m_vps_pos_sigma * m_vps_pos_sigma)) + m_pdf_additive_min;
                 if (debug_print) printf("VPS [%d] err_d = %lf, pdf = %lf\n", i, err_d, pdf);
 
                 m_particles[i].weight *= pdf;
