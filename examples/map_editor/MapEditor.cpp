@@ -230,7 +230,9 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
                     if (node->edge_ids.size() == 1)
                     {
                         dg::Node* node2 = m_map.getNearestNode(node->id);
-                        if (norm(*node2 - metric) <= dist_thr) m_gobj_highlight_nid = node2->id;
+                        dg::Node* connected_node = m_map.getConnectedNode(node, node->edge_ids[0]);
+
+                        if (node2->id != connected_node->id && norm(*node2 - metric) <= dist_thr) m_gobj_highlight_nid = node2->id;
                         else m_gobj_highlight_nid = 0;
                     }
                     else
@@ -352,8 +354,9 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
             if (node && node->edge_ids.size() == 1)
             {
                 dg::Node* node2 = m_map.getNearestNode(node->id);
+                dg::Node* connected_node = m_map.getConnectedNode(node, node->edge_ids[0]);
                 double d1 = norm(*node2 - metric);
-                if (d1 < dist_thr)
+                if (d1 < dist_thr && node2->id != connected_node->id)
                 {
                     node2->edge_ids.push_back(node->edge_ids[0]);
                     dg::Edge* edge = m_map.getEdge(node->edge_ids[0]);
