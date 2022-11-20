@@ -2,7 +2,7 @@
 ---
 ## Activate/deactivate submodules
 enable_360cam: 0  # not required.
-enable_360cam_crop: 0
+enable_360cam_crop: 1
 enable_intersection: 0
 enable_ocr: 0    # 0: disable, 1: run as internal module, 2: run as external ros node 
 enable_vps: 0    # 0: disable, 1: run as internal module, 2: run as external ros node
@@ -45,7 +45,7 @@ vps_use_custom_image_server: 0   # 0 (default) to use naver roadview, 1 to use c
 vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_
 vps_enable_mcl: 0
 vps_visible_region_radius: 1
-vps_visible_region_radius_max_ratio: 30.0  # Search range :  vps_visible_region_radius ~ (vps_visible_region_radius*vps_visible_region_radius_max_ratio) meters
+vps_visible_region_radius_max_ratio: 12  # Search range :  vps_visible_region_radius ~ (vps_visible_region_radius*vps_visible_region_radius_max_ratio) meters
 vps_enable_filter: 0
 vps_filter_size: 7  # 11 for coex indoor, window size of median filter ( 1 means off)
 vps_filter_valid_thre: 3 # 1st threshold to check valid of vps result in median filter in metric (Large numger, (ex) 1000, means off)

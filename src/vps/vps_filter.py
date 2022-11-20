@@ -7,7 +7,11 @@ from ipdb import set_trace as bp
 from skimage.measure import LineModelND, ransac
 
 class vps_filter:
-    def __init__(self, ksize=9, valid_dist_thre=5, outlier_dist_thre=25):  # meters
+    def __init__(self, ksize=9, valid_dist_thre=5, outlier_dist_thre=25, mode="median"):  # meters
+        '''
+        mode : "median", "mean"
+        '''
+        self.mode = mode
         self.n_sample_count = 0
         self.n_samples = ksize  # kernel_size
         #self.n_mean_samples = 15  # filter size of points for average filter
@@ -109,6 +113,25 @@ class vps_filter:
         else:
             return self.utm_xys[-n_samples:]
 
+    def get_mean(self, new_x, new_y, mode=None):
+        if (new_x >0) and (new_y > 0):
+            self.update_samples(new_x, new_y)
+
+        utm_xys = self.get_samples(self.n_samples)
+
+        if mode is None:
+            mode = self.mode
+
+        if "median" in mode.lower():
+            mean_xys = np.median(utm_xys, axis=0)
+
+        if "mean" in mode.lower():
+            mean_xys = np.mean(utm_xys, axis=0)
+
+        std_xys = np.std(utm_xys, axis=0)
+
+        return mean_xys, std_xys
+
     def check_valid(self, new_x, new_y):
         if (new_x >0) and (new_y > 0):
             self.update_samples(new_x, new_y)
@@ -117,6 +140,7 @@ class vps_filter:
 
         utm_xys = self.get_samples(self.n_samples)
         mean_xys = np.median(utm_xys, axis=0)
+
         if len(utm_xys) < self.n_samples_min:
             return False, mean_xys
         utm_distance = np.sqrt(np.sum((mean_xys - [new_x, new_y])**2))  # meter
