@@ -8,9 +8,6 @@
   <!-- dg_vps -->
   <node pkg="dg_simple_ros" name="dg_vps" type="dg_vps" required="false"  cwd="node" output="screen" />
 
-  <!-- dg_odometry -->
-  <node pkg="dg_simple_ros" name="dg_odometry" type="dg_odometry" required="false"  cwd="node" output="screen" />
-
   <!-- dg_robot -->
   <node pkg="dg_simple_ros" name="dg_robot" type="dg_robot" required="false" cwd="node" output="screen" />
   
