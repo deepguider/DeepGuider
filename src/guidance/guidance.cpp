@@ -88,7 +88,7 @@ bool GuidanceManager::initiateNewGuidance(TopometricPose pose_topo, Point2F gps_
 		for (int k = 0; k < m_extendedPath.size(); k++)
 		{
             Point2 node_metric = Point2(m_extendedPath[k]);
-			printf("[%d] node_metric.x: %f, node_metric.y: %f\n",k, node_metric.x, node_metric.y);
+			printf("Extendedpath[%d] node_metric.x: %f, node_metric.y: %f\n",k, node_metric.x, node_metric.y);
 			printf("Extendedpath[%d]-cur_node_id:%zd, next_node_id: %zd\n",k,m_extendedPath[k].cur_node_id, m_extendedPath[k].next_node_id);
 		}
 		
@@ -463,6 +463,7 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 		return false;
 	}
 
+    Pose2 node_metric = Pose2(curNode->x, curNode->y);
 	//from here gidx > 0
 	//if robot has arrived at the node, update m_guide_idx 	
 	//printf("[GUIDANCE] gidx: %d, m_guide_idx: %d\n", gidx, m_guide_idx);
@@ -474,9 +475,9 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	{
 		printf("[GUIDANCE] updateWithRobot::ARRIVED_NODE, gidx: %d, m_guide_idx: %d, m_robot_guide_idx:%d\n", gidx, m_guide_idx, m_robot_guide_idx);
 		m_past_guides.push_back(m_curguidance); //save past guidances
+		m_prev_dg_pose = node_metric;
 		m_last_announce_dist = -1;	//reset m_last_announce_dist
 		m_guide_idx = m_robot_guide_idx + 1 ;
-		m_prev_dg_pose = m_temp_prev_dg_pose;
 		m_temp2_prev_dg_pose = pose_metric;
 		m_prev_dx_pose = m_temp_prev_dx_pose;
 		m_temp2_prev_dx_pose = m_robot_pose;
