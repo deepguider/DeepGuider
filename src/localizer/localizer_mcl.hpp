@@ -49,7 +49,7 @@ namespace dg
         double m_mcl_min_update_interval = 1;       // seconds
         double m_edge_heading_decay = 0.9;
 
-        double m_odometry_linear_std_err = 1;                 // 0.5 meter
+        double m_odometry_linear_std_err = 0.5;                 // 0.5 meter
         double m_odometry_angular_std_err = cx::cvtDeg2Rad(1);  // 1 degree
 
         double m_gps_pos_sigma = 20;
@@ -59,7 +59,7 @@ namespace dg
         double m_vps_pos_sigma = 20;
         double m_odo_align_sigma = 10;
         double m_odo_align_theta_sigma = cx::cvtDeg2Rad(40);
-        double m_pdf_additive_min = 0.1;
+        double m_pdf_additive_min = 0.05;
 
         Pose2 m_prev_gps_pose;
         Timestamp m_prev_gps_time = -1;
