@@ -161,6 +161,9 @@ TEST_COEX:
   image_server_port: "10001"
   gps_input_path: "data/COEX/211005_130940_ascen_fix.csv"
   video_input_path: "data/COEX/211005_130940_images.avi"   
+  vps_load_dbfeat: 1
+  vps_save_dbfeat: 0
+  vps_use_custom_image_server: 1   # 0 (default) to use naver roadview, 1 to use custom images for database images
 
 TEST_COEX_INOUT:
   map_image_path: "data/COEX/NaverMap_COEX(Satellite).png"
@@ -199,6 +202,9 @@ COEX:
   image_server_port: "10001"
   gps_input_path: "data/200925_153949_AndroSensor.csv"
   video_input_path: ""
+  vps_load_dbfeat: 1
+  vps_save_dbfeat: 0
+  vps_use_custom_image_server: 1   # 0 (default) to use naver roadview, 1 to use custom images for database images
 
 Bucheon:
   map_image_path: "data/Bucheon/NaverMap_Bucheon(Satellite).png" 
