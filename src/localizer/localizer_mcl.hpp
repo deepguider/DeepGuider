@@ -7,8 +7,13 @@ namespace dg
 {
     struct Particle
     {
-        Node* start_node = nullptr;
+        Particle() {}
+        Particle(Edge* e, Node* sn, double d, double h, double w)
+        : edge(e), start_node(sn), dist(d), head(h), weight(w)
+        {
+        }
         Edge* edge = nullptr;
+        Node* start_node = nullptr;
 
         double dist = 0;    // distance from start node
         double head = 0;    // relative heading w.r.t. edge direction
@@ -35,9 +40,9 @@ namespace dg
     class DGLocalizerMCL : public DGLocalizer
     {
     protected:
-        int m_particle_numbers = 400;
-        int m_resample_numbers = 0;
-        double m_resample_sigma = 10;       // meter
+        int m_particle_numbers = 500;
+        double m_resample_radius = 10;      // meter
+        double m_resample_delta = 2.0;      // meter
         int m_eval_history_length = 50;     // meter
         int m_odometry_history_size = 1000;
         double m_odometry_save_interval = 1;
@@ -494,163 +499,123 @@ namespace dg
             }
         }
 
-        void add_uniform_particles(const Pose2 p, double radius, std::vector<Particle>& particles, int n, double w)
+        int add_uniform_particles(const Pose2 pose, double d_delta, double radius, std::vector<Particle>& particles, double w)
         {
+            int added = 0;
+
             Map* map = m_shared->getMap();
             Point2 ep;
-            Edge* edge = map->getNearestEdge(p, ep);
-            if (norm(p - ep) >= radius) return;
+            Edge* edge = map->getNearestEdge(pose, ep);
+            if (edge == nullptr || norm(pose - ep) > radius) return added;
 
-            //Node* node1 = map->getNode(edge->node_id1);
-            //Node* node2 = map->getNode(edge->node_id2);
-            //double d1 = norm(ep - *node1);
-            //double d2 = norm(ep - *node2);
+            Node* from = map->getNode(edge->node_id1);
+            Node* to = map->getNode(edge->node_id2);
+            if (from == nullptr || to == nullptr) return added;
+            Point2 v = *to - *from;
+            double v_theta = atan2(v.y, v.x);
+            double d_theta = cx::trimRad(pose.theta - v_theta);
+            if(fabs(d_theta)>CV_PI/2)
+            {
+                from = map->getNode(edge->node_id2);
+                to = map->getNode(edge->node_id1);
+            }
+            double d_from = norm(ep - *from);
+            double d_to = norm(ep - *to);
 
-            // find connected edges
-            std::vector<const Edge*> results;
-            std::list<const Edge*> open;
-            std::map<ID, int> lookup_tmp;
-            int idx = 0;
-            open.push_back(edge);
-            lookup_tmp.insert(std::make_pair(edge->id, idx++));
-            results.push_back(edge);
+            double forward_acc = 0;
+            while(forward_acc <= radius && forward_acc <= d_to)
+            {
+                particles.push_back(Particle(edge, from, d_from + forward_acc, 0, w));
+                added++;
+                forward_acc += d_delta;
+            }
+            double backward_acc = 0;
+            while(backward_acc <= radius && backward_acc <= d_from)
+            {
+                particles.push_back(Particle(edge, from, d_from - backward_acc, 0, w));
+                added++;
+                backward_acc += d_delta;
+            }
+
+            std::list<Node*> open;
+            std::map<ID, double> lookup_tmp;  // node_id, acc_distance fromm start
+            if (forward_acc <= radius) open.push_back(to);
+            if (backward_acc <= radius) open.push_back(from);
+            lookup_tmp.insert(std::make_pair(to->id, d_to));
+            lookup_tmp.insert(std::make_pair(from->id, -d_from));
+
             while (!open.empty())
             {
-                // pick next
-                auto e = open.front();
+                // pick next node
+                Node* node = open.front();
                 open.pop_front();
+                auto found = lookup_tmp.find(node->id);
+                if(found == lookup_tmp.end()) break;
+                double d_acc = found->second;
 
-                Node* n1 = map->getNode(e->node_id1);
-                Node* n2 = map->getNode(e->node_id2);
-                double d1 = norm(p - *n1);
-                double d2 = norm(p - *n2);
-
-                if (d1 < radius)
+                if(d_acc>0)
                 {
-                    for (auto it = n1->edge_ids.begin(); it != n1->edge_ids.end(); it++)
+                    for (auto it = node->edge_ids.begin(); it != node->edge_ids.end(); it++)
                     {
-                        const Edge* next = map->getEdge(*it);
-                        if (next == nullptr) continue;
+                        Node* from = node;
+                        double forward_acc = (int)(d_acc/d_delta + 1) * d_delta;
+
+                        Edge* e = map->getEdge(*it);
+                        if (e == nullptr) continue;
+                        Node* to = map->getConnectedNode(node, e->id);
+                        if (to == nullptr) continue;
 
                         // check duplication
-                        auto found = lookup_tmp.find(next->id);
+                        auto found = lookup_tmp.find(to->id);
                         if (found != lookup_tmp.end()) continue;
 
-                        open.push_back(next);
-                        results.push_back(next);
-                        lookup_tmp.insert(std::make_pair(next->id, idx++));
+                        while(forward_acc <= radius && forward_acc <= d_acc + e->length)
+                        {
+                            particles.push_back(Particle(e, from, forward_acc - d_acc, 0, w));
+                            added++;
+                            forward_acc += d_delta;
+                        }
+
+                        if (forward_acc <= radius)
+                        {
+                            open.push_back(to);
+                            lookup_tmp.insert(std::make_pair(to->id, d_acc + e->length));
+                        }
                     }
                 }
-                if (d2 < radius)
+
+                if(d_acc<0)
                 {
-                    for (auto it = n2->edge_ids.begin(); it != n2->edge_ids.end(); it++)
+                    for (auto it = node->edge_ids.begin(); it != node->edge_ids.end(); it++)
                     {
-                        const Edge* next = map->getEdge(*it);
-                        if (next == nullptr) continue;
+                        const Node* to = node;
+                        double backward_acc = (int)(-d_acc/d_delta + 1) * d_delta;
+
+                        Edge* e = map->getEdge(*it);
+                        if (e == nullptr) continue;
+                        Node* from = map->getConnectedNode(node, e->id);
+                        if (from == nullptr) continue;
 
                         // check duplication
-                        auto found = lookup_tmp.find(next->id);
+                        auto found = lookup_tmp.find(from->id);
                         if (found != lookup_tmp.end()) continue;
 
-                        open.push_back(next);
-                        results.push_back(next);
-                        lookup_tmp.insert(std::make_pair(next->id, idx++));
+                        while(backward_acc <= radius && backward_acc <= -d_acc + e->length)
+                        {
+                            particles.push_back(Particle(e, from, e->length - (backward_acc + d_acc), 0, w));
+                            added++;
+                            backward_acc += d_delta;
+                        }
+
+                        if (backward_acc <= radius)
+                        {
+                            open.push_back(from);
+                            lookup_tmp.insert(std::make_pair(from->id, d_acc - e->length));
+                        }
                     }
                 }
             }
-
-            int added = 0;
-            if (map)
-            {
-                std::vector<Edge*> edges = map->getNearEdges(p, radius);
-                if (edges.empty()) return;
-
-                double total_length = 0;
-                for (size_t i = 0; i < edges.size(); i++)
-                {
-                    total_length += edges[i]->length;
-                }
-
-                for (size_t i = 0; i < edges.size(); i++)
-                {
-                    int cnt = (int)(n * edges[i]->length / total_length + 0.5);
-
-                    dg::Node* from = map->getNode(edges[i]->node_id1);
-                    dg::Edge* edge = edges[i];
-                    dg::Node* to = map->getNode(edges[i]->node_id2);
-
-                    dg::Point2 v = *to - *from;
-                    double theta = atan2(v.y, v.x);
-                    bool use_node1 = true;
-                    if (fabs(cx::trimRad(theta - p.theta)) < CV_PI / 2) use_node1 = true;
-                    else use_node1 = false;
-
-                    int k = 0;
-                    while (k < cnt)
-                    {
-                        Particle particle;
-                        if (use_node1)
-                        {
-                            particle.start_node = map->getNode(edges[i]->node_id1);
-                            particle.edge = edges[i];
-                            particle.dist = (double)rand() * edges[i]->length / RAND_MAX;
-                            particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
-                            particle.weight = w;
-                            particles.push_back(particle);
-                        }
-                        else
-                        {
-                            particle.start_node = map->getNode(edges[i]->node_id2);
-                            particle.edge = edges[i];
-                            particle.dist = (double)rand() * edges[i]->length / RAND_MAX;
-                            particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
-                            particle.weight = w;
-                            particles.push_back(particle);
-                        }
-                        k++;
-                        added++;
-                        if (k >= cnt || added >= n) break;
-                    }
-                    if (added >= n) break;
-                }
-
-                while (added < n)
-                {
-                    int ei = rand() % ((int)(edges.size()));
-                    Edge* edge = edges[ei];
-
-                    dg::Node* from = map->getNode(edge->node_id1);
-                    dg::Node* to = map->getNode(edge->node_id2);
-
-                    dg::Point2 v = *to - *from;
-                    double theta = atan2(v.y, v.x);
-                    bool use_node1 = true;
-                    if (fabs(cx::trimRad(theta - p.theta)) < CV_PI / 2) use_node1 = true;
-                    else use_node1 = false;
-
-                    Particle particle;
-                    if (use_node1)
-                    {
-                        particle.start_node = map->getNode(edge->node_id1);
-                        particle.edge = edge;
-                        particle.dist = (double)rand() * edge->length / RAND_MAX;
-                        particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
-                        particle.weight = w;
-                        particles.push_back(particle);
-                    }
-                    else
-                    {
-                        particle.start_node = map->getNode(edge->node_id2);
-                        particle.edge = edge;
-                        particle.dist = (double)rand() * edge->length / RAND_MAX;
-                        particle.head = cx::trimRad((double)rand() * CV_PI / RAND_MAX);
-                        particle.weight = w;
-                        particles.push_back(particle);
-                    }
-                    added++;
-                    if (added >= n) break;
-                }
-            }
+            return added;
         }
 
         void predictParticles(Pose2 cur, Pose2 prev, double dtime, bool robot_stopped)
@@ -744,25 +709,27 @@ namespace dg
             double mean_x = 0;
             double mean_y = 0;
             double w_sum = 0;
-            Map* map = m_shared->getMapLocked();
+            Map* map = m_shared->getMap();
             for (int i = 0; i < N; i++)
             {
                 Node* from = m_particles[i].start_node;
                 Edge* edge = m_particles[i].edge;
+                if (from==nullptr || edge==nullptr) continue;
                 Node* to = map->getConnectedNode(from, edge->id);
+                if (to == nullptr) continue;
                 Point2 v = *to - *from;
                 Point2 pos_m = *from + m_particles[i].dist * v / edge->length;
                 double theta = cx::trimRad(atan2(v.y, v.x) + m_particles[i].head);
                 mean_x += (cos(theta) * m_particles[i].weight);
                 mean_y += (sin(theta) * m_particles[i].weight);
-                mean_p += (pos_m * m_particles[i].weight);
+                mean_p.x += (pos_m.x * m_particles[i].weight);
+                mean_p.y += (pos_m.y * m_particles[i].weight);
                 w_sum += m_particles[i].weight;
             }
             mean_p /= w_sum;
             mean_x /= w_sum;
             mean_y /= w_sum;
             double mean_theta = atan2(mean_y, mean_x);
-            m_shared->releaseMapLock();
 
             Point2 ep;
             Edge* edge = map->getNearestEdge(mean_p, ep);
@@ -786,7 +753,7 @@ namespace dg
             }
 
             // resampling
-            int M = m_particle_numbers - m_resample_numbers;
+            int M = m_particle_numbers;
             if (M > N) M = N;
             std::vector<int> indexes;
             indexes.resize(M);
@@ -821,8 +788,11 @@ namespace dg
                 tmp[i] = m_particles[indexes[i]];
                 w_sum += tmp[i].weight;
             }
-            add_uniform_particles(m_ekf->getPose(), m_resample_sigma, tmp, m_resample_numbers, w_sum / M);
-            w_sum += (m_resample_numbers * w_sum / M);
+            if(m_mcl_pose_valid && m_resample_radius > 0)
+            {
+                int n_resample = add_uniform_particles(m_pose_mcl, m_resample_delta, m_resample_radius, tmp, w_sum / M);
+                w_sum += (n_resample * w_sum / M);
+            }
 
             m_particles = tmp;
             for (int i = 0; i < (int)m_particles.size(); i++)
