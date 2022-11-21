@@ -125,7 +125,7 @@ namespace dg
             bool announce = false;
         };
 
-    protected:
+    // protected:
         /**
         * @brief A segment of guided path
         */
@@ -200,10 +200,15 @@ namespace dg
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
         Guidance getGuidance() const { return m_curguidance; };
         RobotStatus getRobotStatus(){ return m_robot_status; }; 
+        bool isGuidanceInitialized() {
+            if (m_guide_idx < 0) return false;
+            else return true;        }
         bool isExpendedPathGenerated(){
             if (m_extendedPath.size() > 0) return true;
             else return false;}
         ExtendedPathElement getCurExtendedPath() { return m_extendedPath[m_guide_idx]; };
+        ExtendedPathElement getNextExtendedPath() { return m_extendedPath[m_guide_idx+1]; };
+        int getCurGuideIdx() { return m_guide_idx; };
 
         void setRobotStatus(RobotStatus status) 
         { 
