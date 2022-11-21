@@ -421,7 +421,7 @@ int runLocalizer()
 
     enable_odometry = true;
     //enable_imu = true;
-    //use_andro_gps = true;
+    use_andro_gps = true;
     //use_novatel = true;
     //enable_ocr = true;
     //enable_poi = true;
@@ -431,7 +431,7 @@ int runLocalizer()
     //enable_roadtheta = true;
     //draw_gps = true;
 
-    int data_sel = 11;
+    int data_sel = 6;
     double start_time = 0;     // skip time (seconds)
     //rec_video_file = "mcl_bucheon_course.avi";
     double rec_video_fps = 10;

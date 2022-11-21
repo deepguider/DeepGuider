@@ -72,6 +72,23 @@ int MapEditor::configure(std::string site)
     COEX2.grid_unit_pos = cv::Point(-230, -16);
     COEX2.map_file = "data/COEX/TopoMap_COEX.csv";
 
+    /* COEX AB Hall
+    COEX2.image_file = "data/COEX/COEX_ab.png";
+    COEX2.map_pixel_per_meter = 7.37;
+    COEX2.map_image_rotation = cx::cvtDeg2Rad(-22);
+    COEX2.map_ref_point_pixel = cv::Point2d(-1970, 4330);
+    */
+
+    // COEX Robot map
+    /*
+    COEX2.image_file = "data/COEX/occumap_221121_vflip.png";
+    COEX2.map_ref_point_latlon = dg::LatLon(37.5105315, 127.0600675);
+    COEX2.map_pixel_per_meter = 10.0;
+    COEX2.map_image_rotation = cx::cvtDeg2Rad(-22.5);
+    COEX2.map_ref_point_pixel = cv::Point2d(950, 3375);
+    COEX2.map_view_size = cv::Size(1920, 2400);
+    */
+
     MapGUIProp Bucheon;
     Bucheon.server_port = "10002";
     Bucheon.image_file = "data/Bucheon/NaverMap_Bucheon(Satellite).png";
@@ -931,16 +948,27 @@ void MapEditor::fixMapError()
 
     // check edge
     std::vector<dg::ID> invalid_edges;
+    invalid_nodes.clear();
     for (auto edge = m_map.getHeadEdge(); edge != m_map.getTailEdge(); edge++)
     {
         dg::Node* n1 = m_map.getNode(edge->node_id1);
         dg::Node* n2 = m_map.getNode(edge->node_id2);
         if (n1 && n2) edge->length = norm(*n1 - *n2);
         if (n1 == nullptr || n2 == nullptr) invalid_edges.push_back(edge->id);
+        else if (n1->id==n2->id || edge->length < DBL_EPSILON)
+        {
+            if (n1 && (int)(n1->edge_ids.size()) <= 1) invalid_nodes.push_back(n1->id);
+            if (n2 && (int)(n2->edge_ids.size()) <= 1) invalid_nodes.push_back(n2->id);
+            invalid_edges.push_back(edge->id);
+        }
     }
     for (auto it = invalid_edges.begin(); it != invalid_edges.end(); it++)
     {
         m_map.deleteEdge(*it);
+    }
+    for (auto it = invalid_nodes.begin(); it != invalid_nodes.end(); it++)
+    {
+        m_map.deleteNode(*it);
     }
 
     m_error_nodes.clear();
