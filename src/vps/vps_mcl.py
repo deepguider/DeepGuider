@@ -59,7 +59,16 @@ class MCL():
         self.color_green = (0,255,0)
 
         # Crop image to save result into avi
-        
+
+        ## Choose which result to be drawn
+        self.draw_landmark_enable = True
+        self.draw_mcl_enable = True
+        self.draw_particle_enable = True
+
+        self.draw_odoTrj_enable = True
+        self.draw_landmarkTrj_enable = False
+        self.draw_mclTrj_enable = True
+
     def crop(self, img):
         return self.crop_img(img, x=self.avi_x0, y=self.avi_y0, w=self.avi_w, h=self.avi_h)
 
@@ -91,6 +100,8 @@ class MCL():
             cv2.namedWindow(self.WINDOW_NAME)
 
         self.mcl_pose = [-1, -1]
+        self.mcl_pose_prev = [-1, -1]
+        self.mcl_pose_prev_prev = [-1, -1]
         
         self.trajectory_odo = np.zeros(shape=(0,2))
         self.trajectory_vps = np.zeros(shape=(0,2))
@@ -135,7 +146,10 @@ class MCL():
             dt = self.timestamp - self.previous_timestamp
             distance = np.linalg.norm(np.array([[self.previous_x, self.previous_y]])-np.array([[x, y]]) ,axis=1)
             if distance > 0.1 : # 0.1 meters
-                heading=np.arctan2(np.array([y-self.previous_y]), np.array([self.previous_x-x ]))
+                if self.mcl_pose_prev_prev[0] > 0 and self.mcl_pose_prev_prev[1] > 0 and self.mcl_pose_prev[0] > 0 and self.mcl_pose_prev[1] > 0:
+                    heading = np.arctan2(np.array([self.mcl_pose_prev[1] - self.mcl_pose_prev_prev[1]]), np.array([self.mcl_pose_prev[0] - self.mcl_pose_prev_prev[0]]))
+                else: 
+                    heading=np.arctan2(np.array([y-self.previous_y]), np.array([self.previous_x-x ]))
                 if heading>0:
                     heading=-(heading-np.pi)
                 else:
@@ -158,19 +172,23 @@ class MCL():
                     #self.weights = self.update(self.particles, self.odo_heading, self.weights, z=zs, R=self.sensor_vps_importance_pdf_std, landmarks=self.landmarks)  # 50, The smaller the R, the better the particles are gathered.
                     self.weights = self.update(self.particles, self.weights, z=zs, R=self.sensor_vps_importance_pdf_std, landmarks=landmarks)  # 50, The smaller the R, the better the particles are gathered.
 
-                    ## Re-sampling
-                    indexes = self.systematic_resample(self.weights)
-                    self.particles, self.weights = self.resample_from_index(self.particles, self.weights, indexes)
+                ## Re-sampling
+                indexes = self.systematic_resample(self.weights)
+                self.particles, self.weights = self.resample_from_index(self.particles, self.weights, indexes)
 
-                    ## Get mean position by averaging particles position
-                    mcl_pose = self.averaging_particle_position(self.particles, self.weights)
-                    mcl_time_pose, mcl_time_std = self.mSimple_filter.get_mean(mcl_pose[0], mcl_pose[1])
-                    self.mcl_pose = mcl_time_pose
+                ## Get mean position by averaging particles position
+                mcl_pose = self.averaging_particle_position(self.particles, self.weights)
+                mcl_timemean_pose, mcl_timemean_std = self.mSimple_filter.get_mean(mcl_pose[0], mcl_pose[1])
+                self.mcl_pose = mcl_timemean_pose
 
-                    self.draw_result()
+                self.draw_result()
 
         self.previous_x = x
         self.previous_y = y
+
+        self.mcl_pose_prev_prev = self.mcl_pose_prev  # t-2
+        self.mcl_pose_prev = self.mcl_pose  # t-1
+
         self.previous_timestamp = self.timestamp
         if self.get_particles_std() < self.initial_particles_std*0.3:
             mcl_pose_valid = True
@@ -298,19 +316,22 @@ class MCL():
         ## Draw legened
         self.draw_legend()
 
-        ## Draw particles
-        self.mMap.draw_points_on_map(xys=self.particles, incoord=self.incoord, radius=1, color=self.color_particle, thickness=-1)  # BGR
+        if self.draw_particle_enable == True:
+            ## Draw particles
+            self.mMap.draw_points_on_map(xys=self.particles, incoord=self.incoord, radius=1, color=self.color_particle, thickness=-1)  # BGR
 
-        ## Draw landmarks (vps)
-        if self.landmarks is not None:
-            self.mMap.draw_points_on_map(xys=self.landmarks, incoord=self.incoord, radius=3, color=self.color_landmark, thickness=2)  # BGR
+        if self.draw_landmark_enable == True:
+            ## Draw landmarks (vps)
+            if self.landmarks is not None:
+                self.mMap.draw_points_on_map(xys=self.landmarks, incoord=self.incoord, radius=3, color=self.color_landmark, thickness=2)  # BGR
 
         ## Draw trajectory
         if self.draw_result_count > 40:  # It's noisy before stablizing
             self.draw_trajectory()
 
-        ## Draw predicted robot position
-        self.mMap.draw_point_on_map(xy=self.mcl_pose, incoord=self.incoord, radius=10, color=self.color_robot_pred, thickness=1)  # BGR
+        if self.draw_mcl_enable == True:
+            ## Draw predicted robot position
+            self.mMap.draw_point_on_map(xy=self.mcl_pose, incoord=self.incoord, radius=10, color=self.color_robot_pred, thickness=1)  # BGR
 
         ## Show result image
         cv2.imshow(self.WINDOW_NAME, self.get_img())
@@ -387,33 +408,35 @@ class MCL():
     def draw_trajectory(self):
         img = self.get_img()
 
-        ## Draw and Write odometry position trajectory
-        self.trajectory_odo, self.odo_img_x, self.odo_img_y = self.update_trajectory_img_coord(self.odo_x, self.odo_y, self.trajectory_odo, "utm")
-        self.drawLines(img, self.trajectory_odo, self.color_trajectory_odo)
-        line_odo = "{0:06d},{1:},{2:},{3:},{4:}\n".format(self.write_idx, self.odo_img_x, self.odo_img_y, self.odo_x, self.odo_y)
+        if self.draw_odoTrj_enable == True:
+            ## Draw and Write odometry position trajectory
+            self.trajectory_odo, self.odo_img_x, self.odo_img_y = self.update_trajectory_img_coord(self.odo_x, self.odo_y, self.trajectory_odo, "utm")
+            self.drawLines(img, self.trajectory_odo, self.color_trajectory_odo)
+            line_odo = "{0:06d},{1:},{2:},{3:},{4:}\n".format(self.write_idx, self.odo_img_x, self.odo_img_y, self.odo_x, self.odo_y)
+            self.fp_odo.write(line_odo)
 
-        ## Draw and Write landmarks (vps results) position trajectory
-        if self.landmarks is not None:
-            landmark = self.landmarks[0]
-            if self.check_valid_landmark(landmark) == True:
-                self.trajectory_vps, self.vps_img_x, self.vps_img_y = self.update_trajectory_img_coord(landmark[0], landmark[1], self.trajectory_vps, "utm")
-            else:
-                self.vps_img_x, self.vps_img_y = -1, -1
-        if True:
+        if self.draw_landmarkTrj_enable == True:  # vps as landmark
+            ## Draw and Write landmarks (vps results) position trajectory
+            if self.landmarks is not None:
+                landmark = self.landmarks[0]
+                if self.check_valid_landmark(landmark) == True:
+                    self.trajectory_vps, self.vps_img_x, self.vps_img_y = self.update_trajectory_img_coord(landmark[0], landmark[1], self.trajectory_vps, "utm")
+                else:
+                    self.vps_img_x, self.vps_img_y = -1, -1
             self.drawLines(img, self.trajectory_vps, self.color_trajectory_vps)  # Do not display vps results
-        line_vps = "{0:06d},{1:},{2:},{3:},{4:}\n".format(self.write_idx, self.vps_img_x, self.vps_img_y, self.landmarks[0][0], self.landmarks[0][1] )
+            line_vps = "{0:06d},{1:},{2:},{3:},{4:}\n".format(self.write_idx, self.vps_img_x, self.vps_img_y, self.landmarks[0][0], self.landmarks[0][1] )
+            self.fp_vps.write(line_vps)
 
-        ## Draw and Write mcl position trajectory
-        self.trajectory_mcl, self.mcl_img_x, self.mcl_img_y = self.update_trajectory_img_coord(self.mcl_pose[0], self.mcl_pose[1], self.trajectory_mcl, "utm")
-        if True: # display line for mcl result
-            self.drawLines(img, self.trajectory_mcl, self.color_trajectory_mcl)
-        else:  # display points for mcl result
-            self.mMap.draw_points_on_map(xys=self.trajectory_mcl, incoord="img", radius=1, color=self.color_trajectory_mcl, thickness=-1)  # BGR
-        line_mcl = "{0:06d},{1:},{2:},{3:},{4:}\n".format(self.write_idx, self.mcl_img_x, self.mcl_img_y, self.mcl_pose[0], self.mcl_pose[1])
+        if self.draw_mclTrj_enable:
+            ## Draw and Write mcl position trajectory
+            self.trajectory_mcl, self.mcl_img_x, self.mcl_img_y = self.update_trajectory_img_coord(self.mcl_pose[0], self.mcl_pose[1], self.trajectory_mcl, "utm")
+            if True: # display line for mcl result
+                self.drawLines(img, self.trajectory_mcl, self.color_trajectory_mcl)
+            else:  # display points for mcl result
+                self.mMap.draw_points_on_map(xys=self.trajectory_mcl, incoord="img", radius=1, color=self.color_trajectory_mcl, thickness=-1)  # BGR
+            line_mcl = "{0:06d},{1:},{2:},{3:},{4:}\n".format(self.write_idx, self.mcl_img_x, self.mcl_img_y, self.mcl_pose[0], self.mcl_pose[1])
+            self.fp_mcl.write(line_mcl)
 
-        self.fp_odo.write(line_odo)
-        self.fp_vps.write(line_vps)
-        self.fp_mcl.write(line_mcl)
         self.write_idx += 1
         #self.drawCross(img, self.rebot_pos_pred, r=255, g=0, b=0)
         self.set_img(img)

@@ -858,7 +858,7 @@ class vps:
             map_img, utm_ltop, utm_rbottom = self.dg_ros_yml.get_map_info()
             map_site = self.dg_ros_yml.get_site()
             self.mMCL = vps_mcl.MCL(map_img, utm_ltop, utm_rbottom, "utm", map_site, n_particle=400, motion_err_mu=0, motion_err_std=4,
-                    sensor_vps_err_mu=0, sensor_vps_err_std=0.5, sensor_vps_importance_pdf_std=50)
+                    sensor_vps_err_mu=0, sensor_vps_err_std=0.1, sensor_vps_importance_pdf_std=10)
             self.mMCL.initialize(disp=True) 
             self.mcl_initialized = True
 
