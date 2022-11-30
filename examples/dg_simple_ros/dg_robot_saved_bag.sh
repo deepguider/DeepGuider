@@ -44,6 +44,15 @@ function set_topic_idx(){
     sed -i "s|${param}: [0-9]|${param_dst}: ${index}|g" dg_ros.yml
 }
 
+function set_robot_map_idx(){  
+    # You can modify the robot_map_index parameter in dg_ros.yml
+    #                          0             1                       2          3             
+    local index=${1} #0:"Bucheon_KETI", 1:"Bucheon_Robot", 2:"COEX_KETI", 3:"COEX_Robot"
+    local param="^robot_map_index"
+    local param_dst="robot_map_index"
+    sed -i "s|${param}: [0-9]|${param_dst}: ${index}|g" dg_ros.yml
+}
+
 ## Run theta360z1 crop publish
 pid=`pgrep -f "python2 crop360cam_python27.py"`
 if [ -n "${pid}" ];then  # If process is running.
@@ -52,19 +61,10 @@ fi
 CWD=`pwd`
 gnome-terminal --tab --title="theta360z1_crop_pub" -- bash -c "cd ${CWD}/src/dg_cart_ros/src/theta360z1/publish && python2 crop360cam_python27.py"
 
-#set_site_idx 6; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/20220324_ETRI_and_Doryong.bag
-#set_site_idx 4; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/2021-10-05-13-09-40.bag
-#set_site_idx 4; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/220418_coex_out_to_indoor/_2022-04-18-14-08-03.bag
-#set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/220418_coex_out_to_indoor/_2022-04-18-13-20-44.bag
-#set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 1 ./recordings/220829_coex/_2022-08-29-11-52-58.bag
-#set_site_idx 7; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 1 ./recordings/220829_coex/_2022-08-29-13-23-17.bag
-set_site_idx 2; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 1 ./recordings/_2022-11-08-16-05-30_keti2nonghyup_notbad.bag
-#set_site_idx 4; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/coex.bag
-#set_site_idx 3; set_topic_idx 2; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 600 -r 10 ./recordings/etri.bag
-#set_site_idx 5; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/indoor.bag
-#set_site_idx 2; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/_2022-10-06-14-40-21.bag
-#set_site_idx 2; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/_2022-10-06-13-49-15.bag
-#set_site_idx 2; set_topic_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 1 ./recordings/_2022-10-06-14-18-35.bag
+#set_site_idx 2; set_topic_idx 2; set_robot_map_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 150 -r 1 ./recordings/Rosbag_subgoal/20221108_bucheon.bag
+#set_site_idx 1; set_topic_idx 2; set_robot_map_idx 3; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 1000 -r 1 ./recordings/Rosbag_subgoal/20221122_COEX.bag
+set_site_idx 2; set_topic_idx 2; set_robot_map_idx 1; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 50 -r 1 ./recordings/Rosbag_subgoal/20221108_bucheon.bag
+#set_site_idx 1; set_topic_idx 2; set_robot_map_idx 3; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 150 -r 1 ./recordings/Rosbag_subgoal/20221122_COEX.bag
 
 ## Start dg_simple_ros package (working directory: devel/lib/dg_simple_ros/)
 LIBDIR="devel/lib/dg_simple_ros"

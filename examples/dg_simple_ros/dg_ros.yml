@@ -12,19 +12,19 @@ enable_exploration: 0
 enable_logo: 0
 enable_imu: 0
 enable_odometry: 1
-enable_mcl: 0
+enable_mcl: 1
 enable_mapserver: 0    # 0: use saved offline map, 1: online mapserver
 
 ## Main Options
 site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, 5:TEST_ETRI_INDOOR, 6:ETRI_EXTENDED, 7:TEST_COEX_INOUT, 8:Bucheon_KETI, 9:"COEX_KETI" ...
-site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR", "ETRI_EXTENDED", "TEST_COEX_INOUT", "Bucheon_KETI", "COEX_KETI"]
+site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR", "ETRI_EXTENDED", "TEST_COEX_INOUT", "Bucheon_KETI", "COEX_Robot"]
 server_ip_index: 1          # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
 image_server_port: "10000"  # etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
 topic_name_index: 0         # 0: ETRI CART_VER2_ANDROIDGPS, 1: ETRI CART_VER2, 2:KETI ROBOT
 topic_names_set: ["ETRI_CART_VER2_ANDROIDGPS", "ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
-robot_map_index: 1      #0:"Bucheon_KETI", 1:"Bucheon_Robot", 2:"COEX_KETI", 3:"COEX_KETI_220824"
-robot_map_set: ["Bucheon_KETI", "Bucheon_Robot", "COEX_KETI","COEX_KETI_220824"]
+robot_map_index: 1      #0:"Bucheon_KETI", 1:"Bucheon_Robot", 2:"COEX_KETI", 3:"COEX_Robot"
+robot_map_set: ["Bucheon_KETI", "Bucheon_Robot", "COEX_KETI","COEX_Robot"]
 robot_map_onoff: 1       #0:offline map, 1:online map
 
 dg_srcdir: "/home/dgtest/deepguider/src"  # path of deepguider/src folder (required for python embedding)
@@ -99,7 +99,7 @@ KETI_ROBOT:
   topic_360cam: "/theta360z1_raw"
   topic_360cam_crop: "/theta360z1_crop"
   topic_cam: "/usb_cam_1/image_raw/compressed"
-  topic_gps: "/fix" #"/andro2linux_gps" 
+  topic_gps: "/andro2linux_gps" 
   #topic_dgps: ""
   #topic_imu: "/gx5/imu/data"
   #topic_rgbd_image: "/rs_front_camera1/color/image_raw/compressed"
@@ -240,13 +240,13 @@ Bucheon_KETI:
   vps_use_custom_image_server: 1   # 0 (default) to use naver roadview, 1 to use custom images for database images
 
 Bucheon_Robot:
-  robotmap_path: "data/Bucheon/bucheon_220922/occumap_bucheon.png" 
+  robotmap_path: "data/Bucheon/bucheon_220922/occumap.png"   # make it same orientation with online map
   robotmap_ref_point_latlon: [37.5177542, 126.7651744]
-  robotmap_ref_point_pixel: [715, 650] 
+  robotmap_ref_point_pixel: [715, 1725] 
   robotmap_ref_point_meter_per_pixel: 0.1
   robotmap_rotation: -0.8
   robotmap_scale: 10.0
-  robotmap_origin_pixel: [345, 1110] #-34.5, -126.5 -> transform to latlon align. ex) margin-y
+  robotmap_origin_pixel: [345, 1265] # origin pixel in occumap.png
 
 COEX_KETI:
   map_image_path: "data/COEX/occumap_mcl(fliplr).png"
@@ -258,3 +258,20 @@ COEX_KETI:
   image_server_port: "10001"
   gps_input_path: "data/200925_153949_AndroSensor.csv"
   video_input_path: ""
+
+COEX_Robot: 
+  map_image_path: "data/COEX/221121/occumap_221121.png"  # make it same orientation with online map
+  map_data_path: "data/COEX/TopoMap_COEX.csv"
+  map_ref_point_latlon: [37.5105315, 127.0600675]
+  map_ref_point_pixel: [950, 3375] #[1890, 6744]
+  map_pixel_per_meter: 10.0 #0.1 #20.0 
+  map_image_rotation: -22.5
+  image_server_port: "10001"
+  gps_input_path: "data/200925_153949_AndroSensor.csv"
+  video_input_path: ""
+  robotmap_path: "data/COEX/221121/occumap_221121.png"  # make it same orientation with online map
+  robotmap_ref_point_latlon: [37.5105315, 127.0600675]
+  robotmap_ref_point_pixel: [1370, 3375] #[1470, 370] [1890, 6744]
+  robotmap_ref_point_meter_per_pixel: 0.1 
+  robotmap_rotation: -157.5 #157.5 180
+  robotmap_origin_pixel: [576, 3395] # origin pixel in occumap_221121.png
