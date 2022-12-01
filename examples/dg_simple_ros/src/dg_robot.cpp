@@ -741,6 +741,7 @@ bool DGRobot::isSubPathDrivablev3(cv::Mat robotmap, Pose2 dest_point, Pose2 sour
         {
             cv::Point point_px = line_it.pos();
             int value = robotmap.at<uchar>(point_px.y, point_px.x);
+            ROS_INFO("AAAAAAA value %d", value);
             if (value >= m_drivable_threshold)  // first encounter of drivable area
             {
                 Pose2 point_px_pose;
@@ -750,6 +751,8 @@ bool DGRobot::isSubPathDrivablev3(cv::Mat robotmap, Pose2 dest_point, Pose2 sour
                 return isSubPathDrivable(robotmap, dest_point, new_source_point);
             }
         }
+
+        ROS_INFO("No encounter of the first drivable area");
         return false;  // all non-drivable until the destination
     }
     else{  // current position is drivable
@@ -808,7 +811,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     if (onlinemap.empty()) //on robot occumap
     {
         ROS_INFO("No occumap");
-        robotmap = cv::imread(m_robotmap_path);  // if no online map, read offline map
+        robotmap = cv::imread(m_robotmap_path, cv::IMREAD_GRAYSCALE);  // if no online map, read offline map
     }
     cv::Size robotmap_size = robotmap.size();
     m_robot_origin.x = -m_dx_map_origin_pixel.x * m_dx_map_meter_per_pixel;
@@ -827,9 +830,8 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     //save image
     cv::Mat colormap=robotmap_erode;
     cv::Mat clean_colormap=robotmap;
-    if (colormap.channels() == 1)
-        cv::cvtColor(robotmap_erode, colormap, cv::COLOR_GRAY2BGR); 
-        // cv::cvtColor(robotmap, clean_colormap, cv::COLOR_GRAY2BGR); 
+    cv::cvtColor(robotmap_erode, colormap, cv::COLOR_GRAY2BGR); 
+    cv::cvtColor(robotmap, clean_colormap, cv::COLOR_GRAY2BGR); 
 
     // imwrite("../../../eroderobotmap.png", robotmap_erode);  
 
