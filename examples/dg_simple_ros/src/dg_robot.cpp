@@ -85,8 +85,8 @@ protected:
     bool isSubPathDrivable(cv::Mat robotmap, Pose2 pointA, Pose2 pointB);
     bool isSubPathDrivablev2(cv::Mat robotmap, Pose2 dest_point);
     bool isSubPathDrivablev3(cv::Mat robotmap, Pose2 dest_point, Pose2 source_point);
-    bool findAlternativePath(Pose2& alternate_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double diff_dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap);
-    bool findAlternativePathv2(Pose2& alternate_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double diff_dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double angle_range);
+    bool findAlternativePath(Pose2& alternate_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double& min_dist_to_next_node);
+    bool findAlternativePathv2(Pose2& alternate_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double angle_range, double& min_dist_to_next_node);
     void rotatePose(Pose2& P, double theta_rot);
     Pose2 cvtDGtoDXcoordinate(Pose2 P, Pose2 P_DG, Pose2 P_DX);
     Pose2 cvtMaptoRobotcoordinate(Pose2 P);
@@ -522,13 +522,13 @@ bool DGRobot::makeSubgoal(Pose2& pub_pose)
     return true;
 }
 
-bool DGRobot::findAlternativePath(Pose2& alternative_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap){
+bool DGRobot::findAlternativePath(Pose2& alternative_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double& min_dist_to_next_node){
     /*
     Alternative candidates sampled uniformly on a circle. Angle of each sample is based on robot origin.  
     */
     
     // find alternative that is drivable and the closest to the goal
-    double min_dist_to_next_node=dist_robot_to_nextnode + sub_goal_distance + 100;  // max possible distance for the alternatives is dist_robot_to_nextnode + sub_goal_distance. 100 just in case.
+    min_dist_to_next_node=1000000;  // 100 km. 
     Pose2 valid_point_with_min_dist;
     double new_theta = 0;
 
@@ -558,7 +558,7 @@ bool DGRobot::findAlternativePath(Pose2& alternative_point, Pose2 robot_pose, Po
         new_theta += (360/num_alternatives);
 
     }
-    if (min_dist_to_next_node == dist_robot_to_nextnode + sub_goal_distance + 100){
+    if (min_dist_to_next_node == 1000000){
         return false; // can't find alternative :(
     }
     else{  // can find alternative :)
@@ -568,7 +568,7 @@ bool DGRobot::findAlternativePath(Pose2& alternative_point, Pose2 robot_pose, Po
     }
 }
 
-bool DGRobot::findAlternativePathv2(Pose2& alternative_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double angle_range){
+bool DGRobot::findAlternativePathv2(Pose2& alternative_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double angle_range, double& min_dist_to_next_node){
     /*
     Alternative candidates sampled from -angle_range to angle_range. Angle_range 180 is similar (but not same) to findAlternativePath (difference: angle of sample) 
     */
@@ -580,7 +580,7 @@ bool DGRobot::findAlternativePathv2(Pose2& alternative_point, Pose2 robot_pose, 
     int next_node_theta = m_guider.getDegree(dummy, robot_pose, next_node_robot);
     
     // find alternative that is drivable and the closest to the goal
-    double min_dist_to_next_node=dist_robot_to_nextnode + sub_goal_distance + 100;  // max possible distance for the alternatives is dist_robot_to_nextnode + sub_goal_distance. 100 just in case.
+    min_dist_to_next_node=1000000;  // 100 km. 
     Pose2 valid_point_with_min_dist;
     double new_theta = -angle_range + (double)next_node_theta;
 
@@ -628,7 +628,7 @@ bool DGRobot::findAlternativePathv2(Pose2& alternative_point, Pose2 robot_pose, 
         new_theta += (final_excluded_theta/num_alternatives);
 
     }
-    if (min_dist_to_next_node == dist_robot_to_nextnode + sub_goal_distance + 100){
+    if (min_dist_to_next_node == 1000000){
         // if (!isanypathdrivable) ROS_INFO("Can't find alternative because of no path drivable");
         // if (!min_dist_to_next_node) ROS_INFO("Can't find alternative because of min dist is still same.. HAVE TO CHANGE THE INITIAL VALUE");
         return false; // can't find alternative :(
@@ -869,7 +869,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
             ROS_INFO("[makeSubgoal3] prev_id: %zd, cur_id: %zd, next_id: %zd", m_prev_node_id, m_cur_head_node_id, next_guide.cur_node_id);
             
             // find theta (Note: doesn't matter using robot/dg. Value same)
-            diff_deg_robot = m_guider.getDegree(prev_node_robot, cur_node_robot, next_node_robot);
+            diff_deg_robot = m_guider.getDegree(prev_node_robot, cur_node_robot, next_node_robot); // Note: probably unnecessary variable
             // display theta and 
             // string disp = "degree = " + std::to_string(diff_deg_robot);
             // cv::putText(colormap, disp, cur_node_robot_px, cv::FONT_HERSHEY_SIMPLEX, 2, cv::Vec3b(0, 255, 0),5);
@@ -884,9 +884,9 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
             cv::drawMarker(colormap, prev_node_robot_px, cv::Vec3b(0, 0, 255), 2, 40, 5);
 
         }
-        else  // initial start: go straight to the next node
+        else  
         {
-            diff_deg_robot = 0;  // go straight
+            diff_deg_robot = 0;  // go straight. Note: probably unnecessary variable
         }
 
         // update global variable
@@ -901,14 +901,87 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     }
 
     //distance from robot to the next node
-    double diff_dist_robot_to_nextnode = norm(next_node_robot-robot_pose);
+    double dist_robot_to_nextnode = norm(next_node_robot-robot_pose);
     // // new_theta for robot pose (facing the next node). Note: probably not used as for subgoal, we only need coordinate.
     // new_theta = robot_pose.theta + cx::cvtDeg2Rad(diff_deg_robot);  // current pose + how much to turn based on diff_deg_robot
+    ROS_INFO("[makeSubgoal3] dist_robot_to_nextnode: %f", dist_robot_to_nextnode);
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // // Plan A-2: comment below
+    // // Plan B-2: uncomment below (still have problem: what if the pub pose is not in drivable area? Try to go to next next node?)
+    // if (dist_robot_to_nextnode < 1){  // if too close to the next node but DG hasn't update to the next node
+
+    //     double dist_cur_to_nextnode = norm(next_node_robot-cur_node_robot);
+    //     double p = min(1.0 / dist_cur_to_nextnode, 1.0); // what is (e.g.) 1 meter ratio with the distance between cur and next node  
+        
+    //     pub_pose.x = cur_node_robot.x + (1.0+p) * (next_node_robot.x - cur_node_robot.x);
+    //     pub_pose.y = cur_node_robot.y + (1.0+p) * (next_node_robot.y - cur_node_robot.y);
+
+    //     ROS_INFO("Found subggoal: <%f, %f>", pub_pose.x, pub_pose.y);  // OUTPUT.. care about pub_pose in robot's coordinate
+    //     cv::drawMarker(colormap, cvtRobottoMapcoordinate(pub_pose), cv::Vec3b(255, 0, 255), 5, 40, 5); // purple triangle up (to differentiate with plan A)
+    //     cv::circle(colormap, cvtRobottoMapcoordinate(pub_pose), 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
+            
+    //     bool isdrivable = isSubPathDrivablev3(robotmap_erode, pub_pose, robot_pose);
+    //     if (!isdrivable){
+    //         Pose2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);
+    //         cv::putText(colormap, "FAIL", cv::Point(robot_pose_px.x + 50, robot_pose_px.y + 50) , cv::FONT_HERSHEY_SIMPLEX, 2, cv::Vec3b(0, 0, 255),5);
+    //         cv::putText(clean_colormap, "FAIL", cv::Point(robot_pose_px.x + 50, robot_pose_px.y + 50) , cv::FONT_HERSHEY_SIMPLEX, 2, cv::Vec3b(0, 0, 255),5);
+    //     }
+    //     ///////////////////////////////////////////////////
+
+    //     //record image   
+    //     // ///save image 
+    //     Point2 dg_pose_robot_px = cvtRobottoMapcoordinate(dg_pose_robot);
+    //     // Point2 dx_pose_robot_px = cvtRobottoMapcoordinate(robot_pose);  // dx_pose_robot_px = dg_pose_robot_px
+        
+    //     cv::circle(colormap, dg_pose_robot_px, 20, cv::Vec3b(0, 255, 0), 5);
+    //     cv::circle(colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
+    //     cv::drawMarker(clean_colormap, dg_pose_robot_px, cv::Vec3b(0, 255, 0), 1, 10, 2);  // with robot real size
+    //     // cv::circle(colormap, dx_pose_robot_px, 20, cv::Vec3b(0, 0, 255), 5);
+
+    //     Point2 robot_heading;
+    //     robot_heading.x = dg_pose_robot_px.x + 20 * cos(robot_pose.theta);
+    //     robot_heading.y = dg_pose_robot_px.y + 20 * sin(robot_pose.theta);
+    //     cv::line(colormap, dg_pose_robot_px, robot_heading, cv::Vec3b(0, 255, 0), 5);
+    //     ROS_INFO("robot_pose theta %f", robot_pose.theta);
+        
+    //     cv::drawMarker(colormap, m_dx_map_origin_pixel, cv::Vec3b(0, 255, 255), 0, 50, 10);
+    //     imwrite("../../../test_image.png", colormap);
+        
+    //     // record video
+    //     cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);  
+    //     cv::Mat roi(videoFrame, cv::Rect(0, 0, colormap.cols, colormap.rows));
+    //     colormap.copyTo(roi);
+    //     m_video_gui << videoFrame;
+        
+    //     cv::Mat videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);  
+    //     int x = dg_pose_robot_px.x-400; 
+    //     int y = dg_pose_robot_px.y-400;
+    //     if (x+800 >= colormap.cols) x = colormap.cols - 800 - 1;
+    //     if (x<=1) x = 1;
+    //     if (y+800 >= colormap.rows) y = colormap.rows - 800 - 1;
+    //     if (y<=1) y = 1;
+    //     cv::Mat roicrop(colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
+    //     roicrop.copyTo(videoFrameCrop);
+    //     m_video_crop << videoFrameCrop;
+    //     // imwrite("../../../online_crop.png", videoFrameCrop);
+
+    //     videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);  
+    //     cv::Mat maproicrop(clean_colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
+    //     maproicrop.copyTo(videoFrameCrop);
+    //     m_mapvideo_crop << videoFrameCrop;
+
+    //     if (isdrivable) {return true;}
+    //     else {return false;}
+    // }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // if not too close to the next node
     // get a point between robot pose and next node. 1 meter from the robot position to the direction of next_node_robot
-    ROS_INFO("[makeSubgoal3] diff_dist_robot_to_nextnode: %f", diff_dist_robot_to_nextnode);
     double sub_goal_distance = 4.0;  // in meter. Distance from robot to sub goal. // 3.0 for visualization
-    double p = min(sub_goal_distance / diff_dist_robot_to_nextnode, 1.0); // what is (e.g.) 1 meter ratio with the distance to the next node  
+    double p = min(sub_goal_distance / dist_robot_to_nextnode, 1.0); // what is (e.g.) 1 meter ratio with the distance to the next node  
     ROS_INFO("[makeSubgoal3] p: %f", p);
     pub_pose.x = robot_pose.x + p * (next_node_robot.x - robot_pose.x);
     pub_pose.y = robot_pose.y + p * (next_node_robot.y - robot_pose.y);
@@ -924,14 +997,37 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
         std::vector<int> num_alternatives = {36, 24, 16, 12, 8, 8};  // {4} for visualization
         double angle_range = 180;  // max 180 (whole circle)
         bool isAlternativeFound;
+        double min_dist_temp=1000000;  // 100 km
         
+        /////////////////////////////////////////////////////////////////////////////////////////////
+        // Plan A-1
         for (int i; i < num_alternatives.size(); i++){
-            isAlternativeFound = findAlternativePathv2(pub_pose, robot_pose, next_node_robot, robotmap_erode, alternative_sub_goal_distances.at(i), diff_dist_robot_to_nextnode, num_alternatives.at(i), colormap, angle_range);
+            isAlternativeFound = findAlternativePathv2(pub_pose, robot_pose, next_node_robot, robotmap_erode, alternative_sub_goal_distances.at(i), dist_robot_to_nextnode, num_alternatives.at(i), colormap, angle_range, min_dist_temp);
             if (isAlternativeFound){
                 break;
             }
         }
-        
+        // /////////////////////////////////////////////////////////////////////////////////////////////
+        // // Plan B-1
+        // Pose2 pub_pose_temp;
+        // double min_dist_best = 1000000;  // 100 km
+
+        // for (int i; i < num_alternatives.size(); i++){   
+        //     double min_dist_temp;     
+        //     isAlternativeFound = findAlternativePathv2(pub_pose_temp, robot_pose, next_node_robot, robotmap_erode, alternative_sub_goal_distances.at(i), dist_robot_to_nextnode, num_alternatives.at(i), colormap, angle_range, min_dist_temp);
+        //     if (isAlternativeFound && min_dist_temp < min_dist_best){
+        //         pub_pose = pub_pose_temp;
+        //         min_dist_best = min_dist_temp;
+        //     }
+        // }
+        // if (min_dist_best == 1000000){
+        //     isAlternativeFound = false;
+        // }
+        // else{
+        //     isAlternativeFound = true;
+        // }
+        // /////////////////////////////////////////////////////////////////////////////////////////////
+
         if (!isAlternativeFound){
             ROS_INFO("can't find sub goal :(");
             Pose2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);
