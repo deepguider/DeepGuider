@@ -592,8 +592,8 @@ bool DGRobot::findAlternativePathv2(Pose2& alternative_point, Pose2 robot_pose, 
         final_excluded_theta = angle_range*2 + (angle_range*2/num_alternatives);
     }
 
-    bool isdistlessthanmindist=false;
-    bool isanypathdrivable=false;
+    // bool isdistlessthanmindist=false;
+    // bool isanypathdrivable=false;
     // iterate over all alternatives
     for (int i=0; i < num_alternatives; i++){
         Pose2 alternative_pub_pose;
@@ -615,22 +615,22 @@ bool DGRobot::findAlternativePathv2(Pose2& alternative_point, Pose2 robot_pose, 
             valid_point_with_min_dist=alternative_pub_pose;
             ROS_INFO("Success finding better sub goal");
         }
-        else{
-            if (isSubPathDrivablev3(robotmap_erode, alternative_pub_pose, robot_pose)){
-                isanypathdrivable = true;
-            }
-            if (dist_to_next_node < min_dist_to_next_node){
-                isdistlessthanmindist=true;
-            }
-        }
+        // else{
+        //     if (isSubPathDrivablev3(robotmap_erode, alternative_pub_pose, robot_pose)){
+        //         isanypathdrivable = true;
+        //     }
+        //     if (dist_to_next_node < min_dist_to_next_node){
+        //         isdistlessthanmindist=true;
+        //     }
+        // }
 
         // go to the next alternative
         new_theta += (final_excluded_theta/num_alternatives);
 
     }
     if (min_dist_to_next_node == dist_robot_to_nextnode + sub_goal_distance + 100){
-        if (!isanypathdrivable) ROS_INFO("Can't find alternative because of no path drivable");
-        if (!min_dist_to_next_node) ROS_INFO("Can't find alternative because of min dist is still same.. HAVE TO CHANGE THE INITIAL VALUE");
+        // if (!isanypathdrivable) ROS_INFO("Can't find alternative because of no path drivable");
+        // if (!min_dist_to_next_node) ROS_INFO("Can't find alternative because of min dist is still same.. HAVE TO CHANGE THE INITIAL VALUE");
         return false; // can't find alternative :(
     }
     else{  // can find alternative :)
@@ -706,7 +706,7 @@ bool DGRobot::isSubPathDrivable(cv::Mat robotmap, Pose2 pointA, Pose2 pointB){
         int value = robotmap.at<uchar>(point_px.y, point_px.x);
         if (value < m_drivable_threshold)  // any non drivable area
         {
-            ROS_INFO("non drivable value <%d>", value);
+            // ROS_INFO("non drivable value <%d>", value);
             return false;
         }
     }
@@ -741,7 +741,6 @@ bool DGRobot::isSubPathDrivablev3(cv::Mat robotmap, Pose2 dest_point, Pose2 sour
         {
             cv::Point point_px = line_it.pos();
             int value = robotmap.at<uchar>(point_px.y, point_px.x);
-            ROS_INFO("AAAAAAA value %d", value);
             if (value >= m_drivable_threshold)  // first encounter of drivable area
             {
                 Pose2 point_px_pose;
