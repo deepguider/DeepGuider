@@ -92,7 +92,7 @@ protected:
     Pose2 cvtMaptoRobotcoordinate(Pose2 P);
     Pose2 cvtRobottoMapcoordinate(Pose2 P);
     Pose2 m_robot_origin;
-    int m_drivable_threshold = 200;
+    int m_drivable_threshold = 240;
     bool m_robotarrived_but_nodenotyetupdated = false;
     bool m_save_video = true;
 
@@ -363,7 +363,7 @@ void DGRobot::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& map)
             int index = i*size_x + j;
             if (map->data[index] <= 15)
             {
-                image.at<uchar>(i,j) = 255 - map->data[index]*5;
+                image.at<uchar>(i,j) = 255 - map->data[index];
             }
             else
             {
