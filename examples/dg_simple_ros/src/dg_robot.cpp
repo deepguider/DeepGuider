@@ -93,6 +93,7 @@ protected:
     Pose2 cvtRobottoMapcoordinate(Pose2 P);
     Pose2 m_robot_origin;
     int m_drivable_threshold = 200;
+    bool m_robotarrived_but_nodenotyetupdated = false;
 
     geometry_msgs::PoseStamped makeRosPubPoseMsg(ID nid, Point2 xy);
     bool findExtendedDrivablePoint(cv::Mat &image, Point2 robot_px, Point2 node_px, Point2& result_metric);
@@ -821,10 +822,20 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     if (robotmap.empty())
         return false;
 
-    // erode robotmap
-    int erode_value = 6;
-    cv::Mat robotmap_erode=robotmap.clone();
-    erode(robotmap.clone(), robotmap_erode, cv::Mat::ones(cv::Size(erode_value, erode_value), CV_8UC1), cv::Point(-1, -1), 1);
+    // smooth robotmap
+    cv::Mat robotmap_smooth=robotmap.clone();
+    ///////////////////////////////////////////////////////////////////////////////////
+    // // Plan A-3: comment below (except the last line)
+    // // Plan B-3: uncomment below (except the last line)
+    // int smoothing_filter = 3; // filter size. Must be odd
+    // cv::medianBlur(robotmap, robotmap_smooth, smoothing_filter);
+
+    // // erode robotmap
+    // int erode_value = 10;
+    int erode_value = 6;  // Plan A-3: uncomment. Plan B-3: comment
+    ///////////////////////////////////////////////////////////////////////////////
+    cv::Mat robotmap_erode=robotmap_smooth.clone();
+    erode(robotmap_smooth, robotmap_erode, cv::Mat::ones(cv::Size(erode_value, erode_value), CV_8UC1), cv::Point(-1, -1), 1);
 
     //save image
     cv::Mat colormap=robotmap_erode;
@@ -832,7 +843,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     cv::cvtColor(robotmap_erode, colormap, cv::COLOR_GRAY2BGR); 
     cv::cvtColor(robotmap, clean_colormap, cv::COLOR_GRAY2BGR); 
 
-    // imwrite("../../../eroderobotmap.png", robotmap_erode);  
+    imwrite("../../../smootheroderobotmap.png", robotmap_erode);  
 
     ROS_INFO("[makeSubgoal3] CurGuideIdx %d", m_guider.getCurGuideIdx());
 
@@ -894,7 +905,8 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
         m_cur_node_dg = next_node_dg;
         m_prev_node_id = m_cur_head_node_id;
         m_cur_head_node_id = next_guide.cur_node_id;
-        m_prev_robot_pose = robot_pose;    
+        m_prev_robot_pose = robot_pose;   
+        m_robotarrived_but_nodenotyetupdated = false; // node updated 
     }
     else{  // if not new node
         diff_deg_robot = m_guider.getDegree(cur_node_robot, robot_pose, next_node_robot);  // Here, cur_node_robot = prev_node_robot
@@ -910,7 +922,8 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // // Plan A-2: comment below
     // // Plan B-2: uncomment below (still have problem: what if the pub pose is not in drivable area? Try to go to next next node?)
-    // if (dist_robot_to_nextnode < 1){  // if too close to the next node but DG hasn't update to the next node
+    // if (dist_robot_to_nextnode < 1 || m_robotarrived_but_nodenotyetupdated){  // if too close to the next node but DG hasn't update to the next node OR already done the solution before but node is still not yet updated
+    //     m_robotarrived_but_nodenotyetupdated = true;
 
     //     double dist_cur_to_nextnode = norm(next_node_robot-cur_node_robot);
     //     double p = min(1.0 / dist_cur_to_nextnode, 1.0); // what is (e.g.) 1 meter ratio with the distance between cur and next node  
