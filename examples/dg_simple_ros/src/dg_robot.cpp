@@ -822,7 +822,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
         return false;
 
     // erode robotmap
-    int erode_value = 6;
+    int erode_value = 10;
     cv::Mat robotmap_erode=robotmap.clone();
     erode(robotmap.clone(), robotmap_erode, cv::Mat::ones(cv::Size(erode_value, erode_value), CV_8UC1), cv::Point(-1, -1), 1);
 
@@ -918,10 +918,12 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     //     pub_pose.x = cur_node_robot.x + (1.0+p) * (next_node_robot.x - cur_node_robot.x);
     //     pub_pose.y = cur_node_robot.y + (1.0+p) * (next_node_robot.y - cur_node_robot.y);
 
-    //     ROS_INFO("Found subggoal: <%f, %f>", pub_pose.x, pub_pose.y);  // OUTPUT.. care about pub_pose in robot's coordinate
-    //     cv::drawMarker(colormap, cvtRobottoMapcoordinate(pub_pose), cv::Vec3b(255, 0, 255), 5, 40, 5); // purple triangle up (to differentiate with plan A)
-    //     cv::circle(colormap, cvtRobottoMapcoordinate(pub_pose), 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
-            
+    //     ROS_INFO("Found subggoal: <%f, %f>", pub_pose.x, pub_pose.y);  // OUTPUT.. care about pub_pose in robot's coordinate    
+    //     Pose2 pub_pose_px = cvtRobottoMapcoordinate(pub_pose);
+    //     cv::circle(colormap, pub_pose_px, 20, cv::Vec3b(255, 0, 255), 5);  // small purple circle
+    //     cv::circle(colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
+    //     cv::circle(clean_colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
+    
     //     bool isdrivable = isSubPathDrivablev3(robotmap_erode, pub_pose, robot_pose);
     //     if (!isdrivable){
     //         Pose2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);
@@ -937,7 +939,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
         
     //     cv::circle(colormap, dg_pose_robot_px, 20, cv::Vec3b(0, 255, 0), 5);
     //     cv::circle(colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
-    //     cv::drawMarker(clean_colormap, dg_pose_robot_px, cv::Vec3b(0, 255, 0), 1, 10, 2);  // with robot real size
+    //     cv::circle(clean_colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
     //     // cv::circle(colormap, dx_pose_robot_px, 20, cv::Vec3b(0, 0, 255), 5);
 
     //     Point2 robot_heading;
@@ -1041,7 +1043,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
             
             cv::circle(colormap, dg_pose_robot_px, 20, cv::Vec3b(0, 255, 0), 5);
             cv::circle(colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
-            cv::drawMarker(clean_colormap, dg_pose_robot_px, cv::Vec3b(0, 255, 0), 1, 10, 2);  // with robot real size
+            cv::circle(clean_colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
             // cv::circle(colormap, dx_pose_robot_px, 20, cv::Vec3b(0, 0, 255), 5);
 
             Point2 robot_heading;
@@ -1081,8 +1083,10 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     
 
     ROS_INFO("Found subggoal: <%f, %f>", pub_pose.x, pub_pose.y);  // OUTPUT.. care about pub_pose in robot's coordinate
-    cv::circle(colormap, cvtRobottoMapcoordinate(pub_pose), 20, cv::Vec3b(255, 0, 255), 5);  // small purple circle
-    cv::circle(colormap, cvtRobottoMapcoordinate(pub_pose), 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
+    Pose2 pub_pose_px = cvtRobottoMapcoordinate(pub_pose);
+    cv::circle(colormap, pub_pose_px, 20, cv::Vec3b(255, 0, 255), 5);  // small purple circle
+    cv::circle(colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
+    cv::circle(clean_colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
         
     ///////////////////////////////////////////////////
 
@@ -1093,7 +1097,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     
     cv::circle(colormap, dg_pose_robot_px, 20, cv::Vec3b(0, 255, 0), 5);
     cv::circle(colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
-    cv::drawMarker(clean_colormap, dg_pose_robot_px, cv::Vec3b(0, 255, 0), 1, 10, 2);  // with robot real size
+    cv::circle(clean_colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
     // cv::circle(colormap, dx_pose_robot_px, 20, cv::Vec3b(0, 0, 255), 5);
 
     Point2 robot_heading;
