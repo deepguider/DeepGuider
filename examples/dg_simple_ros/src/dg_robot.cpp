@@ -822,7 +822,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
         return false;
 
     // erode robotmap
-    int erode_value = 10;
+    int erode_value = 6;
     cv::Mat robotmap_erode=robotmap.clone();
     erode(robotmap.clone(), robotmap_erode, cv::Mat::ones(cv::Size(erode_value, erode_value), CV_8UC1), cv::Point(-1, -1), 1);
 
