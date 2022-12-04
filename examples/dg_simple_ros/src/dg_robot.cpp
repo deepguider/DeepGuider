@@ -165,6 +165,7 @@ int DGRobot::readRobotParam(const cv::FileNode& fn)
     }
     m_guider.setRobotMap(robot_site_tagname);
     m_guider.setRobotUsage(m_topicset_tagname);
+    m_dg_map_origin_latlon = m_map_ref_point;
     printf("topicset_tagname: %s\n", m_topicset_tagname.c_str());
     printf("m_dx_map_ref_pixel.x: %f, m_dx_map_ref_pixel.y: %f\n", m_dx_map_ref_pixel.x, m_dx_map_ref_pixel.y);
     printf("m_dx_map_origin_pixel: %f, %f\n", m_dx_map_origin_pixel.x, m_dx_map_origin_pixel.y);
@@ -273,7 +274,9 @@ void DGRobot::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
     // Reset deepguider pose by first arrived robot pose
     if(m_first_robot_pose)
     {
-        m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
+        
+        m_localizer->setPose(cvtDx2Dg(dg::Pose2(x, y, theta)), timestamp);
+        // m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
         m_first_robot_pose = false;
     }
     // Use robot pose as odometry data
@@ -349,7 +352,8 @@ void DGRobot::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& map)
     // alternatively
     Point2 origin = dg::Point2(0, 0);
     new_origin_pixel = cvtRobottoMapcoordinate(origin);
-    
+      
+
     if (abs(m_dx_map_origin_pixel.x - new_origin_pixel.x) >= 1 || abs(m_dx_map_origin_pixel.y - new_origin_pixel.y) >= 1)
     {
         m_dx_map_origin_pixel = new_origin_pixel;
@@ -807,6 +811,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     ROS_INFO("[makeSubgoal3] robot_pose node_robot.x: %f, y:%f",robot_pose.x, robot_pose.y);
 
     Pose2 dg_pose_robot = cvtDGtoDXcoordinate(dg_pose, dg_pose, robot_pose);  // dg_pose in robot's coordinate
+
     
     cv::Mat robotmap = onlinemap;
     if (onlinemap.empty()) //on robot occumap
@@ -1432,12 +1437,28 @@ Point2 DGRobot::cvtDg2Dx(const Point2& dg_metric) const
    return dg_dx;  
 }
 
-
 Point2 DGRobot::cvtDx2Dg(const Point2& dx_metric) const
 {
-    double x_rotation_corrected = dx_metric.x * cos(m_dx_map_rotation_radian) - dx_metric.y * sin(m_dx_map_rotation_radian);
-    double y_rotation_corrected = dx_metric.x * sin(m_dx_map_rotation_radian) + dx_metric.y * cos(m_dx_map_rotation_radian);
-    return Point2(x_rotation_corrected, y_rotation_corrected);
+    //rotate robot's coordinate to utm
+    Point2 dx_rotated;
+    double theta = m_dx_map_rotation_radian;
+    dx_rotated.x = dx_metric.x * cos(theta) - dx_metric.y * sin(theta);
+    dx_rotated.y = dx_metric.x * sin(theta) + dx_metric.y * cos(theta);
+    printf("[cvtDx2Dg]000000000 dx_rotated: <%f, %f>\n", dx_rotated.x, dx_rotated.y);
+
+    //from dx_utm to dg utm.
+    Point2 dx_utm;
+    dx_utm.x = dx_rotated.x + m_dx_map_origin_utm.x;
+    dx_utm.y = dx_rotated.y + m_dx_map_origin_utm.y;
+    printf("[cvtDx2Dg]000000000 dx_utm: <%f, %f>\n", dx_utm.x, dx_utm.y);
+
+    //from dx utm to dg_metric
+    dg::Point2UTM dg_metric;
+    dg_metric.x = dx_utm.x - m_dg_map_origin_utm.x;
+    dg_metric.y = dx_utm.y - m_dg_map_origin_utm.y;
+    printf("[cvtDx2Dg]000000000 dg_metric: <%f, %f>\n", dg_metric.x, dg_metric.y);
+
+    return dg_metric;
 }
 
 Point2 DGRobot::cvtMetric2Pixel(const Point2& val) const
