@@ -46,6 +46,7 @@ protected:
     Pose2 m_prev_node_dg;  //in DG coordinate
     Pose2 m_cur_node_dg;  //in DG coordinate
     Pose2 m_prev_robot_pose;  //in robot coordinate
+    Pose2 m_cur_robot_pose;  //in robot coordinate
     ID m_prev_node_id = 0; 
     ID m_cur_head_node_id = 0; 
     
@@ -273,10 +274,9 @@ void DGRobot::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
     // Reset deepguider pose by first arrived robot pose
     if(m_first_robot_pose)
-    {
-        
-        m_localizer->setPose(cvtDx2Dg(dg::Pose2(x, y, theta)), timestamp);
-        // m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
+    {        
+        // m_localizer->setPose(cvtDx2Dg(dg::Pose2(x, y, theta)), timestamp);
+        m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
         m_first_robot_pose = false;
     }
     // Use robot pose as odometry data
@@ -413,22 +413,22 @@ void DGRobot::publishSubGoal()
             if (duration > ros::Duration(5.0))
             {
                 makeSubgoal3(pub_pose); // TODO: delete this afterwards in final version. Uncomment below
-            //     ROS_INFO("Duration seconds: %d", duration.sec);
-            //     if (cur_state == GuidanceManager::RobotStatus::NO_PATH) //if robot cannot generate path with the subgoal
-            //     {
-            //         if (reselectDrivablePoint(pub_pose))  // make undrivable black, then makesubgoal
-            //         {
-            //             ROS_INFO("reselectDrivablePoint!: %f, %f", pub_pose.x, pub_pose.y);
-            //             m_guider.m_subgoal_pose = pub_pose;
-            //         }                        
-            //     }
-            //     pub_pose = m_guider.m_subgoal_pose;
-            //     geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
-            //     pub_subgoal.publish(rosps);
-            //     ROS_INFO("==============================================================\n");
-            //     ROS_INFO("SubGoal published, again!: %f, %f<=====================", pub_pose.x, pub_pose.y);
-            //     m_begin_time = ros::Time::now();
-            // 
+                ROS_INFO("Duration seconds: %d", duration.sec);
+                // if (cur_state == GuidanceManager::RobotStatus::NO_PATH) //if robot cannot generate path with the subgoal
+                // {
+                //     if (reselectDrivablePoint(pub_pose))  // make undrivable black, then makesubgoal
+                //     {
+                //         ROS_INFO("reselectDrivablePoint!: %f, %f", pub_pose.x, pub_pose.y);
+                //         m_guider.m_subgoal_pose = pub_pose;
+                //     }                        
+                // }
+                pub_pose = m_guider.m_subgoal_pose;
+                geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
+                pub_subgoal.publish(rosps);
+                ROS_INFO("==============================================================\n");
+                ROS_INFO("SubGoal published, again!: %f, %f<=====================", pub_pose.x, pub_pose.y);
+                m_begin_time = ros::Time::now();
+            
             }
         }            
     }
@@ -811,6 +811,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     ROS_INFO("[makeSubgoal3] robot_pose node_robot.x: %f, y:%f",robot_pose.x, robot_pose.y);
 
     Pose2 dg_pose_robot = cvtDGtoDXcoordinate(dg_pose, dg_pose, robot_pose);  // dg_pose in robot's coordinate
+    // Pose2 dg_pose_robot = cvtDg2Dx(dg_pose);  // dg_pose in robot's coordinate
 
     
     cv::Mat robotmap = onlinemap;
@@ -838,7 +839,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
 
     // // erode robotmap
     // int erode_value = 10;
-    int erode_value = 6;  // Plan A-3: uncomment. Plan B-3: comment
+    int erode_value = 10;  // Plan A-3: uncomment. Plan B-3: comment
     ///////////////////////////////////////////////////////////////////////////////
     cv::Mat robotmap_erode=robotmap_smooth.clone();
     erode(robotmap_smooth, robotmap_erode, cv::Mat::ones(cv::Size(erode_value, erode_value), CV_8UC1), cv::Point(-1, -1), 1);
@@ -858,12 +859,16 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     new_theta = robot_pose.theta;
 
     //convert variables with DG coordinate to DX coordinate
-    Pose2 prev_node_robot = cvtDGtoDXcoordinate(m_prev_node_dg, dg_pose, robot_pose);
-    Pose2 cur_node_robot = cvtDGtoDXcoordinate(cur_node_dg, dg_pose, robot_pose);  // Note: cur_node_dg is same with m_cur_node_dg except when m_cur_node_dg hasn't been assigned for the first time
-    Pose2 next_node_robot = cvtDGtoDXcoordinate(next_node_dg, dg_pose, robot_pose);
-    // Pose2 prev_node_robotreal = cvtDg2Dx(m_prev_node_dg);
-    // Pose2 cur_node_robotreal = cvtDg2Dx(cur_node_dg);  
-    // Pose2 next_node_robotreal = cvtDg2Dx(next_node_dg);
+    // Pose2 prev_node_robot = cvtDGtoDXcoordinate(m_prev_node_dg, dg_pose, robot_pose);
+    // Pose2 cur_node_robot = cvtDGtoDXcoordinate(cur_node_dg, dg_pose, robot_pose);  // Note: cur_node_dg is same with m_cur_node_dg except when m_cur_node_dg hasn't been assigned for the first time
+    // Pose2 next_node_robot = cvtDGtoDXcoordinate(next_node_dg, dg_pose, robot_pose);
+    Pose2 prev_node_robot = cvtDg2Dx(m_prev_node_dg);
+    Pose2 cur_node_robot = cvtDg2Dx(cur_node_dg);  
+    Pose2 next_node_robot = cvtDg2Dx(next_node_dg);
+    // m_prev_robot_pose;  //in robot coordinate
+    // m_cur_robot_pose;  //in robot coordinate
+    ROS_INFO("[makeSubgoal3] m_prev_robot_pose: <%f, %f>", m_prev_robot_pose.x, m_prev_robot_pose.y);
+    ROS_INFO("[makeSubgoal3] m_cur_robot_pose: <%f, %f>", m_cur_robot_pose.x, m_cur_robot_pose.y);
 
     // drawing in colormap
     Point2 cur_node_robot_px = cvtRobottoMapcoordinate(cur_node_robot); //green star
@@ -911,7 +916,8 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
         m_cur_node_dg = next_node_dg;
         m_prev_node_id = m_cur_head_node_id;
         m_cur_head_node_id = next_guide.cur_node_id;
-        m_prev_robot_pose = robot_pose;   
+        m_prev_robot_pose = m_cur_robot_pose;   
+        m_cur_robot_pose = robot_pose;
         m_robotarrived_but_nodenotyetupdated = false; // node updated 
     }
     else{  // if not new node
@@ -1002,7 +1008,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
 
     // if not too close to the next node
     // get a point between robot pose and next node. 1 meter from the robot position to the direction of next_node_robot
-    double sub_goal_distance = 4.0;  // in meter. Distance from robot to sub goal. // 3.0 for visualization
+    double sub_goal_distance = 7.0;  // in meter. Distance from robot to sub goal. // 3.0 for visualization
     double p = min(sub_goal_distance / dist_robot_to_nextnode, 1.0); // what is (e.g.) 1 meter ratio with the distance to the next node  
     ROS_INFO("[makeSubgoal3] p: %f", p);
     pub_pose.x = robot_pose.x + p * (next_node_robot.x - robot_pose.x);
@@ -1015,9 +1021,9 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     // if (!isSubPathDrivable(robotmap_erode, pub_pose, robot_pose)){  // if not drivable
     // if (!isSubPathDrivablev2(robotmap_erode, pub_pose)){  // if not drivable
     if (!isSubPathDrivablev3(robotmap_erode, pub_pose, robot_pose)){  // if not drivable
-        std::vector<double> alternative_sub_goal_distances = {4.0, 3.0, 2.0, 1.0, 0.5, 0.1}; // {3.0} for visualization
-        std::vector<int> num_alternatives = {36, 24, 16, 12, 8, 8};  // {4} for visualization
-        double angle_range = 180;  // max 180 (whole circle)
+        std::vector<double> alternative_sub_goal_distances = {7.0, 6.0, 5.0, 4.0, 3.0, 2.0}; // {3.0} for visualization
+        std::vector<int> num_alternatives = {36, 36, 36, 36, 24, 16};  // {4} for visualization
+        double angle_range = 90; //180;  // max 180 (whole circle)
         bool isAlternativeFound;
         double min_dist_temp=1000000;  // 100 km
         
@@ -1121,6 +1127,14 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
         cv::circle(colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
         cv::circle(clean_colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
         // cv::circle(colormap, dx_pose_robot_px, 20, cv::Vec3b(0, 0, 255), 5);
+
+        //draw prev and current robot pose
+        Point2 prev_robot_px = cvtRobottoMapcoordinate(m_prev_robot_pose);
+        Point2 cur_robot_px = cvtRobottoMapcoordinate(m_cur_robot_pose);
+        cv::circle(clean_colormap, prev_robot_px, 10, cv::Vec3b(100, 100, 255), 2);  // with robot real size
+        cv::circle(clean_colormap, cur_robot_px, 10, cv::Vec3b(100, 255, 100), 2);  // with robot real size
+        cv::circle(colormap, prev_robot_px, 10, cv::Vec3b(100, 100, 255), 2);  // with robot real size
+        cv::circle(colormap, cur_robot_px, 10, cv::Vec3b(100, 255, 100), 2);  // with robot real size
 
         Point2 robot_heading;
         robot_heading.x = dg_pose_robot_px.x + 20 * cos(robot_pose.theta);
