@@ -833,7 +833,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
 
     // // erode robotmap
     // int erode_value = 10;
-    int erode_value = 6;  // Plan A-3: uncomment. Plan B-3: comment
+    int erode_value = 10;  // Plan A-3: uncomment. Plan B-3: comment
     ///////////////////////////////////////////////////////////////////////////////
     cv::Mat robotmap_erode=robotmap_smooth.clone();
     erode(robotmap_smooth, robotmap_erode, cv::Mat::ones(cv::Size(erode_value, erode_value), CV_8UC1), cv::Point(-1, -1), 1);
