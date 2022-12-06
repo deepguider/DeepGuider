@@ -853,12 +853,12 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     new_theta = robot_pose.theta;
 
     //convert variables with DG coordinate to DX coordinate
-    Pose2 prev_node_robot = cvtDGtoDXcoordinate(m_prev_node_dg, dg_pose, robot_pose);
-    Pose2 cur_node_robot = cvtDGtoDXcoordinate(cur_node_dg, dg_pose, robot_pose);  // Note: cur_node_dg is same with m_cur_node_dg except when m_cur_node_dg hasn't been assigned for the first time
-    Pose2 next_node_robot = cvtDGtoDXcoordinate(next_node_dg, dg_pose, robot_pose);
-    // Pose2 prev_node_robotreal = cvtDg2Dx(m_prev_node_dg);
-    // Pose2 cur_node_robotreal = cvtDg2Dx(cur_node_dg);  
-    // Pose2 next_node_robotreal = cvtDg2Dx(next_node_dg);
+    // Pose2 prev_node_robot = cvtDGtoDXcoordinate(m_prev_node_dg, dg_pose, robot_pose);
+    // Pose2 cur_node_robot = cvtDGtoDXcoordinate(cur_node_dg, dg_pose, robot_pose);  // Note: cur_node_dg is same with m_cur_node_dg except when m_cur_node_dg hasn't been assigned for the first time
+    // Pose2 next_node_robot = cvtDGtoDXcoordinate(next_node_dg, dg_pose, robot_pose);
+    Pose2 prev_node_robot = cvtDg2Dx(m_prev_node_dg);
+    Pose2 cur_node_robot = cvtDg2Dx(cur_node_dg);  
+    Pose2 next_node_robot = cvtDg2Dx(next_node_dg);
 
     // drawing in colormap
     Point2 cur_node_robot_px = cvtRobottoMapcoordinate(cur_node_robot); //green star
@@ -997,7 +997,7 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
 
     // if not too close to the next node
     // get a point between robot pose and next node. 1 meter from the robot position to the direction of next_node_robot
-    double sub_goal_distance = 4.0;  // in meter. Distance from robot to sub goal. // 3.0 for visualization
+    double sub_goal_distance = 7.0;  // in meter. Distance from robot to sub goal. // 3.0 for visualization
     double p = min(sub_goal_distance / dist_robot_to_nextnode, 1.0); // what is (e.g.) 1 meter ratio with the distance to the next node  
     ROS_INFO("[makeSubgoal3] p: %f", p);
     pub_pose.x = robot_pose.x + p * (next_node_robot.x - robot_pose.x);
@@ -1010,9 +1010,9 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
     // if (!isSubPathDrivable(robotmap_erode, pub_pose, robot_pose)){  // if not drivable
     // if (!isSubPathDrivablev2(robotmap_erode, pub_pose)){  // if not drivable
     if (!isSubPathDrivablev3(robotmap_erode, pub_pose, robot_pose)){  // if not drivable
-        std::vector<double> alternative_sub_goal_distances = {4.0, 3.0, 2.0, 1.0, 0.5, 0.1}; // {3.0} for visualization
-        std::vector<int> num_alternatives = {36, 24, 16, 12, 8, 8};  // {4} for visualization
-        double angle_range = 180;  // max 180 (whole circle)
+        std::vector<double> alternative_sub_goal_distances = {7.0, 6.0, 5.0, 4.0, 3.0, 2.0}; // {3.0} for visualization
+        std::vector<int> num_alternatives = {36, 36, 36, 36, 24, 16};  // {4} for visualization
+        double angle_range = 90;  // max 180 (whole circle)
         bool isAlternativeFound;
         double min_dist_temp=1000000;  // 100 km
         
