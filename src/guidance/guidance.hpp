@@ -207,8 +207,14 @@ namespace dg
             if (m_extendedPath.size() > 0) return true;
             else return false;}
         ExtendedPathElement getCurExtendedPath() { return m_extendedPath[m_guide_idx]; };
-        ExtendedPathElement getNextExtendedPath() { return m_extendedPath[m_guide_idx+1]; };
+        ExtendedPathElement getNextExtendedPath() { 
+            if (m_guide_idx > m_extendedPath.size()-2)
+                return m_extendedPath[m_guide_idx];
+            else
+                return m_extendedPath[m_guide_idx+1]; };
+            
         int getCurGuideIdx() { return m_guide_idx; };
+        int getLastGuideIdx() { return m_extendedPath.size()-1; };
 
         void setRobotStatus(RobotStatus status) 
         { 
@@ -242,6 +248,7 @@ namespace dg
             else m_use_online_map = false;
         };
         int getDegree(Point2 p1, Point2 p2, Point2 p3);
+        std::vector <ExtendedPathElement> m_extendedPath;
 
     protected:
         SharedInterface* m_shared = nullptr;
@@ -251,7 +258,7 @@ namespace dg
         bool buildGuides();
 
     private:
-        std::vector <ExtendedPathElement> m_extendedPath;
+        // std::vector <ExtendedPathElement> m_extendedPath;
         GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
         std::vector<Guidance> m_past_guides;
         Guidance m_curguidance;

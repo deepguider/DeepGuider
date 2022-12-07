@@ -88,11 +88,10 @@ bool GuidanceManager::initiateNewGuidance(TopometricPose pose_topo, Point2F gps_
 		for (int k = 0; k < m_extendedPath.size(); k++)
 		{
             Point2 node_metric = Point2(m_extendedPath[k]);
-			printf("Extendedpath[%d] node_metric.x: %f, node_metric.y: %f\n",k, node_metric.x, node_metric.y);
-			printf("Extendedpath[%d]-cur_node_id:%zd, next_node_id: %zd\n",k,m_extendedPath[k].cur_node_id, m_extendedPath[k].next_node_id);
+			printf("Extendedpath[%d] node_metric: <%f, %f> \n",k, node_metric.x, node_metric.y);
+			printf("Extendedpath[%d] cur_node_id:%zd, next_node_id: %zd\n",k,m_extendedPath[k].cur_node_id, m_extendedPath[k].next_node_id);
 		}
 		
-			
 		return true;
 	}
 	else
