@@ -1,4 +1,4 @@
-certifi==2019.11.28
+certifi==2022.12.7
 greenlet==0.4.15
 lmdb==0.98
 msgpack==1.0.0
