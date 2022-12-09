@@ -41,6 +41,7 @@ protected:
     ros::Publisher pub_subgoal;
     void publishSubGoal();
     void publishSubGoal2();
+    void publishSubGoal3();
 
     bool m_stop_running = false;
     double m_min_goal_dist = 3.0;
@@ -404,7 +405,7 @@ void DGRobot::publishSubGoal()
         if(!m_pub_flag)
         {
             // if (makeSubgoal(pub_pose))
-            if (makeSubgoal5(pub_pose))  // Robot's coordinate  
+            if (makeSubgoal6(pub_pose))  // Robot's coordinate  
             {
                 geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
                 pub_subgoal.publish(rosps);
@@ -422,7 +423,7 @@ void DGRobot::publishSubGoal()
             ros::Duration duration = cur_time - m_begin_time;
             if (duration > ros::Duration(5.0))
             {
-                makeSubgoal5(pub_pose); 
+                makeSubgoal6(pub_pose); 
                 ROS_INFO("Duration seconds: %d", duration.sec);
                 // if (cur_state == GuidanceManager::RobotStatus::NO_PATH) //if robot cannot generate path with the subgoal
                 // {
@@ -464,8 +465,8 @@ void DGRobot::publishSubGoal2()
         {
             ROS_INFO("Duration seconds: %d", duration.sec);
             Pose2 pub_pose;
-            if (makeSubgoal(pub_pose))  // Robot's coordinate  
-            // if (makeSubgoal5(pub_pose))  // Robot's coordinate  
+            // if (makeSubgoal(pub_pose))  // Robot's coordinate  
+            if (makeSubgoal6(pub_pose))  // Robot's coordinate  
             {
                 geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
                 pub_subgoal.publish(rosps);
@@ -475,6 +476,67 @@ void DGRobot::publishSubGoal2()
                 m_begin_time = ros::Time::now();
             }
         }
+    }    
+}
+
+
+void DGRobot::publishSubGoal3()
+{
+    if (!m_guider.isGuidanceInitialized()){
+        return;
+    }
+
+    Pose2 pub_pose;
+    GuidanceManager::RobotStatus cur_state = m_guider.getRobotStatus();
+    if (cur_state == GuidanceManager::RobotStatus::ARRIVED_NODE || cur_state == GuidanceManager::RobotStatus::ARRIVED_GOAL 
+    || cur_state == GuidanceManager::RobotStatus::READY || cur_state == GuidanceManager::RobotStatus::NO_PATH)
+    {        
+        if(!m_pub_flag)
+        {
+            if (cur_state == GuidanceManager::RobotStatus::NO_PATH){  // if no path, add undrivable pose 
+                Point2 undrivable_pose = m_guider.m_subgoal_pose;
+                m_undrivable_points.push_back(undrivable_pose);
+            }
+
+            // if (makeSubgoal(pub_pose))
+            if (makeSubgoal6(pub_pose))  // Robot's coordinate  
+            {
+                geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
+                pub_subgoal.publish(rosps);
+                m_guider.m_subgoal_pose = pub_pose;
+                ROS_INFO("==============================================================\n");
+                ROS_INFO("SubGoal published!: %f, %f<=====================", pub_pose.x, pub_pose.y);
+                m_begin_time = ros::Time::now();
+                m_pub_flag = true;
+                return;
+            }
+        }
+        else
+        {
+            ros::Time cur_time = ros::Time::now();
+            ros::Duration duration = cur_time - m_begin_time;
+            if (duration > ros::Duration(5.0))
+            {
+                if (cur_state == GuidanceManager::RobotStatus::NO_PATH){  // if no path, add undrivable pose 
+                    Point2 undrivable_pose = m_guider.m_subgoal_pose;
+                    m_undrivable_points.push_back(undrivable_pose);
+                }
+
+                makeSubgoal6(pub_pose); 
+                ROS_INFO("Duration seconds: %d", duration.sec);
+                pub_pose = m_guider.m_subgoal_pose;
+                geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
+                pub_subgoal.publish(rosps);
+                ROS_INFO("==============================================================\n");
+                ROS_INFO("SubGoal published, again!: %f, %f<=====================", pub_pose.x, pub_pose.y);
+                m_begin_time = ros::Time::now();
+            
+            }
+        }            
+    }
+    else //cur_state == GuidanceManager::RobotStatus::RUN_MANUAL || cur_state == GuidanceManager::RobotStatus::RUN_AUTO)
+    {
+        m_pub_flag = false;
     }    
 }
 
@@ -915,6 +977,15 @@ bool DGRobot::makeSubgoal4(Pose2& pub_pose)
     if (robotmap.empty())
         return false;
 
+    
+    // based on the undrivable points, make the robotmap undrivable on those points
+    for (int i = 0; i < m_undrivable_points.size(); i++)
+    {
+        Point2 node_robot = m_undrivable_points[i];
+        Point2 node_pixel = cvtRobottoMapcoordinate(node_robot);
+        robotmap.at<uchar>((int)node_pixel.y, (int)node_pixel.x) = 0;
+    }
+
     // smooth robotmap
     cv::Mat robotmap_smooth=robotmap.clone();
     ///////////////////////////////////////////////////////////////////////////////////
@@ -1341,7 +1412,7 @@ bool DGRobot::makeSubgoal5(Pose2& pub_pose)
     GuidanceManager::ExtendedPathElement next_guide = m_guider.getNextExtendedPath();
     Pose2 dg_pose = m_localizer->getPose();
     
-    ROS_INFO("[makeSubgoal3] DG Pose node_robot.x: %f, y:%f",dg_pose.x, dg_pose.y);
+    ROS_INFO("[makeSubgoal5] DG Pose node_robot.x: %f, y:%f",dg_pose.x, dg_pose.y);
     
     Pose2 cur_node_dg = Point2(cur_guide);
     Pose2 next_node_dg = Point2(next_guide);
@@ -1352,7 +1423,7 @@ bool DGRobot::makeSubgoal5(Pose2& pub_pose)
     Pose2 robot_pose = m_guider.m_robot_pose;  // robot pose in robot's coordinate
     m_robotmap_mutex.unlock();
 
-    ROS_INFO("[makeSubgoal3] robot_pose node_robot.x: %f, y:%f",robot_pose.x, robot_pose.y);
+    ROS_INFO("[makeSubgoal5] robot_pose node_robot.x: %f, y:%f",robot_pose.x, robot_pose.y);
 
     Pose2 dg_pose_robot = cvtDGtoDXcoordinate(dg_pose, dg_pose, robot_pose);  // dg_pose in robot's coordinate
     // Pose2 dg_pose_robot = cvtDg2Dx(dg_pose);  // dg_pose in robot's coordinate
@@ -1371,6 +1442,14 @@ bool DGRobot::makeSubgoal5(Pose2& pub_pose)
 
     if (robotmap.empty())
         return false;
+
+    // based on the undrivable points, make the robotmap undrivable on those points
+    for (int i = 0; i < m_undrivable_points.size(); i++)
+    {
+        Point2 node_robot = m_undrivable_points[i];
+        Point2 node_pixel = cvtRobottoMapcoordinate(node_robot);
+        robotmap.at<uchar>((int)node_pixel.y, (int)node_pixel.x) = 0;
+    }
 
     // smooth robotmap
     cv::Mat robotmap_smooth=robotmap.clone();
@@ -1778,6 +1857,15 @@ bool DGRobot::makeSubgoal6(Pose2& pub_pose)
 
     if (robotmap.empty())
         return false;
+
+    
+    // based on the undrivable points, make the robotmap undrivable on those points
+    for (int i = 0; i < m_undrivable_points.size(); i++)
+    {
+        Point2 node_robot = m_undrivable_points[i];
+        Point2 node_pixel = cvtRobottoMapcoordinate(node_robot);
+        robotmap.at<uchar>((int)node_pixel.y, (int)node_pixel.x) = 0;
+    }
 
     // smooth robotmap
     cv::Mat robotmap_smooth=robotmap.clone();
@@ -2237,6 +2325,14 @@ bool DGRobot::makeSubgoal7(Pose2& pub_pose)
     if (robotmap.empty())
         return false;
 
+    // based on the undrivable points, make the robotmap undrivable on those points
+    for (int i = 0; i < m_undrivable_points.size(); i++)
+    {
+        Point2 node_robot = m_undrivable_points[i];
+        Point2 node_pixel = cvtRobottoMapcoordinate(node_robot);
+        robotmap.at<uchar>((int)node_pixel.y, (int)node_pixel.x) = 0;
+    }
+
     // smooth robotmap
     cv::Mat robotmap_smooth=robotmap.clone();
     ///////////////////////////////////////////////////////////////////////////////////
@@ -2665,6 +2761,14 @@ bool DGRobot::makeSubgoal8(Pose2& pub_pose)
 
     if (robotmap.empty())
         return false;
+
+    // based on the undrivable points, make the robotmap undrivable on those points
+    for (int i = 0; i < m_undrivable_points.size(); i++)
+    {
+        Point2 node_robot = m_undrivable_points[i];
+        Point2 node_pixel = cvtRobottoMapcoordinate(node_robot);
+        robotmap.at<uchar>((int)node_pixel.y, (int)node_pixel.x) = 0;
+    }
 
     // smooth robotmap
     cv::Mat robotmap_smooth=robotmap.clone();
@@ -3137,6 +3241,15 @@ bool DGRobot::makeSubgoal3(Pose2& pub_pose)
 
     if (robotmap.empty())
         return false;
+
+    
+    // based on the undrivable points, make the robotmap undrivable on those points
+    for (int i = 0; i < m_undrivable_points.size(); i++)
+    {
+        Point2 node_robot = m_undrivable_points[i];
+        Point2 node_pixel = cvtRobottoMapcoordinate(node_robot);
+        robotmap.at<uchar>((int)node_pixel.y, (int)node_pixel.x) = 0;
+    }
 
     // smooth robotmap
     cv::Mat robotmap_smooth=robotmap.clone();
