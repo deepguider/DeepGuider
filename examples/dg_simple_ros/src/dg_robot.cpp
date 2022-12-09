@@ -263,7 +263,7 @@ bool DGRobot::runOnce(double timestamp)
     if(!ok) return false;
 
     // publishSubGoal();
-    publishSubGoal2();
+    publishSubGoal3();
 
     return true;
 }
@@ -486,19 +486,23 @@ void DGRobot::publishSubGoal3()
         return;
     }
 
-    Pose2 pub_pose;
     GuidanceManager::RobotStatus cur_state = m_guider.getRobotStatus();
     if (cur_state == GuidanceManager::RobotStatus::ARRIVED_NODE || cur_state == GuidanceManager::RobotStatus::ARRIVED_GOAL 
     || cur_state == GuidanceManager::RobotStatus::READY || cur_state == GuidanceManager::RobotStatus::NO_PATH)
-    {        
-        if(!m_pub_flag)
+    {          
+        ros::Time cur_time = ros::Time::now();
+        ros::Duration duration = cur_time - m_begin_time;
+        if (duration > ros::Duration(5.0))
         {
+            ROS_INFO("Duration seconds: %d", duration.sec);
+            Pose2 pub_pose;
+            
             if (cur_state == GuidanceManager::RobotStatus::NO_PATH){  // if no path, add undrivable pose 
                 Point2 undrivable_pose = m_guider.m_subgoal_pose;
                 m_undrivable_points.push_back(undrivable_pose);
             }
 
-            // if (makeSubgoal(pub_pose))
+            // if (makeSubgoal(pub_pose))  // Robot's coordinate  
             if (makeSubgoal6(pub_pose))  // Robot's coordinate  
             {
                 geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
@@ -507,38 +511,11 @@ void DGRobot::publishSubGoal3()
                 ROS_INFO("==============================================================\n");
                 ROS_INFO("SubGoal published!: %f, %f<=====================", pub_pose.x, pub_pose.y);
                 m_begin_time = ros::Time::now();
-                m_pub_flag = true;
-                return;
             }
         }
-        else
-        {
-            ros::Time cur_time = ros::Time::now();
-            ros::Duration duration = cur_time - m_begin_time;
-            if (duration > ros::Duration(5.0))
-            {
-                if (cur_state == GuidanceManager::RobotStatus::NO_PATH){  // if no path, add undrivable pose 
-                    Point2 undrivable_pose = m_guider.m_subgoal_pose;
-                    m_undrivable_points.push_back(undrivable_pose);
-                }
-
-                makeSubgoal6(pub_pose); 
-                ROS_INFO("Duration seconds: %d", duration.sec);
-                pub_pose = m_guider.m_subgoal_pose;
-                geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
-                pub_subgoal.publish(rosps);
-                ROS_INFO("==============================================================\n");
-                ROS_INFO("SubGoal published, again!: %f, %f<=====================", pub_pose.x, pub_pose.y);
-                m_begin_time = ros::Time::now();
-            
-            }
-        }            
-    }
-    else //cur_state == GuidanceManager::RobotStatus::RUN_MANUAL || cur_state == GuidanceManager::RobotStatus::RUN_AUTO)
-    {
-        m_pub_flag = false;
     }    
 }
+
 
 bool DGRobot::makeSubgoal(Pose2& pub_pose)
 {
