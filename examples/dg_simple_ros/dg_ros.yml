@@ -16,15 +16,15 @@ enable_mcl: 1
 enable_mapserver: 0    # 0: use saved offline map, 1: online mapserver
 
 ## Main Options
-site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, 5:TEST_ETRI_INDOOR, 6:ETRI_EXTENDED, 7:TEST_COEX_INOUT, 8:Bucheon_KETI, 9:"COEX_KETI" ...
-site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR", "ETRI_EXTENDED", "TEST_COEX_INOUT", "Bucheon_KETI", "COEX_Robot"]
-server_ip_index: 1          # 0: 127.0.0.1, 1: 129.254.81.204, ...
+site_index: 2            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, 5:TEST_ETRI_INDOOR, 6:ETRI_EXTENDED, 7:TEST_COEX_INOUT, 8:Bucheon_KETI, 9:"COEX_KETI",10:"COEX_KETI_221121", 11: Bucheon_Robot2  ...
+site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR", "ETRI_EXTENDED", "TEST_COEX_INOUT", "Bucheon_KETI", "COEX_KETI","COEX_KETI_221121", "Bucheon_Robot2"]
+server_ip_index: 0          # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
-image_server_port: "10000"  # etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
-topic_name_index: 0         # 0: ETRI CART_VER2_ANDROIDGPS, 1: ETRI CART_VER2, 2:KETI ROBOT
+image_server_port: "10001"  # etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
+topic_name_index: 2         # 0: ETRI CART_VER2_ANDROIDGPS, 1: ETRI CART_VER2, 2:KETI ROBOT
 topic_names_set: ["ETRI_CART_VER2_ANDROIDGPS", "ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
-robot_map_index: 1      #0:"Bucheon_KETI", 1:"Bucheon_Robot", 2:"COEX_KETI", 3:"COEX_Robot"
-robot_map_set: ["Bucheon_KETI", "Bucheon_Robot", "COEX_KETI","COEX_Robot"]
+robot_map_index: 4      #0:"Bucheon_KETI", 1:"Bucheon_Robot", 2:"COEX_KETI", 3:"COEX_Robot", 4:"Bucheon_Robot2", 
+robot_map_set: ["Bucheon_KETI", "Bucheon_Robot", "COEX_KETI","COEX_Robot", "Bucheon_Robot2"]
 robot_map_onoff: 1       #0:offline map, 1:online map
 
 dg_srcdir: "/home/dgtest/deepguider/src"  # path of deepguider/src folder (required for python embedding)
@@ -247,6 +247,20 @@ Bucheon_Robot:
   robotmap_rotation: -0.8
   robotmap_scale: 10.0
   robotmap_origin_pixel: [345, 1265] # origin pixel in occumap.png
+
+Bucheon_Robot2:
+  map_image_path: "data/Bucheon/bucheon_221209/occumap_flipud.png"
+  map_data_path: "data/Bucheon/TopoMap_Bucheon.csv"
+  map_ref_point_latlon: [37.517341, 126.764721]
+  map_ref_point_pixel: [3060, 1590]
+  map_pixel_per_meter: 10
+  map_image_rotation: 1.6
+  robotmap_path: "data/Bucheon/bucheon_21209/occumap.png" #data/Bucheon/bucheon_220922/occumap.png" 
+  robotmap_ref_point_latlon: [37.517337, 126.764761] #[37.517754, 126.765174]
+  robotmap_ref_point_pixel: [3060, 2307] #[715, 1725] #flipup[715, 650]
+  robotmap_rotation: 0 #-0.8
+  robotmap_pixel_per_meter: 10
+  robotmap_origin_pixel: [3060, 2307] #[345, 1265] #flipud[345,1110] -34.5, -126.5 
 
 COEX_KETI:
   map_image_path: "data/COEX/occumap_mcl(fliplr).png"
