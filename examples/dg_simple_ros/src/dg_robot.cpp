@@ -152,9 +152,7 @@ int DGRobot::readRobotParam(const cv::FileNode& fn)
     m_dx_map_rotation_radian = cx::cvtDeg2Rad(robotmap_rotation); // 로봇 지도 rotation
     CX_LOAD_PARAM_COUNT(fn, "robotmap_scale", m_robotmap_scale, n_read);
     CX_LOAD_PARAM_COUNT(fn, "robotmap_origin_pixel", m_dx_map_origin_pixel, n_read);
-    cv::Vec2d dg_ref_point = cv::Vec2d(m_map_ref_point.lat, m_map_ref_point.lon);
-    CX_LOAD_PARAM_COUNT(fn, "map_ref_point_latlon", dg_ref_point, n_read);
-    m_dg_map_origin_latlon = dg::LatLon(dg_ref_point[0], dg_ref_point[1]);
+    m_dg_map_origin_latlon = m_map_ref_point;
 
     int robot_map_index = -1;
     std::string robot_site_tagname;
@@ -175,7 +173,6 @@ int DGRobot::readRobotParam(const cv::FileNode& fn)
     }
     m_guider.setRobotMap(robot_site_tagname);
     m_guider.setRobotUsage(m_topicset_tagname);
-    m_dg_map_origin_latlon = m_map_ref_point;
     printf("topicset_tagname: %s\n", m_topicset_tagname.c_str());
     printf("m_dx_map_ref_pixel.x: %f, m_dx_map_ref_pixel.y: %f\n", m_dx_map_ref_pixel.x, m_dx_map_ref_pixel.y);
     printf("m_dx_map_origin_pixel: %f, %f\n", m_dx_map_origin_pixel.x, m_dx_map_origin_pixel.y);
@@ -389,31 +386,31 @@ void DGRobot::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr& map)
 
     m_robotmap_image = image;  
 
-    // //save image
-    // Pose2 robot_dx_metric = m_guider.m_robot_pose;
-    // Point2 robot_px = cvtMetric2Pixel(robot_dx_metric);
-    // cv::Mat colormap;
-    // image.copyTo(colormap);
-    // if (colormap.channels() == 1)
-    //     cv::cvtColor(colormap, colormap, cv::COLOR_GRAY2BGR); 
+    //save image
+    Pose2 robot_dx_metric = m_guider.m_robot_pose;
+    Point2 robot_px = cvtMetric2Pixel(robot_dx_metric);
+    cv::Mat colormap;
+    image.copyTo(colormap);
+    if (colormap.channels() == 1)
+        cv::cvtColor(colormap, colormap, cv::COLOR_GRAY2BGR); 
     
-    // cv::circle(colormap, robot_px, 10, cv::Vec3b(0, 255, 0), 2);
-    // Point2 heading;
-    // heading.x = robot_px.x + 20 * cos(robot_dx_metric.theta);
-    // heading.y = robot_px.y + 20 * sin(robot_dx_metric.theta);
-    // cv::line(colormap, robot_px, heading, cv::Vec3b(0, 255, 0), 2);
+    cv::circle(colormap, robot_px, 10, cv::Vec3b(0, 255, 0), 2);
+    Point2 heading;
+    heading.x = robot_px.x + 20 * cos(robot_dx_metric.theta);
+    heading.y = robot_px.y + 20 * sin(robot_dx_metric.theta);
+    cv::line(colormap, robot_px, heading, cv::Vec3b(0, 255, 0), 2);
 
-    // std::vector <GuidanceManager::ExtendedPathElement> ext_path = m_guider.m_extendedPath;
-    // Pose2 cur_node_dg;
-    // Point2 node_dx;
-    // for (size_t i = 0; i < ext_path.size(); i++)
-    // {
-    //     cur_node_dg = Point2(ext_path[i]);
-    //     node_dx = cvtMetric2Pixel(cvtDg2Dx(cur_node_dg));
-    //     cv::circle(colormap, node_dx, 10, cv::Vec3b(0, 0, 255), 2);        
-    // }
+    std::vector <GuidanceManager::ExtendedPathElement> ext_path = m_guider.m_extendedPath;
+    Pose2 cur_node_dg;
+    Point2 node_dx;
+    for (size_t i = 0; i < ext_path.size(); i++)
+    {
+        cur_node_dg = Point2(ext_path[i]);
+        node_dx = cvtMetric2Pixel(cvtDg2Dx(cur_node_dg));
+        cv::circle(colormap, node_dx, 10, cv::Vec3b(0, 0, 255), 2);        
+    }
 
-    // imwrite("../../../callbackRobotMap.png", colormap);
+    imwrite("../../../callbackRobotMap.png", colormap);
 
     m_robotmap_mutex.unlock();     
 }
