@@ -209,12 +209,18 @@ namespace dg
         ExtendedPathElement getCurExtendedPath() { return m_extendedPath[m_guide_idx]; };
         ExtendedPathElement getNextExtendedPath() { 
             if (m_guide_idx > m_extendedPath.size()-2)
-                return m_extendedPath[m_guide_idx];
+            {
+                printf("getNextExtendedPath called, but just returning final ext_path");
+                return getLastExtendedPath();
+            }
             else
                 return m_extendedPath[m_guide_idx+1]; };
         ExtendedPathElement getNextNextExtendedPath() { 
             if (m_guide_idx > m_extendedPath.size()-3)
-                return m_extendedPath[m_guide_idx];
+            {
+                printf("getNextNextExtendedPath called, but just returning final ext_path");
+                return getLastExtendedPath();
+            }
             else
                 return m_extendedPath[m_guide_idx+2]; };
             

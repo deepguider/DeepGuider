@@ -527,8 +527,8 @@ void DGRobot::publishSubGoal3()
                 m_undrivable_points.push_back(undrivable_pose);
             }
 
-            // if (makeSubgoal(pub_pose))  // Robot's coordinate  
-            if (makeSubgoal6(pub_pose))  // Robot's coordinate  
+            if (makeSubgoal(pub_pose))  // Robot's coordinate  
+            // if (makeSubgoal6(pub_pose))  // Robot's coordinate  
             {
                 geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
                 pub_subgoal.publish(rosps);
@@ -548,10 +548,13 @@ bool DGRobot::makeSubgoal(Pose2& pub_pose)
 
     GuidanceManager::ExtendedPathElement cur_guide = m_guider.getCurExtendedPath();
     GuidanceManager::ExtendedPathElement next_guide = m_guider.getNextExtendedPath();
+    GuidanceManager::ExtendedPathElement next_next_guide = m_guider.getNextNextExtendedPath();
 
     Pose2 cur_node_dg = Point2(cur_guide);
     Pose2 next_node_dg = Point2(next_guide);
-    ROS_INFO("[makeSubgoal] Heading %zd, node_metric.x: %f, y:%f",next_guide.cur_node_id, next_node_dg.x, next_node_dg.y);
+    Pose2 next_next_node_dg = Point2(next_next_guide);
+    ROS_INFO("[makeSubgoal] Next Heading %zd, node_metric: <%f, %f>",next_guide.cur_node_id, next_node_dg.x, next_node_dg.y);
+    ROS_INFO("[makeSubgoal] Next Next Heading %zd, node_metric: <%f, :%f>",next_next_guide.cur_node_id, next_next_node_dg.x, next_next_node_dg.y);
 
     //load robot info 
     m_robotmap_mutex.lock();
@@ -720,8 +723,8 @@ bool DGRobot::makeSubgoal(Pose2& pub_pose)
         m_prev_node_id = m_cur_head_node_id;
         m_cur_head_node_id = next_guide.cur_node_id;
         m_prev_robot_pose = robot_dx_metric;
-        m_guider.m_robot_heading_node_pose = next_node_dx;
     }    
+    m_guider.m_robot_heading_node_pose = next_node_dx;
 
     return true;
 }
@@ -1851,15 +1854,19 @@ bool DGRobot::makeSubgoal6(Pose2& pub_pose)
     // in DeepGuider coordinate
     GuidanceManager::ExtendedPathElement cur_guide = m_guider.getCurExtendedPath();
     GuidanceManager::ExtendedPathElement next_guide = m_guider.getNextExtendedPath();
+    GuidanceManager::ExtendedPathElement next_next_guide = m_guider.getNextNextExtendedPath();
     Pose2 dg_pose = m_localizer->getPose();
     
     ROS_INFO("[makeSubgoal6] DG Pose node_robot.x: %f, y:%f",dg_pose.x, dg_pose.y);
     
     Pose2 cur_node_dg = Point2(cur_guide);
     Pose2 next_node_dg = Point2(next_guide);
+    Pose2 next_next_node_dg = Point2(next_next_guide);
 
     ROS_INFO("[makeSubgoal6] cur_node_dg.x: %f, y:%f",cur_node_dg.x, cur_node_dg.y);
     ROS_INFO("[makeSubgoal6] next_node_dg.x: %f, y:%f",next_node_dg.x, next_node_dg.y);
+    ROS_INFO("[makeSubgoal6] next_next_node_dg: <%f, :%f>", next_next_node_dg.x, next_next_node_dg.y);
+
 
     //load robot info
     m_robotmap_mutex.lock();
@@ -3692,8 +3699,11 @@ bool DGRobot::findExtendedDrivablePoint(cv::Mat &image, Point2 robot_px, Point2 
     //save to image
     cv::Mat img_color;
     image.copyTo(img_color);
-    cv::cvtColor(img_color, img_color, cv::COLOR_GRAY2BGR);
-
+    if (img_color.channels() == 1)
+    {
+        cv::cvtColor(img_color, img_color, cv::COLOR_GRAY2BGR);
+    }
+    
     Point2 px_diff = node_px - robot_px;
     double base_rad = atan2(px_diff.y, px_diff.x);
     double max_dist = norm(px_diff);
