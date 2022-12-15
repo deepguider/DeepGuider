@@ -208,21 +208,9 @@ namespace dg
             else return false;}
         ExtendedPathElement getCurExtendedPath() { return m_extendedPath[m_guide_idx]; };
         ExtendedPathElement getNextExtendedPath() { 
-            if (m_guide_idx > m_extendedPath.size()-2)
-            {
-                printf("getNextExtendedPath called, but just returning final ext_path");
-                return getLastExtendedPath();
-            }
-            else
-                return m_extendedPath[m_guide_idx+1]; };
+            return m_extendedPath[std::min(m_guide_idx+1, (int) m_extendedPath.size()-1)]; };
         ExtendedPathElement getNextNextExtendedPath() { 
-            if (m_guide_idx > m_extendedPath.size()-3)
-            {
-                printf("getNextNextExtendedPath called, but just returning final ext_path");
-                return getLastExtendedPath();
-            }
-            else
-                return m_extendedPath[m_guide_idx+2]; };
+            return m_extendedPath[std::min(m_guide_idx+2, (int) m_extendedPath.size()-1)]; };
             
         int getCurGuideIdx() { return m_guide_idx; };
         int getLastGuideIdx() { return m_extendedPath.size()-1; };
