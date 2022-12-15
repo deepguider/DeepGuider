@@ -84,7 +84,7 @@ protected:
     //robot related functions
     std::vector<Point2> m_undrivable_points;
     void initialize_DG_DX_conversion();
-    bool makeSubgoal(Pose2& pub_pose);
+    bool makeSubgoal1(Pose2& pub_pose);
     bool makeSubgoal2(Point2& pub_pose, Point2& goal_px);
     bool makeSubgoal3(Pose2& pub_pose);
     bool makeSubgoal4(Pose2& pub_pose);
@@ -180,7 +180,7 @@ int DGRobot::readRobotParam(const cv::FileNode& fn)
     printf("m_dx_map_ref_pixel.x: %f, m_dx_map_ref_pixel.y: %f\n", m_dx_map_ref_pixel.x, m_dx_map_ref_pixel.y);
     printf("m_dx_map_origin_pixel: %f, %f\n", m_dx_map_origin_pixel.x, m_dx_map_origin_pixel.y);
     printf("m_dg_map_origin_latlon: %f, %f\n", m_dg_map_origin_latlon.lat, m_dg_map_origin_latlon.lon);
-    printf("robotmap_rotation: %f\n", robotmap_rotation);
+    printf("m_dx_map_rotation_radian: %f\n", cx::cvtRad2Deg(m_dx_map_rotation_radian));
 
     return n_read;
 }
@@ -530,7 +530,7 @@ void DGRobot::publishSubGoal3()
                 m_undrivable_points.push_back(undrivable_pose);
             }
 
-            // if (makeSubgoal(pub_pose))  // Robot's coordinate  
+            // if (makeSubgoal1(pub_pose))  // Robot's coordinate  
             if (makeSubgoal9(pub_pose))  // Robot's coordinate  
             {
                 geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
@@ -545,7 +545,7 @@ void DGRobot::publishSubGoal3()
 }
 
 
-bool DGRobot::makeSubgoal(Pose2& pub_pose)
+bool DGRobot::makeSubgoal1(Pose2& pub_pose)
 {
     ROS_INFO("[makeSubgoal] %d", m_guider.getCurGuideIdx());
 
@@ -568,7 +568,7 @@ bool DGRobot::makeSubgoal(Pose2& pub_pose)
     if (robotmap.empty()) //on robot occumap
     {
         ROS_INFO("No occumap");
-        robotmap = cv::imread(m_robotmap_path);
+        robotmap = cv::imread(m_robotmap_path, cv::IMREAD_GRAYSCALE);  // if no online map, read offline map
     }
 
     if (robotmap.empty())
@@ -607,6 +607,7 @@ bool DGRobot::makeSubgoal(Pose2& pub_pose)
         double base_theta = atan2(robot_diff.y, robot_diff.x);
         // ROS_INFO("[makeSubgoal] robot.theta: %f, +theta:: %d", cx::cvtRad2Deg(base_theta2), diff_deg);
         new_node_dx.theta = base_theta + cx::cvtDeg2Rad(diff_deg);
+        m_guider.m_robot_heading_node_pose = new_node_dx;
     }
     else
     {
@@ -639,13 +640,14 @@ bool DGRobot::makeSubgoal(Pose2& pub_pose)
 
     //check whether pub_pose is undrivable find drivable point  
     Point2 check_node_px = cvtMetric2Pixel(pub_pose);
-    Point2 node_dx, node_px_moved;
+    ROS_INFO("check_node_px: <%f, %f>", check_node_px.x, check_node_px.y);
     cv::Mat img_erode;
+    Point2 node_px_moved;
     erode(robotmap, img_erode, cv::Mat::ones(cv::Size(m_robotmap_scale, m_robotmap_scale), CV_8UC1), cv::Point(-1, -1), 1);
     int value = img_erode.at<uchar>((int)check_node_px.y, (int)check_node_px.x);
     if (value < m_drivable_threshold) //if node is in black area
     {
-        ROS_INFO("Current node is in dark area: %d", value);
+        ROS_INFO("Current node is in dark area. <%f, %f> value:%d", check_node_px.x, check_node_px.y, value);
         if(!findDrivableinLine(img_erode, robot_px, check_node_px, node_px_moved))
         {
             if(!findExtendedDrivablePoint(img_erode, robot_px, check_node_px, node_px_moved))
@@ -654,22 +656,29 @@ bool DGRobot::makeSubgoal(Pose2& pub_pose)
                 return false;
             }                
         } 
+        pub_pose = cvtPixel2Metric(node_px_moved);
     }
 
-    if (norm(node_px_moved - Point2(0,0))>1)
+    if (norm(pub_pose - Point2(0,0)) < 1)
     {
-        pub_pose = cvtPixel2Metric(node_px_moved);
-        ROS_INFO("Found subggoal: <%f, %f>", pub_pose.x, pub_pose.y);
-    }
-    else
-    {
+        ROS_INFO("Not an appropriate goal. <%f, %f> Return false.", pub_pose.x, pub_pose.y);
         return false;
     }
     
+    ROS_INFO("Found subggoal: <%f, %f>", pub_pose.x, pub_pose.y);
+    //change previous value
+    if (m_cur_head_node_id != next_guide.cur_node_id)
+    {
+        m_prev_node_dg = m_cur_node_dg;
+        m_cur_node_dg = next_node_dg;
+        m_prev_node_id = m_cur_head_node_id;
+        m_cur_head_node_id = next_guide.cur_node_id;
+        m_prev_robot_pose = robot_dx_metric;
+    }    
         
     ///save image 
     cv::Mat colormap;
-    robotmap.copyTo(colormap);
+    img_erode.copyTo(colormap);
     if (colormap.channels() == 1)
         cv::cvtColor(colormap, colormap, cv::COLOR_GRAY2BGR); 
     ROS_INFO("save image<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
@@ -678,28 +687,50 @@ bool DGRobot::makeSubgoal(Pose2& pub_pose)
     heading.x = robot_px.x + 20 * cos(robot_dx_metric.theta);
     heading.y = robot_px.y + 20 * sin(robot_dx_metric.theta);
     cv::line(colormap, robot_px, heading, cv::Vec3b(0, 255, 0), 2); //green
-    cv::circle(colormap, prev_robot_px, 1, cv::Vec3b(255, 255, 0), 2);    //prev robot: cyan circle
-    cv::line(colormap, prev_robot_px, robot_px, cv::Vec3b(255, 255, 0), 2); //cyan line
 
+    if (norm(prev_robot_px - m_dx_map_origin_pixel)>1)
+    {
+        ROS_INFO("prev_robot_px: <%f, %f>", prev_robot_px.x, prev_robot_px.y);
+        cv::circle(colormap, prev_robot_px, 1, cv::Vec3b(255, 255, 0), 2);    //prev robot: cyan circle
+        cv::line(colormap, prev_robot_px, robot_px, cv::Vec3b(255, 255, 0), 2); //cyan line
+    }
     cv::drawMarker(colormap, dg_px, cv::Vec3b(255, 0, 0), cv::MARKER_STAR); //dg_pose: blue star
     cv::line(colormap, dg_px, next_node_px, cv::Vec3b(255, 0, 0), 2);   //
 
-    cv::drawMarker(colormap, next_node_px, cv::Vec3b(0, 100, 255), cv::MARKER_DIAMOND);    //cur node: orange diamond
+    cv::drawMarker(colormap, next_node_px, cv::Vec3b(0, 100, 255), cv::MARKER_DIAMOND, 20, 2);    //cur node: orange diamond
     cv::line(colormap, robot_px, next_node_px, cv::Vec3b(0, 100, 255), 2);  
 
-    cv::drawMarker(colormap, cur_node_px, cv::Vec3b(0, 255, 255), cv::MARKER_DIAMOND); //next node: yellow diamond
+    cv::drawMarker(colormap, cur_node_px, cv::Vec3b(0, 255, 255), cv::MARKER_DIAMOND, 20, 2); //next node: yellow diamond
     cv::line(colormap, cur_node_px, dg_px, cv::Vec3b(0, 255, 255), 2);  
       
     Point2 new_node_px = cvtMetric2Pixel(new_node_dx);
-    cv::drawMarker(colormap, new_node_px, cv::Vec3b(0, 0, 255), cv::MARKER_DIAMOND); //new node: orange diamond
+    cv::drawMarker(colormap, new_node_px, cv::Vec3b(0, 0, 255), cv::MARKER_DIAMOND, 20, 2); //new node: red diamond
     cv::line(colormap, robot_px, new_node_px, cv::Vec3b(0, 0, 255), 2);
 
     if (norm(node_px_moved - Point2(0,0))>1)
     {
-        cv::drawMarker(colormap, node_px_moved, cv::Vec3b(255, 0, 255), cv::MARKER_DIAMOND); //new moved node: magenta 
+        cv::drawMarker(colormap, node_px_moved, cv::Vec3b(255, 0, 255), cv::MARKER_DIAMOND, 20, 2); //new moved node: magenta 
     }    
     
     imwrite("../../../test_makeSubgoal.png", colormap);
+
+    //temporary
+    cv::Mat nodemap;
+    colormap.copyTo(nodemap);
+    std::vector <GuidanceManager::ExtendedPathElement> ext_path = m_guider.m_extendedPath;
+    Pose2 path_node;
+    Point2 draw_node;
+    for (size_t i = 0; i < ext_path.size(); i++)
+    {
+        path_node = Point2(ext_path[i]);
+        draw_node = cvtMetric2Pixel(cvtDg2Dx(path_node));
+        cv::circle(nodemap, draw_node, 10, cv::Vec3b(0, 0, 255), 2);        
+    }
+
+    cv::drawMarker(nodemap, m_dx_map_origin_pixel, cv::Vec3b(0, 255, 255), cv::MARKER_CROSS, 50, 5); //m_dx_map_origin_pixel: magenta 
+    cv::drawMarker(nodemap, m_dx_map_ref_pixel, cv::Vec3b(0, 0, 255), cv::MARKER_CROSS, 50, 5); //m_dx_map_ref_pixel: green cross 
+
+    imwrite("../../../callbackRobotMap.png", nodemap);
 
     // record video
     cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);  
@@ -718,16 +749,6 @@ bool DGRobot::makeSubgoal(Pose2& pub_pose)
     roicrop.copyTo(videoFrameCrop);
     m_video_crop << videoFrameCrop;
 
-    //change previous value
-    if (m_cur_head_node_id != next_guide.cur_node_id)
-    {
-        m_prev_node_dg = m_cur_node_dg;
-        m_cur_node_dg = next_node_dg;
-        m_prev_node_id = m_cur_head_node_id;
-        m_cur_head_node_id = next_guide.cur_node_id;
-        m_prev_robot_pose = robot_dx_metric;
-    }    
-    m_guider.m_robot_heading_node_pose = next_node_dx;
 
     return true;
 }
