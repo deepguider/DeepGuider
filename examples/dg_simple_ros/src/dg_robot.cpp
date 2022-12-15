@@ -527,8 +527,8 @@ void DGRobot::publishSubGoal3()
                 m_undrivable_points.push_back(undrivable_pose);
             }
 
-            if (makeSubgoal(pub_pose))  // Robot's coordinate  
-            // if (makeSubgoal6(pub_pose))  // Robot's coordinate  
+            // if (makeSubgoal(pub_pose))  // Robot's coordinate  
+            if (makeSubgoal6(pub_pose))  // Robot's coordinate  
             {
                 geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
                 pub_subgoal.publish(rosps);
