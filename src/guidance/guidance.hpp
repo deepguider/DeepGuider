@@ -212,6 +212,11 @@ namespace dg
                 return m_extendedPath[m_guide_idx];
             else
                 return m_extendedPath[m_guide_idx+1]; };
+        ExtendedPathElement getNextNextExtendedPath() { 
+            if (m_guide_idx > m_extendedPath.size()-3)
+                return m_extendedPath[m_guide_idx];
+            else
+                return m_extendedPath[m_guide_idx+2]; };
             
         int getCurGuideIdx() { return m_guide_idx; };
         int getLastGuideIdx() { return m_extendedPath.size()-1; };
