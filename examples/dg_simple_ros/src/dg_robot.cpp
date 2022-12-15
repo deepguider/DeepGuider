@@ -103,10 +103,11 @@ protected:
     Pose2 cvtMaptoRobotcoordinate(Pose2 P);
     Pose2 cvtRobottoMapcoordinate(Pose2 P);
     Pose2 m_robot_origin;
+    Pose2 m_errorvec_dgnode_curpose;
     int m_drivable_threshold = 220;
     bool m_robotarrived_but_nodenotyetupdated = false;
     bool m_save_video = true;
-
+    
     geometry_msgs::PoseStamped makeRosPubPoseMsg(ID nid, Point2 xy);
     bool findExtendedDrivablePoint(cv::Mat &image, Point2 robot_px, Point2 node_px, Point2& result_px);
     bool findDrivableinLine(cv::Mat &image, Point2 robot_px, Point2 node_px, Point2& result_px);
@@ -3231,14 +3232,14 @@ bool DGRobot::makeSubgoal8(Pose2& pub_pose)
 }
 
 
-bool DGRobot::makeSubgoal9(Pose2& pub_pose)  
+bool DGRobot::makeSubgoal9(Pose2& pub_pose)  // makeSubgoal6 with plan B-2-2
 { 
     // in DeepGuider coordinate
     GuidanceManager::ExtendedPathElement cur_guide = m_guider.getCurExtendedPath();
     GuidanceManager::ExtendedPathElement next_guide = m_guider.getNextExtendedPath();
     GuidanceManager::ExtendedPathElement next_next_guide = m_guider.getNextNextExtendedPath();
     Pose2 dg_pose = m_localizer->getPose();
-    
+
     ROS_INFO("[makeSubgoal9] DG Pose node_robot.x: %f, y:%f",dg_pose.x, dg_pose.y);
     
     Pose2 cur_node_dg = Point2(cur_guide);
@@ -3360,10 +3361,10 @@ bool DGRobot::makeSubgoal9(Pose2& pub_pose)
             m_cur_node_dx = robot_pose;
 
             // error vector between dg node and current pose
-            Pose2 errorvec_dgnode_curpose = robot_pose - dg_cur_node_robot;
+            m_errorvec_dgnode_curpose = robot_pose - dg_cur_node_robot;
             // the next dx node is based on dg next node and the error
-            m_next_node_dx.x = dg_next_node_robot.x + errorvec_dgnode_curpose.x;
-            m_next_node_dx.y = dg_next_node_robot.y + errorvec_dgnode_curpose.y;
+            m_next_node_dx.x = dg_next_node_robot.x + m_errorvec_dgnode_curpose.x;
+            m_next_node_dx.y = dg_next_node_robot.y + m_errorvec_dgnode_curpose.y;
 
             // // angle between x-axis and prev-current dx path.
             // Pose2 m_prev_node_dx_dummy = m_prev_node_dx;
@@ -3437,7 +3438,7 @@ bool DGRobot::makeSubgoal9(Pose2& pub_pose)
         // imwrite("../../../not_initial_start.png", colormap);
     }
 
-    //distance from robot to the next node
+    //distance from robot to the (aligned) next node
     double dist_robot_to_nextnode = norm(m_next_node_dx-robot_pose);
 
     // // new_theta for robot pose (facing the next node). Note: probably not used as for subgoal, we only need coordinate.
@@ -3447,75 +3448,22 @@ bool DGRobot::makeSubgoal9(Pose2& pub_pose)
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // // Plan A-2: comment below
-    // Plan B-2: uncomment below (still have problem: what if the pub pose is not in drivable area? Try to go to next next node?)
-    if (dist_robot_to_nextnode < 1 || m_robotarrived_but_nodenotyetupdated){  // if too close to the next node but DG hasn't update to the next node OR already done the solution before but node is still not yet updated
+    // Plan B-2-2: uncomment below 
+    Pose2 temp_m_next_node_dx = m_next_node_dx;
+    if (dist_robot_to_nextnode < 5 || m_robotarrived_but_nodenotyetupdated){  // if too close to the next node but DG hasn't update to the next node OR already done the solution before but node is still not yet updated
         m_robotarrived_but_nodenotyetupdated = true;
-
-        double dist_cur_to_nextnode = norm(dg_next_node_robot-dg_cur_node_robot);
-        double p = min(2 / dist_cur_to_nextnode, 1.0); // what is (e.g.) 2 meter ratio with the distance between cur and next node  
         
-        pub_pose.x = dg_cur_node_robot.x + (1.0+p) * (dg_next_node_robot.x - dg_cur_node_robot.x);
-        pub_pose.y = dg_cur_node_robot.y + (1.0+p) * (dg_next_node_robot.y - dg_cur_node_robot.y);
+        // use the next next node AND align the next-next node with the errorvector
+        m_next_node_dx.x = dg_next_next_node_robot.x + m_errorvec_dgnode_curpose.x;
+        m_next_node_dx.y = dg_next_next_node_robot.y + m_errorvec_dgnode_curpose.y;
+        
+        ROS_INFO("[makeSubgoal9] robot arrived but node not yet updated. Use next next node");
 
-        ROS_INFO("Found subggoal: <%f, %f>", pub_pose.x, pub_pose.y);  // OUTPUT.. care about pub_pose in robot's coordinate    
-        Pose2 pub_pose_px = cvtRobottoMapcoordinate(pub_pose);
-        cv::circle(colormap, pub_pose_px, 20, cv::Vec3b(255, 0, 255), 5);  // small purple circle
-        cv::circle(colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
-        cv::circle(clean_colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
-    
-        bool isdrivable = isSubPathDrivablev3(robotmap_erode, pub_pose, robot_pose);
-        if (!isdrivable){
-            Pose2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);
-            cv::putText(colormap, "FAIL", cv::Point(robot_pose_px.x + 50, robot_pose_px.y + 50) , cv::FONT_HERSHEY_SIMPLEX, 2, cv::Vec3b(0, 0, 255),5);
-            cv::putText(clean_colormap, "FAIL", cv::Point(robot_pose_px.x + 50, robot_pose_px.y + 50) , cv::FONT_HERSHEY_SIMPLEX, 2, cv::Vec3b(0, 0, 255),5);
-        }
-        ///////////////////////////////////////////////////
-        if (m_save_video){
-            //record image   
-            // ///save image 
-            Point2 dg_pose_robot_px = cvtRobottoMapcoordinate(dg_pose_robot);
-            // Point2 dx_pose_robot_px = cvtRobottoMapcoordinate(robot_pose);  // dx_pose_robot_px = dg_pose_robot_px
-            
-            cv::circle(colormap, dg_pose_robot_px, 20, cv::Vec3b(0, 255, 0), 5);
-            cv::circle(colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
-            cv::circle(clean_colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
-            // cv::circle(colormap, dx_pose_robot_px, 20, cv::Vec3b(0, 0, 255), 5);
+        Point2 dx_next_next_node_robot_px = cvtRobottoMapcoordinate(m_next_node_dx); //cyan diamond
+        cv::drawMarker(colormap, dx_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 3, 40, 5);
 
-            Point2 robot_heading;
-            robot_heading.x = dg_pose_robot_px.x + 20 * cos(robot_pose.theta);
-            robot_heading.y = dg_pose_robot_px.y + 20 * sin(robot_pose.theta);
-            cv::line(colormap, dg_pose_robot_px, robot_heading, cv::Vec3b(0, 255, 0), 5);
-            ROS_INFO("robot_pose theta %f", robot_pose.theta);
-            
-            cv::drawMarker(colormap, m_dx_map_origin_pixel, cv::Vec3b(0, 255, 255), 0, 50, 10);
-            imwrite("../../../test_image.png", colormap);
-            
-            // record video
-            cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);  
-            cv::Mat roi(videoFrame, cv::Rect(0, 0, colormap.cols, colormap.rows));
-            colormap.copyTo(roi);
-            m_video_gui << videoFrame;
-            
-            cv::Mat videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);  
-            int x = dg_pose_robot_px.x-400; 
-            int y = dg_pose_robot_px.y-400;
-            if (x+800 >= colormap.cols) x = colormap.cols - 800 - 1;
-            if (x<=1) x = 1;
-            if (y+800 >= colormap.rows) y = colormap.rows - 800 - 1;
-            if (y<=1) y = 1;
-            cv::Mat roicrop(colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
-            roicrop.copyTo(videoFrameCrop);
-            m_video_crop << videoFrameCrop;
-            // imwrite("../../../online_crop.png", videoFrameCrop);
-
-            videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);  
-            cv::Mat maproicrop(clean_colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
-            maproicrop.copyTo(videoFrameCrop);
-            m_mapvideo_crop << videoFrameCrop;
-        }
-
-        if (isdrivable) {return true;}
-        else {return false;}
+        // recalculate dist robot to nextnode
+        dist_robot_to_nextnode = norm(m_next_node_dx-robot_pose);
     }
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3654,6 +3602,13 @@ bool DGRobot::makeSubgoal9(Pose2& pub_pose)
     cv::circle(colormap, pub_pose_px, 20, cv::Vec3b(255, 0, 255), 5);  // small purple circle
     cv::circle(colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
     cv::circle(clean_colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
+
+    ///////////////////////////////
+    // Plan B-2-2 continuation
+    if (m_robotarrived_but_nodenotyetupdated){
+        m_next_node_dx = temp_m_next_node_dx;
+    }
+    ///////////////////////////////
         
     ///////////////////////////////////////////////////
     if (m_save_video){
