@@ -530,8 +530,8 @@ void DGRobot::publishSubGoal3()
                 m_undrivable_points.push_back(undrivable_pose);
             }
 
-            // if (makeSubgoal1(pub_pose))  // Robot's coordinate  
-            if (makeSubgoal9(pub_pose))  // Robot's coordinate  
+            // if (makeSubgoal1(pub_pose))  // Seohyun's  
+            if (makeSubgoal9(pub_pose))  // Marcella's  
             {
                 geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
                 pub_subgoal.publish(rosps);
@@ -595,7 +595,11 @@ bool DGRobot::makeSubgoal1(Pose2& pub_pose)
     //calculate next node
     Pose2 new_node_dx;
     double diff_dist, base_theta;
-    if(m_prev_node_id != 0 && (m_cur_head_node_id != next_guide.cur_node_id)) //if not initial start
+    if(m_prev_node_id == 0)
+    {
+        new_node_dx = next_node_dx;
+    }
+    else if(m_prev_node_id != 0 && (m_cur_head_node_id != next_guide.cur_node_id)) //if not initial start
     {            
         ROS_INFO("+++++++++++++++++++++++++++++++++++++++++++++++++");
         ROS_INFO("[makeSubgoal] prev_id: %zd, cur_id: %zd, next_id: %zd", m_prev_node_id, m_cur_head_node_id, next_guide.cur_node_id);
@@ -607,7 +611,8 @@ bool DGRobot::makeSubgoal1(Pose2& pub_pose)
         double base_theta = atan2(robot_diff.y, robot_diff.x);
         // ROS_INFO("[makeSubgoal] robot.theta: %f, +theta:: %d", cx::cvtRad2Deg(base_theta2), diff_deg);
         new_node_dx.theta = base_theta + cx::cvtDeg2Rad(diff_deg);
-        m_guider.m_robot_heading_node_pose = new_node_dx;
+        new_node_dx.x = robot_dx_metric.x + diff_dist * cos(new_node_dx.theta);
+        new_node_dx.y = robot_dx_metric.y + diff_dist * sin(new_node_dx.theta);
     }
     else
     {
@@ -616,10 +621,10 @@ bool DGRobot::makeSubgoal1(Pose2& pub_pose)
         base_theta = atan2(node_diff.y, node_diff.x);
         ROS_INFO("[makeSubgoal] norm: %f, base_theta: %f", diff_dist, cx::cvtRad2Deg(base_theta));
         new_node_dx.theta = base_theta;
+        new_node_dx.x = robot_dx_metric.x + diff_dist * cos(new_node_dx.theta);
+        new_node_dx.y = robot_dx_metric.y + diff_dist * sin(new_node_dx.theta);
     }
 
-    new_node_dx.x = robot_dx_metric.x + diff_dist * cos(new_node_dx.theta);
-    new_node_dx.y = robot_dx_metric.y + diff_dist * sin(new_node_dx.theta);
     pub_pose = new_node_dx;
     ROS_INFO("[makeSubgoal] pub_pose: <%f, %f>", pub_pose.x, pub_pose.y);
     
@@ -674,6 +679,7 @@ bool DGRobot::makeSubgoal1(Pose2& pub_pose)
         m_prev_node_id = m_cur_head_node_id;
         m_cur_head_node_id = next_guide.cur_node_id;
         m_prev_robot_pose = robot_dx_metric;
+        m_guider.m_robot_heading_node_pose = pub_pose;
     }    
         
     ///save image 
