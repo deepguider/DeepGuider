@@ -2250,6 +2250,9 @@ bool DGRobot::makeSubgoal6(Pose2& pub_pose)
                 maproicrop.copyTo(videoFrameCrop);
                 m_mapvideo_crop << videoFrameCrop;
             }
+            // // Plan B-6
+            // // make current pose undrivable. To prevent repeated position
+            // m_undrivable_points.push_back(dg_pose_robot);
 
             return false; // can't find alternative :(
         }
@@ -2314,6 +2317,11 @@ bool DGRobot::makeSubgoal6(Pose2& pub_pose)
         maproicrop.copyTo(videoFrameCrop);
         m_mapvideo_crop << videoFrameCrop;
     }
+
+    // // Plan B-5
+    // // make current pose undrivable. To prevent repeated position
+    // m_undrivable_points.push_back(dg_pose_robot);
+
     return true;
 }
 
