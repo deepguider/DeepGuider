@@ -539,7 +539,7 @@ void DGRobot::publishSubGoal3()
             }
 
             // if (makeSubgoal1(pub_pose))  // Seohyun's  
-            if (makeSubgoal12(pub_pose))  // Marcella's  
+            if (makeSubgoal11(pub_pose))  // Marcella's  
             {
                 geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
                 pub_subgoal.publish(rosps);
@@ -4301,7 +4301,7 @@ bool DGRobot::makeSubgoal11(Pose2& pub_pose)  // makeSubgoal9 with "directly go 
             m_cur_node_dx = robot_pose;
 
             // error vector between dg node and current pose
-            m_errorvec_dgnode_curpose = robot_pose - dg_cur_node_robot;
+            // m_errorvec_dgnode_curpose = robot_pose - dg_cur_node_robot;
             // the next dx node is based on dg next node and the error
             m_next_node_dx.x = dg_next_node_robot.x + m_errorvec_dgnode_curpose.x;
             m_next_node_dx.y = dg_next_node_robot.y + m_errorvec_dgnode_curpose.y;
@@ -4471,7 +4471,7 @@ bool DGRobot::makeSubgoal11(Pose2& pub_pose)  // makeSubgoal9 with "directly go 
             cv::Mat roicrop(colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
             roicrop.copyTo(videoFrameCrop);
             m_video_crop << videoFrameCrop;
-            // imwrite("../../../online_crop.png", videoFrameCrop);
+            imwrite("../../../online_crop.png", videoFrameCrop);
 
             videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);  
             cv::Mat maproicrop(clean_colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
@@ -4484,7 +4484,7 @@ bool DGRobot::makeSubgoal11(Pose2& pub_pose)  // makeSubgoal9 with "directly go 
 
     // if not too close to the next node
     // get a point between robot pose and next node. 1 meter from the robot position to the direction of next_node_robot
-    double sub_goal_distance = 7.0;  // in meter. Distance from robot to sub goal. // 3.0 for visualization
+    double sub_goal_distance = 6.0;  // in meter. Distance from robot to sub goal. // 3.0 for visualization
     double acceptable_error = 1.5;  // acceptable error between optimal and notsooptimal pub pose
     double p = min(sub_goal_distance / dist_robot_to_nextnode, 1.0); // what is (e.g.) 1 meter ratio with the distance to the next node  
     Pose2 optimal_pub_pose;
@@ -4600,6 +4600,8 @@ bool DGRobot::makeSubgoal11(Pose2& pub_pose)  // makeSubgoal9 with "directly go 
                 cv::Mat maproicrop(clean_colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
                 maproicrop.copyTo(videoFrameCrop);
                 m_mapvideo_crop << videoFrameCrop;
+
+                imwrite("../../../online_crop.png", videoFrameCrop);
             }
             // // Plan B-6
             // // make current pose undrivable. To prevent repeated position
@@ -4674,7 +4676,7 @@ bool DGRobot::makeSubgoal11(Pose2& pub_pose)  // makeSubgoal9 with "directly go 
         cv::Mat roicrop(colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
         roicrop.copyTo(videoFrameCrop);
         m_video_crop << videoFrameCrop;
-        // imwrite("../../../online_crop.png", videoFrameCrop);
+        imwrite("../../../online_crop.png", videoFrameCrop);
 
         videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);  
         cv::Mat maproicrop(clean_colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
