@@ -678,7 +678,7 @@ namespace cx
      * @param x The 2nd component in the given quaternion vector
      * @param y The 3rd component in the given quaternion vector
      * @param z The 4th component in the given quaternion vector
-     * @return The converted Euler angles
+     * @return The converted Euler angles (x:roll, y:pitch, z:yaw)
      */
     inline cv::Point3d cvtQuat2EulerAng(double w, double x, double y, double z)
     {
@@ -687,10 +687,12 @@ namespace cx
         double sinr_cosp = 2 * (w * x + y * z);
         double cosr_cosp = 1 - 2 * (x * x + y * y);
         euler.x = atan2(sinr_cosp, cosr_cosp);
+
         double sinp = 2 * (w * y - z * x);
-        if (sinp >=  1) euler.y =  CV_PI;
-        if (sinp <= -1) euler.y = -CV_PI;
-        else            euler.y = asin(sinp);
+        if (sinp > 1) sinp = 1;
+        if (sinp < -1) sinp = -1;
+        euler.y = asin(sinp);
+
         double siny_cosp = 2 * (w * z + x * y);
         double cosy_cosp = 1 - 2 * (y * y + z * z);
         euler.z = atan2(siny_cosp, cosy_cosp);
@@ -705,6 +707,42 @@ namespace cx
     inline cv::Point3d cvtQuat2EulerAng(const cv::Vec4d& q)
     {
         return cvtQuat2EulerAng(q(0), q(1), q(2), q(3));
+    }
+
+    /**
+     * Convert an Euler angle to quaternion vector
+     * @param roll The 1st component in the given quaternion vector
+     * @param pitch The 2nd component in the given quaternion vector
+     * @param yaw The 3rd component in the given quaternion vector
+     * @return The converted quaternion vector (w, x, y, z)
+     */
+    inline cv::Vec4d cvtEulerAng2Quat(double roll, double pitch, double yaw)
+    {
+        // Reference) https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+        double cr = cos(roll * 0.5);
+        double sr = sin(roll * 0.5);
+        double cp = cos(pitch * 0.5);
+        double sp = sin(pitch * 0.5);
+        double cy = cos(yaw * 0.5);
+        double sy = sin(yaw * 0.5);
+
+        cv::Vec4d q;
+        q(0) = cr * cp * cy + sr * sp * sy;
+        q(1) = sr * cp * cy - cr * sp * sy;
+        q(2) = cr * sp * cy + sr * cp * sy;
+        q(3) = cr * cp * sy - sr * sp * cy;
+
+        return q;
+    }
+
+    /**
+     * Convert an Euler angle to quaternion vector
+     * @param euler The given Euler angle (roll, pitch, yaw)
+     * @return The converted quaternion vector (w, x, y, z)
+     */
+    inline cv::Vec4d cvtEulerAng2Quat(const cv::Point3d& euler)
+    {
+        return cvtEulerAng2Quat(euler.x, euler.y, euler.z);
     }
 
     /**
