@@ -101,7 +101,7 @@ protected:
     bool m_robotarrived_but_nodenotyetupdated = false;
     bool m_save_video = true;
     
-    geometry_msgs::PoseStamped makeRosPubPoseMsg(ID nid, Point2 xy);
+    geometry_msgs::PoseStamped makeRosPubPoseMsg(ID nid, Pose2 pose);
     bool findExtendedDrivablePoint(cv::Mat &image, Point2 robot_px, Point2 node_px, Point2& result_px);
     bool findDrivableinLine(cv::Mat &image, Point2 robot_px, Point2 node_px, Point2& result_px);
     bool drawSubgoal(Point2& pub_pose);
@@ -1598,20 +1598,24 @@ bool DGRobot::findExtendedDrivablePoint(cv::Mat &image, Point2 robot_px, Point2 
 
 }
 
-geometry_msgs::PoseStamped DGRobot::makeRosPubPoseMsg(ID nid, dg::Point2 xy)
+geometry_msgs::PoseStamped DGRobot::makeRosPubPoseMsg(ID nid, dg::Pose2 pose)
 {
     //check publish time
     geometry_msgs::PoseStamped rosps;
     rosps.header.stamp = ros::Time::now();
     rosps.header.frame_id = to_string(nid);
-    rosps.pose.position.x = xy.x;
-    rosps.pose.position.y = xy.y;
+    rosps.pose.position.x = pose.x;
+    rosps.pose.position.y = pose.y;
     rosps.pose.position.z = 0;
-    // rosps.pose.orientation.z = xy.theta;
+
+    cv::Vec4d q = cx::cvtEulerAng2Quat(0, 0, pose.theta);
+    rosps.pose.orientation.w = q(0);
+    rosps.pose.orientation.x = q(1);
+    rosps.pose.orientation.y = q(2);
+    rosps.pose.orientation.z = q(3);
 
     return rosps;
 }
-
 
 void DGRobot::initialize_DG_DX_conversion()
 {
