@@ -82,6 +82,8 @@ protected:
     //robot related functions
     std::deque<Point2> m_undrivable_points;
     int m_undrivable_points_queue_size = 10;
+    double m_close_to_next = 5;  // distance (in meter) that can be considered as arrived to next node
+    double m_theta_dir = 0;  // if the pub_pose distance to next node is < m_close_to_next --> 1 use next next node direction, 0 use next node direction
     void initialize_DG_DX_conversion();
     bool makeSubgoal1(Pose2& pub_pose);
     bool makeSubgoal12(Pose2& pub_pose);
@@ -1193,7 +1195,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     // // Plan A-2: comment below
     // Plan B-2-2: uncomment below 
     Pose2 temp_m_next_node_dx = m_next_node_dx;  // later, return back the m_next_node_dx to the original next node rather than next next nnode
-    if (dist_robot_to_nextnode < 5 || m_robotarrived_but_nodenotyetupdated){  // if too close to the next node but DG hasn't update to the next node OR already done the solution before but node is still not yet updated
+    if (dist_robot_to_nextnode < m_close_to_next || m_robotarrived_but_nodenotyetupdated){  // if too close to the next node but DG hasn't update to the next node OR already done the solution before but node is still not yet updated
         m_robotarrived_but_nodenotyetupdated = true;
         
         // use the next next node AND align the next-next node with the errorvector
@@ -1207,7 +1209,18 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
         // recalculate dist robot to nextnode
         dist_robot_to_nextnode = norm(m_next_node_dx-robot_pose);
+
+        // // calculate pub pose theta with dg_next_next_node_robot, dg_next_node_robot, dg_next_node_robot_dummy
+        // Pose2 dg_next_node_robot_dummy = dg_next_node_robot;
+        // dg_next_node_robot_dummy.x = dg_next_node_robot_dummy.x - 10;
+        // pub_pose.theta = cx::cvtDeg2Rad(m_guider.getDegree(dg_next_node_robot_dummy, dg_next_node_robot, dg_next_next_node_robot));
     }
+    // else{
+    //     // calculate pub pose theta with dg_next_node_robot, dg_cur_node_robot, dg_cur_robot_dummy
+    //     Pose2 dg_cur_node_robot_dummy = dg_cur_node_robot;
+    //     dg_cur_node_robot_dummy.x = dg_cur_node_robot_dummy.x - 10;
+    //     pub_pose.theta = cx::cvtDeg2Rad(m_guider.getDegree(dg_cur_node_robot_dummy, dg_cur_node_robot, dg_next_node_robot));
+    // }
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     
@@ -1359,16 +1372,42 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         }
     }
 
-    Pose2 diff = pub_pose - robot_pose;
-    double theta = atan2(diff.y, diff.x);
-    pub_pose.theta = theta;
+    // calculate theta
+    double dist_pubpose_to_nextnode = norm(m_next_node_dx-pub_pose);
+    if (dist_pubpose_to_nextnode < m_close_to_next){  // if the proposal pubpose is near the next node, face the next next node
+        // calculate pub pose theta with dg_next_next_node_robot, dg_next_node_robot, dg_next_node_robot_dummy
+        Pose2 dg_next_node_robot_dummy = dg_next_node_robot;
+        dg_next_node_robot_dummy.x = dg_next_node_robot_dummy.x - 10;
+        Pose2 dg_cur_node_robot_dummy = dg_cur_node_robot;
+        dg_cur_node_robot_dummy.x = dg_cur_node_robot_dummy.x - 10;
+        
+        double theta_to_next_next = cx::cvtDeg2Rad(m_guider.getDegree(dg_next_node_robot_dummy, dg_next_node_robot, dg_next_next_node_robot));
+        double theta_to_next = cx::cvtDeg2Rad(m_guider.getDegree(dg_cur_node_robot_dummy, dg_cur_node_robot, dg_next_node_robot));
+    
+        pub_pose.theta = m_theta_dir * theta_to_next_next + (1-m_theta_dir) * theta_to_next;
+        
+        Point2 dg_next_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_next_node_robot); //cyan star
+        cv::drawMarker(colormap, dg_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 2, 40, 5);
+
+    }
+    else{
+        // calculate pub pose theta with dg_next_node_robot, dg_cur_node_robot, dg_cur_robot_dummy
+        Pose2 dg_cur_node_robot_dummy = dg_cur_node_robot;
+        dg_cur_node_robot_dummy.x = dg_cur_node_robot_dummy.x - 10;
+        pub_pose.theta = cx::cvtDeg2Rad(m_guider.getDegree(dg_cur_node_robot_dummy, dg_cur_node_robot, dg_next_node_robot));
+    
+    }
     
 
-    ROS_INFO("Found subggoal: <%f, %f>", pub_pose.x, pub_pose.y);  // OUTPUT.. care about pub_pose in robot's coordinate
+    ROS_INFO("Found subggoal: <%f, %f, %f>", pub_pose.x, pub_pose.y, cx::cvtRad2Deg(pub_pose.theta));  // OUTPUT.. care about pub_pose in robot's coordinate
     Pose2 pub_pose_px = cvtRobottoMapcoordinate(pub_pose);
     cv::circle(colormap, pub_pose_px, 20, cv::Vec3b(255, 0, 255), 5);  // small purple circle
     cv::circle(colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
     cv::circle(clean_colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
+    Pose2 pubpose_heading;
+    pubpose_heading.x = pub_pose_px.x + 20 * cos(pub_pose.theta);
+    pubpose_heading.y = pub_pose_px.y + 20 * sin(pub_pose.theta);
+    cv::line(colormap, pub_pose_px, pubpose_heading, cv::Vec3b(255, 0, 255), 5);
 
     ///////////////////////////////
     // Plan B-2-2 continuation
