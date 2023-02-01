@@ -1247,20 +1247,15 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_pub_pose), cv::Vec3b(255, 0, 255), 4, 10, 2);  // purple small cross
     cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_next_node), cv::Vec3b(255, 0, 255), 4, 40, 2);  // purple big cross
 
+    double error_nextnode_notsooptimalnextnode = norm(m_next_node_dx - notsooptimal_next_node);
+
     if (dist_optimalpubpose_robot > sub_goal_distance && dist_notsooptimalpubpose_robot <= sub_goal_distance){  // if not so optimal subgoal is less than 5 but the optimal is more than 5
         pub_pose.x = optimal_pub_pose.x;
         pub_pose.y = optimal_pub_pose.y;
     }
-    else if (dist_optimalpubpose_robot <= sub_goal_distance && dist_notsooptimalpubpose_robot > sub_goal_distance){
-        double error_nextnode_notsooptimalnextnode = norm(m_next_node_dx - notsooptimal_next_node);
-        if (error_nextnode_notsooptimalnextnode < acceptable_error){
-            pub_pose.x = notsooptimal_pub_pose.x;
-            pub_pose.y = notsooptimal_pub_pose.y;
-        }
-        else{
-            pub_pose.x = optimal_pub_pose.x;
-            pub_pose.y = optimal_pub_pose.y;
-        }
+    else if (dist_optimalpubpose_robot <= sub_goal_distance && dist_notsooptimalpubpose_robot > sub_goal_distance && error_nextnode_notsooptimalnextnode < acceptable_error){    
+        pub_pose.x = notsooptimal_pub_pose.x;
+        pub_pose.y = notsooptimal_pub_pose.y;
     }
     else if (dist_optimalpubpose_robot > sub_goal_distance && dist_notsooptimalpubpose_robot > sub_goal_distance){ // both dist_optimalpubpose_robot and dist_notsooptimalpubpose_robot are > sub_goal_distance
         // if no big difference between notsooptimal pub pose and optimal pubpose, use the notsooptimal pub pose 
