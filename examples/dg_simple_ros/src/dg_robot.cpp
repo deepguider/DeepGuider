@@ -438,6 +438,9 @@ void DGRobot::publishSubGoal3()
                     m_undrivable_points.pop_front();
                 }
             }
+            else{  // if no more NO PATH (means, the previous goal is successful/not NO PATH)
+                m_undrivable_points.clear();  // empty the queue
+            }
 
             // if (makeSubgoal1(pub_pose))  // Seohyun's  
             if (makeSubgoal12(pub_pose))  // Marcella's  
