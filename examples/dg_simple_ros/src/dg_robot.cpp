@@ -81,9 +81,8 @@ protected:
 
     //robot related functions
     std::deque<Point2> m_undrivable_points;
-    int m_undrivable_points_queue_size = 10;
+    int m_undrivable_points_queue_size = 3;
     double m_close_to_next = 5;  // distance (in meter) that can be considered as arrived to next node
-    double m_theta_dir = 0;  // if the pub_pose distance to next node is < m_close_to_next --> 1 use next next node direction, 0 use next node direction
     void initialize_DG_DX_conversion();
     bool makeSubgoal1(Pose2& pub_pose);
     bool makeSubgoal12(Pose2& pub_pose);
@@ -1200,23 +1199,38 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     Pose2 temp_m_next_node_dx = m_next_node_dx;  // later, return back the m_next_node_dx to the original next node rather than next next nnode
     if (dist_robot_to_nextnode < m_close_to_next || m_robotarrived_but_nodenotyetupdated){  // if too close to the next node but DG hasn't update to the next node OR already done the solution before but node is still not yet updated
         m_robotarrived_but_nodenotyetupdated = true;
+
+        // align the next next node
+        Pose2 aligned_dg_next_next_node_robot;
+        aligned_dg_next_next_node_robot.x = dg_next_next_node_robot.x + m_errorvec_dgnode_curpose.x;
+        aligned_dg_next_next_node_robot.y = dg_next_next_node_robot.y + m_errorvec_dgnode_curpose.y;
+
+        Pose2 farthest_point_to_aligned_dg_next_next_node_robot = getFarthestPoint(robotmap_erode, aligned_dg_next_next_node_robot, robot_pose);
+        Pose2 farthest_point_to_aligned_dg_next_node_robot = getFarthestPoint(robotmap_erode, m_next_node_dx, robot_pose);
+ 
+        double drivable_dist_robot_to_nextnextnode = norm(farthest_point_to_aligned_dg_next_next_node_robot-robot_pose);
+        double drivable_dist_robot_to_nextnode = norm(farthest_point_to_aligned_dg_next_node_robot-robot_pose);
+
+        // if the next next is drivable enough: drivable distance robot to next-next > drivable distance robot to next 
+        if(drivable_dist_robot_to_nextnextnode > drivable_dist_robot_to_nextnode){
+            // use the next next node AND align the next-next node with the errorvector
+            m_next_node_dx.x = aligned_dg_next_next_node_robot.x;
+            m_next_node_dx.y = aligned_dg_next_next_node_robot.y;
+            
+            ROS_INFO("[makeSubgoal12] robot arrived but node not yet updated. Use next next node");
+
+            Point2 dx_next_next_node_robot_px = cvtRobottoMapcoordinate(m_next_node_dx); //cyan diamond
+            cv::drawMarker(colormap, dx_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 3, 40, 5);
+
+            // recalculate dist robot to nextnode
+            dist_robot_to_nextnode = norm(m_next_node_dx-robot_pose);
+
+            // // calculate pub pose theta with dg_next_next_node_robot, dg_next_node_robot, dg_next_node_robot_dummy
+            // Pose2 dg_next_node_robot_dummy = dg_next_node_robot;
+            // dg_next_node_robot_dummy.x = dg_next_node_robot_dummy.x - 10;
+            // pub_pose.theta = cx::cvtDeg2Rad(m_guider.getDegree(dg_next_node_robot_dummy, dg_next_node_robot, dg_next_next_node_robot));
+        }
         
-        // use the next next node AND align the next-next node with the errorvector
-        m_next_node_dx.x = dg_next_next_node_robot.x + m_errorvec_dgnode_curpose.x;
-        m_next_node_dx.y = dg_next_next_node_robot.y + m_errorvec_dgnode_curpose.y;
-        
-        ROS_INFO("[makeSubgoal12] robot arrived but node not yet updated. Use next next node");
-
-        Point2 dx_next_next_node_robot_px = cvtRobottoMapcoordinate(m_next_node_dx); //cyan diamond
-        cv::drawMarker(colormap, dx_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 3, 40, 5);
-
-        // recalculate dist robot to nextnode
-        dist_robot_to_nextnode = norm(m_next_node_dx-robot_pose);
-
-        // // calculate pub pose theta with dg_next_next_node_robot, dg_next_node_robot, dg_next_node_robot_dummy
-        // Pose2 dg_next_node_robot_dummy = dg_next_node_robot;
-        // dg_next_node_robot_dummy.x = dg_next_node_robot_dummy.x - 10;
-        // pub_pose.theta = cx::cvtDeg2Rad(m_guider.getDegree(dg_next_node_robot_dummy, dg_next_node_robot, dg_next_next_node_robot));
     }
     // else{
     //     // calculate pub pose theta with dg_next_node_robot, dg_cur_node_robot, dg_cur_robot_dummy
@@ -1370,8 +1384,37 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         }
     }
 
-    // calculate theta
-    double dist_pubpose_to_nextnode = norm(m_next_node_dx-pub_pose);
+    ////////////////////////////////////////////////////////////
+    // CALCULATE THETA
+
+/*
+    // DUMMY for testing theta algorithm. Sanity check
+    Pose2 tempfordummy_dg_next_node_robot = dg_next_next_node_robot;
+    Pose2 tempfordummy_m_errorvec_dgnode_curpose = m_errorvec_dgnode_curpose;
+    Pose2 tempfordummy_dg_cur_node_robot = dg_cur_node_robot;
+    Pose2 tempfordummy_dg_next_next_node_robot = dg_next_next_node_robot;
+    Pose2 tempfordummy_pub_pose = pub_pose;
+    dg_next_node_robot.x = 0;
+    dg_next_node_robot.y = 0;
+    m_errorvec_dgnode_curpose.x=0;
+    m_errorvec_dgnode_curpose.y=0;
+    dg_cur_node_robot.x = 10;
+    dg_cur_node_robot.y = 0;
+    dg_next_next_node_robot.x = 0;
+    dg_next_next_node_robot.y = 10;
+    pub_pose.x = 1;  // modify this one for distance to the next node
+    pub_pose.y = 0;
+*/
+
+
+    // aligned the next node with the error
+    Pose2 aligned_dg_next_node;
+    aligned_dg_next_node.x = dg_next_node_robot.x + m_errorvec_dgnode_curpose.x;
+    aligned_dg_next_node.y = dg_next_node_robot.y + m_errorvec_dgnode_curpose.y;
+
+    // distance to the next node
+    double dist_pubpose_to_nextnode = norm(aligned_dg_next_node-pub_pose);
+
     if (dist_pubpose_to_nextnode < m_close_to_next){  // if the proposal pubpose is near the next node, face the next next node
         // calculate pub pose theta with dg_next_next_node_robot, dg_next_node_robot, dg_next_node_robot_dummy
         Pose2 dg_next_node_robot_dummy = dg_next_node_robot;
@@ -1382,7 +1425,9 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         double theta_to_next_next = cx::cvtDeg2Rad(m_guider.getDegree(dg_next_node_robot_dummy, dg_next_node_robot, dg_next_next_node_robot));
         double theta_to_next = cx::cvtDeg2Rad(m_guider.getDegree(dg_cur_node_robot_dummy, dg_cur_node_robot, dg_next_node_robot));
     
-        pub_pose.theta = m_theta_dir * theta_to_next_next + (1-m_theta_dir) * theta_to_next;
+        // use ratio of subgoal-next node distance : m_close_to_next to decide the direction. The smaller the distance, head to next next more.
+        double ratio_for_theta = std::min(dist_pubpose_to_nextnode / m_close_to_next, 1.0);
+        pub_pose.theta = (1-ratio_for_theta) * theta_to_next_next + ratio_for_theta * theta_to_next;
         
         Point2 dg_next_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_next_node_robot); //cyan star
         cv::drawMarker(colormap, dg_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 2, 40, 5);
@@ -1395,8 +1440,20 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         pub_pose.theta = cx::cvtDeg2Rad(m_guider.getDegree(dg_cur_node_robot_dummy, dg_cur_node_robot, dg_next_node_robot));
     
     }
-    
 
+/*
+    // DUMMY for testing theta algorithm. Sanity check. Can check the theta in the visualization result (just consider the subgoal heading)
+    dg_next_next_node_robot = tempfordummy_dg_next_node_robot;
+    m_errorvec_dgnode_curpose = tempfordummy_m_errorvec_dgnode_curpose;
+    dg_cur_node_robot = tempfordummy_dg_cur_node_robot;
+    dg_next_next_node_robot = tempfordummy_dg_next_next_node_robot;
+    pub_pose.x = tempfordummy_pub_pose.x;
+    pub_pose.y = tempfordummy_pub_pose.y;
+*/  
+
+    // CALCULATE THETA END
+    ////////////////////////////////////////////////////////////
+    
     ROS_INFO("Found subggoal: <%f, %f, %f>", pub_pose.x, pub_pose.y, cx::cvtRad2Deg(pub_pose.theta));  // OUTPUT.. care about pub_pose in robot's coordinate
     Pose2 pub_pose_px = cvtRobottoMapcoordinate(pub_pose);
     cv::circle(colormap, pub_pose_px, 20, cv::Vec3b(255, 0, 255), 5);  // small purple circle
