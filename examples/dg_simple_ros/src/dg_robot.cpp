@@ -580,7 +580,7 @@ bool DGRobot::makeSubgoal1(Pose2& pub_pose)
         return false;
     }
     
-    ROS_INFO("Found subggoal: <%f, %f>", pub_pose.x, pub_pose.y);
+    ROS_INFO("Found subgoal: <%f, %f>", pub_pose.x, pub_pose.y);
     //change previous value
     if (m_cur_head_node_id != next_guide.cur_node_id)
     {
@@ -1454,7 +1454,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     // CALCULATE THETA END
     ////////////////////////////////////////////////////////////
     
-    ROS_INFO("Found subggoal: <%f, %f, %f>", pub_pose.x, pub_pose.y, cx::cvtRad2Deg(pub_pose.theta));  // OUTPUT.. care about pub_pose in robot's coordinate
+    ROS_INFO("Found subgoal: <%f, %f, %f>", pub_pose.x, pub_pose.y, cx::cvtRad2Deg(pub_pose.theta));  // OUTPUT.. care about pub_pose in robot's coordinate
     Pose2 pub_pose_px = cvtRobottoMapcoordinate(pub_pose);
     cv::circle(colormap, pub_pose_px, 20, cv::Vec3b(255, 0, 255), 5);  // small purple circle
     cv::circle(colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);  // with robot real size
