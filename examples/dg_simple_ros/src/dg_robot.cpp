@@ -50,6 +50,7 @@ protected:
     Pose2 m_prev_node_dx; // in robot coordinate. The shifted node
     Pose2 m_cur_node_dx; // in robot coordinate. The shifted node
     Pose2 m_next_node_dx; // in robot coordinate. The shifted node
+    Pose2 m_next_next_node_dx; // in robot coordinate. The shifted node
     ID m_prev_node_id = 0; 
     ID m_cur_head_node_id = 0; 
     
@@ -82,7 +83,6 @@ protected:
     //robot related functions
     std::deque<Point2> m_undrivable_points;
     int m_undrivable_points_queue_size = 3;
-    double m_close_to_next = 5;  // distance (in meter) that can be considered as arrived to next node
     void initialize_DG_DX_conversion();
     bool makeSubgoal1(Pose2& pub_pose);
     bool makeSubgoal12(Pose2& pub_pose);
@@ -90,17 +90,17 @@ protected:
     bool isSubPathDrivablev2(cv::Mat robotmap, Pose2 dest_point);
     bool isSubPathDrivablev3(cv::Mat robotmap, Pose2 dest_point, Pose2 source_point);
     Pose2 getFarthestPoint(cv::Mat robotmap, Pose2 dest_point, Pose2 source_point);
-    bool findAlternativePath(Pose2& alternate_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double& min_dist_to_next_node);
-    bool findAlternativePathv2(Pose2& alternate_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double angle_range, double& min_dist_to_next_node);
+    bool findAlternativePath(Pose2& alternate_point, Pose2 robot_pose, Pose2 target_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_targetnode, int num_alternatives, cv::Mat& colormap, double& min_dist_to_next_node);
+    bool findAlternativePathv2(Pose2& alternate_point, Pose2 robot_pose, Pose2 target_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_targetnode, int num_alternatives, cv::Mat& colormap, double angle_range, double& min_dist_to_next_node);
     void rotatePose(Pose2& P, double theta_rot);
     Pose2 cvtDGtoDXcoordinate(Pose2 P, Pose2 P_DG, Pose2 P_DX);
     Pose2 cvtMaptoRobotcoordinate(Pose2 P);
     Pose2 cvtRobottoMapcoordinate(Pose2 P);
-    Pose2 findRobotCoordAngleofVectorSource2Dest(Pose2 source, Pose2 dest);
+    int findRobotCoordAngleofVectorSource2Dest(Pose2 source, Pose2 dest);
     Pose2 m_robot_origin;
     Pose2 m_errorvec_dgnode_curpose;
     int m_drivable_threshold = 220;
-    bool m_robotarrived_but_nodenotyetupdated = false;
+    bool m_nodeupdated_but_problematic = false;
     bool m_save_video = true;
     
     geometry_msgs::PoseStamped makeRosPubPoseMsg(ID nid, Pose2 pose);
@@ -670,14 +670,14 @@ bool DGRobot::makeSubgoal1(Pose2& pub_pose)
     return true;
 }
 
-Pose2 DGRobot::findRobotCoordAngleofVectorSource2Dest(Pose2 source, Pose2 dest){
+int DGRobot::findRobotCoordAngleofVectorSource2Dest(Pose2 source, Pose2 dest){
     Pose2 source_dummy;
     source_dummy.x = source.x - 10.0;
     source_dummy.y = source.y;
     return m_guider.getDegree(source_dummy, source, dest);  // return in degree
 }
 
-bool DGRobot::findAlternativePath(Pose2& alternative_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double& min_dist_to_next_node){
+bool DGRobot::findAlternativePath(Pose2& alternative_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_targetnode, int num_alternatives, cv::Mat& colormap, double& min_dist_to_next_node){
     /*
     Alternative candidates sampled uniformly on a circle. Angle of each sample is based on robot origin.  
     */
@@ -723,7 +723,7 @@ bool DGRobot::findAlternativePath(Pose2& alternative_point, Pose2 robot_pose, Po
     }
 }
 
-bool DGRobot::findAlternativePathv2(Pose2& alternative_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double angle_range, double& min_dist_to_next_node){
+bool DGRobot::findAlternativePathv2(Pose2& alternative_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_targetnode, int num_alternatives, cv::Mat& colormap, double angle_range, double& min_dist_to_next_node){
     /*
     Alternative candidates sampled from -angle_range to angle_range. Angle_range 180 is similar (but not same) to findAlternativePath (difference: angle of sample) 
     */
@@ -994,7 +994,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     ROS_INFO("[makeSubgoal12] prev_node_dg.x: %f, y:%f",prev_node_dg.x, prev_node_dg.y);
     ROS_INFO("[makeSubgoal12] cur_node_dg.x: %f, y:%f",cur_node_dg.x, cur_node_dg.y);
     ROS_INFO("[makeSubgoal12] next_node_dg.x: %f, y:%f",next_node_dg.x, next_node_dg.y);
-    ROS_INFO("[makeSubgoal12] next_next_node_dg.x: %f, y:%f",next_next_node_dg.x, next_next_node_dg.y);
+    ROS_INFO("[makeSubgoal12] next_next_node_dg.x: %f, y:%f",next_next_node_dg.x, next_next_node_dg.y);    
 
     //load robot info
     m_robotmap_mutex.lock();
@@ -1079,6 +1079,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     ROS_INFO("[makeSubgoal12] m_prev_robot_pose: <%f, %f>", m_prev_robot_pose.x, m_prev_robot_pose.y);
     ROS_INFO("[makeSubgoal12] m_cur_robot_pose: <%f, %f>", m_cur_robot_pose.x, m_cur_robot_pose.y);
 
+    Pose2 target_node_dx;
 
     //here, select new node goal
     if (m_cur_head_node_id != next_guide.cur_node_id)  // new dg_next_node_robot
@@ -1114,50 +1115,81 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
                 m_errorvec_dgnode_curpose.y = 0;
             }
 
-            // the next dx node is based on dg next node and the error. Same with prev node
+            // the next dx node is based on dg next node and the error. Same with prev node and next next node
             m_next_node_dx.x = dg_next_node_robot.x + m_errorvec_dgnode_curpose.x;
             m_next_node_dx.y = dg_next_node_robot.y + m_errorvec_dgnode_curpose.y;
             m_prev_node_dx.x = dg_prev_node_robot.x + m_errorvec_dgnode_curpose.x;
             m_prev_node_dx.y = dg_prev_node_robot.y + m_errorvec_dgnode_curpose.y;
+            m_next_next_node_dx.x = dg_next_next_node_robot.x + m_errorvec_dgnode_curpose.x;
+            m_next_next_node_dx.y = dg_next_next_node_robot.y + m_errorvec_dgnode_curpose.y;
+
+            // is the new updated node problematic??
+            Pose2 farthest_point_to_m_next_node_dx = getFarthestPoint(robotmap_erode, m_next_node_dx, robot_pose);
+            Pose2 farthest_point_to_m_cur_node_dx = getFarthestPoint(robotmap_erode, m_cur_node_dx, robot_pose);
+
+            double drivable_dist_robot_to_nextnode = norm(farthest_point_to_m_next_node_dx - robot_pose);
+            double drivable_dist_robot_to_curnode = norm(farthest_point_to_m_cur_node_dx - robot_pose);
+
+            if(drivable_dist_robot_to_nextnode >= drivable_dist_robot_to_curnode){  // not problematic. Use default: next
+                target_node_dx = m_next_node_dx;  // already shifted
+                m_nodeupdated_but_problematic = false;  // maybe not needed but just in case... just make it false again
+            }
+            else{  // problematic. Use current
+                target_node_dx = m_cur_node_dx;  // already shifted
+                m_nodeupdated_but_problematic = true;
+            }
 
             // visualize prev, cur, next dg nodes
             Point2 dg_prev_node_robot_px = cvtRobottoMapcoordinate(dg_prev_node_robot); //red star
             Point2 dg_cur_node_robot_px = cvtRobottoMapcoordinate(dg_cur_node_robot); //green star
             Point2 dg_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_node_robot); //blue star
+            Point2 dg_next_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_next_node_robot); //cyan star
             cv::drawMarker(colormap, dg_prev_node_robot_px, cv::Vec3b(0, 0, 255), 2, 40, 5);
             cv::drawMarker(colormap, dg_cur_node_robot_px, cv::Vec3b(0, 255, 0), 2, 20, 5);
             cv::drawMarker(colormap, dg_next_node_robot_px, cv::Vec3b(255, 0, 0), 2, 40, 5);
+            cv::drawMarker(colormap, dg_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 2, 40, 5);
 
             // visualize prev, cur, next (shifted) dx nodes
             Point2 dx_prev_node_robot_px = cvtRobottoMapcoordinate(m_prev_node_dx); //red diamond
             Point2 dx_cur_node_robot_px = cvtRobottoMapcoordinate(m_cur_node_dx); //green diamond
             Point2 dx_next_node_robot_px = cvtRobottoMapcoordinate(m_next_node_dx); //blue diamond
+            Point2 dx_next_next_node_robot_px = cvtRobottoMapcoordinate(m_next_next_node_dx); //cyan diamond
             cv::drawMarker(colormap, dx_prev_node_robot_px, cv::Vec3b(0, 0, 255), 3, 40, 5);
             cv::drawMarker(colormap, dx_cur_node_robot_px, cv::Vec3b(0, 255, 0), 3, 20, 5);
             cv::drawMarker(colormap, dx_next_node_robot_px, cv::Vec3b(255, 0, 0), 3, 40, 5);
+            cv::drawMarker(colormap, dx_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 3, 40, 5);
         }
-        else  // initial start (assume: not shifted at all)
+        else  // initial start (assume: not shifted at all and not problematic to go to next node)
         {
             m_prev_node_dx = dg_prev_node_robot; // no align with error
             m_cur_node_dx = dg_cur_node_robot;
             m_next_node_dx = dg_next_node_robot;
+            m_next_next_node_dx = dg_next_next_node_robot;
+
+            target_node_dx = m_next_node_dx;  // target as default. To next node
+            m_nodeupdated_but_problematic = false;  // maybe not needed but just in case... just make it false again
             // imwrite("../../../initial_start.png", colormap);
 
             // visualize cur, next dg nodes
             Point2 dg_prev_node_robot_px = cvtRobottoMapcoordinate(dg_prev_node_robot); //red star
             Point2 dg_cur_node_robot_px = cvtRobottoMapcoordinate(dg_cur_node_robot); //green star
             Point2 dg_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_node_robot); //blue star
+            Point2 dg_next_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_next_node_robot); //cyan star
             cv::drawMarker(colormap, dg_prev_node_robot_px, cv::Vec3b(0, 0, 255), 2, 40, 5);
             cv::drawMarker(colormap, dg_cur_node_robot_px, cv::Vec3b(0, 255, 0), 2, 20, 5);
             cv::drawMarker(colormap, dg_next_node_robot_px, cv::Vec3b(255, 0, 0), 2, 40, 5);
+            cv::drawMarker(colormap, dg_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 2, 40, 5);
 
             // visualize cur, next (shifted) dx nodes
             Point2 dx_prev_node_robot_px = cvtRobottoMapcoordinate(m_prev_node_dx); //red diamond
             Point2 dx_cur_node_robot_px = cvtRobottoMapcoordinate(m_cur_node_dx); //green diamond
             Point2 dx_next_node_robot_px = cvtRobottoMapcoordinate(m_next_node_dx); //blue diamond
+            Point2 dx_next_next_node_robot_px = cvtRobottoMapcoordinate(m_next_next_node_dx); //cyan diamond
             cv::drawMarker(colormap, dx_prev_node_robot_px, cv::Vec3b(0, 0, 255), 3, 40, 5);
             cv::drawMarker(colormap, dx_cur_node_robot_px, cv::Vec3b(0, 255, 0), 3, 20, 5);
             cv::drawMarker(colormap, dx_next_node_robot_px, cv::Vec3b(255, 0, 0), 3, 40, 5);
+            cv::drawMarker(colormap, dx_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 3, 40, 5);
+
         }
 
         // update global variable
@@ -1167,7 +1199,6 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         m_cur_head_node_id = next_guide.cur_node_id;
         m_prev_robot_pose = m_cur_robot_pose;   
         m_cur_robot_pose = robot_pose;
-        m_robotarrived_but_nodenotyetupdated = false; // node updated 
 
         m_guider.m_robot_heading_node_pose = dg_next_node_robot;
     }
@@ -1176,89 +1207,76 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         Point2 dg_prev_node_robot_px = cvtRobottoMapcoordinate(dg_prev_node_robot); //red star
         Point2 dg_cur_node_robot_px = cvtRobottoMapcoordinate(dg_cur_node_robot); //green star
         Point2 dg_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_node_robot); //blue star
+        Point2 dg_next_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_next_node_robot); //cyan star
         cv::drawMarker(colormap, dg_prev_node_robot_px, cv::Vec3b(0, 0, 255), 2, 40, 5);
         cv::drawMarker(colormap, dg_cur_node_robot_px, cv::Vec3b(0, 255, 0), 2, 20, 5);
         cv::drawMarker(colormap, dg_next_node_robot_px, cv::Vec3b(255, 0, 0), 2, 40, 5);
+        cv::drawMarker(colormap, dg_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 2, 40, 5);
 
         // visualize cur, next (shifted) dx nodes
         Point2 dx_prev_node_robot_px = cvtRobottoMapcoordinate(m_prev_node_dx); //red diamond
         Point2 dx_cur_node_robot_px = cvtRobottoMapcoordinate(m_cur_node_dx); //green diamond
         Point2 dx_next_node_robot_px = cvtRobottoMapcoordinate(m_next_node_dx); //blue diamond
+        Point2 dx_next_next_node_robot_px = cvtRobottoMapcoordinate(m_next_next_node_dx); //cyan diamond
         cv::drawMarker(colormap, dx_prev_node_robot_px, cv::Vec3b(0, 0, 255), 3, 40, 5);
         cv::drawMarker(colormap, dx_cur_node_robot_px, cv::Vec3b(0, 255, 0), 3, 20, 5);
         cv::drawMarker(colormap, dx_next_node_robot_px, cv::Vec3b(255, 0, 0), 3, 40, 5);
+        cv::drawMarker(colormap, dx_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 3, 40, 5);
 
         // imwrite("../../../not_initial_start.png", colormap);
+        if(m_nodeupdated_but_problematic){
+            
+            Pose2 farthest_point_to_m_next_node_dx = getFarthestPoint(robotmap_erode, m_next_node_dx, robot_pose);
+            Pose2 farthest_point_to_m_cur_node_dx = getFarthestPoint(robotmap_erode, m_cur_node_dx, robot_pose);
+
+            double drivable_dist_robot_to_nextnode = norm(farthest_point_to_m_next_node_dx - robot_pose);
+            double drivable_dist_robot_to_curnode = norm(farthest_point_to_m_cur_node_dx - robot_pose);
+
+            if(drivable_dist_robot_to_nextnode >= drivable_dist_robot_to_curnode){  // no more problematic (drivable distance to next node > drivable distance to cur node)
+                m_nodeupdated_but_problematic = false;
+                target_node_dx = m_next_node_dx;  // already shifted
+            }
+            else{  // still problematic
+                target_node_dx = m_cur_node_dx;  // already shifted
+            }
+
+        }
+        else{  // by default, go to the shifted next node
+            target_node_dx = m_next_node_dx;  // already shifted
+        }
     }
 
     //distance from robot to the (aligned) next node
-    double dist_robot_to_nextnode = norm(m_next_node_dx-robot_pose);
+    double dist_robot_to_targetnode = norm(target_node_dx-robot_pose);
 
     // // new_theta for robot pose (facing the next node). Note: probably not used as for subgoal, we only need coordinate.
     // new_theta = robot_pose.theta + cx::cvtDeg2Rad(diff_deg_robot);  // current pose + how much to turn based on diff_deg_robot
-    ROS_INFO("[makeSubgoal12] dist_robot_to_nextnode: %f", dist_robot_to_nextnode);
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////
-    // // Plan A-2: comment below
-    // Plan B-2-2: uncomment below 
-    Pose2 temp_m_next_node_dx = m_next_node_dx;  // later, return back the m_next_node_dx to the original next node rather than next next nnode
-    if (dist_robot_to_nextnode < m_close_to_next || m_robotarrived_but_nodenotyetupdated){  // if too close to the next node but DG hasn't update to the next node OR already done the solution before but node is still not yet updated
-        m_robotarrived_but_nodenotyetupdated = true;
-
-        // align the next next node
-        Pose2 aligned_dg_next_next_node_robot;
-        aligned_dg_next_next_node_robot.x = dg_next_next_node_robot.x + m_errorvec_dgnode_curpose.x;
-        aligned_dg_next_next_node_robot.y = dg_next_next_node_robot.y + m_errorvec_dgnode_curpose.y;
-
-        Pose2 farthest_point_to_aligned_dg_next_next_node_robot = getFarthestPoint(robotmap_erode, aligned_dg_next_next_node_robot, robot_pose);
-        Pose2 farthest_point_to_aligned_dg_next_node_robot = getFarthestPoint(robotmap_erode, m_next_node_dx, robot_pose);
- 
-        double drivable_dist_robot_to_nextnextnode = norm(farthest_point_to_aligned_dg_next_next_node_robot-robot_pose);
-        double drivable_dist_robot_to_nextnode = norm(farthest_point_to_aligned_dg_next_node_robot-robot_pose);
-
-        // if the next next is drivable enough: drivable distance robot to next-next > drivable distance robot to next 
-        if(drivable_dist_robot_to_nextnextnode > drivable_dist_robot_to_nextnode){
-            // use the next next node AND align the next-next node with the errorvector
-            m_next_node_dx.x = aligned_dg_next_next_node_robot.x;
-            m_next_node_dx.y = aligned_dg_next_next_node_robot.y;
-            
-            ROS_INFO("[makeSubgoal12] robot arrived but node not yet updated. Use next next node");
-
-            Point2 dx_next_next_node_robot_px = cvtRobottoMapcoordinate(m_next_node_dx); //cyan diamond
-            cv::drawMarker(colormap, dx_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 3, 40, 5);
-
-            // recalculate dist robot to nextnode
-            dist_robot_to_nextnode = norm(m_next_node_dx-robot_pose);
-        }
-        
-    }
-    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    ROS_INFO("[makeSubgoal12] dist_robot_to_targetnode: %f", dist_robot_to_targetnode);
     
     // if not too close to the next node
-    // get a point between robot pose and next node. 1 meter from the robot position to the direction of next_node_robot
-    double sub_goal_distance = 5.0;  // in meter. Acceptable distance 
+    // get a point between robot pose and target_node_dx. 1 meter from the robot position to the direction of next_node_robot
+    double sub_goal_distance = 2.0;  // in meter. Acceptable distance 
     double acceptable_error = 1.5;  // acceptable error between optimal and notsooptimal pub pose
     Pose2 optimal_pub_pose;
-    optimal_pub_pose = getFarthestPoint(robotmap_erode, m_next_node_dx, robot_pose);
+    optimal_pub_pose = getFarthestPoint(robotmap_erode, target_node_dx, robot_pose);
     double dist_optimalpubpose_robot = norm(robot_pose - optimal_pub_pose);
 
     // draw the pub_pose from the first step (regardless drivable or not)
     cv::drawMarker(colormap, cvtRobottoMapcoordinate(optimal_pub_pose), cv::Vec3b(255, 0, 255), 1, 10, 2);  // purple small cross
 
     // pub pose if considering robot theta. But good to remove zigzag
-    Pose2 notsooptimal_next_node;
-    notsooptimal_next_node.x = robot_pose.x + dist_robot_to_nextnode * cos(robot_pose.theta);
-    notsooptimal_next_node.y = robot_pose.y + dist_robot_to_nextnode * sin(robot_pose.theta);
+    Pose2 notsooptimal_target_node;
+    notsooptimal_target_node.x = robot_pose.x + dist_robot_to_targetnode * cos(robot_pose.theta);
+    notsooptimal_target_node.y = robot_pose.y + dist_robot_to_targetnode * sin(robot_pose.theta);
     Pose2 notsooptimal_pub_pose;
-    notsooptimal_pub_pose = getFarthestPoint(robotmap_erode, notsooptimal_next_node, robot_pose);
+    notsooptimal_pub_pose = getFarthestPoint(robotmap_erode, notsooptimal_target_node, robot_pose);
     double dist_notsooptimalpubpose_robot = norm(robot_pose - notsooptimal_pub_pose);
     
     // draw the the notsooptimal_pub_pose
     cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_pub_pose), cv::Vec3b(255, 0, 255), 4, 10, 2);  // purple small cross
-    cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_next_node), cv::Vec3b(255, 0, 255), 4, 40, 2);  // purple big cross
+    cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_target_node), cv::Vec3b(255, 0, 255), 4, 40, 2);  // purple big cross
 
-    double error_nextnode_notsooptimalnextnode = norm(m_next_node_dx - notsooptimal_next_node);
+    double error_nextnode_notsooptimalnextnode = norm(target_node_dx - notsooptimal_target_node);
 
     if (dist_optimalpubpose_robot > sub_goal_distance && dist_notsooptimalpubpose_robot <= sub_goal_distance){  // if not so optimal subgoal is less than 5 but the optimal is more than 5
         pub_pose.x = optimal_pub_pose.x;
@@ -1288,21 +1306,12 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         double min_dist_temp=1000000;  // 100 km
         
         /////////////////////////////////////////////////////////////////////////////////////////////
-        // // Plan A-1
-        // for (int i; i < num_alternatives.size(); i++){
-        //     isAlternativeFound = findAlternativePathv2(pub_pose, robot_pose, m_next_node_dx, robotmap_erode, alternative_sub_goal_distances.at(i), dist_robot_to_nextnode, num_alternatives.at(i), colormap, angle_range, min_dist_temp);
-        //     if (isAlternativeFound){
-        //         break;
-        //     }
-        // }
-        // /////////////////////////////////////////////////////////////////////////////////////////////
-        // Plan B-1
         Pose2 pub_pose_temp;
         double min_dist_best = 1000000;  // 100 km
 
         for (int i; i < num_alternatives.size(); i++){   
             double min_dist_temp;     
-            isAlternativeFound = findAlternativePathv2(pub_pose_temp, robot_pose, m_next_node_dx, robotmap_erode, alternative_sub_goal_distances.at(i), dist_robot_to_nextnode, num_alternatives.at(i), colormap, angle_range, min_dist_temp);
+            isAlternativeFound = findAlternativePathv2(pub_pose_temp, robot_pose, target_node_dx, robotmap_erode, alternative_sub_goal_distances.at(i), dist_robot_to_targetnode, num_alternatives.at(i), colormap, angle_range, min_dist_temp);
             if (isAlternativeFound && min_dist_temp < min_dist_best){
                 pub_pose = pub_pose_temp;
                 min_dist_best = min_dist_temp;
@@ -1368,12 +1377,6 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
             // // make current pose undrivable. To prevent repeated position
             // m_undrivable_points.push_back(robot_pose);
             
-            ///////////////////////////////
-            // Plan B-2-2 continuation
-            if (m_robotarrived_but_nodenotyetupdated){
-                m_next_node_dx = temp_m_next_node_dx;
-            }
-            ///////////////////////////////
             return false; // can't find alternative :(
         }
     }
@@ -1399,34 +1402,33 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     pub_pose.x = 1;  // modify this one for distance to the next node
     pub_pose.y = 0;
 */
+    // theta if going from cur to next
 
+    ROS_INFO("[makeSubgoal12] before theta m_prev_node_dx.x: %f, y:%f",m_prev_node_dx.x, m_prev_node_dx.y);
+    ROS_INFO("[makeSubgoal12] before theta m_cur_node_dx.x: %f, y:%f",m_cur_node_dx.x, m_cur_node_dx.y);
+    ROS_INFO("[makeSubgoal12] before theta m_next_node_dx.x: %f, y:%f",m_next_node_dx.x, m_next_node_dx.y);
+    ROS_INFO("[makeSubgoal12] before theta m_next_next_node_dx.x: %f, y:%f",m_next_next_node_dx.x, m_next_next_node_dx.y);    
 
-    // aligned the next node with the error
-    Pose2 aligned_dg_next_node;
-    aligned_dg_next_node.x = dg_next_node_robot.x + m_errorvec_dgnode_curpose.x;
-    aligned_dg_next_node.y = dg_next_node_robot.y + m_errorvec_dgnode_curpose.y;
-
-    // distance to the next node
-    double dist_pubpose_to_nextnode = norm(aligned_dg_next_node-pub_pose);
-
-    if (dist_pubpose_to_nextnode < m_close_to_next){  // if the proposal pubpose is near the next node, face the next next node
-        // theta if going from next to next next
-        double theta_to_next_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(dg_next_node_robot, dg_next_next_node_robot));
-        // theta if going from cur to next
-        double theta_to_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(dg_cur_node_robot, dg_next_node_robot));
+    double theta_to_next_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_next_node_dx, m_next_next_node_dx));
+    double theta_to_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_cur_node_dx, m_next_node_dx));
+    double theta_to_cur = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_prev_node_dx, m_cur_node_dx));
+    double dist_pubpose_to_targetnode = norm(target_node_dx - pub_pose);
     
-        // use ratio of subgoal-next node distance : m_close_to_next to decide the direction. The smaller the distance, head to next next more.
-        double ratio_for_theta = std::min(dist_pubpose_to_nextnode / m_close_to_next, 1.0);
-        pub_pose.theta = (1-ratio_for_theta) * theta_to_next_next + ratio_for_theta * theta_to_next;
-        
-        Point2 dg_next_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_next_node_robot); //cyan star
-        cv::drawMarker(colormap, dg_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 2, 40, 5);
-
+    if(m_nodeupdated_but_problematic){
+        // use ratio of subgoal-target node distance : m_guider.m_uncertain_dist to decide the direction. The smaller the distance, head to next more.
+        double ratio_for_theta = std::min(dist_pubpose_to_targetnode / m_guider.m_uncertain_dist_public(), 1.0);
+        pub_pose.theta = (1-ratio_for_theta) * theta_to_next + ratio_for_theta * theta_to_cur;
+        ROS_INFO("Find theta case 1: <%f>", cx::cvtRad2Deg(pub_pose.theta));
     }
-    else{
-        // theta going from cur to next
-        pub_pose.theta = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(dg_cur_node_robot, dg_next_node_robot));
-    
+    else{  // if not problematic
+        if(dist_pubpose_to_targetnode < m_guider.m_uncertain_dist_public()){
+            pub_pose.theta = theta_to_next_next;   // usually happen when target node (next node) is on vicinity but far away so the node hasn't been updated
+            ROS_INFO("Find theta case 2: <%f>", cx::cvtRad2Deg(pub_pose.theta));
+        }
+        else{
+            pub_pose.theta = theta_to_next;  // by default, go to next
+            ROS_INFO("Find theta case 3: <%f>", cx::cvtRad2Deg(pub_pose.theta));
+        }
     }
 
 /*
@@ -1451,13 +1453,6 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     pubpose_heading.x = pub_pose_px.x + 20 * cos(pub_pose.theta);
     pubpose_heading.y = pub_pose_px.y + 20 * sin(pub_pose.theta);
     cv::line(colormap, pub_pose_px, pubpose_heading, cv::Vec3b(255, 0, 255), 5);
-
-    ///////////////////////////////
-    // Plan B-2-2 continuation
-    if (m_robotarrived_but_nodenotyetupdated){
-        m_next_node_dx = temp_m_next_node_dx;
-    }
-    ///////////////////////////////
         
     ///////////////////////////////////////////////////
     if (m_save_video){
