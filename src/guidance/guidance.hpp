@@ -206,7 +206,8 @@ namespace dg
         bool isExpendedPathGenerated(){
             if (m_extendedPath.size() > 0) return true;
             else return false;}
-        ExtendedPathElement getCurExtendedPath() { return m_extendedPath[m_guide_idx]; };
+        ExtendedPathElement getPrevExtendedPath() { return m_extendedPath[std::max(m_guide_idx-1, 0)]; };
+        ExtendedPathElement getCurExtendedPath() { return m_extendedPath[std::max(m_guide_idx, 0)]; };
         ExtendedPathElement getNextExtendedPath() { 
             return m_extendedPath[std::min(m_guide_idx+1, (int) m_extendedPath.size()-1)]; };
         ExtendedPathElement getNextNextExtendedPath() { 
@@ -248,6 +249,8 @@ namespace dg
         };
         int getDegree(Point2 p1, Point2 p2, Point2 p3);
         std::vector <ExtendedPathElement> m_extendedPath;
+
+        double m_uncertain_dist_public() const { return m_uncertain_dist; }  // for public readonly access
 
     protected:
         SharedInterface* m_shared = nullptr;
