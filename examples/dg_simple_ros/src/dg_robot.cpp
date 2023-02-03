@@ -973,6 +973,7 @@ Pose2 DGRobot::getFarthestPoint(cv::Mat robotmap, Pose2 dest_point, Pose2 source
 bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/online map alignment (offline no alignment)
 { 
     // in DeepGuider coordinate
+    GuidanceManager::ExtendedPathElement prev_guide = m_guider.getPrevExtendedPath();
     GuidanceManager::ExtendedPathElement cur_guide = m_guider.getCurExtendedPath();
     GuidanceManager::ExtendedPathElement next_guide = m_guider.getNextExtendedPath();
     GuidanceManager::ExtendedPathElement next_next_guide = m_guider.getNextNextExtendedPath();
@@ -980,10 +981,12 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
     ROS_INFO("[makeSubgoal12] DG Pose node_robot.x: %f, y:%f",dg_pose.x, dg_pose.y);
     
+    Pose2 prev_node_dg = Point2(prev_guide);
     Pose2 cur_node_dg = Point2(cur_guide);
     Pose2 next_node_dg = Point2(next_guide);
     Pose2 next_next_node_dg = Point2(next_next_guide);
 
+    ROS_INFO("[makeSubgoal12] prev_node_dg.x: %f, y:%f",prev_node_dg.x, prev_node_dg.y);
     ROS_INFO("[makeSubgoal12] cur_node_dg.x: %f, y:%f",cur_node_dg.x, cur_node_dg.y);
     ROS_INFO("[makeSubgoal12] next_node_dg.x: %f, y:%f",next_node_dg.x, next_node_dg.y);
     ROS_INFO("[makeSubgoal12] next_next_node_dg.x: %f, y:%f",next_next_node_dg.x, next_next_node_dg.y);
@@ -1062,7 +1065,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     // Pose2 dg_cur_node_robot = cvtDGtoDXcoordinate(cur_node_dg, dg_pose, robot_pose);  // Note: cur_node_dg is same with m_cur_node_dg except when m_cur_node_dg hasn't been assigned for the first time
     // Pose2 dg_next_node_robot = cvtDGtoDXcoordinate(next_node_dg, dg_pose, robot_pose);
     // Pose2 dg_next_next_node_robot = cvtDGtoDXcoordinate(next_next_node_dg, dg_pose, robot_pose);
-    Pose2 dg_prev_node_robot = cvtDg2Dx(m_prev_node_dg);
+    Pose2 dg_prev_node_robot = cvtDg2Dx(prev_node_dg);
     Pose2 dg_cur_node_robot = cvtDg2Dx(cur_node_dg);  
     Pose2 dg_next_node_robot = cvtDg2Dx(next_node_dg);
     Pose2 dg_next_next_node_robot = cvtDg2Dx(next_next_node_dg);
@@ -1093,9 +1096,6 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
             // distance (in meter) between dg current node and dg next node
             double dist_dgcur_to_dgnext = norm(dg_cur_node_robot-dg_next_node_robot);
-
-            // consider prev dx node is same with prev dg
-            m_prev_node_dx = cvtDg2Dx(m_prev_node_dg);
             
             // consider current dx node is current robot position
             m_cur_node_dx = robot_pose;
@@ -1109,9 +1109,11 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
                 m_errorvec_dgnode_curpose.y = 0;
             }
 
-            // the next dx node is based on dg next node and the error
+            // the next dx node is based on dg next node and the error. Same with prev node
             m_next_node_dx.x = dg_next_node_robot.x + m_errorvec_dgnode_curpose.x;
             m_next_node_dx.y = dg_next_node_robot.y + m_errorvec_dgnode_curpose.y;
+            m_prev_node_dx.x = dg_prev_node_robot.x + m_errorvec_dgnode_curpose.x;
+            m_prev_node_dx.y = dg_prev_node_robot.y + m_errorvec_dgnode_curpose.y;
 
             // // angle between x-axis and prev-current dx path.
             // Pose2 m_prev_node_dx_dummy = m_prev_node_dx;
@@ -1141,26 +1143,31 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         }
         else  // initial start (assume: not shifted at all)
         {
+            m_prev_node_dx = dg_prev_node_robot; // no align with error
             m_cur_node_dx = dg_cur_node_robot;
             m_next_node_dx = dg_next_node_robot;
             // imwrite("../../../initial_start.png", colormap);
 
             // visualize cur, next dg nodes
+            Point2 dg_prev_node_robot_px = cvtRobottoMapcoordinate(dg_prev_node_robot); //red star
             Point2 dg_cur_node_robot_px = cvtRobottoMapcoordinate(dg_cur_node_robot); //green star
             Point2 dg_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_node_robot); //blue star
+            cv::drawMarker(colormap, dg_prev_node_robot_px, cv::Vec3b(0, 0, 255), 2, 40, 5);
             cv::drawMarker(colormap, dg_cur_node_robot_px, cv::Vec3b(0, 255, 0), 2, 20, 5);
             cv::drawMarker(colormap, dg_next_node_robot_px, cv::Vec3b(255, 0, 0), 2, 40, 5);
 
             // visualize cur, next (shifted) dx nodes
+            Point2 dx_prev_node_robot_px = cvtRobottoMapcoordinate(m_prev_node_dx); //red diamond
             Point2 dx_cur_node_robot_px = cvtRobottoMapcoordinate(m_cur_node_dx); //green diamond
             Point2 dx_next_node_robot_px = cvtRobottoMapcoordinate(m_next_node_dx); //blue diamond
+            cv::drawMarker(colormap, dx_prev_node_robot_px, cv::Vec3b(0, 0, 255), 3, 40, 5);
             cv::drawMarker(colormap, dx_cur_node_robot_px, cv::Vec3b(0, 255, 0), 3, 20, 5);
             cv::drawMarker(colormap, dx_next_node_robot_px, cv::Vec3b(255, 0, 0), 3, 40, 5);
         }
 
         // update global variable
-        m_prev_node_dg = m_cur_node_dg;
-        m_cur_node_dg = next_node_dg;
+        // m_prev_node_dg = m_cur_node_dg;
+        // m_cur_node_dg = next_node_dg;
         m_prev_node_id = m_cur_head_node_id;
         m_cur_head_node_id = next_guide.cur_node_id;
         m_prev_robot_pose = m_cur_robot_pose;   
@@ -1170,15 +1177,19 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         m_guider.m_robot_heading_node_pose = dg_next_node_robot;
     }
     else{  // if not new node
-        // visualize cur, next dg nodes
+        // visualize cur, next (not yet shifted) dg nodes
+        Point2 dg_prev_node_robot_px = cvtRobottoMapcoordinate(dg_prev_node_robot); //red star
         Point2 dg_cur_node_robot_px = cvtRobottoMapcoordinate(dg_cur_node_robot); //green star
         Point2 dg_next_node_robot_px = cvtRobottoMapcoordinate(dg_next_node_robot); //blue star
+        cv::drawMarker(colormap, dg_prev_node_robot_px, cv::Vec3b(0, 0, 255), 2, 40, 5);
         cv::drawMarker(colormap, dg_cur_node_robot_px, cv::Vec3b(0, 255, 0), 2, 20, 5);
         cv::drawMarker(colormap, dg_next_node_robot_px, cv::Vec3b(255, 0, 0), 2, 40, 5);
 
         // visualize cur, next (shifted) dx nodes
+        Point2 dx_prev_node_robot_px = cvtRobottoMapcoordinate(m_prev_node_dx); //red diamond
         Point2 dx_cur_node_robot_px = cvtRobottoMapcoordinate(m_cur_node_dx); //green diamond
         Point2 dx_next_node_robot_px = cvtRobottoMapcoordinate(m_next_node_dx); //blue diamond
+        cv::drawMarker(colormap, dx_prev_node_robot_px, cv::Vec3b(0, 0, 255), 3, 40, 5);
         cv::drawMarker(colormap, dx_cur_node_robot_px, cv::Vec3b(0, 255, 0), 3, 20, 5);
         cv::drawMarker(colormap, dx_next_node_robot_px, cv::Vec3b(255, 0, 0), 3, 40, 5);
 
