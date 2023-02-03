@@ -96,6 +96,7 @@ protected:
     Pose2 cvtDGtoDXcoordinate(Pose2 P, Pose2 P_DG, Pose2 P_DX);
     Pose2 cvtMaptoRobotcoordinate(Pose2 P);
     Pose2 cvtRobottoMapcoordinate(Pose2 P);
+    Pose2 findRobotCoordAngleofVectorSource2Dest(Pose2 source, Pose2 dest);
     Pose2 m_robot_origin;
     Pose2 m_errorvec_dgnode_curpose;
     int m_drivable_threshold = 220;
@@ -669,6 +670,13 @@ bool DGRobot::makeSubgoal1(Pose2& pub_pose)
     return true;
 }
 
+Pose2 DGRobot::findRobotCoordAngleofVectorSource2Dest(Pose2 source, Pose2 dest){
+    Pose2 source_dummy;
+    source_dummy.x = source.x - 10.0;
+    source_dummy.y = source.y;
+    return m_guider.getDegree(source_dummy, source, dest);  // return in degree
+}
+
 bool DGRobot::findAlternativePath(Pose2& alternative_point, Pose2 robot_pose, Pose2 next_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_nextnode, int num_alternatives, cv::Mat& colormap, double& min_dist_to_next_node){
     /*
     Alternative candidates sampled uniformly on a circle. Angle of each sample is based on robot origin.  
@@ -721,10 +729,7 @@ bool DGRobot::findAlternativePathv2(Pose2& alternative_point, Pose2 robot_pose, 
     */
 
     // Find destination angle based on robot coordinate
-    Pose2 dummy;
-    dummy.x = robot_pose.x - 10.0;
-    dummy.y = robot_pose.y;
-    int next_node_theta = m_guider.getDegree(dummy, robot_pose, next_node_robot);
+    int next_node_theta = findRobotCoordAngleofVectorSource2Dest(robot_pose, next_node_robot);
     
     // find alternative that is drivable and the closest to the goal
     min_dist_to_next_node=1000000;  // 100 km. 
@@ -1115,16 +1120,6 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
             m_prev_node_dx.x = dg_prev_node_robot.x + m_errorvec_dgnode_curpose.x;
             m_prev_node_dx.y = dg_prev_node_robot.y + m_errorvec_dgnode_curpose.y;
 
-            // // angle between x-axis and prev-current dx path.
-            // Pose2 m_prev_node_dx_dummy = m_prev_node_dx;
-            // m_prev_node_dx_dummy.x = m_prev_node_dx_dummy.x - 10;
-            // int deg_robot = m_guider.getDegree(m_prev_node_dx, m_cur_node_dx, m_prev_node_dx_dummy);
-            // ROS_INFO("[AAAAAAAAAAAAmakeSubgoal4] deg_robot %f", deg_robot);
-
-            // // calculate the shifted dg node in robot map
-            // m_next_node_dx.x = robot_pose.x + dist_dgcur_to_dgnext * cos(cx::cvtDeg2Rad(deg_robot - diff_deg_robot));
-            // m_next_node_dx.y = robot_pose.y + dist_dgcur_to_dgnext * sin(cx::cvtDeg2Rad(deg_robot - diff_deg_robot));
-
             // visualize prev, cur, next dg nodes
             Point2 dg_prev_node_robot_px = cvtRobottoMapcoordinate(dg_prev_node_robot); //red star
             Point2 dg_cur_node_robot_px = cvtRobottoMapcoordinate(dg_cur_node_robot); //green star
@@ -1235,21 +1230,9 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
             // recalculate dist robot to nextnode
             dist_robot_to_nextnode = norm(m_next_node_dx-robot_pose);
-
-            // // calculate pub pose theta with dg_next_next_node_robot, dg_next_node_robot, dg_next_node_robot_dummy
-            // Pose2 dg_next_node_robot_dummy = dg_next_node_robot;
-            // dg_next_node_robot_dummy.x = dg_next_node_robot_dummy.x - 10;
-            // pub_pose.theta = cx::cvtDeg2Rad(m_guider.getDegree(dg_next_node_robot_dummy, dg_next_node_robot, dg_next_next_node_robot));
         }
         
     }
-    // else{
-    //     // calculate pub pose theta with dg_next_node_robot, dg_cur_node_robot, dg_cur_robot_dummy
-    //     Pose2 dg_cur_node_robot_dummy = dg_cur_node_robot;
-    //     dg_cur_node_robot_dummy.x = dg_cur_node_robot_dummy.x - 10;
-    //     pub_pose.theta = cx::cvtDeg2Rad(m_guider.getDegree(dg_cur_node_robot_dummy, dg_cur_node_robot, dg_next_node_robot));
-    // }
-    ////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     
     // if not too close to the next node
@@ -1427,14 +1410,10 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     double dist_pubpose_to_nextnode = norm(aligned_dg_next_node-pub_pose);
 
     if (dist_pubpose_to_nextnode < m_close_to_next){  // if the proposal pubpose is near the next node, face the next next node
-        // calculate pub pose theta with dg_next_next_node_robot, dg_next_node_robot, dg_next_node_robot_dummy
-        Pose2 dg_next_node_robot_dummy = dg_next_node_robot;
-        dg_next_node_robot_dummy.x = dg_next_node_robot_dummy.x - 10;
-        Pose2 dg_cur_node_robot_dummy = dg_cur_node_robot;
-        dg_cur_node_robot_dummy.x = dg_cur_node_robot_dummy.x - 10;
-        
-        double theta_to_next_next = cx::cvtDeg2Rad(m_guider.getDegree(dg_next_node_robot_dummy, dg_next_node_robot, dg_next_next_node_robot));
-        double theta_to_next = cx::cvtDeg2Rad(m_guider.getDegree(dg_cur_node_robot_dummy, dg_cur_node_robot, dg_next_node_robot));
+        // theta if going from next to next next
+        double theta_to_next_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(dg_next_node_robot, dg_next_next_node_robot));
+        // theta if going from cur to next
+        double theta_to_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(dg_cur_node_robot, dg_next_node_robot));
     
         // use ratio of subgoal-next node distance : m_close_to_next to decide the direction. The smaller the distance, head to next next more.
         double ratio_for_theta = std::min(dist_pubpose_to_nextnode / m_close_to_next, 1.0);
@@ -1445,10 +1424,8 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
     }
     else{
-        // calculate pub pose theta with dg_next_node_robot, dg_cur_node_robot, dg_cur_robot_dummy
-        Pose2 dg_cur_node_robot_dummy = dg_cur_node_robot;
-        dg_cur_node_robot_dummy.x = dg_cur_node_robot_dummy.x - 10;
-        pub_pose.theta = cx::cvtDeg2Rad(m_guider.getDegree(dg_cur_node_robot_dummy, dg_cur_node_robot, dg_next_node_robot));
+        // theta going from cur to next
+        pub_pose.theta = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(dg_cur_node_robot, dg_next_node_robot));
     
     }
 
