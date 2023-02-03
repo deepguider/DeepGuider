@@ -996,7 +996,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
     ROS_INFO("[makeSubgoal12] robot_pose node_robot.x: %f, y:%f",robot_pose.x, robot_pose.y);
 
-    Pose2 dg_pose_robot = cvtDGtoDXcoordinate(dg_pose, dg_pose, robot_pose);  // dg_pose in robot's coordinate
+    // Pose2 dg_pose_robot = cvtDGtoDXcoordinate(dg_pose, dg_pose, robot_pose);  // dg_pose in robot's coordinate
     // Pose2 dg_pose_robot = cvtDg2Dx(dg_pose);  // dg_pose in robot's coordinate
 
     cv::Mat robotmap = onlinemap.clone();
@@ -1331,18 +1331,18 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
                 //record image   
                 // ///save image 
-                Point2 dg_pose_robot_px = cvtRobottoMapcoordinate(dg_pose_robot);
-                // Point2 dx_pose_robot_px = cvtRobottoMapcoordinate(robot_pose);  // dx_pose_robot_px = dg_pose_robot_px
+                // Point2 dg_pose_robot_px = cvtRobottoMapcoordinate(dg_pose_robot);
+                // Point2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);  // dx_pose_robot_px = dg_pose_robot_px
                 
-                cv::circle(colormap, dg_pose_robot_px, 20, cv::Vec3b(0, 255, 0), 5);
-                cv::circle(colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
-                cv::circle(clean_colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
+                cv::circle(colormap, robot_pose_px, 20, cv::Vec3b(0, 255, 0), 5);
+                cv::circle(colormap, robot_pose_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
+                cv::circle(clean_colormap, robot_pose_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
                 // cv::circle(colormap, dx_pose_robot_px, 20, cv::Vec3b(0, 0, 255), 5);
 
                 Point2 robot_heading;
-                robot_heading.x = dg_pose_robot_px.x + 20 * cos(robot_pose.theta);
-                robot_heading.y = dg_pose_robot_px.y + 20 * sin(robot_pose.theta);
-                cv::line(colormap, dg_pose_robot_px, robot_heading, cv::Vec3b(0, 255, 0), 5);
+                robot_heading.x = robot_pose_px.x + 20 * cos(robot_pose.theta);
+                robot_heading.y = robot_pose_px.y + 20 * sin(robot_pose.theta);
+                cv::line(colormap, robot_pose_px, robot_heading, cv::Vec3b(0, 255, 0), 5);
                 ROS_INFO("robot_pose theta %f", robot_pose.theta);
                 
                 cv::drawMarker(colormap, m_dx_map_origin_pixel, cv::Vec3b(0, 255, 255), 0, 50, 10);
@@ -1355,8 +1355,8 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
                 m_video_gui << videoFrame;
 
                 cv::Mat videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);  
-                int x = dg_pose_robot_px.x-400; 
-                int y = dg_pose_robot_px.y-400;
+                int x = robot_pose_px.x-400; 
+                int y = robot_pose_px.y-400;
                 if (x+800 >= colormap.cols) x = colormap.cols - 800 - 1;
                 if (x<=1) x = 1;
                 if (y+800 >= colormap.rows) y = colormap.rows - 800 - 1;
@@ -1372,7 +1372,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
             }
             // // Plan B-6
             // // make current pose undrivable. To prevent repeated position
-            // m_undrivable_points.push_back(dg_pose_robot);
+            // m_undrivable_points.push_back(robot_pose);
             
             ///////////////////////////////
             // Plan B-2-2 continuation
@@ -1475,12 +1475,12 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     if (m_save_video){
         //record image   
         // ///save image 
-        Point2 dg_pose_robot_px = cvtRobottoMapcoordinate(dg_pose_robot);
-        // Point2 dx_pose_robot_px = cvtRobottoMapcoordinate(robot_pose);  // dx_pose_robot_px = dg_pose_robot_px
+        // Point2 dg_pose_robot_px = cvtRobottoMapcoordinate(dg_pose_robot);
+        Point2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);  // robot_pose_px = dg_pose_robot_px
         
-        cv::circle(colormap, dg_pose_robot_px, 20, cv::Vec3b(0, 255, 0), 5);
-        cv::circle(colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
-        cv::circle(clean_colormap, dg_pose_robot_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
+        cv::circle(colormap, robot_pose_px, 20, cv::Vec3b(0, 255, 0), 5);
+        cv::circle(colormap, robot_pose_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
+        cv::circle(clean_colormap, robot_pose_px, 5, cv::Vec3b(0, 255, 0), 2);  // with robot real size
         // cv::circle(colormap, dx_pose_robot_px, 20, cv::Vec3b(0, 0, 255), 5);
 
         // //draw prev and current robot pose
@@ -1492,9 +1492,9 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         // cv::circle(colormap, cur_robot_px, 10, cv::Vec3b(100, 255, 100), 2);  // with robot real size
 
         Point2 robot_heading;
-        robot_heading.x = dg_pose_robot_px.x + 20 * cos(robot_pose.theta);
-        robot_heading.y = dg_pose_robot_px.y + 20 * sin(robot_pose.theta);
-        cv::line(colormap, dg_pose_robot_px, robot_heading, cv::Vec3b(0, 255, 0), 5);
+        robot_heading.x = robot_pose_px.x + 20 * cos(robot_pose.theta);
+        robot_heading.y = robot_pose_px.y + 20 * sin(robot_pose.theta);
+        cv::line(colormap, robot_pose_px, robot_heading, cv::Vec3b(0, 255, 0), 5);
         ROS_INFO("robot_pose theta %f", robot_pose.theta);
         
         cv::drawMarker(colormap, m_dx_map_origin_pixel, cv::Vec3b(0, 255, 255), 0, 50, 10);
@@ -1507,8 +1507,8 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         m_video_gui << videoFrame;
         
         cv::Mat videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);  
-        int x = dg_pose_robot_px.x-400; 
-        int y = dg_pose_robot_px.y-400;
+        int x = robot_pose_px.x-400; 
+        int y = robot_pose_px.y-400;
         if (x+800 >= colormap.cols) x = colormap.cols - 800 - 1;
         if (x<=1) x = 1;
         if (y+800 >= colormap.rows) y = colormap.rows - 800 - 1;
@@ -1526,7 +1526,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
     // // Plan B-5
     // // make current pose undrivable. To prevent repeated position
-    // m_undrivable_points.push_back(dg_pose_robot);
+    // m_undrivable_points.push_back(robot_pose);
 
     return true;
 }
