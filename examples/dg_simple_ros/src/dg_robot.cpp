@@ -1413,16 +1413,16 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     double theta_to_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_cur_node_dx, m_next_node_dx));
     double theta_to_cur = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_prev_node_dx, m_cur_node_dx));
     double dist_pubpose_to_targetnode = norm(target_node_dx - pub_pose);
+    double ratio_for_theta = std::min(dist_pubpose_to_targetnode / m_guider.m_uncertain_dist_public(), 1.0);
     
     if(m_nodeupdated_but_problematic){
         // use ratio of subgoal-target node distance : m_guider.m_uncertain_dist to decide the direction. The smaller the distance, head to next more.
-        double ratio_for_theta = std::min(dist_pubpose_to_targetnode / m_guider.m_uncertain_dist_public(), 1.0);
         pub_pose.theta = (1-ratio_for_theta) * theta_to_next + ratio_for_theta * theta_to_cur;
         ROS_INFO("Find theta case 1: <%f>", cx::cvtRad2Deg(pub_pose.theta));
     }
     else{  // if not problematic
-        if(dist_pubpose_to_targetnode < m_guider.m_uncertain_dist_public()){
-            pub_pose.theta = theta_to_next_next;   // usually happen when target node (next node) is on vicinity but far away so the node hasn't been updated
+        if(dist_pubpose_to_targetnode < m_guider.m_uncertain_dist_public()){ // usually happen when target node (next node) is on vicinity but far away so the node hasn't been updated
+            pub_pose.theta = (1-ratio_for_theta) * theta_to_next_next + ratio_for_theta * theta_to_next;   
             ROS_INFO("Find theta case 2: <%f>", cx::cvtRad2Deg(pub_pose.theta));
         }
         else{
