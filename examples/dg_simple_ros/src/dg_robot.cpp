@@ -1027,17 +1027,23 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         return false;
     }
 
+    // dilate robotmap
+    cv::Mat robotmap_dilate=robotmap.clone();
+    int dilate_value = 2;
+    dilate(robotmap, robotmap_dilate, cv::Mat::ones(cv::Size(dilate_value, dilate_value), CV_8UC1), cv::Point(-1, -1), 1);
+
+
     
     // based on the undrivable points, make the robotmap undrivable on those points
     for (int i = 0; i < m_undrivable_points.size(); i++)
     {
         Point2 node_robot = m_undrivable_points[i];
         Point2 node_pixel = cvtRobottoMapcoordinate(node_robot);
-        robotmap.at<uchar>((int)node_pixel.y, (int)node_pixel.x) = 0;
+        robotmap_dilate.at<uchar>((int)node_pixel.y, (int)node_pixel.x) = 0;
     }
 
     // smooth robotmap
-    cv::Mat robotmap_smooth=robotmap.clone();
+    cv::Mat robotmap_smooth=robotmap_dilate.clone();
     ///////////////////////////////////////////////////////////////////////////////////
     // // Plan A-3: comment below (except the last line)
     // // Plan B-3: uncomment below (except the last line)
@@ -1045,11 +1051,13 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     // cv::medianBlur(robotmap, robotmap_smooth, smoothing_filter);
 
     // // erode robotmap
-    int erode_value = 10;
+    int erode_value = 10 + dilate_value;
     // int erode_value = 0;  // Plan A-3: uncomment. Plan B-3: comment
     ///////////////////////////////////////////////////////////////////////////////
     cv::Mat robotmap_erode=robotmap_smooth.clone();
     erode(robotmap_smooth, robotmap_erode, cv::Mat::ones(cv::Size(erode_value, erode_value), CV_8UC1), cv::Point(-1, -1), 1);
+    imwrite("../../../makesubgoal12_robotmap_dilate.png", robotmap_dilate);  
+    imwrite("../../../makesubgoal12_robotmap.png", robotmap);  
 
     //save image
     cv::Mat colormap=robotmap_erode.clone();
@@ -1057,7 +1065,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     cv::cvtColor(robotmap_erode, colormap, cv::COLOR_GRAY2BGR); 
     cv::cvtColor(robotmap, clean_colormap, cv::COLOR_GRAY2BGR); 
 
-    imwrite("../../../smootheroderobotmap.png", robotmap_erode);  
+    imwrite("../../../makesubgoal12_robotmap_erode.png", robotmap_erode);  
 
     ROS_INFO("[makeSubgoal12] CurGuideIdx %d", m_guider.getCurGuideIdx());
 
@@ -1346,10 +1354,13 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
                 robot_heading.x = robot_pose_px.x + 20 * cos(robot_pose.theta);
                 robot_heading.y = robot_pose_px.y + 20 * sin(robot_pose.theta);
                 cv::line(colormap, robot_pose_px, robot_heading, cv::Vec3b(0, 255, 0), 5);
+                robot_heading.x = robot_pose_px.x + 5 * cos(robot_pose.theta);
+                robot_heading.y = robot_pose_px.y + 5 * sin(robot_pose.theta);
+                cv::line(clean_colormap, robot_pose_px, robot_heading, cv::Vec3b(0, 255, 0), 2);
                 ROS_INFO("robot_pose theta %f", robot_pose.theta);
                 
                 cv::drawMarker(colormap, m_dx_map_origin_pixel, cv::Vec3b(0, 255, 255), 0, 50, 10);
-                imwrite("../../../test_image.png", colormap);
+                imwrite("../../../makesubgoal12_onlinemap.png", colormap);
                 
                 // record video
                 cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);  
@@ -1367,6 +1378,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
                 cv::Mat roicrop(colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
                 roicrop.copyTo(videoFrameCrop);
                 m_video_crop << videoFrameCrop;
+                imwrite("../../../makesubgoal12_onlinemapcrop.png", videoFrameCrop);
 
                 videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);  
                 cv::Mat maproicrop(clean_colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
@@ -1453,6 +1465,9 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     pubpose_heading.x = pub_pose_px.x + 20 * cos(pub_pose.theta);
     pubpose_heading.y = pub_pose_px.y + 20 * sin(pub_pose.theta);
     cv::line(colormap, pub_pose_px, pubpose_heading, cv::Vec3b(255, 0, 255), 5);
+    pubpose_heading.x = pub_pose_px.x + 5 * cos(pub_pose.theta);
+    pubpose_heading.y = pub_pose_px.y + 5 * sin(pub_pose.theta);
+    cv::line(clean_colormap, pub_pose_px, pubpose_heading, cv::Vec3b(255, 0, 255), 2);
         
     ///////////////////////////////////////////////////
     if (m_save_video){
@@ -1478,10 +1493,13 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         robot_heading.x = robot_pose_px.x + 20 * cos(robot_pose.theta);
         robot_heading.y = robot_pose_px.y + 20 * sin(robot_pose.theta);
         cv::line(colormap, robot_pose_px, robot_heading, cv::Vec3b(0, 255, 0), 5);
+        robot_heading.x = robot_pose_px.x + 5 * cos(robot_pose.theta);
+        robot_heading.y = robot_pose_px.y + 5 * sin(robot_pose.theta);
+        cv::line(clean_colormap, robot_pose_px, robot_heading, cv::Vec3b(0, 255, 0), 2);
         ROS_INFO("robot_pose theta %f", robot_pose.theta);
         
         cv::drawMarker(colormap, m_dx_map_origin_pixel, cv::Vec3b(0, 255, 255), 0, 50, 10);
-        imwrite("../../../test_image.png", colormap);
+        imwrite("../../../makesubgoal12_onlinemap.png", colormap);
         
         // record video
         cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);  
@@ -1499,7 +1517,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         cv::Mat roicrop(colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
         roicrop.copyTo(videoFrameCrop);
         m_video_crop << videoFrameCrop;
-        // imwrite("../../../online_crop.png", videoFrameCrop);
+        imwrite("../../../makesubgoal12_onlinemapcrop.png", videoFrameCrop);
 
         videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);  
         cv::Mat maproicrop(clean_colormap, cv::Rect(x, y, videoFrameCrop.cols,  videoFrameCrop.rows));
