@@ -82,7 +82,7 @@ protected:
 
     //robot related functions
     std::deque<Point2> m_undrivable_points;
-    int m_undrivable_points_queue_size = 3;
+    int m_undrivable_points_queue_size = 5;
     void initialize_DG_DX_conversion();
     bool makeSubgoal1(Pose2& pub_pose);
     bool makeSubgoal12(Pose2& pub_pose);
@@ -102,6 +102,7 @@ protected:
     int m_drivable_threshold = 220;
     bool m_nodeupdated_but_problematic = false;
     bool m_save_video = true;
+    bool m_align_dg_nodes = false;
     
     geometry_msgs::PoseStamped makeRosPubPoseMsg(ID nid, Pose2 pose);
     bool findExtendedDrivablePoint(cv::Mat &image, Point2 robot_px, Point2 node_px, Point2& result_px);
@@ -417,43 +418,54 @@ void DGRobot::publishSubGoal3()
         return;
     }
 
-    GuidanceManager::RobotStatus cur_state = m_guider.getRobotStatus();
-    if (cur_state == GuidanceManager::RobotStatus::ARRIVED_NODE || cur_state == GuidanceManager::RobotStatus::ARRIVED_GOAL 
-    || cur_state == GuidanceManager::RobotStatus::READY || cur_state == GuidanceManager::RobotStatus::NO_PATH)
-    {         
-        ROS_INFO("cur_state: %d", (int) cur_state); 
-        ros::Time cur_time = ros::Time::now();
-        ros::Duration duration = cur_time - m_begin_time;
-        if (duration > ros::Duration(5.0))
-        {
-            ROS_INFO("Duration seconds: %d", duration.sec);
-            Pose2 pub_pose;
-            
-            if (cur_state == GuidanceManager::RobotStatus::NO_PATH){  // if no path, add undrivable pose 
-                Point2 undrivable_pose = m_guider.m_subgoal_pose;
-                m_undrivable_points.push_back(undrivable_pose);
-
-                //dequeue if length > m_undrivable_points_queue_size
-                if (m_undrivable_points.size() > m_undrivable_points_queue_size){
-                    m_undrivable_points.pop_front();
-                }
-            }
-            else{  // if no more NO PATH (means, the previous goal is successful/not NO PATH)
-                m_undrivable_points.clear();  // empty the queue
-            }
-
-            // if (makeSubgoal1(pub_pose))  // Seohyun's  
-            if (makeSubgoal12(pub_pose))  // Marcella's  
+    GuidanceManager::GuideStatus cur_guidance_status = m_guider.getGuidanceStatus();
+    // ROS_INFO("[publishSubGoal3] guidance status %d", (int) cur_guidance_status);
+    // ROS_INFO("[publishSubGoal3] arrived guidance status %d", (int) GuidanceManager::GuideStatus::GUIDE_ARRIVED);
+    // if(cur_guidance_status != GuidanceManager::GuideStatus::GUIDE_ARRIVED){  // guidance not yet arrived. (commented out because seems when guidance status is indeed arrived, this publishsubgoal function is never been run)
+        GuidanceManager::RobotStatus cur_state = m_guider.getRobotStatus();
+        if (cur_state == GuidanceManager::RobotStatus::ARRIVED_NODE || cur_state == GuidanceManager::RobotStatus::ARRIVED_GOAL 
+        || cur_state == GuidanceManager::RobotStatus::READY || cur_state == GuidanceManager::RobotStatus::NO_PATH)
+        {         
+            ROS_INFO("cur_state: %d", (int) cur_state); 
+            ros::Time cur_time = ros::Time::now();
+            ros::Duration duration = cur_time - m_begin_time;
+            if (duration > ros::Duration(5.0))
             {
-                geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
-                pub_subgoal.publish(rosps);
-                m_guider.m_subgoal_pose = pub_pose;
-                ROS_INFO("==============================================================\n");
-                ROS_INFO("SubGoal published!: %f, %f<=====================", pub_pose.x, pub_pose.y);
-                m_begin_time = ros::Time::now();
+                ROS_INFO("Duration seconds: %d", duration.sec);
+                Pose2 pub_pose;
+                
+                if (cur_state == GuidanceManager::RobotStatus::NO_PATH){  // if no path, add undrivable pose 
+                    Point2 undrivable_pose = m_guider.m_subgoal_pose;
+                    m_undrivable_points.push_back(undrivable_pose);
+
+                    //dequeue if length > m_undrivable_points_queue_size
+                    if (m_undrivable_points.size() > m_undrivable_points_queue_size){
+                        m_undrivable_points.pop_front();
+                    }
+                }
+                else{  // if no more NO PATH (means, the previous goal is successful/not NO PATH)
+                    m_undrivable_points.clear();  // empty the queue
+                }
+
+
+                
+                // if (makeSubgoal1(pub_pose))  // Seohyun's  
+                if (makeSubgoal12(pub_pose))  // Marcella's  
+                {
+                    geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
+                    pub_subgoal.publish(rosps);
+                    m_guider.m_subgoal_pose = pub_pose;
+                    ROS_INFO("==============================================================\n");
+                    ROS_INFO("SubGoal published!: %f, %f<=====================", pub_pose.x, pub_pose.y);
+                    m_begin_time = ros::Time::now();
+                }
+        
             }
-        }
-    }    
+        }    
+    // }
+    // else{
+    //     ROS_INFO("[publishSubGoal3] ARRIVED. Don't calculate and publish anymore subgoal");
+    // }
 }
 
 bool DGRobot::makeSubgoal1(Pose2& pub_pose)
@@ -1051,7 +1063,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     // cv::medianBlur(robotmap, robotmap_smooth, smoothing_filter);
 
     // // erode robotmap
-    int erode_value = 10 + dilate_value;
+    int erode_value = 7 + dilate_value;
     // int erode_value = 0;  // Plan A-3: uncomment. Plan B-3: comment
     ///////////////////////////////////////////////////////////////////////////////
     cv::Mat robotmap_erode=robotmap_smooth.clone();
@@ -1089,6 +1101,15 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
     Pose2 target_node_dx;
 
+    // ARRIVED
+    double dist_robot_to_next = norm(dg_next_node_robot-robot_pose);
+    ROS_INFO("[makeSubgoal12] dist robot to next: %f", dist_robot_to_next);
+    if (dg_next_next_node_robot.x == dg_next_node_robot.x && dg_next_next_node_robot.y == dg_next_node_robot.y && dist_robot_to_next < 2){
+        ROS_INFO("[makeSubgoal12] ARRIVED. use previous published pub_pose.");
+        pub_pose = m_guider.m_subgoal_pose;
+        return true;
+    }
+
     //here, select new node goal
     if (m_cur_head_node_id != next_guide.cur_node_id)  // new dg_next_node_robot
     {
@@ -1110,17 +1131,19 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
             // distance (in meter) between dg current node and dg next node
             double dist_dgcur_to_dgnext = norm(dg_cur_node_robot-dg_next_node_robot);
-            
-            // consider current dx node is current robot position
-            m_cur_node_dx = robot_pose;
 
             // error vector between dg node and current pose
-            if (use_onlinemap){
+            if (use_onlinemap && m_align_dg_nodes){
+                // consider current dx node is current robot position
+                m_cur_node_dx = robot_pose;
+                // calculate the error
                 m_errorvec_dgnode_curpose = robot_pose - dg_cur_node_robot;
             }
             else{
                 m_errorvec_dgnode_curpose.x = 0;
                 m_errorvec_dgnode_curpose.y = 0;
+                m_cur_node_dx.x = dg_cur_node_robot.x;
+                m_cur_node_dx.y = dg_cur_node_robot.y;
             }
 
             // the next dx node is based on dg next node and the error. Same with prev node and next next node
