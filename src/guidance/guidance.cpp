@@ -437,7 +437,7 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 
 	//finally arrived
 	double goal_dist = norm(m_extendedPath.back() - pose_metric);
-	if(m_robot_status == RobotStatus::ARRIVED_GOAL || 
+	if(m_robot_status == RobotStatus::ARRIVED_NODE && 
 		(m_guide_idx >= m_extendedPath.size() && goal_dist < m_arrived_threshold))
 	{
 		m_gstatus = GuideStatus::GUIDE_ARRIVED;
