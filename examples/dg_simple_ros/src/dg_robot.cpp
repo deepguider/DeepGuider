@@ -434,6 +434,7 @@ void DGRobot::publishSubGoal3()
                 ROS_INFO("Duration seconds: %d", duration.sec);
                 Pose2 pub_pose;
                 
+                // (GOOGLE DOCS - Subgoal Coordinate Calculation - NO_PATH signal handling - STEP 1)
                 if (cur_state == GuidanceManager::RobotStatus::NO_PATH){  // if no path, add undrivable pose 
                     Point2 undrivable_pose = m_guider.m_subgoal_pose;
                     m_undrivable_points.push_back(undrivable_pose);
@@ -443,7 +444,7 @@ void DGRobot::publishSubGoal3()
                         m_undrivable_points.pop_front();
                     }
                 }
-                else{  // if no more NO PATH (means, the previous goal is successful/not NO PATH)
+                else{  // if no more NO PATH (means, the previous goal is successful/not NO PATH) (GOOGLE DOCS - Subgoal Coordinate Calculation - NO_PATH signal handling - STEP 2)
                     m_undrivable_points.clear();  // empty the queue
                 }
 
@@ -1039,14 +1040,14 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         return false;
     }
 
-    // dilate robotmap
+    // dilate robotmap  (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 1)
     cv::Mat robotmap_dilate=robotmap.clone();
     int dilate_value = 2;
     dilate(robotmap, robotmap_dilate, cv::Mat::ones(cv::Size(dilate_value, dilate_value), CV_8UC1), cv::Point(-1, -1), 1);
 
 
     
-    // based on the undrivable points, make the robotmap undrivable on those points
+    // based on the undrivable points, make the robotmap undrivable on those points  (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 2)
     for (int i = 0; i < m_undrivable_points.size(); i++)
     {
         Point2 node_robot = m_undrivable_points[i];
@@ -1062,7 +1063,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     // int smoothing_filter = 3; // filter size. Must be odd
     // cv::medianBlur(robotmap, robotmap_smooth, smoothing_filter);
 
-    // // erode robotmap
+    // // erode robotmap  (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 3)
     int erode_value = 7 + dilate_value;
     // int erode_value = 0;  // Plan A-3: uncomment. Plan B-3: comment
     ///////////////////////////////////////////////////////////////////////////////
@@ -1101,7 +1102,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
     Pose2 target_node_dx;
 
-    // ARRIVED
+    // ARRIVED  (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 0)
     double dist_robot_to_next = norm(dg_next_node_robot-robot_pose);
     ROS_INFO("[makeSubgoal12] dist robot to next: %f", dist_robot_to_next);
     if (dg_next_next_node_robot.x == dg_next_node_robot.x && dg_next_next_node_robot.y == dg_next_node_robot.y && dist_robot_to_next < 2){
@@ -1110,7 +1111,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         return true;
     }
 
-    //here, select new node goal
+    //here, select new node goal (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 4)
     if (m_cur_head_node_id != next_guide.cur_node_id)  // new dg_next_node_robot
     {
         if(m_prev_node_id != 0) //NOT initial start (when m_prev_node_robot is not 0 anymore)
@@ -1132,14 +1133,14 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
             // distance (in meter) between dg current node and dg next node
             double dist_dgcur_to_dgnext = norm(dg_cur_node_robot-dg_next_node_robot);
 
-            // error vector between dg node and current pose
+            // error vector between dg node and current pose (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 4b)
             if (use_onlinemap && m_align_dg_nodes){
                 // consider current dx node is current robot position
                 m_cur_node_dx = robot_pose;
                 // calculate the error
                 m_errorvec_dgnode_curpose = robot_pose - dg_cur_node_robot;
             }
-            else{
+            else{ // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 4a)
                 m_errorvec_dgnode_curpose.x = 0;
                 m_errorvec_dgnode_curpose.y = 0;
                 m_cur_node_dx.x = dg_cur_node_robot.x;
@@ -1154,7 +1155,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
             m_next_next_node_dx.x = dg_next_next_node_robot.x + m_errorvec_dgnode_curpose.x;
             m_next_next_node_dx.y = dg_next_next_node_robot.y + m_errorvec_dgnode_curpose.y;
 
-            // is the new updated node problematic??
+            // is the new updated node problematic?? (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 5)
             Pose2 farthest_point_to_m_next_node_dx = getFarthestPoint(robotmap_erode, m_next_node_dx, robot_pose);
             Pose2 farthest_point_to_m_cur_node_dx = getFarthestPoint(robotmap_erode, m_cur_node_dx, robot_pose);
 
@@ -1289,13 +1290,13 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     double sub_goal_distance = 2.0;  // in meter. Acceptable distance 
     double acceptable_error = 1.5;  // acceptable error between optimal and notsooptimal pub pose
     Pose2 optimal_pub_pose;
-    optimal_pub_pose = getFarthestPoint(robotmap_erode, target_node_dx, robot_pose);
+    optimal_pub_pose = getFarthestPoint(robotmap_erode, target_node_dx, robot_pose); // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6a)
     double dist_optimalpubpose_robot = norm(robot_pose - optimal_pub_pose);
 
     // draw the pub_pose from the first step (regardless drivable or not)
     cv::drawMarker(colormap, cvtRobottoMapcoordinate(optimal_pub_pose), cv::Vec3b(255, 0, 255), 1, 10, 2);  // purple small cross
 
-    // pub pose if considering robot theta. But good to remove zigzag
+    // pub pose if considering robot theta. But good to remove zigzag  // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6b)
     Pose2 notsooptimal_target_node;
     notsooptimal_target_node.x = robot_pose.x + dist_robot_to_targetnode * cos(robot_pose.theta);
     notsooptimal_target_node.y = robot_pose.y + dist_robot_to_targetnode * sin(robot_pose.theta);
@@ -1309,6 +1310,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
 
     double error_nextnode_notsooptimalnextnode = norm(target_node_dx - notsooptimal_target_node);
 
+    // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6c)
     if (dist_optimalpubpose_robot > sub_goal_distance && dist_notsooptimalpubpose_robot <= sub_goal_distance){  // if not so optimal subgoal is less than 5 but the optimal is more than 5
         pub_pose.x = optimal_pub_pose.x;
         pub_pose.y = optimal_pub_pose.y;
@@ -1340,6 +1342,7 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
         Pose2 pub_pose_temp;
         double min_dist_best = 1000000;  // 100 km
 
+        // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 7)
         for (int i; i < num_alternatives.size(); i++){   
             double min_dist_temp;     
             isAlternativeFound = findAlternativePathv2(pub_pose_temp, robot_pose, target_node_dx, robotmap_erode, alternative_sub_goal_distances.at(i), dist_robot_to_targetnode, num_alternatives.at(i), colormap, angle_range, min_dist_temp);
@@ -1417,26 +1420,8 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     }
 
     ////////////////////////////////////////////////////////////
-    // CALCULATE THETA
+    // CALCULATE THETA (GOOGLE DOCS - Subgoal Theta Calculation)
 
-/*
-    // DUMMY for testing theta algorithm. Sanity check
-    Pose2 tempfordummy_dg_next_node_robot = dg_next_next_node_robot;
-    Pose2 tempfordummy_m_errorvec_dgnode_curpose = m_errorvec_dgnode_curpose;
-    Pose2 tempfordummy_dg_cur_node_robot = dg_cur_node_robot;
-    Pose2 tempfordummy_dg_next_next_node_robot = dg_next_next_node_robot;
-    Pose2 tempfordummy_pub_pose = pub_pose;
-    dg_next_node_robot.x = 0;
-    dg_next_node_robot.y = 0;
-    m_errorvec_dgnode_curpose.x=0;
-    m_errorvec_dgnode_curpose.y=0;
-    dg_cur_node_robot.x = 10;
-    dg_cur_node_robot.y = 0;
-    dg_next_next_node_robot.x = 0;
-    dg_next_next_node_robot.y = 10;
-    pub_pose.x = 1;  // modify this one for distance to the next node
-    pub_pose.y = 0;
-*/
     // theta if going from cur to next
 
     ROS_INFO("[makeSubgoal12] before theta m_prev_node_dx.x: %f, y:%f",m_prev_node_dx.x, m_prev_node_dx.y);
@@ -1447,34 +1432,24 @@ bool DGRobot::makeSubgoal12(Pose2& pub_pose)  // makeSubgoal11 with offline/onli
     double theta_to_next_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_next_node_dx, m_next_next_node_dx));
     double theta_to_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_cur_node_dx, m_next_node_dx));
     double theta_to_cur = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_prev_node_dx, m_cur_node_dx));
-    double dist_pubpose_to_targetnode = norm(target_node_dx - pub_pose);
-    double ratio_for_theta = std::min(dist_pubpose_to_targetnode / m_guider.m_uncertain_dist_public(), 1.0);
+    double dist_pubpose_to_targetnode = norm(target_node_dx - pub_pose);  // (GOOGLE DOCS - Subgoal Theta Calculation - STEP 1)
+    double ratio_for_theta = std::min(dist_pubpose_to_targetnode / m_guider.m_uncertain_dist_public(), 1.0); // (GOOGLE DOCS - Subgoal Theta Calculation - STEP 2)
     
-    if(m_nodeupdated_but_problematic){
+    if(m_nodeupdated_but_problematic){ // (GOOGLE DOCS - Subgoal Theta Calculation - STEP 4)
         // use ratio of subgoal-target node distance : m_guider.m_uncertain_dist to decide the direction. The smaller the distance, head to next more.
         pub_pose.theta = (1-ratio_for_theta) * theta_to_next + ratio_for_theta * theta_to_cur;
         ROS_INFO("Find theta case 1: <%f>", cx::cvtRad2Deg(pub_pose.theta));
     }
-    else{  // if not problematic
+    else{  // if not problematic (GOOGLE DOCS - Subgoal Theta Calculation - STEP 3)
         if(dist_pubpose_to_targetnode < m_guider.m_uncertain_dist_public()){ // usually happen when target node (next node) is on vicinity but far away so the node hasn't been updated
-            pub_pose.theta = (1-ratio_for_theta) * theta_to_next_next + ratio_for_theta * theta_to_next;   
+            pub_pose.theta = (1-ratio_for_theta) * theta_to_next_next + ratio_for_theta * theta_to_next;  // (GOOGLE DOCS - Subgoal Theta Calculation - STEP 3a)   
             ROS_INFO("Find theta case 2: <%f>", cx::cvtRad2Deg(pub_pose.theta));
         }
         else{
-            pub_pose.theta = theta_to_next;  // by default, go to next
+            pub_pose.theta = theta_to_next;  // by default, go to next (GOOGLE DOCS - Subgoal Theta Calculation - STEP 3b)
             ROS_INFO("Find theta case 3: <%f>", cx::cvtRad2Deg(pub_pose.theta));
         }
     }
-
-/*
-    // DUMMY for testing theta algorithm. Sanity check. Can check the theta in the visualization result (just consider the subgoal heading)
-    dg_next_next_node_robot = tempfordummy_dg_next_node_robot;
-    m_errorvec_dgnode_curpose = tempfordummy_m_errorvec_dgnode_curpose;
-    dg_cur_node_robot = tempfordummy_dg_cur_node_robot;
-    dg_next_next_node_robot = tempfordummy_dg_next_next_node_robot;
-    pub_pose.x = tempfordummy_pub_pose.x;
-    pub_pose.y = tempfordummy_pub_pose.y;
-*/  
 
     // CALCULATE THETA END
     ////////////////////////////////////////////////////////////
