@@ -779,15 +779,15 @@ namespace dg
 			pc.at<double>(1) = (poi_ty - m_cy) / m_focal_length;
 			pc.at<double>(2) = 1;
 
-			// world coordinate of poi center (ignore translation)
-			cv::Mat pw = cv::Mat(R.t()) * pc;
-			double xw = pw.at<double>(0);
-			double yw = pw.at<double>(1);
-			double zw = pw.at<double>(2);
+			// world direction of poi ray (pc = R(pw - cw) --> pw - cw = R^Tpc)
+			cv::Mat v = cv::Mat(R.t()) * pc;
+			double vx = v.at<double>(0);
+			double vy = v.at<double>(1);
+			double vz = v.at<double>(2);
 
 			// pan, tilt of poi center
-			double poi_pan = atan2(yw, xw);
-			double poi_tilt = atan2(zw, sqrt(xw * xw + yw * yw));
+			double poi_pan = atan2(vy, vx);
+			double poi_tilt = atan2(vz, sqrt(vx * vx + vy * vy));
 
 			// ground distance from camera to poi
 			if (floor <= 0) floor = 1;
