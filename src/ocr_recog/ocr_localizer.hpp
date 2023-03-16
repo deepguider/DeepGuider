@@ -769,23 +769,23 @@ namespace dg
 			cv::Matx33d R = rotationFromPanTiltRoll(cam_pan, camera_tilt, 0);
 			cv::Matx31d t = -R * cv::Matx31d(0, 0, m_camera_height);
 
-			// poi top
+			// poi center
 			double poi_tx = (x1 + x2) / 2.0;
 			double poi_ty = (y1 + y2) / 2.0;
 
-			// camera coordinate of poi top
+			// camera coordinate of poi center
 			cv::Mat pc(3, 1, CV_64FC1);
 			pc.at<double>(0) = (poi_tx - m_cx) / m_focal_length;
 			pc.at<double>(1) = (poi_ty - m_cy) / m_focal_length;
 			pc.at<double>(2) = 1;
 
-			// world coordinate of poi top (ignore translation)
+			// world coordinate of poi center (ignore translation)
 			cv::Mat pw = cv::Mat(R.t()) * pc;
 			double xw = pw.at<double>(0);
 			double yw = pw.at<double>(1);
 			double zw = pw.at<double>(2);
 
-			// pan, tilt of poi top
+			// pan, tilt of poi center
 			double poi_pan = atan2(yw, xw);
 			double poi_tilt = atan2(zw, sqrt(xw * xw + yw * yw));
 
