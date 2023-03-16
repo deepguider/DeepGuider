@@ -121,6 +121,22 @@ function run_parse_androidgps(){
         --pose_latlon_file=poses_latlon_robot_androidgps.txt
 }
 
+function run_parse_ubloxgps(){  # rtk gps
+    local IF=$1
+    local OD=$2
+    python2 ${SRCPATH}/parser_bag_py2_7.py --bag_file=$IF \
+        --pose_only \
+        --output_dir=$OD --pose_utm_file=poses_utm_robot_ubloxgps.txt \
+        --init_skip_meter=0 \
+        --sec_per_frame=0.1 \
+        --uvc_topic=/uvc_camera/image_raw/compressed \
+        --omni_topic=/theta_driver_node/image_raw \
+        --gps_topic=/ublox_gps/fix --exact_gps_topic \
+        --imu_topic=/imu/data \
+        --enc_left_topic=/dg_encoder/left_tick_data --enc_right_topic=/dg_encoder/right_tick_data \
+        --pose_latlon_file=poses_latlon_robot_ubloxgps.txt
+}
+
 function run_draw_map_compare(){
     local IF=$1
     local OF=$2

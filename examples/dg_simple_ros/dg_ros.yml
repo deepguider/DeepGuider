@@ -63,13 +63,14 @@ odometry_debug_print: 0
 odometry_debug_window: 0
 
 ## Topic Names Set
+## Topic Names Set
 ETRI_CART_VER2_RTKGPS:
   topic_360cam: "/theta_driver_node/image_raw"
   topic_360cam_crop: "/theta360z1_crop"
   topic_cam: "/uvc_camera/image_raw/compressed"
-  topic_gps: "/ublox_gps/fix"
+  topic_gps: "/andro2linux_gps"
   topic_odo: "/dg_odometry/pose"
-  #topic_dgps: "/gps/fix"
+  topic_dgps: "/ublox_gps/fix"
   #topic_imu: "/imu/data"
   #topic_rgbd_image: "/camera/color/image_raw/compressed"
   #topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"

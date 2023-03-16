@@ -168,6 +168,9 @@ def GetTopicList(bag):
 def GetTopicByName(bag, string_topic):
     topic_list = bag.get_type_and_topic_info().topics.keys()
     for topic in topic_list:
+        if string_topic.lower() == topic.lower():
+            return topic
+    for topic in topic_list:
         if string_topic.lower() in topic.lower():
             return topic
     return 'NotFound'
@@ -175,6 +178,8 @@ def GetTopicByName(bag, string_topic):
 def GetTopic_OMNI(bag, string_topic, verbose=True):
     Title = "OMNI360Camera"
     topic_ret = GetTopicByName(bag, string_topic)
+    if topic_ret == 'NotFound':
+        topic_ret = GetTopicByName(bag, '/theta_driver_node/image_raw')  # default
     if topic_ret == 'NotFound':
         topic_ret = GetTopicByName(bag, 'theta360z1_raw')  # default
     if topic_ret == 'NotFound':
@@ -253,6 +258,8 @@ def GetTopic_GPS(bag, string_topic, exact_gps_topic=False, verbose=True):
     Title = "GPS"
     topic_ret = GetTopicByName(bag, string_topic)
     if exact_gps_topic == False:
+        if topic_ret == 'NotFound':
+            topic_ret = GetTopicByName(bag, '/ublox_gps/fix')
         if topic_ret == 'NotFound':
             topic_ret = GetTopicByName(bag, 'andro2linux_gps')
         if topic_ret == 'NotFound':
