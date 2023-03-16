@@ -311,7 +311,7 @@ void DeepGuiderROS::callbackThetaZ1360Image(const sensor_msgs::Image::ConstPtr& 
     	cv_bridge::CvImagePtr image_ptr;
         image_ptr = cv_bridge::toCvCopy(msg);
 		m_360cam_image = image_ptr->image.clone();
-		//cv::cvtColor(image_ptr->image, m_360cam_image, cv::COLOR_RGB2BGR);
+		cv::cvtColor(image_ptr->image, m_360cam_image, cv::COLOR_RGB2BGR);
         m_360cam_capture_time = msg->header.stamp.toSec();
         m_360cam_mutex.unlock();
     }

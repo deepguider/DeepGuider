@@ -21,8 +21,8 @@ site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_IND
 server_ip_index: 0          # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
 image_server_port: "10001"  # etri: 10000, coex: 10001, bucheon: 10002, etri_indoor: 10003
-topic_name_index: 2         # 0: ETRI CART_VER2_ANDROIDGPS, 1: ETRI CART_VER2, 2:KETI ROBOT
-topic_names_set: ["ETRI_CART_VER2_ANDROIDGPS", "ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
+topic_name_index: 2         # 0: ETRI CART_VER2_ANDROIDGPS, 1: ETRI CART_VER2, 2:KETI ROBOT,            4:RTKGPS
+topic_names_set: ["ETRI_CART_VER2_ANDROIDGPS", "ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1", "ETRI_CART_VER2_RTKGPS"]
 robot_map_index: 4      #0:"Bucheon_KETI", 1:"Bucheon_Robot", 2:"COEX_KETI", 3:"COEX_Robot", 4:"Bucheon_Robot2", 
 robot_map_set: ["Bucheon_KETI", "Bucheon_Robot", "COEX_KETI","COEX_Robot", "Bucheon_Robot2"]
 robot_map_onoff: 1       #0:offline map, 1:online map
@@ -63,6 +63,17 @@ odometry_debug_print: 0
 odometry_debug_window: 0
 
 ## Topic Names Set
+ETRI_CART_VER2_RTKGPS:
+  topic_360cam: "/theta_driver_node/image_raw"
+  topic_360cam_crop: "/theta360z1_crop"
+  topic_cam: "/uvc_camera/image_raw/compressed"
+  topic_gps: "/ublox_gps/fix"
+  topic_odo: "/dg_odometry/pose"
+  #topic_dgps: "/gps/fix"
+  #topic_imu: "/imu/data"
+  #topic_rgbd_image: "/camera/color/image_raw/compressed"
+  #topic_rgbd_depth: "/camera/depth/image_rect_raw/compressed"
+
 ETRI_CART_VER2_ANDROIDGPS:
   topic_360cam: "/theta360z1_raw"
   topic_360cam_crop: "/theta360z1_crop"

@@ -37,8 +37,8 @@ function set_site_idx(){
 
 function set_topic_idx(){
     # You can modify the topic_name_index parameter in dg_ros.yml
-    #                         0                 1             2
-    local index=${1} # ["ETRI_CART_VER2_ANDROIDGPS", "ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1"]
+    #                                 0                       1             2                3                  4        
+    local index=${1} # ["ETRI_CART_VER2_ANDROIDGPS", "ETRI_CART_VER2", "KETI_ROBOT", "ETRI_CART_VER1", "ETRI_CART_VER2_RTKGPS"]
     local param="topic_name_index"
     local param_dst=${param}
     sed -i "s|${param}: [0-9]|${param_dst}: ${index}|g" dg_ros.yml
@@ -56,6 +56,9 @@ gnome-terminal --tab --title="theta360z1_crop_pub" -- bash -c "cd ${CWD}/src/dg_
 set_site_idx 2; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 60 -r 1 ./recordings/_2022-11-17-13-49-19_final_demo_keti2nong.bag
 
 ## COEX Final Demo
+
+## RTKGPS test
+#set_site_idx 6; set_topic_idx 4; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 5 -s 0 -r 10 ./recordings/with_rtk_gps/_2023-03-15-21-05-25.bag
 
 ## Test
 #set_site_idx 6; set_topic_idx 0; gnome-terminal --tab --title="PlayingRosbag" -- rosbag play -d 10 -s 0 -r 10 ./recordings/20220324_ETRI_and_Doryong.bag
