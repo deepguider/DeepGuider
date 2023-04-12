@@ -39,6 +39,12 @@ if [ -n "${pid}" ];then  # If process is running.
 fi
 gnome-terminal --tab --title="andro2linux_gps_pub" -- bash -c 'cd ~/catkin_ws/src/dg_cart_ros/src/andro2linux_gps/publish && python2 andro2linux_gps_rospublisher.py'
 
+# Run ublox_rtk_gps publish
+pid=`pgrep -f ublox_device.launch`
+if [ -n "${pid}" ];then  # If process is running.
+    kill -9 ${pid}
+fi
+gnome-terminal --tab --title="ublox_rtk_gps_pub" -- bash -c 'roslaunch ublox_gps ublox_device.launch'
 
 ## odometry USBserial
 pid=`pgrep -f "rosserial_python/serial_node.py _port:=/dev/ttyUSB0"`
@@ -67,12 +73,10 @@ pid=`pgrep -f dg_cart_odometry`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi
-
 gnome-terminal --tab -- rosrun dg_simple_ros dg_cart_odometry
 
-
 ## Start recording cart sensor
-pid=`pgrep roslaunch`
+pid=`pgrep -f dg_record_sensor.launch`
 if [ -n "${pid}" ];then  # If process is running.
     kill -9 ${pid}
 fi

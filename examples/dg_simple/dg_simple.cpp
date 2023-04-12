@@ -1159,7 +1159,7 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     cv::Rect video_rect = win_rect;
 
     // draw 360cam image
-    bool draw_360cam = false;
+    bool draw_360cam = true;
     if (m_enable_360cam && draw_360cam)
     {
         cv::Mat result_image;
