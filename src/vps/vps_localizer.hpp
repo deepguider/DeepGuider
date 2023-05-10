@@ -129,7 +129,7 @@ namespace dg
 				{
 					for (size_t j = 0; j <= 11; j++)
 					{
-                		fpath = cv::format("%s/%06ld_pitch%d_yaw%02d.jpg", m_custom_dataset_abs_path.c_str(), sv_id, i, j); // ex) 004648_pitch0_yaw00.jpg, front
+                		fpath = cv::format("%s/%06ld_pitch%d_yaw%02d.jpg", m_custom_dataset_abs_path.c_str(), sv_id, (int)i, (int)j); // ex) 004648_pitch0_yaw00.jpg, front
                 		if (file_exists(fpath))
 						{
 							sv_image = cv::imread(fpath);
