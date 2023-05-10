@@ -40,31 +40,32 @@ namespace dg
         bool show_fps = true;
         bool test_line_detector = false;
         bool test_grouping = false;
-        bool compare_with_reference = false;
         bool show_line_image = false;
 
-        // camera parameter check
+        // camera parameter
+        double hfov = 82.1;                  // horizontal field of view angle of camera (unit: degree), logitech c930e
         double camera_vanishing_y = 0.583;   // ratio w.r.t. image height
-        bool check_camera_geometry = true;
-        double hfov = 82.1;     // horizontal field of view angle of camera (unit: degree), logitech c930e
         int pan_range[2] = { -80, 80 };
-        int tilt_range[2] = { -40, 90 };     // if tilt_range[1] < tilt_range[0], valid max is used
+        int tilt_range[2] = { -50, 50 };     // if tilt_range[1] < tilt_range[0], valid max is used
         bool use_vy_range = true;            // use normalized vy range
         double vy_range[2] = { 0.3, 0.8 };   // if vy_range[1] < vy_range[0], valid max is used
 
+        // position filter
+        bool check_camera_geometry = true;
+        bool apply_position_filter = true;   // gaussian filter
+
         // validation
         bool apply_validation = true;
-        double min_vy = 0.47;               // ratio w.r.t. image height
-        double max_vy = 0.694;
-        double min_vx = 0;
-        double max_vx = 1;
+        double valid_vy_range[2] = { 0.47, 0.694 }; // ratio w.r.t. image height
+        double valid_vx_range[2] = { 0, 1 };        // ratio w.r.t. image height
+        double valid_peak_score = 700;
 
         // grouping
         bool connect_segmented_lines = true;
         double connect_dist_thr = 3;        // pixels (�� ���� ������ ���� �Ÿ�)
         double max_connect_gap = 20;        // pixels
         double min_connect_gap = -5;        // pixels
-        bool group_duplicated_lines = false;
+        bool group_duplicated_lines = true;
         double duplication_ang_thr = 135;   // degree
         double duplication_dist_thr = 10;   // pixels
 
@@ -76,7 +77,6 @@ namespace dg
         bool filter_horz_lines = true;      // filter out horizontal line segments
         double filter_vert_deg = 80;
         double filter_horz_deg = 5;
-        bool apply_position_filter = true;      // gaussian filter
 
         bool apply_tracking_filter = false;      // gaussian filter
         double tracking_filter_sx = 320;
@@ -106,13 +106,7 @@ namespace dg
         int theta_res_per_degree_vert = 4;        // degree resolution 
         bool mle_check_peak = true;
         bool print_peak_score = false;
-        double min_peak_score = 700;
         bool eval_peak_ransac = true;
-
-        // evaluation
-        bool show_score = true;
-        bool check_score = false;
-        double score_thr = 90;
 
         // drawing parameters
         cv::Scalar color_line_basic = cv::Scalar(0, 255, 255);
@@ -123,7 +117,7 @@ namespace dg
         cv::Scalar color_vpoint = cv::Scalar(0, 0, 255);
         cv::Scalar color_vpoint_wls = cv::Scalar(255, 255, 0);
         cv::Scalar color_vpoint_false = cv::Scalar(128, 128, 128);
-        int vpoint_radius = 4;
+        int vpoint_radius = 5;
     };
 
     /**
@@ -306,6 +300,7 @@ namespace dg
         void init_position_filter();
         double get_position_filter_value(cv::Size image_sz, double x, double y);
         double get_tracking_filter_value(double xprev, double yprev, double x, double y);
+        void get_eval_theta_range(int& hmin, int& hmax, int& vmin, int& vmax, double img_w, double img_h) const;  // degree
 
         bool _apply(const cv::Mat& image, dg::Timestamp ts);
 

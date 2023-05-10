@@ -88,13 +88,13 @@ namespace dg
         bool valid = true;
         if (m_param.apply_validation)
         {
-            double min_vx = frame_input.cols * m_param.min_vx;
-            double max_vx = frame_input.cols * m_param.max_vx;
-            double min_vy = frame_input.rows * m_param.min_vy;
-            double max_vy = frame_input.rows * m_param.max_vy;
+            double min_vx = frame_input.cols * m_param.valid_vx_range[0];
+            double max_vx = frame_input.cols * m_param.valid_vx_range[1];
+            double min_vy = frame_input.rows * m_param.valid_vy_range[0];
+            double max_vy = frame_input.rows * m_param.valid_vy_range[1];
             if (m_result.vx < min_vx || m_result.vx > max_vx || m_result.vy < min_vy || m_result.vy > max_vy) valid = false;
 
-            if (m_param.detect_method == 1 && score < m_param.min_peak_score) valid = false;
+            if (m_param.detect_method == 1 && score < m_param.valid_peak_score) valid = false;
             if (m_param.detect_method == 1 && valid && m_param.eval_peak_ransac && m_max_peak != m_max_peak_ransac) valid = false;
         }
         m_result.valid = (valid && score > 0);
@@ -142,6 +142,31 @@ namespace dg
         cv::circle(image, cv::Point2d(m_scaled_vx * sx, m_scaled_vy * sy), radius, m_param.color_vpoint, cv::FILLED);
     }
 
+    void RoadTheta::get_eval_theta_range(int& hmin, int& hmax, int& vmin, int& vmax, double img_w, double img_h) const  // degree
+    {
+        // camera parameters
+        double f = img_w / 2.0 / tan(DEG2RAD(m_param.hfov) / 2);
+        double cx = img_w / 2.0;
+        double cy = img_h / 2.0;
+
+        hmin = m_param.pan_range[0];
+        hmax = m_param.pan_range[1];
+        vmin = m_param.tilt_range[0];
+        vmax = m_param.tilt_range[1];
+        if (vmax < vmin)
+        {
+            vmax = (int)cx::cvtRad2Deg(atan2(img_h - 1 - cy, f));
+        }
+        if (m_param.use_vy_range)
+        {
+            int vy1 = (int)(m_param.vy_range[0] * img_h);
+            int vy2 = (int)(m_param.vy_range[1] * img_h);
+            if (vy2 < vy1) vy2 = (int)img_h - 1;
+
+            vmin = (int)RAD2DEG(atan2(vy1 - cy, f));
+            vmax = (int)RAD2DEG(atan2(vy2 - cy, f));
+        }
+    }
 
     void RoadTheta::init_position_filter()
     {
@@ -317,24 +342,8 @@ namespace dg
         double cx = image_sz.width / 2.0;
         double cy = image_sz.height / 2.0;
 
-        // theta range
-        int hmin = m_param.pan_range[0];
-        int hmax = m_param.pan_range[1];
-        int vmin = m_param.tilt_range[0];
-        int vmax = m_param.tilt_range[1];
-        if (vmax < vmin)
-        {
-            vmax = (int)RAD2DEG(atan2(image_sz.height - 1 - cy, f));
-        }
-        if (m_param.use_vy_range)
-        {
-            int vy1 = (int)(m_param.vy_range[0] * image_sz.height);
-            int vy2 = (int)(m_param.vy_range[1] * image_sz.height);
-            if (vy2 < vy1) vy2 = image_sz.height - 1;
-
-            vmin = (int)RAD2DEG(atan2(vy1 - cy, f));
-            vmax = (int)RAD2DEG(atan2(vy2 - cy, f));
-        }
+        int hmin, hmax, vmin, vmax;
+        get_eval_theta_range(hmin, hmax, vmin, vmax, image_sz.width, image_sz.height);
 
         // score map
         int hn = (hmax - hmin) * m_param.theta_res_per_degree_horz + 1;
@@ -342,7 +351,7 @@ namespace dg
         cv::Mat score = cv::Mat::zeros(vn, hn, CV_64FC1);
         double theta_delta_vert = 1.0 / m_param.theta_res_per_degree_vert;
         double theta_delta_horz = 1.0 / m_param.theta_res_per_degree_horz;
-        for (double theta_v = vmin; theta_v <= vmax ; theta_v += theta_delta_vert)
+        for (double theta_v = vmin; theta_v <= vmax; theta_v += theta_delta_vert)
         {
             double vy = cy + f * tan(DEG2RAD(theta_v));     // y coordinate of vanishing point
             for (size_t i = 0; i < lines.size(); i++)
@@ -359,12 +368,12 @@ namespace dg
                 int theta_h = (int)RAD2DEG(atan2(vx - cx, sqrt((cy - vy) * (cy - vy) + f * f)));
                 if (theta_h >= hmin && theta_h <= hmax)
                 {
-                    double lsocre = line_score(x1, y1, x2, y2, m_param.lscore_method);
+                    double lscore = line_score(x1, y1, x2, y2, m_param.lscore_method);
                     int vi = (int)((theta_v - vmin) * m_param.theta_res_per_degree_vert);
                     int hi = (int)((theta_h - hmin) * m_param.theta_res_per_degree_horz);
                     double hi_remain = (theta_h - hmin) * m_param.theta_res_per_degree_horz - hi;
-                    score.at<double>(vi, hi) += (lsocre * (1 - hi_remain));
-                    if (hi + 1 < score.cols) score.at<double>(vi, hi + 1) += (lsocre * hi_remain);
+                    score.at<double>(vi, hi) += (lscore * (1 - hi_remain));
+                    if (hi + 1 < score.cols) score.at<double>(vi, hi + 1) += (lscore * hi_remain);
                 }
             }
         }
@@ -486,6 +495,8 @@ namespace dg
 
     double RoadTheta::detect_allpos(const std::vector<cv::Vec4f>& lines, cv::Size image_sz)
     {
+        int vx1 = 0;
+        int vx2 = image_sz.width;
         int vy1 = 0;
         int vy2 = image_sz.height;
         if (m_param.use_vy_range)
@@ -493,8 +504,6 @@ namespace dg
             vy1 = (int)(m_param.vy_range[0] * image_sz.height);
             vy2 = (int)(m_param.vy_range[1] * image_sz.height);
         }
-        int vx1 = 0;
-        int vx2 = image_sz.width;
 
         // score map
         int vxn = vx2 - vx1;
@@ -905,24 +914,8 @@ namespace dg
             double cx = m_scaled_w / 2.0;
             double cy = m_scaled_h / 2.0;
 
-            // theta range
-            int pan_min = m_param.pan_range[0];
-            int pan_max = m_param.pan_range[1];
-            int tilt_min = m_param.tilt_range[0];
-            int tilt_max = m_param.tilt_range[1];
-            if (tilt_max < tilt_min)
-            {
-                tilt_max = (int)RAD2DEG(atan2(m_scaled_h - 1 - cy, f));
-            }
-            if (m_param.use_vy_range)
-            {
-                int vy1 = (int)(m_param.vy_range[0] * m_scaled_h);
-                int vy2 = (int)(m_param.vy_range[1] * m_scaled_h);
-                if (vy2 < vy1) vy2 = (int)(m_scaled_h * 0.9);
-
-                tilt_min = (int)RAD2DEG(atan2(vy1 - cy, f));
-                tilt_max = (int)RAD2DEG(atan2(vy2 - cy, f));
-            }
+            int pan_min, pan_max, tilt_min, tilt_max;
+            get_eval_theta_range(pan_min, pan_max, tilt_min, tilt_max, m_scaled_w, m_scaled_h);
 
             double tilt = RAD2DEG(atan2(vy - cy, f));
             if (tilt<tilt_min || tilt>tilt_max) return false;
