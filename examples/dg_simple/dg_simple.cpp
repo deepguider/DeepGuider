@@ -1146,7 +1146,29 @@ void DeepGuider::drawGuiDisplay(cv::Mat& image, const cv::Point2d& view_offset, 
     gui_xy.y += 40;
 
     // print status message (localization)
-    printf("[Localizer] x=%lf, y=%lf, theta=%lf\n", pose_metric.x, pose_metric.y, pose_metric.theta);
+    printf("[Localizer] x=%.2lf, y=%.2lf, theta=%.1lf\n", pose_metric.x, pose_metric.y, cx::cvtRad2Deg(pose_metric.theta));
+
+    // indoor/outdoor transition message
+    dg::Node* node = m_map.getNode(pose_topo.node_id);
+    if(node->floor != 0)
+    {
+        if(m_space_mode == SPACE_OUTDOOR)
+        {
+            printf("[Localizer] Enter indoor\n");
+            if(m_enable_tts) putTTS("Enter indoor");
+        }
+        m_space_mode = SPACE_INDOOR;
+    }
+    else
+    {
+        if(m_space_mode == SPACE_INDOOR)
+        {
+            printf("[Localizer] Came out outdoor\n");
+            if(m_enable_tts) putTTS("Came out outdoor");
+        }
+        m_space_mode = SPACE_OUTDOOR;
+    }
+
 
     // draw cam image on the GUI map (image is a map Mat)
     if (m_cam_image.empty()) return;
@@ -1534,26 +1556,6 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     
     m_guider_mutex.unlock();
 
-    // indoor/outdoor transition message
-    if(node->floor != 0)
-    {
-        if(m_space_mode == SPACE_OUTDOOR)
-        {
-            printf("[Guidance] Ender indoor\n");
-            if(m_enable_tts) putTTS("Enter indoor");
-        }
-        m_space_mode = SPACE_INDOOR;
-    }
-    else
-    {
-        if(m_space_mode == SPACE_INDOOR)
-        {
-            printf("[Guidance] Came out outdoor\n");
-            if(m_enable_tts) putTTS("Came out outdoor");
-        }
-        m_space_mode = SPACE_OUTDOOR;
-    }
- 
     // tts guidance message
     if (m_enable_tts && cur_guide.announce && !cur_guide.actions.empty())
     {
@@ -1729,6 +1731,7 @@ bool DeepGuider::procOcr()
     std::vector<double> poi_confidences;
     if (m_ocr.apply(cam_image, capture_time, pois, relatives, poi_confidences))
     {
+        m_ocr.print();
         if (m_apply_ocr)
         {
             for (int k = 0; k < (int)pois.size(); k++)
@@ -1749,7 +1752,6 @@ bool DeepGuider::procOcr()
     }
     else
     {
-        m_ocr.print();
         return false;
     }
 }
