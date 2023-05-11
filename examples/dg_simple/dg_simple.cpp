@@ -24,6 +24,10 @@ using namespace std;
 
 class DeepGuider : public SharedInterface, public cx::Algorithm
 {
+public:
+    enum {SPACE_UNKNOWN, SPACE_INDOOR, SPACE_OUTDOOR};
+    int m_space_mode = SPACE_UNKNOWN;
+
 protected:
     // configuable parameters
     int m_enable_360cam = 0;
@@ -1529,6 +1533,26 @@ void DeepGuider::procGuidance(dg::Timestamp ts)
     cur_guide = m_guider.getGuidance();
     
     m_guider_mutex.unlock();
+
+    // indoor/outdoor transition message
+    if(node->floor != 0)
+    {
+        if(m_space_mode == SPACE_OUTDOOR)
+        {
+            printf("[Guidance] Ender indoor\n");
+            if(m_enable_tts) putTTS("Enter indoor");
+        }
+        m_space_mode = SPACE_INDOOR;
+    }
+    else
+    {
+        if(m_space_mode == SPACE_INDOOR)
+        {
+            printf("[Guidance] Came out outdoor\n");
+            if(m_enable_tts) putTTS("Came out outdoor");
+        }
+        m_space_mode = SPACE_OUTDOOR;
+    }
  
     // tts guidance message
     if (m_enable_tts && cur_guide.announce && !cur_guide.actions.empty())
