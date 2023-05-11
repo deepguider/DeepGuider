@@ -64,7 +64,7 @@ void test_image_run(RECOGNIZER& recognizer, bool recording = false, const char* 
 }
 
 
-void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10, const char* video_file = "data/191115_ETRI.avi")
+void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10, const char* video_file = "data/191115_ETRI.avi", int frames_skip = 0)
 {
     printf("#### Test Video Run ####################\n");
     cv::VideoCapture video_data;
@@ -83,6 +83,11 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
         log.open(cv::format("%s_%s.txt", recognizer.name(), sztime), ios::out);
     }
 
+    if (frames_skip>0)
+    {
+        video_data.set(cv::CAP_PROP_POS_FRAMES, frames_skip);        
+    }
+
     cv::namedWindow(video_file);
     int i = 1;
     while (1)
@@ -97,7 +102,7 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
         bool ok = recognizer.apply(image, ts);
 
         printf("iteration: %d (it took %lf seconds)\n", i++, recognizer.procTime());
-        recognizer.print();
+        //recognizer.print();
 
         // draw frame number & fps
         std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0 / recognizer.procTime());
@@ -125,7 +130,7 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
 }
 
 
-void procfunc(bool recording, int rec_fps, const char* video_path)
+void procfunc(bool recording, int rec_fps, const char* video_path, int frames_skip)
 {
     // Initialize Python module
     RECOGNIZER recognizer;
@@ -134,7 +139,7 @@ void procfunc(bool recording, int rec_fps, const char* video_path)
 
     // Run the Python module
     //test_image_run(recognizer, false, cv::format("%s_sample.png", recognizer.name()).c_str());
-    test_video_run(recognizer, recording, rec_fps, video_path);
+    test_video_run(recognizer, recording, rec_fps, video_path, frames_skip);
 
     // Clear the Python module
     recognizer.clear();
@@ -146,6 +151,7 @@ int runOCRLocalizer()
     bool recording = false;
     int rec_fps = 5;
     bool threaded_run = false;
+    int frames_skip = 0;
 
     int video_sel = 0;
     const char* video_path[] = {
@@ -164,12 +170,12 @@ int runOCRLocalizer()
 
     if(threaded_run)
     {
-		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path[video_sel]);
+		std::thread* test_thread = new std::thread(procfunc, recording, rec_fps, video_path[video_sel], frames_skip);
         test_thread->join();
     }
     else
     {
-        procfunc(recording, rec_fps, video_path[video_sel]);
+        procfunc(recording, rec_fps, video_path[video_sel], frames_skip);
     }
 
     // Close the Python Interpreter
@@ -409,8 +415,8 @@ int testOCRRecognizer()
 
 int main()
 {
-    return recOCRTestset();
+    //return recOCRTestset();
     //return testOCRRecognizer();
     //return runUnitTest();    
-    //return runOCRLocalizer();
+    return runOCRLocalizer();
 }

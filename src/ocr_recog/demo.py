@@ -57,7 +57,7 @@ def saveResult(img, boxes, pred_list, dirname, res_imagefileName):
     return valid
 
 #per image
-def detect_ocr(config, image, timestamp, save_img, save_log):
+def detect_ocr(config, image, timestamp, print_result, save_img, save_log):
     
     if save_img:
         basename = os.path.basename(image)
@@ -91,7 +91,7 @@ def detect_ocr(config, image, timestamp, save_img, save_log):
         head = f'{"coordinates":25s}\t{"predicted_labels":25s}\tconfidence score'
         #if save_img: print(f'{dashed_line}\n{head}\n{dashed_line}')
         if save_log: log.write(f'{dashed_line}\n{head}\n{dashed_line}\n')
-        else: print(f'{dashed_line}\n{head}\n{dashed_line}')
+        if print_result: print(f'{dashed_line}\n{head}\n{dashed_line}')
 
         pred_list = []
         new_boxes = []
@@ -140,7 +140,7 @@ def detect_ocr(config, image, timestamp, save_img, save_log):
                 #print(f'{coordinate}\t{pred:25s}\t{confidence_score:0.4f}')
                 coordinate = list(coordinate)
                 pred_list.append([coordinate, pred, confidence_score])
-                print(f'{coordinate}\t\t{pred:25s}\t{confidence_score:0.4f}')
+                if print_result: print(f'{coordinate}\t\t{pred:25s}\t{confidence_score:0.4f}')
                 if save_log: log.write(f'{coordinate}\t\t{pred:25s}\t{confidence_score:0.4f}\n')
 
         if save_log: log.close()

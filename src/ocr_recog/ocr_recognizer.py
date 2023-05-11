@@ -199,7 +199,7 @@ class OCRRecognizer:
         return args_craft , args_recog
 
     
-    def apply(self, image, timestamp, save_img=False, save_log=False):
+    def apply(self, image, timestamp, print_result=False, save_img=False, save_log=False):
         #coordinate : list
-        pred, timestamp = detect_ocr(self, image, timestamp, save_img, save_log)
+        pred, timestamp = detect_ocr(self, image, timestamp, print_result, save_img, save_log)
         return pred, timestamp
