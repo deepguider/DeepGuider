@@ -28,11 +28,11 @@ namespace dg
     {
 	protected:
 		// camera parameters
-		double m_focal_length = 772;	    // Focal length of camera, Unit: [px]
-		double m_cx = 640;					// X coordinate of principal point, Unit: [px]
-		double m_cy = 360;					// Y coordinate of principal point, Unit: [px]
+		int m_img_w = 1280;
+		int m_img_h = 720;
+		double m_hfov = 82.1;	            // Horizontal fov angle of the camera, Unit: [deg]
 		double m_camera_height = 0.83;		// Height of camera from ground plane, Unit: [m]
-		double m_vanishing_y = 419.8;		// Y coordinate of image vanishing line, Unit: [px]
+		double m_vanishing_y = 0.583;		// normalized Y coordinate of image vanishing line (0 ~ 1)
 
 		// configuable parameters
 		double m_poi_height = 3.8;			// Height of POI from ground plane, Unit: [m]
@@ -87,13 +87,11 @@ namespace dg
 			return (m_shared != nullptr);
 		}
 
-		void setParam(double f, double cx, double cy, double cam_vy, double cam_h, double poi_h = 3.8, double search_radius = 50)
+		void setParam(double hfov, double cam_h, double vanishing_y, double poi_h = 3.8, double search_radius = 50)
 		{
 			cv::AutoLock lock(m_localizer_mutex);
-			m_focal_length = f;
-			m_cx = cx;
-			m_cy = cy;
-			m_vanishing_y = cam_vy;
+			m_hfov = hfov;
+			m_vanishing_y = vanishing_y;
 			m_camera_height = cam_h;
 			m_poi_height = poi_h;
 			m_poi_search_radius = search_radius;
@@ -104,11 +102,17 @@ namespace dg
 		 */
         bool apply(const cv::Mat image, const dg::Timestamp image_time, std::vector<dg::POI*>& pois, std::vector<dg::Polar2>& relatives, std::vector<double>& poi_confidences)
         {
+			// update image size
+			m_img_w = image.cols;
+			m_img_h = image.rows;
+
 			// OCR detection (vision module)
 			if (!OCRRecognizer::apply(image, image_time)) return false;
 			cv::AutoLock lock(m_localizer_mutex);
 			std::vector<OCRResult> ocrs = get();
 			if (ocrs.empty()) return false;
+
+			int vanishing_py = (int)(m_vanishing_y * image.rows + 0.5);
 
 			// filter out non-POI detections
 			if (m_enable_false_filter)
@@ -117,7 +121,7 @@ namespace dg
 				for (auto it = ocrs.begin(); it != ocrs.end(); it++)
 				{
 					bool valid = true;
-					if (it->ymax > m_vanishing_y) valid = false;								// ground POI
+					if (it->ymax > vanishing_py) valid = false;								// ground POI
 					if (valid && (it->ymax - it->ymin > it->xmax - it->xmin)) valid = false;	// vertical POI
 					if (valid && it->label.length() <= 1) valid = false;						// 1-character POI
 					//if (valid && isNumeric(it->label)) valid = false;					        // numeric POI
@@ -161,7 +165,7 @@ namespace dg
 				POI* poi = std::get<1>(m_matches[k]);
 				double match_score = std::get<3>(m_matches[k]);
 				pois.push_back(poi);
-				Polar2 relative = computeRelative(ocrs[ocr_idx].xmin, ocrs[ocr_idx].ymin, ocrs[ocr_idx].xmax, ocrs[ocr_idx].ymax, poi->floor);
+				Polar2 relative = computeRelative(image.cols, image.rows, ocrs[ocr_idx].xmin, ocrs[ocr_idx].ymin, ocrs[ocr_idx].xmax, ocrs[ocr_idx].ymax, poi->floor);
 				relatives.push_back(relative);
 				double conf = match_score * ocrs[ocr_idx].confidence;
 				poi_confidences.push_back(conf);
@@ -207,7 +211,7 @@ namespace dg
 			// estimate relative pose of the matched POIs
 			int ocr_idx = std::get<0>(m_matches[0]);
 			poi = std::get<1>(m_matches[0]);
-			relative = computeRelative(xmin, ymin, xmax, ymax, poi->floor);
+			relative = computeRelative(m_img_w, m_img_h, xmin, ymin, xmax, ymax, poi->floor);
 			double match_score = std::get<3>(m_matches[0]);
 			poi_confidence = match_score * conf;
 			return true;
@@ -232,7 +236,7 @@ namespace dg
 				{
 					POI* poi = pois[0];
 					poi_xys.push_back(*poi);
-					Polar2 relative = computeRelative(ocrs[k].xmin, ocrs[k].ymin, ocrs[k].xmax, ocrs[k].ymax, poi->floor);
+					Polar2 relative = computeRelative(m_img_w, m_img_h, ocrs[k].xmin, ocrs[k].ymin, ocrs[k].xmax, ocrs[k].ymax, poi->floor);
 					relatives.push_back(relative);
 					poi_confidences.push_back(ocrs[k].confidence);
 				}
@@ -757,12 +761,17 @@ namespace dg
 			return matches;
 		}
 
-        dg::Polar2 computeRelative(double x1, double y1, double x2, double y2, int floor)
+        dg::Polar2 computeRelative(int img_w, int img_h, double x1, double y1, double x2, double y2, int floor)
         {
             dg::Polar2 relative = dg::Polar2(-1, CV_PI);
 
 			// camera parameters
-			double camera_tilt = atan((m_vanishing_y - m_cy) / m_focal_length);	// camera tilt
+			double focal_length = (img_w / 2.0) / tan((m_hfov * CV_PI / 180) / 2);
+			double cx = img_w/2;
+			double cy = img_h/2;
+			int vanishing_py = (int)(m_vanishing_y * img_w + 0.5);
+
+			double camera_tilt = atan((vanishing_py - cy) / focal_length);	// camera tilt
 			double cam_pan = CV_PI / 2;
 
 			// R|t matrix
@@ -775,8 +784,8 @@ namespace dg
 
 			// camera coordinate of poi center
 			cv::Mat pc(3, 1, CV_64FC1);
-			pc.at<double>(0) = (poi_tx - m_cx) / m_focal_length;
-			pc.at<double>(1) = (poi_ty - m_cy) / m_focal_length;
+			pc.at<double>(0) = (poi_tx - cx) / focal_length;
+			pc.at<double>(1) = (poi_ty - cy) / focal_length;
 			pc.at<double>(2) = 1;
 
 			// world direction of poi ray (pc = R(pw - cw) --> pw - cw = R^Tpc)

@@ -84,6 +84,7 @@ protected:
     std::deque<Point2> m_undrivable_points;
     int m_undrivable_points_queue_size = 5;
     void initialize_DG_DX_conversion();
+    void initializeSensorSpecificParameters();
     bool makeSubgoal1(Pose2& pub_pose);
     bool makeSubgoal12(Pose2& pub_pose);
     bool isSubPathDrivable(cv::Mat robotmap, Pose2 pointA, Pose2 pointB);
@@ -201,11 +202,31 @@ bool DGRobot::initialize(std::string config_file)
     // Initialize robot parameters
     initialize_DG_DX_conversion();
 
+    // Initialize Sensor-specific parameters for DeepGuider Recoginition Modules
+    initializeSensorSpecificParameters();
+
     m_video_gui.open("../../../online_map.avi", m_fourcc, m_video_recording_fps, m_framesize);
     m_video_crop.open("../../../online_crop.avi", m_fourcc, m_video_recording_fps, m_framesize_crop);
     m_mapvideo_crop.open("../../../map_online_crop.avi", m_fourcc, m_video_recording_fps, m_framesize_crop);
 
     return true;
+}
+
+void DGRobot::initializeSensorSpecificParameters()
+{
+    // road theta
+    RoadThetaParam param = m_roadtheta.param();
+    param.camera_vanishing_y = 0.612;   // ratio w.r.t. image height
+    param.vy_range[0] = 0.5;
+    param.vy_range[1] = 0.8;
+    param.apply_validation = true;
+    param.valid_vy_range[0] = 0.55;
+    param.valid_vy_range[1] = 0.67;
+    param.valid_peak_score = 600;
+    m_roadtheta.set_param(param);
+
+    // OCR
+    m_ocr.setParam(82.1, 0.83, 0.612);
 }
 
 int DGRobot::run()

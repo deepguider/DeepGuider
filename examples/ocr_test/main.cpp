@@ -102,7 +102,7 @@ void test_video_run(RECOGNIZER& recognizer, bool recording = false, int fps = 10
         bool ok = recognizer.apply(image, ts);
 
         printf("iteration: %d (it took %lf seconds)\n", i++, recognizer.procTime());
-        //recognizer.print();
+        recognizer.print();
 
         // draw frame number & fps
         std::string fn = cv::format("#%d (FPS: %.1lf)", frame_i, 1.0 / recognizer.procTime());
@@ -155,6 +155,7 @@ int runOCRLocalizer()
 
     int video_sel = 0;
     const char* video_path[] = {
+        "video/keti-2022-11-08-16-16-35.avi",
         "data/191115_ETRI.avi",
         "video/etri_cart_200219_15h01m_2fps.avi",
         "video/201007_taeheran1.avi",
