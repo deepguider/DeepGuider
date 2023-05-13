@@ -558,8 +558,9 @@ int DeepGuider::run()
 {
     // load test dataset    
     dg::DataLoader data_loader;
-    std::string gps_file, odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file, exploration_file;
+    std::string video_file, gps_file, odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file, exploration_file;
     std::string data_header = "data/ETRI/2022-08-08-13-38-04_etri_to_119";
+    video_file = data_header + "_images.avi";
     gps_file = data_header + "_andro2linux_gps.csv";
     if (m_enable_odometry) odo_file = data_header + "_odometry.csv";
     //ahrs_file = data_header + "_imu_data.csv";
@@ -569,7 +570,7 @@ int DeepGuider::run()
     //intersection_file = data_header + "_intersect.csv";
     //lr_file = data_header + "_roadlr.csv";
     //roadtheta_file = data_header + "_roadtheta.csv";
-    if (!data_loader.load(m_video_input_path, gps_file, odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
+    if (!data_loader.load(video_file, gps_file, odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
     {
         printf("DeepGuider::run() - Fail to load test data. Exit program...\n");
         return -1;
