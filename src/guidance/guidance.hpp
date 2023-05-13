@@ -214,7 +214,7 @@ namespace dg
             return m_extendedPath[std::min(m_guide_idx+2, (int) m_extendedPath.size()-1)]; };
             
         int getCurGuideIdx() { return m_guide_idx; };
-        int getLastGuideIdx() { return m_extendedPath.size()-1; };
+        int getLastGuideIdx() { return (int)m_extendedPath.size()-1; };
 
         void setRobotStatus(RobotStatus status) 
         { 

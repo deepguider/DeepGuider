@@ -9,11 +9,19 @@ bool GuidanceManager::initialize(SharedInterface* shared)
 	m_shared = shared;
 
 	//initialize guidance parameters
+	/* jylee
 	std::vector <ExtendedPathElement> m_extendedPath;
 	GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
 	std::vector<Guidance> m_past_guides;
 	Guidance m_curguidance;
 	RobotStatus m_robot_status = RobotStatus::READY;
+	*/
+	m_extendedPath.clear();
+	m_gstatus = GuideStatus::GUIDE_NORMAL;
+	m_past_guides.clear();
+	m_curguidance = Guidance();
+	m_robot_status = RobotStatus::READY;
+
 	m_guide_idx = -1;	//starts with -1 because its pointing current guide.
 	m_robot_guide_idx = -1;
 	m_remain_distance = 0.0;
