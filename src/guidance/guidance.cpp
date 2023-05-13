@@ -271,7 +271,7 @@ bool GuidanceManager::buildGuides()
 
 bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 {
-	if (m_extendedPath.empty()) return true;
+	if (m_extendedPath.empty()) return true;	// jylee
 
 	//check pose validation
 	ID curnid = pose.node_id;	//current robot's pose
@@ -305,6 +305,21 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	}
 
 	//finally arrived
+	/* jylee
+	double goal_dist = norm(m_extendedPath.back() - pose_metric);
+	if (m_guide_idx >= (int)m_extendedPath.size() - 2 && goal_dist < m_arrived_threshold)
+	{
+		m_gstatus = GuideStatus::GUIDE_ARRIVED;
+		m_arrival = true;
+		setArrivalGuide();
+		m_curguidance.announce = true;
+		m_curguidance.distance_to_remain = goal_dist;
+		m_arrival_cnt++;
+		m_guide_idx = -1;
+		m_last_announce_dist = -1;	//reset m_last_announce_dist
+		return true;
+	}
+	*/
 	if (m_guide_idx >= (int)m_extendedPath.size() - 2)
 	{
 		double goal_dist = norm(m_extendedPath.back() - pose_metric);
@@ -421,6 +436,8 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 
 bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 {
+	if (m_extendedPath.empty()) return true;	// jylee
+
 	//check pose validation
 	ID curnid = pose.node_id;	//current robot's pose
 	Node* curNode = getMap()->getNode(curnid);
@@ -454,8 +471,9 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	}
 
 	//finally arrived
+	/* jylee
 	double goal_dist = norm(m_extendedPath.back() - pose_metric);
-	if(m_robot_status == RobotStatus::ARRIVED_NODE && 
+	if (m_robot_status == RobotStatus::ARRIVED_NODE &&
 		(m_guide_idx >= m_extendedPath.size() && goal_dist < m_arrived_threshold))
 	{
 		m_gstatus = GuideStatus::GUIDE_ARRIVED;
@@ -468,6 +486,29 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 		m_robot_guide_idx = -1;
 		m_last_announce_dist = -1;	//reset m_last_announce_dist
 		return true;
+	}
+	*/
+	if (m_robot_status == RobotStatus::ARRIVED_NODE && m_guide_idx >= (int)m_extendedPath.size() - 2)
+	{
+		double goal_dist = norm(m_extendedPath.back() - pose_metric);
+		ExtendedPathElement curEP = getCurExtendedPath();
+		double passsed_dist = pose.dist;
+		double junction_dist = curEP.remain_distance_to_next_junction;
+		double remain_dist = junction_dist - passsed_dist; // + curedge->length;
+
+		if (goal_dist < m_arrived_threshold || remain_dist < m_arrived_threshold)
+		{
+			m_gstatus = GuideStatus::GUIDE_ARRIVED;
+			m_arrival = true;
+			setArrivalGuide();
+			m_curguidance.announce = true;
+			m_curguidance.distance_to_remain = goal_dist;
+			m_arrival_cnt++;
+			m_guide_idx = -1;
+			m_robot_guide_idx = -1;
+			m_last_announce_dist = -1;	//reset m_last_announce_dist
+			return true;
+		}
 	}
 
 	//if robot is not on-path
