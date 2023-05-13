@@ -558,8 +558,10 @@ int DeepGuider::run()
 {
     // load test dataset    
     dg::DataLoader data_loader;
-    std::string odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file, exploration_file;
-    std::string data_header = "data/ETRI/191115_151140";
+    std::string gps_file, odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file, exploration_file;
+    std::string data_header = "data/ETRI/2022-08-08-13-38-04_etri_to_119";
+    gps_file = data_header + "_andro2linux_gps.csv";
+    if (m_enable_odometry) odo_file = data_header + "_odometry.csv";
     //ahrs_file = data_header + "_imu_data.csv";
     //ocr_file = data_header + "_ocr.csv";
     //poi_file = data_header + "_poi.csv";
@@ -567,7 +569,7 @@ int DeepGuider::run()
     //intersection_file = data_header + "_intersect.csv";
     //lr_file = data_header + "_roadlr.csv";
     //roadtheta_file = data_header + "_roadtheta.csv";
-    if (!data_loader.load(m_video_input_path, m_gps_input_path, odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
+    if (!data_loader.load(m_video_input_path, gps_file, odo_file, ahrs_file, ocr_file, poi_file, vps_file, intersection_file, roadlr_file, roadtheta_file))
     {
         printf("DeepGuider::run() - Fail to load test data. Exit program...\n");
         return -1;
@@ -590,7 +592,7 @@ int DeepGuider::run()
     cv::Mat gui_image;
     int wait_msec = 1;
     int itr = 0;
-    double start_time = 500;
+    double start_time = 50;
     data_loader.setStartSkipTime(start_time);
     while (1)
     {
