@@ -901,7 +901,11 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
     // stop other works
     m_exploration_state_count = 0;
 
-    if (m_enable_tts) putTTS("Regenerate path!");
+    if (m_enable_tts)
+    {
+        if(m_dest_defined) putTTS("Regenerate path!");
+        else  putTTS("Generate path!");
+    }
     if (m_enable_mapserver)
     {
         Path path;
@@ -929,10 +933,8 @@ bool DeepGuider::updateDeepGuiderPath(dg::Point2F start, dg::Point2F dest)
     }
 
     // guidance: init map and path for guidance
-    m_guider_mutex.lock();
-    //VVS_CHECK_TRUE(m_guider.initiateNewGuidance());
-    //VVS_CHECK_TRUE(m_guider.initiateNewGuidance(start, dest));
     dg::TopometricPose pose_topo = getPoseTopometric();
+    m_guider_mutex.lock();
     VVS_CHECK_TRUE(m_guider.initiateNewGuidance(pose_topo, dest));
     m_guider_mutex.unlock();
     printf("\tGuidance is updated with new map and path!\n");
