@@ -1,21 +1,22 @@
 %YAML:1.0
 ---
 ## Activate/deactivate submodules
-enable_360cam: 0
+enable_360cam: 0  # not required.
 enable_360cam_crop: 0
 enable_intersection: 0
-enable_ocr: 0
-enable_vps: 0
+enable_ocr: 0    # 0: disable, 1: run as internal module, 2: run as external ros node 
+enable_vps: 0    # 0: disable, 1: run as internal module, 2: run as external ros node
 enable_roadlr: 0
 enable_roadtheta: 0
 enable_exploration: 0
 enable_logo: 0
 enable_imu: 0
-enable_mcl: 0
+enable_odometry: 1
+enable_mcl: 1
 enable_mapserver: 0    # 0: use saved offline map, 1: online mapserver
 
 ### Main Options
-site_index: 4            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, 5:TEST_ETRI_INDOOR, 6:ETRI_EXTENDED, ...
+site_index: 2            # 0: ETRI, 1: COEX, 2: Bucheon, 3: TEST_ETRI, 4: TEST_COEX, 5:TEST_ETRI_INDOOR, 6:ETRI_EXTENDED, ...
 site_names: ["ETRI", "COEX", "Bucheon", "TEST_ETRI", "TEST_COEX", "TEST_ETRI_INDOOR", 'ETRI_EXTENDED']
 server_ip_index: 1     # 0: 127.0.0.1, 1: 129.254.81.204, ...
 server_ip_list: ["127.0.0.1", "129.254.81.204"]
@@ -35,13 +36,20 @@ recording_header_name: "dg_simple_"
 vps_load_dbfeat: 0
 vps_save_dbfeat: 0
 vps_use_custom_image_server: 0   # 0 (default) to use naver roadview, 1 to use custom images for database images
-vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_gps_accuracy)) , 1:10m, 0.95:20m, 0.9:29m, 0.79:50, 0.0:200 meters
+vps_gps_accuracy: 0.9  # Constant gps accuracy related to search range. In streetview image server, download_radius = int(10 + 190*(1-vps_
+vps_enable_mcl: 0
+vps_visible_region_radius: 1
+vps_visible_region_radius_max_ratio: 12  # Search range :  vps_visible_region_radius ~ (vps_visible_region_radius*vps_visible_region_radius_max_ratio) meters
+vps_enable_filter: 0
+vps_filter_size: 7  # 11 for coex indoor, window size of median filter ( 1 means off)
+vps_filter_valid_thre: 3 # 1st threshold to check valid of vps result in median filter in metric (Large numger, (ex) 1000, means off)
+vps_filter_outlier_thre: 25  # 2nd threshold to reject outlier sample in median filter in metric (Large numger, (ex) 1000, means off)
+vps_filter_conf_thre: 0.75
 
 ## Intersection
 intersection_cam: 3 # 1 or 3. 1: 1 camera. 3: 3 camera (require enable_360cam_crop: 1. If not enable_360cam_crop, 1 camera will be run)
 
 ## Pre-defined Place Settings
-
 ETRI_EXTENDED:
   map_image_path: "data/ETRI/NaverMap_ETRI(Satellite)_large.png"
   map_data_path: "data/ETRI/TopoMap_ETRI.csv"
