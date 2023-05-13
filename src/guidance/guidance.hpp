@@ -194,7 +194,7 @@ namespace dg
         bool initiateNewGuidance();
         bool initiateNewGuidance(Point2F gps_start, Point2F gps_des);
         bool initiateNewGuidance(TopometricPose pose_topo, Point2F gps_des);
-        bool update(TopometricPose pose);
+        //bool update(TopometricPose pose);
         bool update(TopometricPose pose, Pose2 pose_metric);
         bool updateWithRobot(TopometricPose pose, Pose2 pose_metric);
         GuideStatus getGuidanceStatus() const { return m_gstatus; };
