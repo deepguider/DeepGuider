@@ -107,7 +107,7 @@ protected:
     bool findDrivableinLine(cv::Mat &image, Point2 robot_px, Point2 node_px, Point2 &result_px);
     bool drawSubgoal(Point2 &pub_pose);
 
-    bool m_save_guidance_video = true;
+    bool m_save_guidance_video = false;
     int m_crop_radius = 400;
     cv::Size m_framesize = cv::Size(8000, 8000);
     cv::Size m_framesize_crop = cv::Size(802, 802);
