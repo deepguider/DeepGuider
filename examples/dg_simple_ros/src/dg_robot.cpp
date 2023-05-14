@@ -310,8 +310,8 @@ void DGRobot::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr &msg)
     // Reset deepguider pose by first arrived robot pose
     if (m_first_robot_pose)
     {
-        // m_localizer->setPose(cvtDx2Dg(dg::Pose2(x, y, theta)), timestamp);
-        m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
+        //m_localizer->setPose(cvtDx2Dg(dg::Pose2(x, y, theta)), timestamp);
+        //m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
         m_first_robot_pose = false;
     }
     // Use robot pose as odometry data
@@ -405,10 +405,7 @@ void DGRobot::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr &map)
     }
 
     m_robotmap_mutex.lock();
-    if (m_dx_map_origin_pixel.x != new_origin_pixel.x || m_dx_map_origin_pixel.y != new_origin_pixel.y)
-    {
-        m_dx_map_origin_pixel = new_origin_pixel;
-    }
+    m_dx_map_origin_pixel = new_origin_pixel;
     m_robotmap_image = image;
     m_robotmap_mutex.unlock();
 
@@ -416,6 +413,30 @@ void DGRobot::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr &map)
     Pose2 robot_dx_metric = m_guider.m_robot_pose;
     Point2 robot_px = cvtMetric2Pixel(robot_dx_metric);
 
+    /* jylee
+    cv::Mat colormap;
+    image.copyTo(colormap);
+    if (colormap.channels() == 1)
+        cv::cvtColor(colormap, colormap, cv::COLOR_GRAY2BGR);
+
+    cv::circle(colormap, robot_px, 10, cv::Vec3b(0, 255, 0), 2);
+    Point2 heading;
+    heading.x = robot_px.x + 20 * cos(robot_dx_metric.theta);
+    heading.y = robot_px.y + 20 * sin(robot_dx_metric.theta);
+    cv::line(colormap, robot_px, heading, cv::Vec3b(0, 255, 0), 2);
+
+    std::vector<GuidanceManager::ExtendedPathElement> ext_path = m_guider.m_extendedPath;
+    Pose2 cur_node_dg;
+    Point2 node_dx;
+    for (size_t i = 0; i < ext_path.size(); i++)
+    {
+        cur_node_dg = Point2(ext_path[i]);
+        node_dx = cvtMetric2Pixel(cvtDg2Dx(cur_node_dg));
+        cv::circle(colormap, node_dx, 10, cv::Vec3b(0, 0, 255), 2);
+    }
+
+    imwrite("../../../callbackRobotMap.png", colormap);
+    */
     cv::Mat colormap;
     int view_d = 300;
     cv::Rect roi(robot_px.x - view_d, robot_px.y - view_d, 2*view_d+1, 2*view_d + 1);
@@ -444,32 +465,7 @@ void DGRobot::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr &map)
     imshow("robotmap", colormap);
     cv::waitKey(1);
 
-    imwrite("../../../callbackRobotMap.png", colormap);    
-
-    /*
-    cv::Mat colormap;
-    image.copyTo(colormap);
-    if (colormap.channels() == 1)
-        cv::cvtColor(colormap, colormap, cv::COLOR_GRAY2BGR);
-
-    cv::circle(colormap, robot_px, 10, cv::Vec3b(0, 255, 0), 2);
-    Point2 heading;
-    heading.x = robot_px.x + 20 * cos(robot_dx_metric.theta);
-    heading.y = robot_px.y + 20 * sin(robot_dx_metric.theta);
-    cv::line(colormap, robot_px, heading, cv::Vec3b(0, 255, 0), 2);
-
-    std::vector<GuidanceManager::ExtendedPathElement> ext_path = m_guider.m_extendedPath;
-    Pose2 cur_node_dg;
-    Point2 node_dx;
-    for (size_t i = 0; i < ext_path.size(); i++)
-    {
-        cur_node_dg = Point2(ext_path[i]);
-        node_dx = cvtMetric2Pixel(cvtDg2Dx(cur_node_dg));
-        cv::circle(colormap, node_dx, 10, cv::Vec3b(0, 0, 255), 2);
-    }
-
     imwrite("../../../callbackRobotMap.png", colormap);
-    */
 }
 
 void DGRobot::publishSubGoal3()
