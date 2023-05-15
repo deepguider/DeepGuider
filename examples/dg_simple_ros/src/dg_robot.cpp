@@ -32,7 +32,6 @@ protected:
     ros::Subscriber sub_robot_heading;
     ros::Subscriber sub_robot_map;
     void callbackDrawRobot(const geometry_msgs::PoseStamped::ConstPtr &msg);
-    void callbackDGStatus(const dg_simple_ros::dg_status::ConstPtr &msg);
     void callbackRobotStatus(const std_msgs::String::ConstPtr &msg);
     void callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr &msg);
     void callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr &msg);
@@ -41,7 +40,6 @@ protected:
     ros::Publisher pub_subgoal;
     void publishSubGoal3();
 
-    bool m_stop_running = false;
     double m_min_goal_dist = 3.0;
     Pose2 m_prev_node_dg;      // in DG coordinate
     Pose2 m_cur_node_dg;       // in DG coordinate
@@ -109,14 +107,14 @@ protected:
     bool findDrivableinLine(cv::Mat &image, Point2 robot_px, Point2 node_px, Point2 &result_px);
     bool drawSubgoal(Point2 &pub_pose);
 
-    bool m_save_video = false;
-    int m_video_recording_fps = 15;
+    bool m_save_guidance_video = false;
+    int m_crop_radius = 400;
     cv::Size m_framesize = cv::Size(8000, 8000);
-    cv::Size m_framesize_crop = cv::Size(1000, 1000);
+    cv::Size m_framesize_crop = cv::Size(802, 802);
     int m_fourcc = cv::VideoWriter::fourcc('A', 'V', 'C', '1');
-    cv::VideoWriter m_video_gui;
-    cv::VideoWriter m_video_crop;
-    cv::VideoWriter m_mapvideo_crop;
+    cv::VideoWriter m_video_robotmap;
+    cv::VideoWriter m_video_robotmap_crop;
+    cv::VideoWriter m_video_guidance_crop;
 };
 
 DGRobot::DGRobot(ros::NodeHandle &nh) : DeepGuiderROS(nh)
@@ -190,7 +188,6 @@ bool DGRobot::initialize(std::string config_file)
         return false;
 
     // Initialize subscribers
-    sub_dg_status = nh_dg.subscribe("/dg_simple_ros/dg_status", 1, &DGRobot::callbackDGStatus, this);
     sub_robot_pose = nh_dg.subscribe("/mcl3d/current/pose", 1, &DGRobot::callbackRobotPose, this);
     sub_draw_robot = nh_dg.subscribe("/mcl3d/current/pose", 1, &DGRobot::callbackDrawRobot, this);
     // sub_robot_status = nh_dg.subscribe("/keti_robot_state", 1, &DGRobot::callbackRobotStatus, this); //run_manual
@@ -206,9 +203,12 @@ bool DGRobot::initialize(std::string config_file)
     // Initialize Sensor-specific parameters for DeepGuider Recoginition Modules
     initializeSensorSpecificParameters();
 
-    m_video_gui.open("../../../online_map.avi", m_fourcc, m_video_recording_fps, m_framesize);
-    m_video_crop.open("../../../online_crop.avi", m_fourcc, m_video_recording_fps, m_framesize_crop);
-    m_mapvideo_crop.open("../../../map_online_crop.avi", m_fourcc, m_video_recording_fps, m_framesize_crop);
+    if (m_save_guidance_video)
+    {
+        m_video_robotmap.open("../../../online_robotmap.avi", m_fourcc, m_video_recording_fps, m_framesize);
+        m_video_robotmap_crop.open("../../../online_crop.avi", m_fourcc, m_video_recording_fps, m_framesize_crop);
+        m_video_guidance_crop.open("../../../guidance_crop.avi", m_fourcc, m_video_recording_fps, m_framesize_crop);
+    }
 
     return true;
 }
@@ -269,9 +269,15 @@ int DGRobot::run()
     printf("Shutdown deepguider system...\n");
     terminateThreadFunctions();
     printf("\tthread terminated\n");
-    m_video_gui.release();
-    m_video_crop.release();
-    printf("\trecording closed\n");
+    if(m_video_recording) m_video_gui.release();
+    if(m_video_recording) printf("\tgui recording closed\n");
+    if(m_save_guidance_video)
+    {
+        m_video_robotmap.release();
+        m_video_robotmap_crop.release();
+        m_video_guidance_crop.release();
+        printf("\tguidance recording closed\n");
+    }
     cv::destroyWindow(m_winname);
     printf("\tgui window destroyed\n");
     nh_dg.shutdown();
@@ -311,7 +317,7 @@ void DGRobot::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr &msg)
     if (m_first_robot_pose)
     {
         // m_localizer->setPose(cvtDx2Dg(dg::Pose2(x, y, theta)), timestamp);
-        m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
+        // m_localizer->setPose(dg::Pose2(x, y, theta), timestamp);
         m_first_robot_pose = false;
     }
     // Use robot pose as odometry data
@@ -405,48 +411,15 @@ void DGRobot::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr &map)
     }
 
     m_robotmap_mutex.lock();
-    if (m_dx_map_origin_pixel.x != new_origin_pixel.x || m_dx_map_origin_pixel.y != new_origin_pixel.y)
-    {
-        m_dx_map_origin_pixel = new_origin_pixel;
-    }
+    m_dx_map_origin_pixel = new_origin_pixel;
     m_robotmap_image = image;
     m_robotmap_mutex.unlock();
 
     // save image
+    /* jylee
     Pose2 robot_dx_metric = m_guider.m_robot_pose;
     Point2 robot_px = cvtMetric2Pixel(robot_dx_metric);
 
-    cv::Mat colormap;
-    int view_d = 300;
-    cv::Rect roi(robot_px.x - view_d, robot_px.y - view_d, 2*view_d+1, 2*view_d + 1);
-    roi = roi & cv::Rect(0, 0, image.cols, image.rows);
-    cv::cvtColor(image(roi), colormap, cv::COLOR_GRAY2BGR);
-
-    Point2 offset = roi.tl();
-
-    cv::circle(colormap, robot_px - offset, 10, cv::Vec3b(0, 255, 0), 2);
-    Point2 heading;
-    heading.x = robot_px.x - offset.x + 20 * cos(robot_dx_metric.theta);
-    heading.y = robot_px.y - offset.y + 20 * sin(robot_dx_metric.theta);
-    cv::line(colormap, robot_px - offset, heading, cv::Vec3b(0, 255, 0), 2);
-
-    std::vector<GuidanceManager::ExtendedPathElement> ext_path = m_guider.m_extendedPath;
-    Pose2 cur_node_dg;
-    Point2 node_dx;
-    for (size_t i = 0; i < ext_path.size(); i++)
-    {
-        cur_node_dg = Point2(ext_path[i]);
-        node_dx = cvtMetric2Pixel(cvtDg2Dx(cur_node_dg));
-        cv::circle(colormap, node_dx - offset, 10, cv::Vec3b(0, 0, 255), 2);
-    }
-
-    cv::flip(colormap, colormap, 0);
-    imshow("robotmap", colormap);
-    cv::waitKey(1);
-
-    imwrite("../../../callbackRobotMap.png", colormap);    
-
-    /*
     cv::Mat colormap;
     image.copyTo(colormap);
     if (colormap.channels() == 1)
@@ -470,6 +443,39 @@ void DGRobot::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr &map)
 
     imwrite("../../../callbackRobotMap.png", colormap);
     */
+    m_guider_mutex.lock();
+    Pose2 robot_dx_metric = m_guider.m_robot_pose;
+    std::vector<GuidanceManager::ExtendedPathElement> ext_path = m_guider.m_extendedPath;
+    m_guider_mutex.unlock();
+    Point2 robot_px = cvtMetric2Pixel(robot_dx_metric);
+
+    cv::Mat colormap;
+    double view_d = 200;
+    cv::Rect roi_rc(robot_px.x - view_d, robot_px.y - view_d, 2 * view_d + 1, 2 * view_d + 1);
+    roi_rc = roi_rc & cv::Rect(0, 0, image.cols, image.rows);
+    cv::cvtColor(image(roi_rc), colormap, cv::COLOR_GRAY2BGR);
+
+    Point2 offset = roi_rc.tl();
+    cv::circle(colormap, robot_px - offset, 10, cv::Vec3b(0, 255, 0), 2);
+    Point2 heading;
+    heading.x = robot_px.x - offset.x + 20 * cos(robot_dx_metric.theta);
+    heading.y = robot_px.y - offset.y + 20 * sin(robot_dx_metric.theta);
+    cv::line(colormap, robot_px - offset, heading, cv::Vec3b(0, 255, 0), 2);
+
+    Pose2 cur_node_dg;
+    Point2 node_dx;
+    for (size_t i = 0; i < ext_path.size(); i++)
+    {
+        cur_node_dg = Point2(ext_path[i]);
+        node_dx = cvtMetric2Pixel(cvtDg2Dx(cur_node_dg));
+        cv::circle(colormap, node_dx - offset, 10, cv::Vec3b(0, 0, 255), 2);
+    }
+
+    cv::flip(colormap, colormap, 0);
+    imshow("robotmap", colormap);
+    cv::waitKey(1);
+
+    imwrite("../../../callbackRobotMap.png", colormap);
 }
 
 void DGRobot::publishSubGoal3()
@@ -725,7 +731,7 @@ bool DGRobot::makeSubgoal1(Pose2 &pub_pose)
     cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);
     cv::Mat roi(videoFrame, cv::Rect(0, 0, colormap.cols, colormap.rows));
     colormap.copyTo(roi);
-    m_video_gui << videoFrame;
+    m_video_robotmap << videoFrame;
 
     cv::Mat videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);
     int x = robot_px.x - m_framesize_crop.width / 2;
@@ -740,7 +746,7 @@ bool DGRobot::makeSubgoal1(Pose2 &pub_pose)
         y = 1;
     cv::Mat roicrop(colormap, cv::Rect(x, y, videoFrameCrop.cols, videoFrameCrop.rows));
     roicrop.copyTo(videoFrameCrop);
-    m_video_crop << videoFrameCrop;
+    m_video_guidance_crop << videoFrameCrop;
 
     return true;
 }
@@ -1465,7 +1471,7 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
         if (!isAlternativeFound)
         {
             ROS_INFO("can't find sub goal :(");
-            if (m_save_video)
+            if (m_save_guidance_video)
             {
                 Pose2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);
                 cv::putText(colormap, "FAIL", cv::Point(robot_pose_px.x + 50, robot_pose_px.y + 50), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Vec3b(0, 0, 255), 5);
@@ -1497,28 +1503,17 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
                 cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);
                 cv::Mat roi(videoFrame, cv::Rect(0, 0, colormap.cols, colormap.rows));
                 colormap.copyTo(roi);
-                m_video_gui << videoFrame;
+                m_video_robotmap << videoFrame;
 
                 cv::Mat videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);
-                int x = robot_pose_px.x - 400;
-                int y = robot_pose_px.y - 400;
-                if (x + 800 >= colormap.cols)
-                    x = colormap.cols - 800 - 1;
-                if (x <= 1)
-                    x = 1;
-                if (y + 800 >= colormap.rows)
-                    y = colormap.rows - 800 - 1;
-                if (y <= 1)
-                    y = 1;
-                cv::Mat roicrop(colormap, cv::Rect(x, y, videoFrameCrop.cols, videoFrameCrop.rows));
-                roicrop.copyTo(videoFrameCrop);
-                m_video_crop << videoFrameCrop;
+                cv::Rect roi_rc(robot_pose_px.x - m_crop_radius, robot_pose_px.y - m_crop_radius, 2 * m_crop_radius + 1, 2 * m_crop_radius + 1);
+                roi_rc = roi_rc & cv::Rect(0, 0, colormap.cols, colormap.rows);
+                colormap(roi_rc).copyTo(videoFrameCrop(cv::Rect(0, 0, roi_rc.width, roi_rc.height)));
+                m_video_guidance_crop << videoFrameCrop;
                 imwrite("../../../makesubgoal12_onlinemapcrop.png", videoFrameCrop);
 
-                videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);
-                cv::Mat maproicrop(clean_colormap, cv::Rect(x, y, videoFrameCrop.cols, videoFrameCrop.rows));
-                maproicrop.copyTo(videoFrameCrop);
-                m_mapvideo_crop << videoFrameCrop;
+                clean_colormap(roi_rc).copyTo(videoFrameCrop(cv::Rect(0, 0, roi_rc.width, roi_rc.height)));
+                m_video_robotmap_crop << videoFrameCrop;
             }
             // // Plan B-6
             // // make current pose undrivable. To prevent repeated position
@@ -1581,7 +1576,7 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
     cv::line(clean_colormap, pub_pose_px, pubpose_heading, cv::Vec3b(255, 0, 255), 2);
 
     ///////////////////////////////////////////////////
-    if (m_save_video)
+    if (m_save_guidance_video)
     {
         // record image
         //  ///save image
@@ -1617,29 +1612,26 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
         cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);
         cv::Mat roi(videoFrame, cv::Rect(0, 0, colormap.cols, colormap.rows));
         colormap.copyTo(roi);
-        m_video_gui << videoFrame;
+        m_video_robotmap << videoFrame;
 
         cv::Mat videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);
-        int x = robot_pose_px.x - 400;
-        int y = robot_pose_px.y - 400;
-        if (x + 800 >= colormap.cols)
-            x = colormap.cols - 800 - 1;
-        if (x <= 1)
-            x = 1;
-        if (y + 800 >= colormap.rows)
-            y = colormap.rows - 800 - 1;
-        if (y <= 1)
-            y = 1;
-        cv::Mat roicrop(colormap, cv::Rect(x, y, videoFrameCrop.cols, videoFrameCrop.rows));
-        roicrop.copyTo(videoFrameCrop);
-        m_video_crop << videoFrameCrop;
+        cv::Rect roi_rc(robot_pose_px.x - m_crop_radius, robot_pose_px.y - m_crop_radius, 2 * m_crop_radius + 1, 2 * m_crop_radius + 1);
+        roi_rc = roi_rc & cv::Rect(0, 0, colormap.cols, colormap.rows);
+        colormap(roi_rc).copyTo(videoFrameCrop(cv::Rect(0, 0, roi_rc.width, roi_rc.height)));
+        m_video_guidance_crop << videoFrameCrop;
         imwrite("../../../makesubgoal12_onlinemapcrop.png", videoFrameCrop);
 
-        videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);
-        cv::Mat maproicrop(clean_colormap, cv::Rect(x, y, videoFrameCrop.cols, videoFrameCrop.rows));
-        maproicrop.copyTo(videoFrameCrop);
-        m_mapvideo_crop << videoFrameCrop;
+        clean_colormap(roi_rc).copyTo(videoFrameCrop(cv::Rect(0, 0, roi_rc.width, roi_rc.height)));
+        m_video_robotmap_crop << videoFrameCrop;
     }
+
+    cv::Mat crop_flip;
+    Pose2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);
+    cv::Rect roi_rc(robot_pose_px.x - m_crop_radius, robot_pose_px.y - m_crop_radius, 2 * m_crop_radius + 1, 2 * m_crop_radius + 1);
+    roi_rc = roi_rc & cv::Rect(0, 0, colormap.cols, colormap.rows);
+    cv::flip(colormap(roi_rc), crop_flip, 0);
+    cv::imshow("guidance_map", crop_flip);
+    cv::waitKey(1);
 
     // // Plan B-5
     // // make current pose undrivable. To prevent repeated position
@@ -1921,12 +1913,6 @@ Point2 DGRobot::cvtPixel2Metric(const Point2 &px) const
     val.y = (px.y - m_dx_map_origin_pixel.y) * m_dx_map_meter_per_pixel;
 
     return val;
-}
-
-void DGRobot::callbackDGStatus(const dg_simple_ros::dg_status::ConstPtr &msg)
-{
-    if (msg->dg_shutdown)
-        m_stop_running = true;
 }
 
 // The main function
