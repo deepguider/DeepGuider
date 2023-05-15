@@ -1,5 +1,5 @@
 source devel/setup.bash
-catkin_make
+catkin_make -DCMAKE_BUILD_TYPE=Release
 
 ## Start roscore
 pid=`pgrep roscore`

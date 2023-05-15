@@ -8,7 +8,7 @@ if [ -n "$VIRTUAL_ENV" ];then
 fi
 
 source /opt/ros/melodic/setup.bash  # It is necessary to run catkin_make
-catkin_make
+catkin_make -DCMAKE_BUILD_TYPE=Release
 source devel/setup.bash
 
 ## Start roscore

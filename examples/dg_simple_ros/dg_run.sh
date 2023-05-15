@@ -6,7 +6,7 @@ if [ ! -n "$VIRTUAL_ENV" ];then
 	exit 0
 fi
 
-catkin_make  # It's necessary to makedevel directory
+catkin_make -DCMAKE_BUILD_TYPE=Release # It's necessary to makedevel directory
 source devel/setup.bash
 
 ## Start roscore
