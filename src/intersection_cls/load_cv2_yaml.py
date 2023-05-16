@@ -72,16 +72,13 @@ class load_cv2_yaml:
     def read(self, node_name="enable_vps", verbose=False):
         val0 = self._read(node_name)
         val1 = self.get_single_of_site(node_name)
-        val2 = self.get_single_of_topic(node_name)
 
-        if val2 is not None:
-            val = val2
-        elif val1 is not None:
+        if val1 is not None:
             val = val1
         elif val0 is not None:
             val = val0
         else:
-            print("[vps] Error during _reading {} at dg_ros.yml".format(node_name))
+            print("[Intersection] Error during _reading {} from config file(.yml)".format(node_name))
             exit(0)
 
         if verbose:

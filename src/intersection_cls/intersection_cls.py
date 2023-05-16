@@ -18,14 +18,14 @@ class IntersectionClassifier:
         self.prob = -1  # reliablity of the result. 0: fail ~ 1: success
     
     ##### Time-consuming pre-initialization code here (e.g. network load)
-    def initialize(self):
+    def initialize(self, config_file):
         self.cls = 0
         self.prob = 1.0
 
         # gpu or cpu
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.dg_ros_yml = load_cv2_yaml("dg_ros.yml")
+        self.dg_ros_yml = load_cv2_yaml(config_file)
         self.parsing_dg_ros_yml()
 
         if self.enable_360cam_crop == 0: # if image is coming from web cam

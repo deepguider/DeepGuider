@@ -107,7 +107,7 @@ void procfunc(bool recording, int rec_fps, const char* video_path)
 {
     // Initialize Python module
     RECOGNIZER recognizer;
-    if (!recognizer.initialize()) return;
+    if (!recognizer.initialize("dg_simple.yml")) return;
     printf("Initialization: it took %.3lf seconds\n\n\n", recognizer.procTime());
 
     // Run the Python module

@@ -23,9 +23,9 @@ namespace dg
     public:
         enum {NONE_INTERSECTION = 0, INTERSECTION = 1};
 
-        bool initialize(SharedInterface* shared, std::string py_module_path = "./../src/intersection_cls")
+        bool initialize(SharedInterface* shared, std::string config_file, std::string py_module_path = "./../src/intersection_cls")
         {
-            if (!IntersectionClassifier::initialize(py_module_path.c_str(), "intersection_cls", "IntersectionClassifier")) return false;
+            if (!IntersectionClassifier::initialize(config_file.c_str(), py_module_path.c_str(), "intersection_cls", "IntersectionClassifier")) return false;
 
             cv::AutoLock lock(m_localizer_mutex);
             m_shared = shared;

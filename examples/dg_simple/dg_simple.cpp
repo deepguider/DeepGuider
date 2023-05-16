@@ -383,7 +383,7 @@ bool DeepGuider::initialize(std::string config_file)
 
     // initialize Intersection
     std::string py_module_path = m_srcdir + "/intersection_cls";
-    if (m_enable_intersection==1 && !m_intersection.initialize(this, py_module_path)) return false;
+    if (m_enable_intersection==1 && !m_intersection.initialize(this, config_file, py_module_path)) return false;
     if (m_enable_intersection==1) printf("\tIntersection initialized in %.3lf seconds!\n", m_intersection.procTime());
 
     // initialize OCR

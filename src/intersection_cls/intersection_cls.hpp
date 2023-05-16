@@ -23,10 +23,103 @@ namespace dg
     class IntersectionClassifier: public PythonModuleWrapper
     {
     public:
-        bool initialize(const char* py_module_path = "./../src/intersection_cls", const char* module_name = "intersection_cls", const char* class_name = "IntersectionClassifier")
+        bool initialize(const char* config_file, const char* module_path = "./../src/intersection_cls", const char* module_name = "intersection_cls", const char* class_name = "IntersectionClassifier", const char* func_name_init = "initialize", const char* func_name_apply = "apply")
         {
-            return PythonModuleWrapper::initialize(py_module_path, module_name, class_name);
+            cv::AutoLock lock(m_mutex);
+            dg::Timestamp t1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+
+            PyGILState_STATE state;
+            if (isThreadingEnabled()) state = PyGILState_Ensure();
+
+            bool ret = _initialize(config_file, module_path, module_name, class_name, func_name_init, func_name_apply);
+
+            if (isThreadingEnabled()) PyGILState_Release(state);
+
+            dg::Timestamp t2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000.0;
+            m_processing_time = t2 - t1;
+
+            return ret;
         }
+
+        bool _initialize(const char* config_file, const char* module_path, const char* module_name, const char* class_name, const char* func_name_init /*= "initialize"*/, const char* func_name_apply /*= "apply"*/)
+        {
+            // Add module path to system path
+            std::string script = std::string("import sys\nsys.path.append(\"") + module_path + "\")";
+            PyRun_SimpleString(script.c_str());
+
+            // Import the Python module
+            PyObject* pName = PyUnicode_FromString(module_name);
+            PyObject* pModule = PyImport_Import(pName);
+            Py_DECREF(pName);
+            if (pModule == nullptr) {
+                PyErr_Print();
+                fprintf(stderr, "Fails to import the module \"%s\"\n", module_name);
+                return false;
+            }
+
+            // Get the class reference
+            PyObject* pClass = PyObject_GetAttrString(pModule, class_name);
+            Py_DECREF(pModule);
+            if (pClass == nullptr) {
+                PyErr_Print();
+                fprintf(stderr, "Cannot find class \"%s\"\n", class_name);
+                return false;
+            }
+
+            // Create the class instance
+            m_pInstance = PyObject_CallObject(pClass, nullptr);
+            Py_DECREF(pClass);
+            if (m_pInstance == nullptr) {
+                PyErr_Print();
+                fprintf(stderr, "Cannot create class instance \"%s\"\n", class_name);
+                return false;
+            }
+
+            // Get the reference of class method
+            m_pFuncInitialize = PyObject_GetAttrString(m_pInstance, func_name_init);
+            if (m_pFuncInitialize == nullptr) {
+                PyErr_Print();
+                fprintf(stderr, "Cannot find function \"%s\"\n", func_name_init);
+                return false;
+            }
+            m_pFuncApply = PyObject_GetAttrString(m_pInstance, func_name_apply);
+            if (m_pFuncApply == nullptr) {
+                PyErr_Print();
+                fprintf(stderr, "Cannot find function \"%s\"\n", func_name_apply);
+                return false;
+            }
+
+            // Set function arguments
+            int arg_idx = 0;
+            PyObject* pArgs = PyTuple_New(1);
+            PyObject* pValue = PyUnicode_FromString(config_file);
+            if (!pValue) {
+                fprintf(stderr, "IntersectionClassifier::initialize() - Cannot convert argument1\n");
+                return false;
+            }
+            PyTuple_SetItem(pArgs, arg_idx++, pValue);
+
+            // Call the initialize method
+            PyObject* pRet = PyObject_CallObject(m_pFuncInitialize, pArgs);
+            if (pRet != NULL)
+            {
+                if (!PyObject_IsTrue(pRet))
+                {
+                    fprintf(stderr, "Unsuccessful instance initialization\n");
+                    return false;
+                }
+            }
+            else {
+                PyErr_Print();
+                fprintf(stderr, "%s::initialize() - Call failed\n", class_name);
+                return false;
+            }
+
+            m_initialized = true;
+
+            return true;
+        }
+
 
         /**
         * Run once the module for a given input
