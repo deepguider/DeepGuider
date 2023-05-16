@@ -416,33 +416,6 @@ void DGRobot::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr &map)
     m_robotmap_mutex.unlock();
 
     // save image
-    /* jylee
-    Pose2 robot_dx_metric = m_guider.m_robot_pose;
-    Point2 robot_px = cvtMetric2Pixel(robot_dx_metric);
-
-    cv::Mat colormap;
-    image.copyTo(colormap);
-    if (colormap.channels() == 1)
-        cv::cvtColor(colormap, colormap, cv::COLOR_GRAY2BGR);
-
-    cv::circle(colormap, robot_px, 10, cv::Vec3b(0, 255, 0), 2);
-    Point2 heading;
-    heading.x = robot_px.x + 20 * cos(robot_dx_metric.theta);
-    heading.y = robot_px.y + 20 * sin(robot_dx_metric.theta);
-    cv::line(colormap, robot_px, heading, cv::Vec3b(0, 255, 0), 2);
-
-    std::vector<GuidanceManager::ExtendedPathElement> ext_path = m_guider.m_extendedPath;
-    Pose2 cur_node_dg;
-    Point2 node_dx;
-    for (size_t i = 0; i < ext_path.size(); i++)
-    {
-        cur_node_dg = Point2(ext_path[i]);
-        node_dx = cvtMetric2Pixel(cvtDg2Dx(cur_node_dg));
-        cv::circle(colormap, node_dx, 10, cv::Vec3b(0, 0, 255), 2);
-    }
-
-    imwrite("../../../callbackRobotMap.png", colormap);
-    */
     m_guider_mutex.lock();
     Pose2 robot_dx_metric = m_guider.m_robot_pose;
     std::vector<GuidanceManager::ExtendedPathElement> ext_path = m_guider.m_extendedPath;

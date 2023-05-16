@@ -9,13 +9,6 @@ bool GuidanceManager::initialize(SharedInterface* shared)
 	m_shared = shared;
 
 	//initialize guidance parameters
-	/* jylee
-	std::vector <ExtendedPathElement> m_extendedPath;
-	GuideStatus  m_gstatus = GuideStatus::GUIDE_NORMAL;
-	std::vector<Guidance> m_past_guides;
-	Guidance m_curguidance;
-	RobotStatus m_robot_status = RobotStatus::READY;
-	*/
 	m_extendedPath.clear();
 	m_gstatus = GuideStatus::GUIDE_NORMAL;
 	m_past_guides.clear();
@@ -305,21 +298,6 @@ bool GuidanceManager::update(TopometricPose pose, Pose2 pose_metric)
 	}
 
 	//finally arrived
-	/* jylee
-	double goal_dist = norm(m_extendedPath.back() - pose_metric);
-	if (m_guide_idx >= (int)m_extendedPath.size() - 2 && goal_dist < m_arrived_threshold)
-	{
-		m_gstatus = GuideStatus::GUIDE_ARRIVED;
-		m_arrival = true;
-		setArrivalGuide();
-		m_curguidance.announce = true;
-		m_curguidance.distance_to_remain = goal_dist;
-		m_arrival_cnt++;
-		m_guide_idx = -1;
-		m_last_announce_dist = -1;	//reset m_last_announce_dist
-		return true;
-	}
-	*/
 	if (m_guide_idx >= (int)m_extendedPath.size() - 2)
 	{
 		double goal_dist = norm(m_extendedPath.back() - pose_metric);
@@ -471,24 +449,8 @@ bool GuidanceManager::updateWithRobot(TopometricPose pose, Pose2 pose_metric)
 	}
 
 	//finally arrived
-	/* jylee
-	double goal_dist = norm(m_extendedPath.back() - pose_metric);
-	if (m_robot_status == RobotStatus::ARRIVED_NODE &&
-		(m_guide_idx >= m_extendedPath.size() && goal_dist < m_arrived_threshold))
-	{
-		m_gstatus = GuideStatus::GUIDE_ARRIVED;
-		m_arrival = true;
-		setArrivalGuide();
-		m_curguidance.announce = true;
-		m_curguidance.distance_to_remain = goal_dist;
-		m_arrival_cnt++;
-		m_guide_idx = -1;
-		m_robot_guide_idx = -1;
-		m_last_announce_dist = -1;	//reset m_last_announce_dist
-		return true;
-	}
-	*/
-	if (m_robot_status == RobotStatus::ARRIVED_NODE && m_guide_idx >= (int)m_extendedPath.size() - 2)
+	// if (m_robot_status == RobotStatus::ARRIVED_NODE && m_guide_idx >= (int)m_extendedPath.size() - 2)
+	if (m_guide_idx >= (int)m_extendedPath.size() - 2)
 	{
 		double goal_dist = norm(m_extendedPath.back() - pose_metric);
 		ExtendedPathElement curEP = getCurExtendedPath();
@@ -1035,52 +997,6 @@ int GuidanceManager::getGuideIdxFromPose(TopometricPose pose)
 	return -1;
 }
 
-
-// cv::Point2d GuidanceManager::cvtWorld2Image(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset)
-// {	
-// 	cv::Point2d px;
-// 	double cost = cos(-cx::cvtDeg2Rad(deg));
-// 	double sint = sin(-cx::cvtDeg2Rad(deg));
-// 	px.x = (val.x * px_per_val.x) * cost - (-val.y * px_per_val.y) * sint + offset.x;
-// 	px.y = (val.x * px_per_val.x) * sint + (-val.y * px_per_val.y) * cost + offset.y;
-
-// 	return px;
-// }
-
-// cv::Point2d GuidanceManager::cvtWorld2ImageRad(cv::Point2d val, double rad, cv::Point2d px_per_val, cv::Point2d offset)
-// {	
-// 	cv::Point2d px;
-// 	double cost = cos(-rad);
-// 	double sint = sin(-rad);
-// 	px.x = (val.x * px_per_val.x) * cost - (-val.y * px_per_val.y) * sint + offset.x;
-// 	px.y = (val.x * px_per_val.x) * sint + (-val.y * px_per_val.y) * cost + offset.y;
-
-// 	return px;
-// }
-
-// cv::Point2d GuidanceManager::cvtImage2World(cv::Point2d px, double deg, cv::Point2d px_per_val, cv::Point2d offset)
-// {
-// 	CV_DbgAssert(px_per_val.x > 0 && px_per_val.y > 0);
-
-// 	cv::Point2d val;
-// 	double cost = cos(-cx::cvtDeg2Rad(deg));
-// 	double sint = sin(-cx::cvtDeg2Rad(deg));
-// 	val.x = ((px.x - px_per_val.x) * cost + (px.y - px_per_val.y) * sint) / px_per_val.x  + offset.x;
-// 	val.y = -(-(px.x - px_per_val.x) * sint + (px.y - px_per_val.y) * cost) / px_per_val.y + offset.y;
-
-// 	return val;
-// }
-
-// cv::Point2d GuidanceManager::cvtRobot2World(cv::Point2d val, double deg, cv::Point2d px_per_val, cv::Point2d offset)
-// {	
-// 	cv::Point2d px;
-// 	double cost = cos(-cx::cvtDeg2Rad(deg));
-// 	double sint = sin(-cx::cvtDeg2Rad(deg));
-// 	px.x = (val.x * px_per_val.x) * cost - (val.y * px_per_val.y) * sint + offset.x;
-// 	px.y = (val.x * px_per_val.x) * sint + (val.y * px_per_val.y) * cost + offset.y;
-
-// 	return px;
-// }
 
 void GuidanceManager::makeLostValue(double prevconf, double curconf)
 {
