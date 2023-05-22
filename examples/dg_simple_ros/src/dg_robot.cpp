@@ -1598,6 +1598,16 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
         m_video_robotmap_crop << videoFrameCrop;
     }
 
+    // adjust subgoal (prevent approach to obstacles too close)
+    Point2 delta_v = pub_pose - robot_pose;
+    double subgoal_d = norm(delta_v);
+    printf("[subgoal] d = %lf\n", subgoal_d);
+    double subgoal_theta = pub_pose.theta;
+    double new_delta = subgoal_d - 1.0;
+    if(subgoal_d<5) new_delta = subgoal_d * 0.8;
+    pub_pose = robot_pose + delta_v * new_delta / subgoal_d;
+    pub_pose.theta = subgoal_theta;
+
     // draw robot
     Point2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose); // robot_pose_px = dg_pose_robot_px
     cv::circle(colormap, robot_pose_px, 20, cv::Vec3b(0, 255, 0), 5);
