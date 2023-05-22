@@ -92,10 +92,6 @@ namespace dg
         std::vector<Point2> m_best_odo_pts;
         std::vector<Point2> m_best_path_pts;
 
-        // saving data for test samples
-        std::vector<cv::Vec6d> m_odo_pts_original;  // x,y,theta, dtheta, dist_accumulated, cornerness
-        Path m_best_path;
-
     public:
         DGLocalizerMCL(std::string baselocalizer_name = "EKFLocalizer")
         {
@@ -109,12 +105,10 @@ namespace dg
         {
             DGLocalizer::setPose(pose, time, reset_velocity, reset_cov);
             cv::AutoLock lock(m_mutex);
-            reset_particles(pose, m_particles, m_particle_numbers);
             m_odometry_history.resize(m_odometry_history_size);
-            m_best_odo_pts.clear();
-            m_best_path_pts.clear();
-            m_odo_pts_original.clear();
-            initialize_odo_theta_correction();
+            //initialize_odo_theta_correction();
+
+            reset_particles(pose, m_particles, m_particle_numbers);
             m_mcl_initialized = true;
         }
 
