@@ -1324,11 +1324,6 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
         cv::drawMarker(colormap, dx_next_node_robot_px, cv::Vec3b(255, 0, 0), 3, 40, 5);
         cv::drawMarker(colormap, dx_next_next_node_robot_px, cv::Vec3b(255, 255, 0), 3, 40, 5);
 
-        // regend annotations
-        cv::Point px(colormap.cols - 300, 20);
-        int dy = 20;
-        cv::putText(colormap, "test", px, cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Vec3b(0, 0, 255), 1); px.y+=dy;
-
         // imwrite("../../../not_initial_start.png", colormap);
         if (m_nodeupdated_but_problematic)
         {
@@ -1603,8 +1598,15 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
         m_video_robotmap_crop << videoFrameCrop;
     }
 
+    // draw robot
+    Point2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose); // robot_pose_px = dg_pose_robot_px
+    cv::circle(colormap, robot_pose_px, 20, cv::Vec3b(0, 255, 0), 5);
+    Point2 robot_heading;
+    robot_heading.x = robot_pose_px.x + 20 * cos(robot_pose.theta);
+    robot_heading.y = robot_pose_px.y + 20 * sin(robot_pose.theta);
+    cv::line(colormap, robot_pose_px, robot_heading, cv::Vec3b(0, 255, 0), 5);
+
     cv::Mat crop_flip;
-    Pose2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);
     cv::Rect roi_rc(robot_pose_px.x - m_crop_radius, robot_pose_px.y - m_crop_radius, 2 * m_crop_radius + 1, 2 * m_crop_radius + 1);
     roi_rc = roi_rc & cv::Rect(0, 0, colormap.cols, colormap.rows);
     cv::flip(colormap(roi_rc), crop_flip, 0);
@@ -1613,12 +1615,13 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
     cv::Point px(crop_flip.cols - 150, 20);
     int dy = 25;
     cv::putText(crop_flip, "subgoal", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 255), 1); px.y+=dy;
-    cv::putText(crop_flip, "osubB", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 255), 1); px.y+=dy;
+    cv::putText(crop_flip, "x subA", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 255), 1); px.y+=dy;
+    cv::putText(crop_flip, "o subB", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 255), 1); px.y+=dy;
     cv::putText(crop_flip, "[]target", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 255), 1); px.y+=dy;
-    cv::putText(crop_flip, "prev", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(0, 0, 255), 1); px.y+=dy;
-    cv::putText(crop_flip, "cur", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(0, 255, 0), 1); px.y+=dy;
-    cv::putText(crop_flip, "next", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 0), 1); px.y+=dy;
-    cv::putText(crop_flip, "nnext", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 255, 0), 1); px.y+=dy;
+    cv::putText(crop_flip, "prevN", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(0, 0, 255), 1); px.y+=dy;
+    cv::putText(crop_flip, "curN", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(0, 255, 0), 1); px.y+=dy;
+    cv::putText(crop_flip, "nextN", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 0), 1); px.y+=dy;
+    cv::putText(crop_flip, "nnextN", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 255, 0), 1); px.y+=dy;
     cv::putText(crop_flip, "*: dg", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(128, 128, 128), 1); px.y+=dy;
     cv::putText(crop_flip, "<>: dx", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(128, 128, 128), 1); px.y+=dy;
 
