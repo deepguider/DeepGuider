@@ -105,6 +105,19 @@ namespace dg
             initialize_odo_theta_correction();
         }
 
+        virtual void setPose(const Pose2 pose, Timestamp time = -1, bool reset_velocity = true, bool reset_cov = true)
+        {
+            DGLocalizer::setPose(pose, time, reset_velocity, reset_cov);
+            cv::AutoLock lock(m_mutex);
+            reset_particles(pose, m_particles, m_particle_numbers);
+            m_odometry_history.resize(m_odometry_history_size);
+            m_best_odo_pts.clear();
+            m_best_path_pts.clear();
+            m_odo_pts_original.clear();
+            initialize_odo_theta_correction();
+            m_mcl_initialized = true;
+        }
+
         virtual bool applyGPS(const Point2& xy, Timestamp time = -1, double confidence = -1)
         {
             printf("[GPS] x=%.1lf, y=%.1lf, timestamp = %.1lf\n", xy.x, xy.y, time);
@@ -311,14 +324,6 @@ namespace dg
             m_prev_odometry_time = time;
 
             return applyPathLocalizerMCL(m_pose, time);
-        }
-
-        virtual void setPose(const Pose2 pose, Timestamp time = -1, bool reset_velocity = true, bool reset_cov = true)
-        {
-            DGLocalizer::setPose(pose, time, reset_velocity, reset_cov);
-            cv::AutoLock lock(m_mutex);
-            reset_particles(pose, m_particles, m_particle_numbers);
-            m_mcl_initialized = true;
         }
 
         const std::vector<Particle>& getParticles()
