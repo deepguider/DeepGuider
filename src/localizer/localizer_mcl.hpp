@@ -106,9 +106,15 @@ namespace dg
             DGLocalizer::setPose(pose, time, reset_velocity, reset_cov);
             cv::AutoLock lock(m_mutex);
             m_odometry_history.resize(m_odometry_history_size);
-            //initialize_odo_theta_correction();
-
+            initialize_odo_theta_correction();
             reset_particles(pose, m_particles, m_particle_numbers);
+
+            Point2 ep;
+            Map* map = m_shared->getMap();
+            Edge* edge = map->getNearestEdge(pose, ep);
+            m_pose_mcl = Pose2(ep, pose.theta);
+            m_eid_mcl = edge->id;
+
             m_mcl_initialized = true;
         }
 
