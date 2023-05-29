@@ -46,7 +46,7 @@ namespace dg
         int m_eval_history_length = 50;     // meter
         int m_odometry_history_size = 1000;
         double m_odometry_save_interval = 1;
-        double m_path_particle_weight = 2;
+        double m_path_particle_weight = 1.2;
         bool m_enable_icp = true;
         int m_max_icp_itr = 5;
         double m_path_corner_thr = cx::cvtDeg2Rad(40);
