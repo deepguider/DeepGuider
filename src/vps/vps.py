@@ -511,10 +511,13 @@ class vps:
         self.visible_region_radius = copy.copy(self.visible_region_radius_default)
         self.visible_region_radius_history = np.zeros(100)
 
-    def search_top_k(self, top_large_k=5):
+    def search_top_k(self, top_large_k=5, reranking=False):
         ## Step 1: Search top_large_k
         # confidence is L2 distance which is converted to conf by self.convert_distance_to_confidence()
         pred_confidence, pred_idx = self.faiss_index.search(self.qFeat, top_large_k) # [ NumQ x K ]
+
+        if reranking is False:
+            return (pred_confidence, pred_idx)
 
         ## Step 2: Re-rank with visible region at current position
         reranked_confidence, reranked_idx = [], []
@@ -1155,7 +1158,7 @@ def run_prebuilt_dbfeat(load_dbfeat=1):
         st = time.time()
 
         vps_IDandConf = mod_vps.apply(qimg, K=3, gps_lat=gps_lat, gps_lon=gps_lon, gps_accuracy=0.0,
-                timestamp=1.0, ipaddr_port=ipaddr_port, load_dbfeat=load_dbfeat, save_dbfeat=0, use_custom_image_server=0.0) # k=3 for knn
+                timestamp=1.0, odo_x=-1, odo_y=-1, heading=-1)
         print('vps_IDandConf : {}\n{} sec. elapsed.'.format(vps_IDandConf, time.time() - st))
 
 def load_prebuild_dbfeat():
