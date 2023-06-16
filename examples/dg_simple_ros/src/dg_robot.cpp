@@ -2209,7 +2209,7 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     int markerType = cv::MARKER_STAR;
     int markerSize = 20;
     int markerThickness = 4;
-    cv::drawMarker(colormap, dg_prev_node_robot_px, cv::Vec3b(0, 0, 255), markerType, markerSize, markerThickness);
+    cv::drawMarker(colormap, dg_prev_node_robot_px, cv::Vec3b(128, 128, 128), markerType, markerSize, markerThickness);
     cv::drawMarker(colormap, dg_cur_node_robot_px, cv::Vec3b(0, 255, 0), markerType, markerSize, markerThickness);
     cv::drawMarker(colormap, dg_next_node_robot_px, cv::Vec3b(255, 0, 0), markerType, markerSize, markerThickness);
     cv::drawMarker(colormap, dg_next_next_node_robot_px, cv::Vec3b(255, 255, 0), markerType, markerSize, markerThickness);
@@ -2230,7 +2230,7 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     double dist_optimalpubpose_robot = norm(robot_pose - optimal_pub_pose);
 
     // draw the pub_pose from the first step (regardless drivable or not)
-    cv::drawMarker(colormap, cvtRobottoMapcoordinate(optimal_pub_pose), cv::Vec3b(255, 0, 255),  cv::MARKER_TILTED_CROSS, 10, 2); // purple small cross
+    //cv::drawMarker(colormap, cvtRobottoMapcoordinate(optimal_pub_pose), cv::Vec3b(255, 0, 255),  cv::MARKER_TILTED_CROSS, 10, 2); // purple small cross
 
     // pub pose if considering robot theta. But good to remove zigzag  // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6b)
     Pose2 notsooptimal_target_node;
@@ -2241,8 +2241,8 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     double dist_notsooptimalpubpose_robot = norm(robot_pose - notsooptimal_pub_pose);
 
     // draw the the notsooptimal_pub_pose
-    cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_pub_pose), cv::Vec3b(255, 0, 255), cv::MARKER_SQUARE, 10, 2);    // purple small cross
-    cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_target_node), cv::Vec3b(255, 0, 255), cv::MARKER_SQUARE, 40, 2); // purple big cross
+    //cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_pub_pose), cv::Vec3b(255, 0, 255), cv::MARKER_SQUARE, 10, 2);    // purple small cross
+    //cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_target_node), cv::Vec3b(255, 0, 255), cv::MARKER_SQUARE, 40, 2); // purple big cross
 
     double error_nextnode_notsooptimalnextnode = norm(target_node_dx - notsooptimal_target_node);
 
@@ -2372,7 +2372,7 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     ROS_INFO("Found subgoal: <%f, %f, %f>", pub_pose.x, pub_pose.y, cx::cvtRad2Deg(pub_pose.theta)); // OUTPUT.. care about pub_pose in robot's coordinate
     Pose2 pub_pose_px = cvtRobottoMapcoordinate(pub_pose);
     cv::circle(colormap, pub_pose_px, 20, cv::Vec3b(255, 0, 255), 5);      // small purple circle
-    cv::circle(colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2);       // with robot real size
+    cv::circle(colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), -1);       // with robot real size
     cv::circle(clean_colormap, pub_pose_px, 5, cv::Vec3b(255, 0, 255), 2); // with robot real size
     Pose2 pubpose_heading;
     pubpose_heading.x = pub_pose_px.x + 20 * cos(pub_pose.theta);
@@ -2406,8 +2406,8 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     cv::putText(crop_flip, "O subgoal", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 255), 1); px.y+=dy;
     //cv::putText(crop_flip, "x subA", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 255), 1); px.y+=dy;
     //cv::putText(crop_flip, "o subB", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 255), 1); px.y+=dy;
-    cv::putText(crop_flip, "[] target", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 255), 1); px.y+=dy;
-    cv::putText(crop_flip, "* Nprev", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(0, 0, 255), 1); px.y+=dy;
+    //cv::putText(crop_flip, "[] target", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 255), 1); px.y+=dy;
+    cv::putText(crop_flip, "* Nprev", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(128, 128, 128), 1); px.y+=dy;
     cv::putText(crop_flip, "* Ncur", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(0, 255, 0), 1); px.y+=dy;
     cv::putText(crop_flip, "* Nnext", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 0, 0), 1); px.y+=dy;
     cv::putText(crop_flip, "* Nnnext", px, cv::FONT_HERSHEY_DUPLEX, 0.8, cv::Vec3b(255, 255, 0), 1); px.y+=dy;
