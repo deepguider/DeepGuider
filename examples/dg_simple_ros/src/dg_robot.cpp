@@ -99,6 +99,7 @@ protected:
     Pose2 cvtRobottoMapcoordinate(Pose2 P);
     int findRobotCoordAngleofVectorSource2Dest(Pose2 source, Pose2 dest);
     void record2Video(cv::Mat colormap, cv::Mat clean_colormap, Pose2 robot_pose);
+    void record2VideoCropped(cv::Mat crop);
     Pose2 m_robot_origin;
     Pose2 m_errorvec_dgnode_curpose;
     int m_drivable_threshold = 220;
@@ -110,14 +111,17 @@ protected:
     bool findDrivableinLine(cv::Mat &image, Point2 robot_px, Point2 node_px, Point2 &result_px);
     bool drawSubgoal(Point2 &pub_pose);
 
-    bool m_save_guidance_video = false;
+    bool m_save_guidance_video = true;
     bool m_save_guidance_image = false;    
     int m_crop_radius = 400;
     cv::Mat m_offline_robotmap;
     cv::Size m_framesize = cv::Size(8000, 8000);
     cv::Size m_framesize_crop = cv::Size(802, 802);
+    cv::Mat m_frame_crop;
     int m_fourcc = cv::VideoWriter::fourcc('A', 'V', 'C', '1');
+    bool m_record_robotmap = false;
     cv::VideoWriter m_video_robotmap;
+    bool m_record_robotmap_crop = false;
     cv::VideoWriter m_video_robotmap_crop;
     cv::VideoWriter m_video_guidance_crop;
 };
@@ -210,9 +214,10 @@ bool DGRobot::initialize(std::string config_file)
 
     if (m_save_guidance_video)
     {
-        m_video_robotmap.open("../../../online_robotmap.avi", m_fourcc, m_video_recording_fps, m_framesize);
-        m_video_robotmap_crop.open("../../../online_crop.avi", m_fourcc, m_video_recording_fps, m_framesize_crop);
+        if (m_record_robotmap) m_video_robotmap.open("../../../online_robotmap.avi", m_fourcc, m_video_recording_fps, m_framesize);
+        if (m_record_robotmap_crop) m_video_robotmap_crop.open("../../../online_crop.avi", m_fourcc, m_video_recording_fps, m_framesize_crop);
         m_video_guidance_crop.open("../../../guidance_crop.avi", m_fourcc, m_video_recording_fps, m_framesize_crop);
+        m_frame_crop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);
     }
 
     // load offline robotmap
@@ -281,8 +286,8 @@ int DGRobot::run()
     if(m_video_recording) printf("\tgui recording closed\n");
     if(m_save_guidance_video)
     {
-        m_video_robotmap.release();
-        m_video_robotmap_crop.release();
+        if (m_record_robotmap) m_video_robotmap.release();
+        if (m_record_robotmap_crop) m_video_robotmap_crop.release();
         m_video_guidance_crop.release();
         printf("\tguidance recording closed\n");
     }
@@ -1487,7 +1492,7 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
                 cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);
                 cv::Mat roi(videoFrame, cv::Rect(0, 0, colormap.cols, colormap.rows));
                 colormap.copyTo(roi);
-                m_video_robotmap << videoFrame;
+                if (m_record_robotmap) m_video_robotmap << videoFrame;
 
                 cv::Mat videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);
                 cv::Rect roi_rc(robot_pose_px.x - m_crop_radius, robot_pose_px.y - m_crop_radius, 2 * m_crop_radius + 1, 2 * m_crop_radius + 1);
@@ -1497,7 +1502,7 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
                 imwrite("../../../makesubgoal12_onlinemapcrop.png", videoFrameCrop);
 
                 clean_colormap(roi_rc).copyTo(videoFrameCrop(cv::Rect(0, 0, roi_rc.width, roi_rc.height)));
-                m_video_robotmap_crop << videoFrameCrop;
+                if (m_record_robotmap_crop) m_video_robotmap_crop << videoFrameCrop;
             }
             // // Plan B-6
             // // make current pose undrivable. To prevent repeated position
@@ -1596,7 +1601,7 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
         cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);
         cv::Mat roi(videoFrame, cv::Rect(0, 0, colormap.cols, colormap.rows));
         colormap.copyTo(roi);
-        m_video_robotmap << videoFrame;
+        if (m_record_robotmap) m_video_robotmap << videoFrame;
 
         cv::Mat videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);
         cv::Rect roi_rc(robot_pose_px.x - m_crop_radius, robot_pose_px.y - m_crop_radius, 2 * m_crop_radius + 1, 2 * m_crop_radius + 1);
@@ -1606,7 +1611,7 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
         imwrite("../../../makesubgoal12_onlinemapcrop.png", videoFrameCrop);
 
         clean_colormap(roi_rc).copyTo(videoFrameCrop(cv::Rect(0, 0, roi_rc.width, roi_rc.height)));
-        m_video_robotmap_crop << videoFrameCrop;
+        if (m_record_robotmap_crop) m_video_robotmap_crop << videoFrameCrop;
     }
 
     // adjust subgoal (prevent approach to obstacles too close)
@@ -1934,8 +1939,6 @@ Point2 DGRobot::cvtPixel2Metric(const Point2 &px) const
 void DGRobot::record2Video(cv::Mat colormap, cv::Mat clean_colormap, Pose2 robot_pose)
 {
     Pose2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);
-    cv::putText(colormap, "FAIL", cv::Point(robot_pose_px.x + 50, robot_pose_px.y + 50), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Vec3b(0, 0, 255), 5);
-    cv::putText(clean_colormap, "FAIL", cv::Point(robot_pose_px.x + 50, robot_pose_px.y + 50), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Vec3b(0, 0, 255), 5);
 
     cv::circle(colormap, robot_pose_px, 20, cv::Vec3b(0, 255, 0), 5);
     cv::circle(colormap, robot_pose_px, 5, cv::Vec3b(0, 255, 0), 2);       // with robot real size
@@ -1951,28 +1954,46 @@ void DGRobot::record2Video(cv::Mat colormap, cv::Mat clean_colormap, Pose2 robot
     ROS_INFO("robot_pose theta %f", robot_pose.theta);
 
     cv::drawMarker(colormap, m_dx_map_origin_pixel, cv::Vec3b(0, 255, 255), 0, 50, 10);
-    imwrite("../../../makesubgoal13_onlinemap.png", colormap);
+    if (m_save_guidance_image) imwrite("../../../makesubgoal13_onlinemap.png", colormap);
 
     // record video
-    cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);
-    cv::Mat roi(videoFrame, cv::Rect(0, 0, colormap.cols, colormap.rows));
-    colormap.copyTo(roi);
-    m_video_robotmap << videoFrame;
-
-    cv::Mat videoFrameCrop = cv::Mat::zeros(m_framesize_crop, CV_8UC3);
+    m_frame_crop = 0;
     cv::Rect roi_rc(robot_pose_px.x - m_crop_radius, robot_pose_px.y - m_crop_radius, 2 * m_crop_radius + 1, 2 * m_crop_radius + 1);
     roi_rc = roi_rc & cv::Rect(0, 0, colormap.cols, colormap.rows);
-    colormap(roi_rc).copyTo(videoFrameCrop(cv::Rect(0, 0, roi_rc.width, roi_rc.height)));
-    m_video_guidance_crop << videoFrameCrop;
-    imwrite("../../../makesubgoal13_onlinemapcrop.png", videoFrameCrop);
+    colormap(roi_rc).copyTo(m_frame_crop(cv::Rect(0, 0, roi_rc.width, roi_rc.height)));
+    m_video_guidance_crop << m_frame_crop;
+    if (m_save_guidance_image) imwrite("../../../makesubgoal13_onlinemapcrop.png", m_frame_crop);
 
-    clean_colormap(roi_rc).copyTo(videoFrameCrop(cv::Rect(0, 0, roi_rc.width, roi_rc.height)));
-    m_video_robotmap_crop << videoFrameCrop;
+    if (m_record_robotmap)
+    {
+        cv::Mat videoFrame = cv::Mat::zeros(m_framesize, CV_8UC3);
+        cv::Mat roi(videoFrame, cv::Rect(0, 0, colormap.cols, colormap.rows));
+        colormap.copyTo(roi);
+        m_video_robotmap << videoFrame;
+    }
+    if (m_record_robotmap_crop)
+    {
+        clean_colormap(roi_rc).copyTo(m_frame_crop(cv::Rect(0, 0, roi_rc.width, roi_rc.height)));
+        m_video_robotmap_crop << m_frame_crop;
+    }
+}
+
+void DGRobot::record2VideoCropped(cv::Mat crop)
+{
+    m_frame_crop = 0;
+    cv::Rect roi_rc(0, 0, crop.cols, crop.rows);
+    roi_rc &= cv::Rect(0, 0, m_frame_crop.cols, m_frame_crop.rows);
+    crop.copyTo(m_frame_crop(roi_rc));
+    m_video_guidance_crop << m_frame_crop;
+    if (m_save_guidance_image) imwrite("../../../makesubgoal13_onlinemapcrop.png", m_frame_crop);
 }
 
 void DGRobot::publishSubGoal_Test()
 {
     if (!m_guider.isGuidanceInitialized()) return;
+
+    Pose2 pub_pose;
+    makeSubgoal13(pub_pose); return;
 
     GuidanceManager::RobotStatus cur_state = m_guider.getRobotStatus();
     if (cur_state == GuidanceManager::RobotStatus::ARRIVED_NODE || cur_state == GuidanceManager::RobotStatus::ARRIVED_GOAL || cur_state == GuidanceManager::RobotStatus::READY || cur_state == GuidanceManager::RobotStatus::NO_PATH)
@@ -2209,7 +2230,7 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     double dist_optimalpubpose_robot = norm(robot_pose - optimal_pub_pose);
 
     // draw the pub_pose from the first step (regardless drivable or not)
-    cv::drawMarker(colormap, cvtRobottoMapcoordinate(optimal_pub_pose), cv::Vec3b(255, 0, 255), 1, 10, 2); // purple small cross
+    cv::drawMarker(colormap, cvtRobottoMapcoordinate(optimal_pub_pose), cv::Vec3b(255, 0, 255),  cv::MARKER_TILTED_CROSS, 10, 2); // purple small cross
 
     // pub pose if considering robot theta. But good to remove zigzag  // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6b)
     Pose2 notsooptimal_target_node;
@@ -2220,8 +2241,8 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     double dist_notsooptimalpubpose_robot = norm(robot_pose - notsooptimal_pub_pose);
 
     // draw the the notsooptimal_pub_pose
-    cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_pub_pose), cv::Vec3b(255, 0, 255), 4, 10, 2);    // purple small cross
-    cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_target_node), cv::Vec3b(255, 0, 255), 4, 40, 2); // purple big cross
+    cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_pub_pose), cv::Vec3b(255, 0, 255), cv::MARKER_SQUARE, 10, 2);    // purple small cross
+    cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_target_node), cv::Vec3b(255, 0, 255), cv::MARKER_SQUARE, 40, 2); // purple big cross
 
     double error_nextnode_notsooptimalnextnode = norm(target_node_dx - notsooptimal_target_node);
 
@@ -2287,8 +2308,13 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
         if (!isAlternativeFound)
         {
             ROS_INFO("can't find sub goal :(");
-            if (m_save_guidance_video) record2Video(colormap, clean_colormap, robot_pose);
-
+            if (m_save_guidance_video)
+            {
+                Pose2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose);
+                cv::putText(colormap, "FAIL", cv::Point(robot_pose_px.x + 50, robot_pose_px.y + 50), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Vec3b(0, 0, 255), 5);
+                cv::putText(clean_colormap, "FAIL", cv::Point(robot_pose_px.x + 50, robot_pose_px.y + 50), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Vec3b(0, 0, 255), 5);
+                record2Video(colormap, clean_colormap, robot_pose);
+            }
             return false; // can't find alternative :(
         }
     }
@@ -2356,7 +2382,10 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     pubpose_heading.y = pub_pose_px.y + 5 * sin(pub_pose.theta);
     cv::line(clean_colormap, pub_pose_px, pubpose_heading, cv::Vec3b(255, 0, 255), 2);
 
-    if (m_save_guidance_video) record2Video(colormap, clean_colormap, robot_pose);
+    // draw deepguider pose
+    Point2 dg_xy = cvtDg2Dx(dg_pose);
+    Point2 dg_px = cvtRobottoMapcoordinate(dg_xy);
+    cv::circle(colormap, dg_px, 10, cv::Vec3b(0, 0, 255), -1);
 
     // draw robot
     Point2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose); // robot_pose_px = dg_pose_robot_px
@@ -2385,6 +2414,8 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
 
     cv::imshow("guidance_map", crop_flip);
     cv::waitKey(1);
+
+    if (m_save_guidance_video) record2VideoCropped(crop_flip);
 
     // // Plan B-5
     // // make current pose undrivable. To prevent repeated position
