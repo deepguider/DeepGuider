@@ -112,6 +112,7 @@ protected:
 
     bool m_save_guidance_video = false;
     bool m_save_guidance_image = false;
+    bool m_auto_jump_tooclose_target = true;
     bool m_show_dg_pose = false;
     bool m_test_continuous_subgoal = false;
     int m_crop_radius = 400;
@@ -2077,9 +2078,10 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     Pose2 dg_next_next_node_robot = cvtDg2Dx(next_next_node_dg);
 
     // ARRIVED  (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 0)
+    bool is_final = (dg_next_next_node_robot.x == dg_next_node_robot.x && dg_next_next_node_robot.y == dg_next_node_robot.y);
     double dist_robot_to_next = norm(dg_next_node_robot - robot_pose);
     ROS_INFO("[makeSubgoal13] dist robot to next: %f", dist_robot_to_next);
-    if (dg_next_next_node_robot.x == dg_next_node_robot.x && dg_next_next_node_robot.y == dg_next_node_robot.y && dist_robot_to_next < 2)
+    if ( is_final && dist_robot_to_next < 2)
     {
         ROS_INFO("[makeSubgoal13] ARRIVED. use previous published pub_pose.");
         pub_pose = m_guider.m_subgoal_pose;
@@ -2156,6 +2158,16 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
         {                                    // by default, go to the shifted next node
             target_node_dx = m_next_node_dx; // already shifted
         }
+    }
+
+    // check distance to target node & skip too close target
+    if (!is_final && m_auto_jump_tooclose_target)
+    {
+        Point2 v = m_next_node_dx - m_cur_node_dx;
+        Point2 s = target_node_dx - v;
+        Point2 rs = robot_pose - s;
+        double projected_rd = rs.ddot(v) / norm(v);
+        if(projected_rd > norm(v) - 2.0) target_node_dx = m_next_next_node_dx;
     }
 
     // visualize prev, cur, next dg nodes
