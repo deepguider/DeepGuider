@@ -39,7 +39,6 @@ protected:
     // Topic publishers (sensor data)
     ros::Publisher pub_subgoal;
     void publishSubGoal3();
-    void publishSubGoal_Test();
 
     double m_min_goal_dist = 3.0;
     Pose2 m_prev_node_dg;      // in DG coordinate
@@ -111,8 +110,10 @@ protected:
     bool findDrivableinLine(cv::Mat &image, Point2 robot_px, Point2 node_px, Point2 &result_px);
     bool drawSubgoal(Point2 &pub_pose);
 
-    bool m_save_guidance_video = true;
-    bool m_save_guidance_image = false;    
+    bool m_save_guidance_video = false;
+    bool m_save_guidance_image = false;
+    bool m_show_dg_pose = false;
+    bool m_test_continuous_subgoal = false;
     int m_crop_radius = 400;
     cv::Mat m_offline_robotmap;
     cv::Size m_framesize = cv::Size(8000, 8000);
@@ -306,8 +307,7 @@ bool DGRobot::runOnce(double timestamp)
     if (!ok)
         return false;
 
-    //publishSubGoal();
-    publishSubGoal_Test();
+    publishSubGoal3();
 
     return true;
 }
@@ -471,6 +471,13 @@ void DGRobot::publishSubGoal3()
         return;
     }
 
+    Pose2 pub_pose;
+    if (m_test_continuous_subgoal)
+    {
+        makeSubgoal13(pub_pose);
+        return;
+    }
+
     GuidanceManager::GuideStatus cur_guidance_status = m_guider.getGuidanceStatus();
     // ROS_INFO("[publishSubGoal3] guidance status %d", (int) cur_guidance_status);
     // ROS_INFO("[publishSubGoal3] arrived guidance status %d", (int) GuidanceManager::GuideStatus::GUIDE_ARRIVED);
@@ -484,7 +491,6 @@ void DGRobot::publishSubGoal3()
         if (duration > ros::Duration(5.0))
         {
             ROS_INFO("Duration seconds: %d", duration.sec);
-            Pose2 pub_pose;
 
             // (GOOGLE DOCS - Subgoal Coordinate Calculation - NO_PATH signal handling - STEP 1)
             if (cur_state == GuidanceManager::RobotStatus::NO_PATH)
@@ -1988,55 +1994,6 @@ void DGRobot::record2VideoCropped(cv::Mat crop)
     if (m_save_guidance_image) imwrite("../../../makesubgoal13_onlinemapcrop.png", m_frame_crop);
 }
 
-void DGRobot::publishSubGoal_Test()
-{
-    if (!m_guider.isGuidanceInitialized()) return;
-
-    Pose2 pub_pose;
-    makeSubgoal13(pub_pose); return;
-
-    GuidanceManager::RobotStatus cur_state = m_guider.getRobotStatus();
-    if (cur_state == GuidanceManager::RobotStatus::ARRIVED_NODE || cur_state == GuidanceManager::RobotStatus::ARRIVED_GOAL || cur_state == GuidanceManager::RobotStatus::READY || cur_state == GuidanceManager::RobotStatus::NO_PATH)
-    {
-        ROS_INFO("cur_state: %d", (int)cur_state);
-        ros::Time cur_time = ros::Time::now();
-        ros::Duration duration = cur_time - m_begin_time;
-        if (duration > ros::Duration(5.0))
-        {
-            ROS_INFO("Duration seconds: %d", duration.sec);
-            Pose2 pub_pose;
-
-            // (GOOGLE DOCS - Subgoal Coordinate Calculation - NO_PATH signal handling - STEP 1)
-            if (cur_state == GuidanceManager::RobotStatus::NO_PATH)
-            { // if no path, add undrivable pose
-                Point2 undrivable_pose = m_guider.m_subgoal_pose;
-                m_undrivable_points.push_back(undrivable_pose);
-
-                // dequeue if length > m_undrivable_points_queue_size
-                if (m_undrivable_points.size() > m_undrivable_points_queue_size)
-                {
-                    m_undrivable_points.pop_front();
-                }
-            }
-            else
-            {                                // if no more NO PATH (means, the previous goal is successful/not NO PATH) (GOOGLE DOCS - Subgoal Coordinate Calculation - NO_PATH signal handling - STEP 2)
-                m_undrivable_points.clear(); // empty the queue
-            }
-
-            //if (makeSubgoal1(pub_pose))  // Seohyun's
-            //if (makeSubgoal12(pub_pose)) // Marcella's
-            if (makeSubgoal13(pub_pose)) // revision of Marcella's
-            {
-                geometry_msgs::PoseStamped rosps = makeRosPubPoseMsg(m_cur_head_node_id, pub_pose);
-                pub_subgoal.publish(rosps);
-                m_guider.m_subgoal_pose = pub_pose;
-                ROS_INFO("==============================================================\n");
-                ROS_INFO("SubGoal published!: %f, %f<=====================", pub_pose.x, pub_pose.y);
-                m_begin_time = ros::Time::now();
-            }
-        }
-    }
-}
 
 bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
 {
@@ -2383,9 +2340,12 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     cv::line(clean_colormap, pub_pose_px, pubpose_heading, cv::Vec3b(255, 0, 255), 2);
 
     // draw deepguider pose
-    Point2 dg_xy = cvtDg2Dx(dg_pose);
-    Point2 dg_px = cvtRobottoMapcoordinate(dg_xy);
-    cv::circle(colormap, dg_px, 10, cv::Vec3b(0, 0, 255), -1);
+    if (m_show_dg_pose)
+    {
+        Point2 dg_xy = cvtDg2Dx(dg_pose);
+        Point2 dg_px = cvtRobottoMapcoordinate(dg_xy);
+        cv::circle(colormap, dg_px, 10, cv::Vec3b(0, 0, 255), -1);
+    }
 
     // draw robot
     Point2 robot_pose_px = cvtRobottoMapcoordinate(robot_pose); // robot_pose_px = dg_pose_robot_px
