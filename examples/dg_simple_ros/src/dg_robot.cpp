@@ -89,7 +89,8 @@ protected:
     bool isSubPathDrivable(cv::Mat robotmap, Pose2 pointA, Pose2 pointB);
     bool isSubPathDrivablev2(cv::Mat robotmap, Pose2 dest_point);
     bool isSubPathDrivablev3(cv::Mat robotmap, Pose2 dest_point, Pose2 source_point);
-    Pose2 getFarthestPoint(cv::Mat robotmap, Pose2 dest_point, Pose2 source_point);
+    Point2 getFarthestPoint(cv::Mat robotmap, Point2 dest_point, Point2 source_point);
+    Point2 getFarthestPointSafe(cv::Mat robotmap, Point2 dest_point, Point2 source_point, double min_space_to_obstacle);
     bool findAlternativePath(Pose2 &alternate_point, Pose2 robot_pose, Pose2 target_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_targetnode, int num_alternatives, cv::Mat &colormap, double &min_dist_to_next_node);
     bool findAlternativePathv2(Pose2 &alternate_point, Pose2 robot_pose, Pose2 target_node_robot, cv::Mat robotmap_erode, double sub_goal_distance, double dist_robot_to_targetnode, int num_alternatives, cv::Mat &colormap, double angle_range, double &min_dist_to_next_node);
     void rotatePose(Pose2 &P, double theta_rot);
@@ -113,6 +114,8 @@ protected:
     bool m_save_guidance_video = false;
     bool m_save_guidance_image = false;
     bool m_auto_jump_tooclose_target = true;
+    double m_min_subgoalspace_to_obstacle = 1.2;
+    bool m_use_subgoal_margin = false;
     bool m_show_dg_pose = false;
     bool m_test_continuous_subgoal = false;
     int m_crop_radius = 400;
@@ -1003,16 +1006,16 @@ bool DGRobot::isSubPathDrivablev3(cv::Mat robotmap, Pose2 dest_point, Pose2 sour
     }
 }
 
-Pose2 DGRobot::getFarthestPoint(cv::Mat robotmap, Pose2 dest_point, Pose2 source_point)
+Point2 DGRobot::getFarthestPoint(cv::Mat robotmap, Point2 dest_point, Point2 source_point)
 {
     // return false if no drivable area (including source itself)
     // return the_farthest_point
 
     // pointA and pointB in robot coordinate
-    Pose2 dest_point_px = cvtRobottoMapcoordinate(dest_point);
-    Pose2 source_point_px = cvtRobottoMapcoordinate(source_point);
-    Pose2 the_farthest_point;
-    Pose2 the_farthest_point_px;
+    Point2 dest_point_px = cvtRobottoMapcoordinate(dest_point);
+    Point2 source_point_px = cvtRobottoMapcoordinate(source_point);
+    Point2 the_farthest_point;
+    Point2 the_farthest_point_px;
 
     if (robotmap.at<uchar>(source_point_px.y, source_point_px.x) < m_drivable_threshold)
     { // current position is NOT drivable
@@ -1058,12 +1061,6 @@ Pose2 DGRobot::getFarthestPoint(cv::Mat robotmap, Pose2 dest_point, Pose2 source
             if (value < m_drivable_threshold)
             {
                 break;
-            }
-
-            if (i == 0)
-            {
-                the_farthest_point_px.x = point_px.x;
-                the_farthest_point_px.y = point_px.y;
             }
 
             the_farthest_point_px.x = point_px.x;
@@ -1995,6 +1992,143 @@ void DGRobot::record2VideoCropped(cv::Mat crop)
     if (m_save_guidance_image) imwrite("../../../makesubgoal13_onlinemapcrop.png", m_frame_crop);
 }
 
+Point2 DGRobot::getFarthestPointSafe(cv::Mat robotmap, Point2 dest_point, Point2 source_point, double min_space_to_obstacle)
+{
+    // return false if no drivable area (including source itself)
+    // return the_farthest_point
+
+    // pointA and pointB in robot coordinate
+    Point2 dest_point_px = cvtRobottoMapcoordinate(dest_point);
+    Point2 source_point_px = cvtRobottoMapcoordinate(source_point);
+    Point2 the_farthest_point;
+    Point2 the_farthest_point_px;
+
+    cv::Rect robotmap_rc(0, 0, robotmap.cols, robotmap.rows);
+
+    if (robotmap.at<uchar>(source_point_px.y, source_point_px.x) < m_drivable_threshold)
+    { // current position is NOT drivable
+        bool boundary_crossed = false;
+        Point2 extended_dest = source_point_px + 2*(dest_point_px - source_point_px);
+        Point2 first_drivable_pt = source_point_px;
+        cv::LineIterator line_it(robotmap, cv::Point(source_point_px.x, source_point_px.y), cv::Point(extended_dest.x, extended_dest.y), 8);
+        bool is_find_drivable = false;
+        for (int i = 0; i < line_it.count; i++, ++line_it)
+        {
+            cv::Point point_px = line_it.pos();
+            if (!robotmap_rc.contains(point_px))
+            {
+                boundary_crossed = true;
+                break;
+            }
+            int value = robotmap.at<uchar>(point_px.y, point_px.x);
+
+            if (i == 0)
+            {
+                the_farthest_point_px.x = point_px.x;
+                the_farthest_point_px.y = point_px.y;
+            }
+
+            if (!is_find_drivable && value >= m_drivable_threshold) // first encounter of drivable area
+            {
+                is_find_drivable = true;
+                first_drivable_pt.x = point_px.x;
+                first_drivable_pt.y = point_px.y;
+            }
+            if (is_find_drivable)
+            {
+                // second encounter of undrivable area. Done.
+                if (value < m_drivable_threshold)
+                {
+                    break;
+                }
+                the_farthest_point_px = point_px;
+            }
+        }
+
+        double first_d = norm(first_drivable_pt - source_point_px);
+        double dest_d = norm(dest_point_px - source_point_px);
+        double farthest_d = norm(the_farthest_point_px - source_point_px);
+        if (!is_find_drivable)
+        {
+            the_farthest_point_px = source_point_px;    // error
+        }
+        else if (first_d >= dest_d)
+        {
+            the_farthest_point_px = first_drivable_pt;
+        }
+        else if (farthest_d > dest_d + min_space_to_obstacle)
+        {
+            the_farthest_point_px = dest_point_px;
+        }
+        else if (farthest_d <= min_space_to_obstacle)
+        {
+            if (dest_d < farthest_d)
+            {
+                the_farthest_point_px = dest_point_px;
+            }
+        }
+        else
+        {
+            double alpha = min_space_to_obstacle;
+            double beta = farthest_d - min_space_to_obstacle;
+            Point2 old_farthest_point = the_farthest_point_px;
+            the_farthest_point_px = (the_farthest_point_px * beta + source_point_px * alpha) / (alpha + beta);
+            if (norm(the_farthest_point_px - source_point_px) <= first_d)
+            {
+                the_farthest_point_px = (first_drivable_pt + old_farthest_point) / 2.0;
+            }
+        }
+    }
+    else
+    { // current position is drivable
+        bool boundary_crossed = false;
+        Point2 extended_dest = source_point_px + 2*(dest_point_px - source_point_px);
+        cv::LineIterator line_it(robotmap, cv::Point(source_point_px.x, source_point_px.y), cv::Point(extended_dest.x, extended_dest.y), 8);
+        for (int i = 0; i < line_it.count; i++, ++line_it)
+        {
+            cv::Point point_px = line_it.pos();
+            if (!robotmap_rc.contains(point_px))
+            {
+                boundary_crossed = true;
+                break;
+            }
+            int value = robotmap.at<uchar>(point_px.y, point_px.x);
+
+            // first encounter of undrivable area. Done.
+            if (value < m_drivable_threshold)
+            {
+                break;
+            }
+
+            the_farthest_point_px.x = point_px.x;
+            the_farthest_point_px.y = point_px.y;
+        }
+
+        double dest_d = norm(dest_point_px - source_point_px);
+        double farthest_d = norm(the_farthest_point_px - source_point_px);
+        if (farthest_d > dest_d + min_space_to_obstacle)
+        {
+            the_farthest_point_px = dest_point_px;
+        }
+        else if (farthest_d <= min_space_to_obstacle)
+        {
+            if (dest_d < farthest_d)
+            {
+                the_farthest_point_px = dest_point_px;
+            }
+        }
+        else
+        {
+            double alpha = min_space_to_obstacle;
+            double beta = farthest_d - min_space_to_obstacle;
+            the_farthest_point_px = (the_farthest_point_px * beta + source_point_px * alpha) / (alpha + beta);
+        }
+    }
+
+    the_farthest_point = cvtMaptoRobotcoordinate(the_farthest_point_px);
+    return the_farthest_point;
+}
+
 
 bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
 {
@@ -2190,12 +2324,20 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     // // new_theta for robot pose (facing the next node). Note: probably not used as for subgoal, we only need coordinate.
     // new_theta = robot_pose.theta + cx::cvtDeg2Rad(diff_deg_robot);  // current pose + how much to turn based on diff_deg_robot
 
+    // compute safe margin in pixels
+    double safe_pixel_margin = m_min_subgoalspace_to_obstacle * 10;
+    if (dist_robot_to_targetnode < 3)
+    {
+        safe_pixel_margin = safe_pixel_margin * dist_robot_to_targetnode / 3.0;
+    }
+
     // if not too close to the next node
     // get a point between robot pose and target_node_dx. 1 meter from the robot position to the direction of next_node_robot
     double min_subgoal_distance = 2.0; // in meter. Acceptable distance
     double acceptable_error = 1.5;  // acceptable error between optimal and notsooptimal pub pose
     Pose2 optimal_pub_pose;
-    optimal_pub_pose = getFarthestPoint(robotmap_erode, target_node_dx, robot_pose); // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6a)
+    //optimal_pub_pose = getFarthestPoint(robotmap_erode, target_node_dx, robot_pose); // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6a)
+    optimal_pub_pose = getFarthestPointSafe(robotmap_erode, target_node_dx, robot_pose, safe_pixel_margin); // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6a)
     double dist_optimalpubpose_robot = norm(robot_pose - optimal_pub_pose);
 
     // draw the pub_pose from the first step (regardless drivable or not)
@@ -2206,7 +2348,8 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     notsooptimal_target_node.x = robot_pose.x + dist_robot_to_targetnode * cos(robot_pose.theta);
     notsooptimal_target_node.y = robot_pose.y + dist_robot_to_targetnode * sin(robot_pose.theta);
     Pose2 notsooptimal_pub_pose;
-    notsooptimal_pub_pose = getFarthestPoint(robotmap_erode, notsooptimal_target_node, robot_pose);
+    //notsooptimal_pub_pose = getFarthestPoint(robotmap_erode, notsooptimal_target_node, robot_pose);
+    notsooptimal_pub_pose = getFarthestPointSafe(robotmap_erode, notsooptimal_target_node, robot_pose, safe_pixel_margin);
     double dist_notsooptimalpubpose_robot = norm(robot_pose - notsooptimal_pub_pose);
 
     // draw the the notsooptimal_pub_pose
@@ -2328,14 +2471,17 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     ////////////////////////////////////////////////////////////
 
     // adjust subgoal (prevent approach to obstacles too close)
-    Point2 delta_v = pub_pose - robot_pose;
-    double subgoal_d = norm(delta_v);
-    printf("[subgoal] d = %lf\n", subgoal_d);
-    double subgoal_theta = pub_pose.theta;
-    double new_delta = subgoal_d - 1.0;
-    if(subgoal_d<5) new_delta = subgoal_d * 0.8;
-    pub_pose = robot_pose + delta_v * new_delta / subgoal_d;
-    pub_pose.theta = subgoal_theta;
+    if (m_use_subgoal_margin)
+    {
+        Point2 delta_v = pub_pose - robot_pose;
+        double subgoal_d = norm(delta_v);
+        printf("[subgoal] d = %lf\n", subgoal_d);
+        double subgoal_theta = pub_pose.theta;
+        double new_delta = subgoal_d - 1.0;
+        if(subgoal_d<5) new_delta = subgoal_d * 0.8;
+        pub_pose = robot_pose + delta_v * new_delta / subgoal_d;
+        pub_pose.theta = subgoal_theta;
+    }
 
     // draw subgoal
     ROS_INFO("Found subgoal: <%f, %f, %f>", pub_pose.x, pub_pose.y, cx::cvtRad2Deg(pub_pose.theta)); // OUTPUT.. care about pub_pose in robot's coordinate
