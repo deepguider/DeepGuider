@@ -67,6 +67,7 @@ protected:
     bool m_pub_flag = false;
     GuidanceManager::RobotStatus m_prev_state = GuidanceManager::RobotStatus::READY;
     ros::Time m_begin_time = ros::Time::now();
+    bool m_nopath_flag = false;
 
     // DX 로봇 부천 지도 origin 계산
     dg::LatLon m_dx_map_origin_latlon;
@@ -114,6 +115,7 @@ protected:
     bool m_save_guidance_video = false;
     bool m_save_guidance_image = false;
     bool m_auto_jump_tooclose_target = true;
+    // double m_min_subgoalspace_to_obstacle = 1.0;
     double m_min_subgoalspace_to_obstacle = 1.2;
     bool m_use_subgoal_margin = false;
     bool m_show_dg_pose = false;
@@ -328,7 +330,7 @@ void DGRobot::callbackRobotPose(const geometry_msgs::PoseStamped::ConstPtr &msg)
     double ori_w = msg->pose.orientation.w;
     cv::Point3d euler = cx::cvtQuat2EulerAng(ori_w, ori_x, ori_y, ori_z);
     double theta = euler.z;
-    ROS_INFO("Robot: %f,%f, deg:%f", x, y, cx::cvtRad2Deg(theta));
+    // ROS_INFO("Robot: %f,%f, deg:%f", x, y, cx::cvtRad2Deg(theta));
 
     // Reset deepguider pose by first arrived robot pose
     if (m_first_robot_pose)
@@ -361,7 +363,7 @@ void DGRobot::callbackDrawRobot(const geometry_msgs::PoseStamped::ConstPtr &msg)
 void DGRobot::callbackRobotStatus(const std_msgs::String::ConstPtr &msg)
 {
     const char *str = msg->data.c_str();
-    ROS_INFO_THROTTLE(1.0, "%s", str);
+    ROS_INFO("%s", str);
     if (!strcmp(str, "ready"))
     {
         m_guider.setRobotStatus(GuidanceManager::RobotStatus::READY);
@@ -394,7 +396,7 @@ void DGRobot::callbackRobotMap(const nav_msgs::OccupancyGrid::ConstPtr &map)
     int size_y = map->info.height;
     m_robot_origin = dg::Point2(map->info.origin.position.x, map->info.origin.position.y);
 
-    ROS_INFO("callbackRobotMap: Robot map size x: %d, y: %d", size_x, size_y);
+    // ROS_INFO("callbackRobotMap: Robot map size x: %d, y: %d", size_x, size_y);
 
     if ((size_x < 3) || (size_y < 3))
     {
@@ -487,9 +489,45 @@ void DGRobot::publishSubGoal3()
     // ROS_INFO("[publishSubGoal3] arrived guidance status %d", (int) GuidanceManager::GuideStatus::GUIDE_ARRIVED);
     // if(cur_guidance_status != GuidanceManager::GuideStatus::GUIDE_ARRIVED){  // guidance not yet arrived. (commented out because seems when guidance status is indeed arrived, this publishsubgoal function is never been run)
     GuidanceManager::RobotStatus cur_state = m_guider.getRobotStatus();
+      
+    if (cur_state != GuidanceManager::RobotStatus::NO_PATH)
+    {
+        m_nopath_flag = false;
+    }
     if (cur_state == GuidanceManager::RobotStatus::ARRIVED_NODE || cur_state == GuidanceManager::RobotStatus::ARRIVED_GOAL || cur_state == GuidanceManager::RobotStatus::READY || cur_state == GuidanceManager::RobotStatus::NO_PATH)
     {
-        ROS_INFO("cur_state: %d", (int)cur_state);
+
+        std::string str;
+        switch (cur_state)
+        {
+            case GuidanceManager::RobotStatus::ARRIVED_NODE:
+                str = "ARRIVED_NODE";
+                break;
+            case GuidanceManager::RobotStatus::ARRIVED_GOAL:
+                str = "ARRIVED_GOAL";
+                break;
+            case GuidanceManager::RobotStatus::READY:
+                str = "READY";
+                break;
+            case GuidanceManager::RobotStatus::NO_PATH:
+                str = "NO_PATH";
+                break;
+        }
+        printf("\n cur_state: %s\n\n", str.c_str());
+
+        //if there is an obstacle in the path, robot sends no_path
+        if (cur_state == GuidanceManager::RobotStatus::NO_PATH)
+        {
+            ROS_INFO("m_nopath_flag: %d", m_nopath_flag);   
+            if (!m_nopath_flag)
+            {
+                m_nopath_flag = true;
+                m_begin_time = ros::Time::now();
+            }
+                     
+        }
+
+        // ROS_INFO("cur_state: %d", (int)cur_state);
         ros::Time cur_time = ros::Time::now();
         ros::Duration duration = cur_time - m_begin_time;
         if (duration > ros::Duration(5.0))
@@ -522,10 +560,11 @@ void DGRobot::publishSubGoal3()
                 m_guider.m_subgoal_pose = pub_pose;
                 ROS_INFO("==============================================================\n");
                 ROS_INFO("SubGoal published!: %f, %f<=====================", pub_pose.x, pub_pose.y);
+                ROS_INFO("==============================================================\n");
                 m_begin_time = ros::Time::now();
             }
         }
-    }
+    }  
     // }
     // else{
     //     ROS_INFO("[publishSubGoal3] ARRIVED. Don't calculate and publish anymore subgoal");
@@ -788,7 +827,7 @@ bool DGRobot::findAlternativePath(Pose2 &alternative_point, Pose2 robot_pose, Po
         {
             min_dist_to_next_node = dist_to_next_node;
             valid_point_with_min_dist = alternative_pub_pose;
-            ROS_INFO("Success finding better sub goal");
+            // ROS_INFO("Success finding better sub goal");
         }
 
         // go to the next alternative
@@ -1380,7 +1419,8 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
     // if not too close to the next node
     // get a point between robot pose and target_node_dx. 1 meter from the robot position to the direction of next_node_robot
     double sub_goal_distance = 2.0; // in meter. Acceptable distance
-    double acceptable_error = 1.5;  // acceptable error between optimal and notsooptimal pub pose
+    // double acceptable_error = 1.5;  // acceptable error between optimal and notsooptimal pub pose
+    double acceptable_error = 0;  // acceptable error between optimal and notsooptimal pub pose
     Pose2 optimal_pub_pose;
     optimal_pub_pose = getFarthestPoint(robotmap_erode, target_node_dx, robot_pose); // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6a)
     double dist_optimalpubpose_robot = norm(robot_pose - optimal_pub_pose);
@@ -2189,7 +2229,8 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     }
 
     // // erode robotmap  (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 3)
-    int erode_value = 7 + dilate_value;
+    // int erode_value = 7 + dilate_value;
+    int erode_value = 5 + dilate_value;
     cv::Mat robotmap_erode;
     erode(robotmap_dilate, robotmap_erode, cv::Mat::ones(cv::Size(erode_value, erode_value), CV_8UC1), cv::Point(-1, -1), 1);
 
@@ -2301,7 +2342,8 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
         Point2 s = target_node_dx - v;
         Point2 rs = robot_pose - s;
         double projected_rd = rs.ddot(v) / norm(v);
-        if(projected_rd > norm(v) - 2.0) target_node_dx = m_next_next_node_dx;
+        if(projected_rd > norm(v) - 1.0) target_node_dx = m_next_next_node_dx;
+        // if(projected_rd > norm(v) - 2.0) target_node_dx = m_next_next_node_dx;
     }
 
     // visualize prev, cur, next dg nodes
