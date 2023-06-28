@@ -115,9 +115,7 @@ protected:
     bool m_save_guidance_video = false;
     bool m_save_guidance_image = false;
     bool m_auto_jump_tooclose_target = true;
-    // double m_min_subgoalspace_to_obstacle = 1.0;
     double m_min_subgoalspace_to_obstacle = 1.2;
-    bool m_use_subgoal_margin = false;
     bool m_show_dg_pose = false;
     bool m_test_continuous_subgoal = false;
     int m_crop_radius = 400;
@@ -363,7 +361,7 @@ void DGRobot::callbackDrawRobot(const geometry_msgs::PoseStamped::ConstPtr &msg)
 void DGRobot::callbackRobotStatus(const std_msgs::String::ConstPtr &msg)
 {
     const char *str = msg->data.c_str();
-    ROS_INFO("%s", str);
+    ROS_INFO_THROTTLE(1.0, "%s", str);
     if (!strcmp(str, "ready"))
     {
         m_guider.setRobotStatus(GuidanceManager::RobotStatus::READY);
@@ -489,7 +487,7 @@ void DGRobot::publishSubGoal3()
     // ROS_INFO("[publishSubGoal3] arrived guidance status %d", (int) GuidanceManager::GuideStatus::GUIDE_ARRIVED);
     // if(cur_guidance_status != GuidanceManager::GuideStatus::GUIDE_ARRIVED){  // guidance not yet arrived. (commented out because seems when guidance status is indeed arrived, this publishsubgoal function is never been run)
     GuidanceManager::RobotStatus cur_state = m_guider.getRobotStatus();
-      
+
     if (cur_state != GuidanceManager::RobotStatus::NO_PATH)
     {
         m_nopath_flag = false;
@@ -564,7 +562,7 @@ void DGRobot::publishSubGoal3()
                 m_begin_time = ros::Time::now();
             }
         }
-    }  
+    }
     // }
     // else{
     //     ROS_INFO("[publishSubGoal3] ARRIVED. Don't calculate and publish anymore subgoal");
@@ -892,7 +890,7 @@ bool DGRobot::findAlternativePathv2(Pose2 &alternative_point, Pose2 robot_pose, 
         {
             min_dist_to_next_node = dist_to_next_node;
             valid_point_with_min_dist = alternative_pub_pose;
-            ROS_INFO("Success finding better sub goal");
+            //ROS_INFO("Success finding better sub goal");
         }
         // else{
         //     if (isSubPathDrivablev3(robotmap_erode, alternative_pub_pose, robot_pose)){
@@ -1419,8 +1417,7 @@ bool DGRobot::makeSubgoal12(Pose2 &pub_pose) // makeSubgoal11 with offline/onlin
     // if not too close to the next node
     // get a point between robot pose and target_node_dx. 1 meter from the robot position to the direction of next_node_robot
     double sub_goal_distance = 2.0; // in meter. Acceptable distance
-    // double acceptable_error = 1.5;  // acceptable error between optimal and notsooptimal pub pose
-    double acceptable_error = 0;  // acceptable error between optimal and notsooptimal pub pose
+    double acceptable_error = 1.5;  // acceptable error between optimal and notsooptimal pub pose
     Pose2 optimal_pub_pose;
     optimal_pub_pose = getFarthestPoint(robotmap_erode, target_node_dx, robot_pose); // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6a)
     double dist_optimalpubpose_robot = norm(robot_pose - optimal_pub_pose);
@@ -2172,9 +2169,9 @@ Point2 DGRobot::getFarthestPointSafe(cv::Mat robotmap, Point2 dest_point, Point2
 
 bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
 {
-    ROS_INFO("[makeSubgoal13] CurGuideIdx %d", m_guider.getCurGuideIdx());
-    ROS_INFO("[makeSubgoal13] m_prev_robot_pose: <%f, %f>", m_prev_robot_pose.x, m_prev_robot_pose.y);
-    ROS_INFO("[makeSubgoal13] m_cur_robot_pose: <%f, %f>", m_cur_robot_pose.x, m_cur_robot_pose.y);
+    //ROS_INFO("[makeSubgoal13] CurGuideIdx %d", m_guider.getCurGuideIdx());
+    //ROS_INFO("[makeSubgoal13] m_prev_robot_pose: <%f, %f>", m_prev_robot_pose.x, m_prev_robot_pose.y);
+    //ROS_INFO("[makeSubgoal13] m_cur_robot_pose: <%f, %f>", m_cur_robot_pose.x, m_cur_robot_pose.y);
 
     // current pose in DeepGuider coordinate
     Pose2 dg_pose = m_localizer->getPose();
@@ -2229,7 +2226,6 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     }
 
     // // erode robotmap  (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 3)
-    // int erode_value = 7 + dilate_value;
     int erode_value = 5 + dilate_value;
     cv::Mat robotmap_erode;
     erode(robotmap_dilate, robotmap_erode, cv::Mat::ones(cv::Size(erode_value, erode_value), CV_8UC1), cv::Point(-1, -1), 1);
@@ -2255,7 +2251,7 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     // ARRIVED  (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 0)
     bool is_final = (dg_next_next_node_robot.x == dg_next_node_robot.x && dg_next_next_node_robot.y == dg_next_node_robot.y);
     double dist_robot_to_next = norm(dg_next_node_robot - robot_pose);
-    ROS_INFO("[makeSubgoal13] dist robot to next: %f", dist_robot_to_next);
+    //ROS_INFO("[makeSubgoal13] dist robot to next: %f", dist_robot_to_next);
     if ( is_final && dist_robot_to_next < 2)
     {
         ROS_INFO("[makeSubgoal13] ARRIVED. use previous published pub_pose.");
@@ -2336,14 +2332,18 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     }
 
     // check distance to target node & skip too close target
+    bool next_node_jumped = false;
     if (!is_final && m_auto_jump_tooclose_target)
     {
         Point2 v = m_next_node_dx - m_cur_node_dx;
         Point2 s = target_node_dx - v;
         Point2 rs = robot_pose - s;
         double projected_rd = rs.ddot(v) / norm(v);
-        if(projected_rd > norm(v) - 1.0) target_node_dx = m_next_next_node_dx;
-        // if(projected_rd > norm(v) - 2.0) target_node_dx = m_next_next_node_dx;
+        if(projected_rd > norm(v) - 2.0)
+        {
+            target_node_dx = m_next_next_node_dx;
+            next_node_jumped = true;
+        }
     }
 
     // visualize prev, cur, next dg nodes
@@ -2361,7 +2361,7 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
 
     // distance from robot to the (aligned) next node
     double dist_robot_to_targetnode = norm(target_node_dx - robot_pose);
-    ROS_INFO("[makeSubgoal13] dist_robot_to_targetnode: %f", dist_robot_to_targetnode);
+    //ROS_INFO("[makeSubgoal13] dist_robot_to_targetnode: %f", dist_robot_to_targetnode);
 
     // // new_theta for robot pose (facing the next node). Note: probably not used as for subgoal, we only need coordinate.
     // new_theta = robot_pose.theta + cx::cvtDeg2Rad(diff_deg_robot);  // current pose + how much to turn based on diff_deg_robot
@@ -2376,55 +2376,14 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     // if not too close to the next node
     // get a point between robot pose and target_node_dx. 1 meter from the robot position to the direction of next_node_robot
     double min_subgoal_distance = 2.0; // in meter. Acceptable distance
-    double acceptable_error = 1.5;  // acceptable error between optimal and notsooptimal pub pose
     Pose2 optimal_pub_pose;
-    //optimal_pub_pose = getFarthestPoint(robotmap_erode, target_node_dx, robot_pose); // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6a)
     optimal_pub_pose = getFarthestPointSafe(robotmap_erode, target_node_dx, robot_pose, safe_pixel_margin); // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6a)
     double dist_optimalpubpose_robot = norm(robot_pose - optimal_pub_pose);
 
-    // draw the pub_pose from the first step (regardless drivable or not)
-    //cv::drawMarker(colormap, cvtRobottoMapcoordinate(optimal_pub_pose), cv::Vec3b(255, 0, 255),  cv::MARKER_TILTED_CROSS, 10, 2); // purple small cross
-
-    // pub pose if considering robot theta. But good to remove zigzag  // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6b)
-    Pose2 notsooptimal_target_node;
-    notsooptimal_target_node.x = robot_pose.x + dist_robot_to_targetnode * cos(robot_pose.theta);
-    notsooptimal_target_node.y = robot_pose.y + dist_robot_to_targetnode * sin(robot_pose.theta);
-    Pose2 notsooptimal_pub_pose;
-    //notsooptimal_pub_pose = getFarthestPoint(robotmap_erode, notsooptimal_target_node, robot_pose);
-    notsooptimal_pub_pose = getFarthestPointSafe(robotmap_erode, notsooptimal_target_node, robot_pose, safe_pixel_margin);
-    double dist_notsooptimalpubpose_robot = norm(robot_pose - notsooptimal_pub_pose);
-
-    // draw the the notsooptimal_pub_pose
-    //cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_pub_pose), cv::Vec3b(255, 0, 255), cv::MARKER_SQUARE, 10, 2);    // purple small cross
-    //cv::drawMarker(colormap, cvtRobottoMapcoordinate(notsooptimal_target_node), cv::Vec3b(255, 0, 255), cv::MARKER_SQUARE, 40, 2); // purple big cross
-
-    double error_nextnode_notsooptimalnextnode = norm(target_node_dx - notsooptimal_target_node);
-
-    // (GOOGLE DOCS - Subgoal Coordinate Calculation - Main Algorithm - STEP 6c)
-    if (dist_optimalpubpose_robot > min_subgoal_distance && dist_notsooptimalpubpose_robot <= min_subgoal_distance)
-    { // if not so optimal subgoal is less than 5 but the optimal is more than 5
+    if (dist_optimalpubpose_robot > min_subgoal_distance)
+    {
         pub_pose.x = optimal_pub_pose.x;
         pub_pose.y = optimal_pub_pose.y;
-    }
-    else if (dist_optimalpubpose_robot <= min_subgoal_distance && dist_notsooptimalpubpose_robot > min_subgoal_distance && error_nextnode_notsooptimalnextnode < acceptable_error)
-    {
-        pub_pose.x = notsooptimal_pub_pose.x;
-        pub_pose.y = notsooptimal_pub_pose.y;
-    }
-    else if (dist_optimalpubpose_robot > min_subgoal_distance && dist_notsooptimalpubpose_robot > min_subgoal_distance)
-    { // both dist_optimalpubpose_robot and dist_notsooptimalpubpose_robot are > sub_goal_distance
-        // if no big difference between notsooptimal pub pose and optimal pubpose, use the notsooptimal pub pose
-        double error_optimal_notsooptimal = norm(notsooptimal_pub_pose - optimal_pub_pose);
-        if (error_optimal_notsooptimal > acceptable_error)
-        {
-            pub_pose.x = optimal_pub_pose.x;
-            pub_pose.y = optimal_pub_pose.y;
-        }
-        else
-        {
-            pub_pose.x = notsooptimal_pub_pose.x;
-            pub_pose.y = notsooptimal_pub_pose.y;
-        }
     }
     else
     {                                                                                        // both dist_optimalpubpose_robot and dist_notsooptimalpubpose_robot are <= sub_goal_distance
@@ -2476,54 +2435,27 @@ bool DGRobot::makeSubgoal13(Pose2 &pub_pose) // makeSubgoal12 with code revision
     ////////////////////////////////////////////////////////////
     // CALCULATE THETA (GOOGLE DOCS - Subgoal Theta Calculation)
 
-    // theta if going from cur to next
-
-    ROS_INFO("[makeSubgoal13] before theta m_prev_node_dx.x: %f, y:%f", m_prev_node_dx.x, m_prev_node_dx.y);
-    ROS_INFO("[makeSubgoal13] before theta m_cur_node_dx.x: %f, y:%f", m_cur_node_dx.x, m_cur_node_dx.y);
-    ROS_INFO("[makeSubgoal13] before theta m_next_node_dx.x: %f, y:%f", m_next_node_dx.x, m_next_node_dx.y);
-    ROS_INFO("[makeSubgoal13] before theta m_next_next_node_dx.x: %f, y:%f", m_next_next_node_dx.x, m_next_next_node_dx.y);
-
     double theta_to_next_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_next_node_dx, m_next_next_node_dx));
     double theta_to_next = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_cur_node_dx, m_next_node_dx));
-    double theta_to_cur = cx::cvtDeg2Rad(findRobotCoordAngleofVectorSource2Dest(m_prev_node_dx, m_cur_node_dx));
     double dist_pubpose_to_targetnode = norm(target_node_dx - pub_pose);                                     // (GOOGLE DOCS - Subgoal Theta Calculation - STEP 1)
-    double ratio_for_theta = std::min(dist_pubpose_to_targetnode / m_guider.m_uncertain_dist_public(), 1.0); // (GOOGLE DOCS - Subgoal Theta Calculation - STEP 2)
+    pub_pose.theta = theta_to_next;
+    if (next_node_jumped)
+    {
+        pub_pose.theta = theta_to_next_next;
+    }
+    else if (dist_pubpose_to_targetnode < 2)
+    {
+        // compute angle average by using unit circle points 
+        double ratio_for_theta = std::min(dist_pubpose_to_targetnode / 2, 1.0);
+        double avg_y = ratio_for_theta * sin(theta_to_next) + (1 - ratio_for_theta) * sin(theta_to_next_next);
+        double avg_x = ratio_for_theta * cos(theta_to_next) + (1 - ratio_for_theta) * cos(theta_to_next_next);
+        pub_pose.theta = atan2(avg_y, avg_x);
+    }
 
-    if (m_nodeupdated_but_problematic)
-    { // (GOOGLE DOCS - Subgoal Theta Calculation - STEP 4)
-        // use ratio of subgoal-target node distance : m_guider.m_uncertain_dist to decide the direction. The smaller the distance, head to next more.
-        pub_pose.theta = (1 - ratio_for_theta) * theta_to_next + ratio_for_theta * theta_to_cur;
-        ROS_INFO("Find theta case 1: <%f>", cx::cvtRad2Deg(pub_pose.theta));
-    }
-    else
-    { // if not problematic (GOOGLE DOCS - Subgoal Theta Calculation - STEP 3)
-        if (dist_pubpose_to_targetnode < m_guider.m_uncertain_dist_public())
-        {                                                                                                  // usually happen when target node (next node) is on vicinity but far away so the node hasn't been updated
-            pub_pose.theta = (1 - ratio_for_theta) * theta_to_next_next + ratio_for_theta * theta_to_next; // (GOOGLE DOCS - Subgoal Theta Calculation - STEP 3a)
-            ROS_INFO("Find theta case 2: <%f>", cx::cvtRad2Deg(pub_pose.theta));
-        }
-        else
-        {
-            pub_pose.theta = theta_to_next; // by default, go to next (GOOGLE DOCS - Subgoal Theta Calculation - STEP 3b)
-            ROS_INFO("Find theta case 3: <%f>", cx::cvtRad2Deg(pub_pose.theta));
-        }
-    }
+    printf("[THETA] jumped=%d, dist=%.2lf, next=%.1lf, nnext=%.1lf, theta=%.1lf\n", next_node_jumped, dist_pubpose_to_targetnode, cx::cvtRad2Deg(theta_to_next), cx::cvtRad2Deg(theta_to_next_next), cx::cvtRad2Deg(pub_pose.theta));
 
     // CALCULATE THETA END
     ////////////////////////////////////////////////////////////
-
-    // adjust subgoal (prevent approach to obstacles too close)
-    if (m_use_subgoal_margin)
-    {
-        Point2 delta_v = pub_pose - robot_pose;
-        double subgoal_d = norm(delta_v);
-        printf("[subgoal] d = %lf\n", subgoal_d);
-        double subgoal_theta = pub_pose.theta;
-        double new_delta = subgoal_d - 1.0;
-        if(subgoal_d<5) new_delta = subgoal_d * 0.8;
-        pub_pose = robot_pose + delta_v * new_delta / subgoal_d;
-        pub_pose.theta = subgoal_theta;
-    }
 
     // draw subgoal
     ROS_INFO("Found subgoal: <%f, %f, %f>", pub_pose.x, pub_pose.y, cx::cvtRad2Deg(pub_pose.theta)); // OUTPUT.. care about pub_pose in robot's coordinate
