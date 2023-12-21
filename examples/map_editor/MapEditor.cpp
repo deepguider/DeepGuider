@@ -121,7 +121,6 @@ int MapEditor::configure(std::string site)
         m_map.load(guiprop.map_file.c_str());
         initializeNextMapID();
     }
-    if (m_map.isEmpty()) m_fpath.clear();
 
     // Read the given background image
     m_bg_image = cv::imread(guiprop.image_file, cv::ImreadModes::IMREAD_COLOR);
@@ -399,7 +398,8 @@ void MapEditor::procMouseEvent(int evt, int x, int y, int flags)
         {
             dg::Point2 ep;
             dg::Edge* edge = m_map.getNearestEdge(metric, ep);
-            if (edge && norm(ep - metric) < dist_thr)
+            dg::Node* node = m_map.getNearestNode(metric);
+            if (edge && norm(ep - metric) < dist_thr && norm(*node - ep) > 0.1)
             {
                 dg::Node* node1 = m_map.getNode(edge->node_id1);
                 dg::Node* node2 = m_map.getNode(edge->node_id2);
