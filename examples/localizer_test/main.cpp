@@ -431,7 +431,7 @@ int runLocalizer()
     //enable_roadtheta = true;
     //draw_gps = true;
 
-    int data_sel = 0;
+    int data_sel = 10;
     double start_time = 0;     // skip time (seconds)
     //rec_video_file = "mcl_bucheon_course.avi";
     double rec_video_fps = 10;

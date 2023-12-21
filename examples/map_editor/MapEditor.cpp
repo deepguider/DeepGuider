@@ -978,16 +978,17 @@ void MapEditor::fixMapError()
 
 void MapEditor::initializeNextMapID()
 {
-    if (m_map.isEmpty()) return;
-
     dg::ID max_id = 0;
-    for (auto it = m_map.getHeadNode(); it != m_map.getTailNode(); it++)
+    if (!m_map.isEmpty())
     {
-        if (it->id > max_id) max_id = it->id;
-    }
-    for (auto it = m_map.getHeadEdge(); it != m_map.getTailEdge(); it++)
-    {
-        if (it->id > max_id) max_id = it->id;
+        for (auto it = m_map.getHeadNode(); it != m_map.getTailNode(); it++)
+        {
+            if (it->id > max_id) max_id = it->id;
+        }
+        for (auto it = m_map.getHeadEdge(); it != m_map.getTailEdge(); it++)
+        {
+            if (it->id > max_id) max_id = it->id;
+        }
     }
     m_next_id = max_id + 1;
 }

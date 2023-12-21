@@ -72,8 +72,8 @@ public:
         if (sel == 3) winname = "Intersection Classifier";
 
         cv::Mat image;
-        cv::namedWindow(winname, cv::WINDOW_NORMAL);
-        cv::setWindowProperty(winname, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+        //cv::namedWindow(winname, cv::WINDOW_NORMAL);
+        //cv::setWindowProperty(winname, cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
         int fn = -1;
         while (1)
         {
@@ -90,7 +90,7 @@ public:
             {
                 vps.read(m_data[fn].vps);
                 std::vector<VPSResult> svs;
-                vps.get(svs);
+                svs = vps.get();
                 cv::Mat sv_image;
                 cv::Mat sv_image_resized;
                 if (!svs.empty() && svs[0].id>0 && map_manager.getStreetViewImage(svs[0].id, sv_image, "f") && !sv_image.empty())
@@ -139,9 +139,11 @@ public:
                 intersection.draw(image_disp);
                 if (!m_data[fn].intersection.empty()) fps = 1.0 / intersection.procTime();
                 IntersectionResult intersect;
-                intersection.get(intersect);
+                intersect = intersection.get();
                 if(intersect.cls>0) disp_delay = 300;
                 else disp_delay = 50;
+                printf("gg\n");
+                if (intersect.cls > 0) printf("detected!\n");
             }
 
             // fn & fps
@@ -150,8 +152,8 @@ public:
                 str = cv::format("#%d (FPS: %.1lf)", fn, fps);
             else
                 str = cv::format("#%d (FPS: N/A)", fn);
-            cv::putText(image_disp, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
-            cv::putText(image_disp, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
+            //cv::putText(image_disp, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 0, 0), 4);
+            //cv::putText(image_disp, str.c_str(), cv::Point(20, 50), cv::FONT_HERSHEY_PLAIN, 2.0, cv::Scalar(0, 255, 255), 2);
 
             // display
             cv::imshow(winname, image_disp);
@@ -183,6 +185,7 @@ protected:
         char buf[MAX_DATA_LEN];
         char buf_tmp[MAX_DATA_LEN];
         int buf_len = MAX_DATA_LEN;
+        int fn = 0;
         while (!stream.eof())
         {
             // read one line (skip blank lines)
@@ -193,26 +196,19 @@ protected:
 
             // parse data
             dg::Timestamp ts;
-            int fn = -1;
-            sscanf(buf, "%lf,%d,%s", &ts, &fn, buf_tmp);
+            int fn_tmp;
+            sscanf(buf, "%lf,%d,%s", &ts, &fn_tmp, buf_tmp);
             int idx = (int)string(buf_tmp).find_first_of(',');
             std::string name = string(buf_tmp).substr(0, idx);
-            while (fn >= 0 && m_total_frames <= fn)
-            {
-                m_data.push_back(LogFrameData());
-                m_total_frames++;
-            }
-            if (fn >= 0 && fn < m_total_frames)
-            {
-                if (name == "vps")
-                    m_data[fn].vps.push_back(std::string(buf));
-                else if (name == "ocr")
-                    m_data[fn].ocr.push_back(std::string(buf));
-                else if (name == "logo")
-                    m_data[fn].logo.push_back(std::string(buf));
-                else if (name == "intersection")
-                    m_data[fn].intersection.push_back(std::string(buf));
-            }
+            if (name == "vps")
+                m_data[fn].vps.push_back(std::string(buf));
+            else if (name == "ocr")
+                m_data[fn].ocr.push_back(std::string(buf));
+            else if (name == "logo")
+                m_data[fn].logo.push_back(std::string(buf));
+            else if (name == "intersection")
+                m_data[fn].intersection.push_back(std::string(buf));
+            fn++;
         }
 
         return true;
@@ -222,7 +218,7 @@ protected:
 
 int main(int argc, char* argv[])
 {
-    int module_selection = 1;     // 0: vps, 1: ocr, 2: logo, 3: intersection
+    int module_selection = 3;     // 0: vps, 1: ocr, 2: logo, 3: intersection
 
     std::string dataname = "dg_simple_200804_102346";
     if (argc > 1) dataname = argv[1];
@@ -236,7 +232,7 @@ int main(int argc, char* argv[])
     }
 
     std::string fname_log = dataname + ".txt";
-    std::string fname_cam = dataname + "_cam.avi";
+    std::string fname_cam = dataname + ".avi";
 
     LogViewer viewer;
     viewer.run(fname_log, fname_cam, module_selection);
